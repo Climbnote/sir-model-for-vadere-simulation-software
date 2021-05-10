@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NelderMead2D.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.math.optimization.neldermead</a> &gt; <span class="el_source">NelderMead2D.java</span></div><h1>NelderMead2D.java</h1><pre class="source lang-java linenums">package org.vadere.util.math.optimization.neldermead;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VCircle;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.util.logging.Logger;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * Implementation of the 2-dimensional Nelder-Mead.
+ * Multiple simplexes can be solved in parallel (default).
+ *
+ * @author Benedikt Zoennchen
+ */
+public class NelderMead2D {
+
+<span class="nc" id="L24">	private static final Logger logger = Logger.getLogger(NelderMead2D.class);</span>
+
+	/**
+	 * sets the logger level.
+	 */
+	static {
+<span class="nc" id="L30">		logger.setInfo();</span>
+<span class="nc" id="L31">	}</span>
+
+	/**
+	 * the step circle
+	 */
+	private final VCircle evalArea;
+
+	/**
+	 * the evaluation function which will be minimized or maximized.
+	 */
+	private final Function&lt;IPoint, Double&gt; eval;
+
+	/**
+	 * a simplex instance converges if the area of the triangle is smaller than &lt;tt&gt;threshold&lt;/tt&gt; and
+	 */
+	private final double threshold;
+
+	/**
+	 * list of simplexes i.e. each simplex represents one Nelder-Mead optimization
+	 */
+	private final List&lt;Simplex2D&gt; simplexes;
+
+	/**
+	 * if true, the optimization runs in parallel.
+	 */
+<span class="nc" id="L56">	private boolean runParallel = true;</span>
+
+	/**
+	 * if true, the optimization is a minimization, otherwise it is a maximization.
+	 */
+<span class="nc" id="L61">	private boolean minimize = true;</span>
+
+	/**
+	 * the maximum number of iterations of a simplex.
+	 */
+	private static final int NMAX = 100;
+
+	/**
+	 * value at illegal positions if we minimize
+	 */
+	public static final double MAX_VAL = 10000;
+
+	/**
+	 * the value which is the solution (i.e. global maximum or minimum of the evaluation function).
+	 */
+	public static final double SOLUTION_VAL = 0;
+
+	/**
+	 * value at illegal positions if we maximize
+	 */
+	public static final double MIN_VAL = -MAX_VAL;
+
+	/**
+	 * counts the required number of iterations.
+	 */
+	private int iterationCount;
+
+	/**
+	 * Construct a Nelder-Mead instance for minimization.
+	 *
+	 * @param evalArea      the evaluation area i.e. outside this area eval.apply() is equal to MAX_VAL
+	 * @param eval          the evaluation function such that for illegal / invalid position p eval.apply(p) == MAX_VAL
+	 * @param threshold     the threashold
+	 * @param simplexes     the trianlges defining the 2D simplexes
+	 */
+	public NelderMead2D(@NotNull final VCircle evalArea,
+	                    @NotNull final Function&lt;IPoint, Double&gt; eval,
+	                    final double threshold,
+<span class="nc" id="L99">	                    @NotNull Collection&lt;VTriangle&gt; simplexes){</span>
+
+<span class="nc" id="L101">		this.evalArea = evalArea;</span>
+<span class="nc" id="L102">		this.eval = eval;</span>
+<span class="nc" id="L103">		this.threshold = threshold;</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">		this.simplexes = simplexes.stream().map(triangle -&gt; new Simplex2D(eval, triangle)).filter(simplex2D -&gt; !simplex2D.isInvalid()).collect(Collectors.toList());</span>
+<span class="nc" id="L105">		this.iterationCount = 0;</span>
+<span class="nc" id="L106">	}</span>
+
+	/**
+	 * search for the optimum.
+	 */
+	public void optimize() {
+		// first run
+<span class="nc" id="L113">		int overallIterations = 0;</span>
+//		stream().forEach(s -&gt; System.out.println(s));
+<span class="nc bnc" id="L115" title="All 4 branches missed.">		while (!hasConverged() &amp;&amp; iterationCount &lt; NMAX) {</span>
+<span class="nc" id="L116">			update();</span>
+			//stream().forEach(s -&gt; System.out.println(s));
+<span class="nc" id="L118">			iterationCount++;</span>
+<span class="nc" id="L119">			overallIterations++;</span>
+		}
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		if(iterationCount == NMAX) {</span>
+<span class="nc" id="L122">			logger.warn(&quot;max iteration reached!&quot;);</span>
+		}
+
+		// second run
+		/*simplexes.stream().forEach(s -&gt; s.restart(evalArea.getRadius() / 10.0));
+		simplexes.removeIf(s -&gt; !s.isInvalid());
+
+
+		//stream().forEach(s -&gt; System.out.println(s));
+		iterationCount = 0;
+		while (!hasConverged() &amp;&amp; iterationCount &lt; NMAX) {
+			update();
+			iterationCount++;
+			overallIterations++;
+		}
+		if(iterationCount == NMAX) {
+			logger.warn(&quot;max iteration reached!&quot;);
+		}
+
+		logger.debug(&quot;iterations: &quot; + overallIterations);*/
+<span class="nc" id="L142">	}</span>
+
+	/**
+	 * Returns the argument of the solution.
+	 *
+	 * @return the argument of the solution
+	 */
+	public VPoint getArg() {
+<span class="nc" id="L150">		return getBest().getArg();</span>
+	}
+
+	/**
+	 * Returns the solution.
+	 *
+	 * @return the solution
+	 */
+	public double getValue() {
+<span class="nc" id="L159">		return getBest().getValue();</span>
+	}
+
+	/**
+	 * Runs the next iteration for all simplexes which are not jet converged and not jet invalid.
+	 */
+	private void update() {
+<span class="nc bnc" id="L166" title="All 4 branches missed.">		stream().filter(s -&gt; !s.isInvalid()).filter(s -&gt; !s.hasConverged(threshold)).forEach(s -&gt; s.update());</span>
+<span class="nc" id="L167">	}</span>
+
+	/**
+	 * Returns the simplex which found the best solution.
+	 *
+	 * @return the simplex which of the best solution
+	 */
+	private Simplex2D getBest() {
+<span class="nc" id="L175">		Simplex2D best = null;</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">		for (Simplex2D simplex : simplexes) {</span>
+<span class="nc bnc" id="L177" title="All 10 branches missed.">			if(best == null || (minimize &amp;&amp; best.getValue() &gt; simplex.getValue()) || (!minimize &amp;&amp; best.getValue() &lt; simplex.getValue())) {</span>
+<span class="nc" id="L178">				best = simplex;</span>
+			}
+<span class="nc" id="L180">		}</span>
+
+<span class="nc" id="L182">		return best;</span>
+	}
+
+	/**
+	 * Returns true, if all valid simplexes have converged which depends on the &lt;tt&gt;threshold&lt;/tt&gt;, false otherwise
+	 *
+	 * @return true if and only if all simplexes have converged.
+	 */
+	private boolean hasConverged() {
+<span class="nc bnc" id="L191" title="All 2 branches missed.">		return stream().filter(s -&gt; !s.isInvalid()).allMatch(s -&gt; s.hasConverged(threshold));</span>
+	}
+
+	/**
+	 * Returns a (parallel) stream of all simplexes.
+	 *
+	 * @return a (parallel) stream of all simplexes
+	 */
+	private Stream&lt;Simplex2D&gt; stream() {
+<span class="nc bnc" id="L200" title="All 2 branches missed.">		if(runParallel) {</span>
+<span class="nc" id="L201">			return simplexes.parallelStream();</span>
+		}
+		else {
+<span class="nc" id="L204">			return simplexes.stream();</span>
+		}
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L210">		return &quot;[&quot; + simplexes.stream().map(simplex2D -&gt; simplex2D.toString()).reduce((s1, s2) -&gt; s1 + &quot;,&quot; + s2).orElse(&quot;&quot;) + &quot;]&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

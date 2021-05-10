@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CPULaplacianSmoothing.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.plots</a> &gt; <span class="el_source">CPULaplacianSmoothing.java</span></div><h1>CPULaplacianSmoothing.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.plots;
+
+import org.vadere.util.math.IDistanceFunction;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PVertex;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+import org.vadere.meshing.mesh.gen.MeshPanel;
+import org.vadere.meshing.mesh.triangulation.improver.LaplacianSmother;
+
+import javax.swing.*;
+import java.util.ArrayList;
+import java.util.function.Predicate;
+
+/**
+ * @author Benedikt Zoennchen
+ */
+public class CPULaplacianSmoothing extends JFrame {
+
+<span class="nc" id="L21">    private CPULaplacianSmoothing() {</span>
+
+        //IDistanceFunction distanceFunc1 = p -&gt; 2 - Math.sqrt((p.getX()-1) * (p.getX()-1) + p.getY() * p.getY());
+        //IDistanceFunction distanceFunc3 = p -&gt; 2 - Math.sqrt((p.getX()-5) * (p.getX()-5) + p.getY() * p.getY());
+        //IDistanceFunction distanceFunc = p -&gt; -10+Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY());
+        //IDistanceFunction distanceFunc = p -&gt; 2 - Math.max(Math.abs(p.getX()-3), Math.abs(p.getY()));
+<span class="nc" id="L27">        IDistanceFunction distanceFunc = p -&gt; Math.abs(6 - Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY())) - 4;</span>
+        //IDistanceFunction distanceFunc4 = p -&gt; Math.max(Math.abs(p.getY()) - 4, Math.abs(p.getX()) - 25);
+<span class="nc" id="L29">        IEdgeLengthFunction edgeLengthFunc = p -&gt; 1.0 + p.distanceToOrigin() / 10;</span>
+        //IEdgeLengthFunction edgeLengthFunc = p -&gt; 1.0;
+        //IEdgeLengthFunction edgeLengthFunc = p -&gt; 1.0 + Math.min(Math.abs(distanceFunc.apply(p) + 4), Math.abs(distanceFunc.apply(p)));
+        //IEdgeLengthFunction edgeLengthFunc = p -&gt; 1.0 + Math.abs(distanceFunc.apply(p)*0.5);
+
+
+        //IDistanceFunction distanceFunc = p -&gt; Math.max(Math.max(Math.max(distanceFunc1.apply(p), distanceFunc2.apply(p)), distanceFunc3.apply(p)), distanceFunc4.apply(p));
+        //IEdgeLengthFunction edgeLengthFunc = p -&gt; 1.0 + Math.abs(distanceFunc.apply(p))/2;
+        //IEdgeLengthFunction edgeLengthFunc = p -&gt; 1.0 + p.distanceToOrigin();
+        //IEdgeLengthFunction edgeLengthFunc = p -&gt; 1.0 + Math.min(Math.abs(distanceFunc.apply(p) + 4), Math.abs(distanceFunc.apply(p)));
+        //IEdgeLengthFunction edgeLengthFunc = p -&gt; 1.0;
+<span class="nc" id="L40">        VRectangle bbox = new VRectangle(-11, -11, 22, 22);</span>
+<span class="nc" id="L41">        LaplacianSmother meshGenerator = new LaplacianSmother(distanceFunc, edgeLengthFunc, 0.5, bbox, new ArrayList&lt;&gt;());</span>
+
+
+<span class="nc" id="L44">        Predicate&lt;PFace&gt; predicate = face -&gt; meshGenerator.getTriangulation().getMesh().toTriangle(face).isNonAcute();</span>
+<span class="nc" id="L45">        MeshPanel&lt;PVertex, PHalfEdge, PFace&gt; distmeshPanel = new MeshPanel(meshGenerator.getMesh(), predicate, 1000, 800);</span>
+
+<span class="nc" id="L47">        JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L48">        frame.setVisible(true);</span>
+
+
+		//System.out.print(TexGraphGenerator.meshToGraph(meshGenerator.getMesh()));
+		//double maxLen = meshGenerator.step();
+<span class="nc" id="L53">		double avgQuality = 0.0;</span>
+<span class="nc" id="L54">		long obscuteTriangles = -1;</span>
+<span class="nc" id="L55">		int counter = 0;</span>
+<span class="nc" id="L56">		long time = 0;</span>
+
+<span class="nc bnc" id="L58" title="All 2 branches missed.">        while (counter &lt;= 2000) {</span>
+            //obscuteTriangles = meshGenerator.getTriangles().stream().filter(tri -&gt; tri.isNonAcute()).count();
+            //PriorityQueue&lt;PFace&lt;MeshPoint&gt;&gt; priorityQueue = meshGenerator.getQuailties();
+            //avgQuality = priorityQueue.stream().reduce(0.0, (aDouble, meshPointPFace) -&gt; aDouble + meshGenerator.faceToQuality(meshPointPFace), (d1, d2) -&gt; d1 + d2) / priorityQueue.size();
+            //System.out.println(&quot;Average quality (&quot; + counter + &quot;):&quot; + avgQuality);
+			/*for(int i = 0; i &lt; 100 &amp;&amp; !priorityQueue.isEmpty(); i++) {
+				PFace&lt;MeshPoint&gt; face = priorityQueue.poll();
+				System.out.println(&quot;lowest quality (&quot;+counter+&quot;):&quot;+ meshGenerator.faceToQuality(face));
+			}*/
+<span class="nc" id="L67">            distmeshPanel.repaint();</span>
+<span class="nc" id="L68">            counter++;</span>
+
+<span class="nc" id="L70">			long ms = System.currentTimeMillis();</span>
+<span class="nc" id="L71">			meshGenerator.improve();</span>
+<span class="nc" id="L72">			ms = System.currentTimeMillis() - ms;</span>
+<span class="nc" id="L73">			time += ms;</span>
+			//System.out.println(&quot;Quality: &quot; + meshGenerator.getQuality());
+<span class="nc" id="L75">			System.out.println(&quot;Step-Time: &quot; + ms);</span>
+<span class="nc" id="L76">		}</span>
+		//meshGenerator.finish();
+<span class="nc" id="L78">		System.out.print(&quot;overall time: &quot; + time);</span>
+        //System.out.print(TexGraphGenerator.meshToGraph(meshGenerator.getMesh()));
+		//System.out.print(&quot;finished:&quot; + meshGenerator.getMesh().getVertices().stream().filter(v -&gt; !meshGenerator.getMesh().isDestroyed(v)).count());
+
+		//System.out.print(&quot;finished:&quot; + avgQuality);
+		//System.out.print(TexGraphGenerator.meshToGraph(meshGenerator.getMesh()));
+		//if(counter == 1) {
+		//
+		//}
+<span class="nc" id="L87">	}</span>
+
+    public static void main(String[] args) {
+<span class="nc" id="L90">        new CPULaplacianSmoothing();</span>
+<span class="nc" id="L91">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

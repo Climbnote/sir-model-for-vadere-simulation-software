@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Vector2D.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry.shapes</a> &gt; <span class="el_source">Vector2D.java</span></div><h1>Vector2D.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry.shapes;
+
+import org.vadere.util.geometry.GeometryUtils;
+
+public class Vector2D extends VPoint {
+
+	/**
+	 * generated serial version UID
+	 * 
+	 */
+	private static final long serialVersionUID = -9086115463015728807L;
+<span class="fc" id="L12">	public static final VPoint ZERO = new VPoint(0, 0);</span>
+
+<span class="nc" id="L14">	public Vector2D() {}</span>
+
+	public Vector2D(double x, double y) {
+<span class="fc" id="L17">		super(x, y);</span>
+<span class="fc" id="L18">	}</span>
+
+	public Vector2D(IPoint p) {
+<span class="fc" id="L21">		super(p.getX(), p.getY());</span>
+<span class="fc" id="L22">	}</span>
+
+	@Override
+	public Vector2D clone() {
+<span class="nc" id="L26">		return new Vector2D(x, y);</span>
+	}
+
+	public Vector2D normalize(double length) {
+		double rx, ry;
+<span class="fc" id="L31">		double vl = distance(ZERO);</span>
+<span class="fc bfc" id="L32" title="All 2 branches covered.">		if (Math.abs(x) &lt; GeometryUtils.DOUBLE_EPS) {</span>
+<span class="fc" id="L33">			rx = 0;</span>
+		} else {
+<span class="fc" id="L35">			rx = x / vl * length;</span>
+		}
+<span class="fc bfc" id="L37" title="All 2 branches covered.">		if (Math.abs(y) &lt; GeometryUtils.DOUBLE_EPS) {</span>
+<span class="fc" id="L38">			ry = 0;</span>
+		} else {
+<span class="fc" id="L40">			ry = y / vl * length;</span>
+		}
+<span class="fc" id="L42">		return new Vector2D(rx, ry);</span>
+	}
+
+	public Vector2D multiply(double factor) {
+<span class="nc" id="L46">		return new Vector2D(this.x * factor, this.y * factor);</span>
+	}
+
+	public double getLength() {
+<span class="nc" id="L50">		return Math.sqrt(x * x + y * y);</span>
+	}
+
+	/**
+	 * Computes the angle3D between the x-axis through the given Point (0,0) and this.
+	 * Result is in interval (0,2*PI) according to standard math usage.
+	 *
+	 * @return the angle3D between the x-axis through the given Point (0,0) and this
+	 */
+	public double angleToZero() {
+<span class="nc" id="L60">		double atan2 = Math.atan2(this.y, this.x);</span>
+
+<span class="nc bnc" id="L62" title="All 2 branches missed.">		if (atan2 &lt; 0.0) {</span>
+<span class="nc" id="L63">			atan2 = Math.PI * 2 + atan2;</span>
+		}
+
+<span class="nc" id="L66">		return atan2;</span>
+	}
+
+	/**
+	 * Computes the angle3D between the x-axis through the given Point center and this.
+	 * Result is in interval (0,2*PI) according to standard math usage.
+	 *
+	 * @param center the given center
+	 * @return the angle3D between the x-axis through the given Point center and this
+	 */
+	public double angleTo(VPoint center) {
+<span class="nc" id="L77">		return GeometryUtils.angleTo(this, center);</span>
+	}
+
+	public Vector2D add(VPoint p) {
+<span class="nc" id="L81">		return new Vector2D(this.x + p.x, this.y + p.y);</span>
+	}
+
+	public Vector2D sub(VPoint p) {
+<span class="nc" id="L85">		return new Vector2D(this.x - p.x, this.y - p.y);</span>
+	}
+
+	public Vector2D rotate(final double radAngle) {
+<span class="nc" id="L89">		return new Vector2D(x * Math.cos(radAngle) - y * Math.sin(radAngle),</span>
+<span class="nc" id="L90">				x * Math.sin(radAngle) + y * Math.cos(radAngle));</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

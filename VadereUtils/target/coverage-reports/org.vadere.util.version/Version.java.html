@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Version.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.version</a> &gt; <span class="el_source">Version.java</span></div><h1>Version.java</h1><pre class="source lang-java linenums">package org.vadere.util.version;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.logging.Logger;
+
+import java.io.InputStream;
+import java.util.Arrays;
+import java.util.Optional;
+import java.util.Scanner;
+
+/**
+ * Vadere versions in strict order from oldest to newest.
+ *
+ * In Vadere, each release consists of a semantic version with &quot;major.minor&quot;
+ * and the corresponding commit hash from the version control system.
+ *
+ * The commit hash from version control is stored in {@link #VERSION_CONTROL_INFO_FILE}
+ * when compiling Vadere (during Maven's &quot;generate-resources&quot; phase).
+ */
+<span class="nc" id="L20">public enum Version {</span>
+
+<span class="nc" id="L22">	UNDEFINED(&quot;undefined&quot;),</span>
+<span class="nc" id="L23">	NOT_A_RELEASE(&quot;not a release&quot;),</span>
+<span class="nc" id="L24">	V0_1(0, 1),</span>
+<span class="nc" id="L25">	V0_2(0, 2),</span>
+<span class="nc" id="L26">	V0_3(0, 3),</span>
+<span class="nc" id="L27">	V0_4(0, 4),</span>
+<span class="nc" id="L28">	V0_5(0, 5),</span>
+<span class="nc" id="L29">	V0_6(0, 6),</span>
+<span class="nc" id="L30">	V0_7(0, 7),</span>
+<span class="nc" id="L31">	V0_8(0, 8),</span>
+<span class="nc" id="L32">	V0_9(0,9),</span>
+<span class="nc" id="L33">	V0_10(0,10),</span>
+<span class="nc" id="L34">	V1_0(1,0),</span>
+<span class="nc" id="L35">	V1_1(1,1),</span>
+<span class="nc" id="L36">	V1_2(1,2),</span>
+<span class="nc" id="L37">	V1_3(1,3),</span>
+<span class="nc" id="L38">	V1_4(1,4),</span>
+<span class="nc" id="L39">	V1_5(1,5),</span>
+<span class="nc" id="L40">	V1_6(1,6),</span>
+<span class="nc" id="L41">	V1_7(1,7),</span>
+<span class="nc" id="L42">	V1_8(1, 8),</span>
+<span class="nc" id="L43">	V1_9(1, 9),</span>
+<span class="nc" id="L44">	V1_10(1, 10),</span>
+<span class="nc" id="L45">	V1_11(1, 11),</span>
+<span class="nc" id="L46">	V1_12(1, 12),</span>
+<span class="nc" id="L47">	V1_13(1, 13),</span>
+<span class="nc" id="L48">	V1_14(1,14),</span>
+<span class="nc" id="L49">	V1_15(1,15);</span>
+
+
+<span class="nc" id="L52">	private static Logger logger = Logger.getLogger(Version.class);</span>
+	private static final String VERSION_CONTROL_INFO_FILE = &quot;/current_commit_hash.txt&quot;;
+
+	private String label;
+	private int major;
+	private int minor;
+
+<span class="nc" id="L59">	Version(String label) {</span>
+<span class="nc" id="L60">		this.major = -1;</span>
+<span class="nc" id="L61">		this.minor = -1;</span>
+<span class="nc" id="L62">		this.label = label;</span>
+<span class="nc" id="L63">	}</span>
+
+<span class="nc" id="L65">	Version(int major, int minor){</span>
+<span class="nc" id="L66">		this.major = major;</span>
+<span class="nc" id="L67">		this.minor = minor;</span>
+<span class="nc" id="L68">		this.label = major + &quot;.&quot; + minor;</span>
+<span class="nc" id="L69">	}</span>
+
+	public static String getVersionControlCommitHash() {
+<span class="nc" id="L72">		String commitHash = readFileFromJavaResourceFolder(VERSION_CONTROL_INFO_FILE);</span>
+
+<span class="nc bnc" id="L74" title="All 2 branches missed.">		if (commitHash == null) {</span>
+<span class="nc" id="L75">			commitHash = &quot;No version control commit hash available!&quot;;</span>
+<span class="nc" id="L76">			logger.warn(&quot;No version control commit hash available!&quot;);</span>
+		}
+
+<span class="nc" id="L79">		return commitHash;</span>
+	}
+
+	private static String readFileFromJavaResourceFolder(String resource) {
+<span class="nc" id="L83">		final InputStream in = Version.class.getResourceAsStream(resource);</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		if (in != null) {</span>
+<span class="nc" id="L85">			try (final Scanner scanner = new Scanner(in)) {</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">				if (scanner.hasNext()) {</span>
+<span class="nc" id="L87">					return scanner.next();</span>
+				}
+<span class="nc" id="L89">			}</span>
+		}
+<span class="nc" id="L91">		return null;</span>
+	}
+
+	public static String releaseNumber() {
+<span class="nc" id="L95">		return latest().label();</span>
+	}
+
+	public String label() {
+<span class="nc" id="L99">		return label;</span>
+	}
+
+<span class="nc" id="L102">	public int major() { return major;}</span>
+
+<span class="nc" id="L104">	public int minor() { return  minor;}</span>
+
+	public String label(char replaceSpaceWith) {
+<span class="nc" id="L107">		return label.replace(' ', replaceSpaceWith);</span>
+	}
+
+	public static Version fromString(String versionStr) {
+<span class="nc" id="L111">		versionStr = versionStr.replace('_', ' ');</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">		for (Version v : values()) {</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">			if (v.label.equals(versionStr))</span>
+<span class="nc" id="L114">				return v;</span>
+		}
+<span class="nc" id="L116">		return null;</span>
+	}
+
+	private static int versionId(Version curr) {
+<span class="nc" id="L120">		Version[] versions = values();</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		for (int i = 0; i &lt; versions.length; i++) {</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">			if (curr.equals(versions[i])) {</span>
+<span class="nc" id="L123">				return i;</span>
+			}
+		}
+<span class="nc" id="L126">		throw new IllegalArgumentException(&quot;Value not in Version Enumeration &quot; + curr.toString());</span>
+	}
+
+	public static String[] stringValues() {
+<span class="nc" id="L130">		return Arrays.stream(values()).map(v -&gt; v.label().replace(' ', '_')).toArray(String[]::new);</span>
+	}
+
+	public static String[] stringValues(Version startFrom, boolean descending) {
+<span class="nc" id="L134">		int min = startFrom.ordinal();</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">		String[] values = Arrays.stream(values()).filter(v -&gt; v.ordinal() &gt;= min).map(v -&gt; v.label().replace(' ', '_')).toArray(String[]::new);</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">		if (descending){</span>
+<span class="nc" id="L137"> 		    int length = values.length;</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">		    for (int i = 0; i &lt; length/2; i++){</span>
+<span class="nc" id="L139">		        int j = length -1 - i;</span>
+<span class="nc" id="L140">		        String tmp = values[i];</span>
+<span class="nc" id="L141">		        values[i] = values[j];</span>
+<span class="nc" id="L142">		        values[j] = tmp;</span>
+
+
+            }
+        }
+<span class="nc" id="L147">		return values;</span>
+    }
+
+	public Version nextVersion() {
+<span class="nc bnc" id="L151" title="All 2 branches missed.">		int nextId = versionId(this) == (values().length - 1) ? versionId(this) : versionId(this) + 1;</span>
+<span class="nc" id="L152">		return values()[nextId];</span>
+	}
+
+	public Version previousVersion() {
+<span class="nc bnc" id="L156" title="All 2 branches missed.">		int nextId = versionId(this) == 0 ? versionId(this) : versionId(this) - 1;</span>
+<span class="nc" id="L157">		return values()[nextId];</span>
+	}
+
+	public static Version[] listVersionFromTo(Version from, Version to){
+<span class="nc bnc" id="L161" title="All 2 branches missed.">		int start = versionId(from) == (values().length - 1) ? versionId(from) : versionId(from) + 1;</span>
+<span class="nc" id="L162">		int end =  versionId(to);</span>
+<span class="nc" id="L163">		Version[] ret = new Version[(end - start) + 1];</span>
+<span class="nc" id="L164">		Version[] values = values();</span>
+<span class="nc" id="L165">		System.arraycopy(values, start, ret, 0, (end - start)+1);</span>
+<span class="nc" id="L166">		return ret;</span>
+	}
+
+	public static Version[] listToLatest(Version v) {
+<span class="nc bnc" id="L170" title="All 2 branches missed.">		int start = versionId(v) == (values().length - 1) ? versionId(v) : versionId(v) + 1;</span>
+<span class="nc" id="L171">		int end = values().length;</span>
+<span class="nc" id="L172">		Version[] ret = new Version[end - start];</span>
+<span class="nc" id="L173">		System.arraycopy(values(), start, ret, 0, end - start);</span>
+<span class="nc" id="L174">		return ret;</span>
+
+	}
+
+	public boolean equalOrSmaller(Version test) {
+<span class="nc bnc" id="L179" title="All 2 branches missed.">		return this.ordinal() &lt;= test.ordinal();</span>
+	}
+
+	public boolean equalOrBigger(Version test) {
+<span class="nc bnc" id="L183" title="All 2 branches missed.">		return this.ordinal() &gt;= test.ordinal();</span>
+	}
+
+	public static Version latest() {
+<span class="nc" id="L187">		return values()[values().length - 1];</span>
+	}
+
+	public static Optional&lt;Version&gt; getPrevious(@NotNull final Version successorVersion) {
+<span class="nc" id="L191">		Version prevVersion = null;</span>
+
+<span class="nc bnc" id="L193" title="All 2 branches missed.">		for (Version version : values()) {</span>
+<span class="nc bnc" id="L194" title="All 2 branches missed.">			if (successorVersion.equals(version)) {</span>
+<span class="nc" id="L195">				return Optional.ofNullable(prevVersion);</span>
+			}
+<span class="nc" id="L197">			prevVersion = version;</span>
+		}
+
+<span class="nc" id="L200">		return Optional.empty();</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L205">		return label();</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

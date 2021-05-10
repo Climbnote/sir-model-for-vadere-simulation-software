@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FaceIterator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.iterators</a> &gt; <span class="el_source">FaceIterator.java</span></div><h1>FaceIterator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.iterators;
+
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.shapes.IPoint;
+
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Set;
+import java.util.function.Predicate;
+
+/**
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public class FaceIterator&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements Iterator&lt;F&gt; {
+
+	private LinkedList&lt;F&gt; facesToVisit;
+	private Set&lt;F&gt; visitedFaces;
+	private Predicate&lt;F&gt; facePredicate;
+	private IMesh&lt;V, E, F&gt; mesh;
+
+<span class="fc" id="L29">	public FaceIterator(final IMesh&lt;V, E, F&gt; mesh, final Predicate&lt;F&gt; facePredicate) {</span>
+<span class="fc" id="L30">		this.mesh = mesh;</span>
+<span class="fc" id="L31">		this.facesToVisit = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L32">		F face = mesh.getFace();</span>
+<span class="pc bpc" id="L33" title="1 of 2 branches missed.">		F startFace = mesh.isBoundary(face) ? mesh.getTwinFace(mesh.getEdge(face)) : face;</span>
+
+<span class="pc bpc" id="L35" title="1 of 2 branches missed.">		if(mesh.isDestroyed(startFace)) {</span>
+<span class="nc" id="L36">			throw new IllegalArgumentException(&quot;this face is already destroyed.&quot;);</span>
+		}
+
+<span class="fc" id="L39">		facesToVisit.add(startFace);</span>
+<span class="fc" id="L40">		visitedFaces = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L41">		this.facePredicate = facePredicate;</span>
+<span class="fc" id="L42">	}</span>
+
+	public FaceIterator(final IMesh&lt;V, E, F&gt; mesh) {
+<span class="fc" id="L45">		this(mesh, f -&gt; true);</span>
+<span class="fc" id="L46">	}</span>
+
+	@Override
+	public boolean hasNext() {
+<span class="fc bfc" id="L50" title="All 2 branches covered.">		return !facesToVisit.isEmpty();</span>
+	}
+
+	@Override
+	public F next() {
+<span class="fc" id="L55">		F nextFace = facesToVisit.removeFirst();</span>
+<span class="fc" id="L56">		visitedFaces.add(nextFace);</span>
+
+<span class="fc bfc" id="L58" title="All 2 branches covered.">		for(E he : mesh.getEdgeIt(nextFace)) {</span>
+<span class="fc" id="L59">			F twinFace = mesh.getTwinFace(he);</span>
+
+<span class="pc bpc" id="L61" title="2 of 6 branches missed."> 			if(mesh.isBoundary(twinFace) || mesh.isDestroyed(twinFace) || !facePredicate.test(twinFace)) {</span>
+<span class="fc" id="L62">				visitedFaces.add(twinFace);</span>
+			}
+
+<span class="fc bfc" id="L65" title="All 2 branches covered.">			if(!visitedFaces.contains(twinFace)) {</span>
+<span class="fc" id="L66">				facesToVisit.add(twinFace);</span>
+			}
+
+<span class="fc" id="L69">			visitedFaces.add(twinFace);</span>
+<span class="fc" id="L70">		}</span>
+
+<span class="fc" id="L72">		return nextFace;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

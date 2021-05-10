@@ -1,0 +1,485 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StateJsonConverter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.util</a> &gt; <span class="el_source">StateJsonConverter.java</span></div><h1>StateJsonConverter.java</h1><pre class="source lang-java linenums">package org.vadere.state.util;
+
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.vadere.state.attributes.*;
+import org.vadere.state.attributes.models.AttributesFloorField;
+import org.vadere.state.attributes.scenario.*;
+import org.vadere.state.psychology.perception.json.StimulusInfo;
+import org.vadere.state.psychology.perception.json.StimulusInfoStore;
+import org.vadere.state.scenario.*;
+import org.vadere.state.types.ScenarioElementType;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.reflection.DynamicClassInstantiator;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+<span class="nc" id="L34">public abstract class StateJsonConverter {</span>
+
+	public static final String SCENARIO_KEY = &quot;scenario&quot;;
+
+	public static final String MAIN_MODEL_KEY = &quot;mainModel&quot;;
+
+<span class="fc" id="L40">	private static final TypeReference&lt;Map&lt;String, Object&gt;&gt; mapTypeReference =</span>
+<span class="fc" id="L41">			new TypeReference&lt;Map&lt;String, Object&gt;&gt;() {};</span>
+
+<span class="fc" id="L43">	private static Logger logger = Logger.getLogger(StateJsonConverter.class);</span>
+
+	/** Connection to jackson library. */
+<span class="fc" id="L46">	private static ObjectMapper mapper = new JacksonObjectMapper();</span>
+
+	/** Connection to jackson library. */
+<span class="fc" id="L49">	private static ObjectWriter prettyWriter = mapper.writerWithDefaultPrettyPrinter();</span>
+
+<span class="fc" id="L51">	private static ObjectWriter writer = mapper.writer();</span>
+
+	public static ObjectMapper getMapper() {
+<span class="nc" id="L54">		return mapper;</span>
+	}
+
+	public static ObjectWriter getPrettyWriter() {
+<span class="nc" id="L58">		return prettyWriter;</span>
+	}
+
+	public static &lt;T&gt; T deserializeObjectFromJson(String json, Class&lt;T&gt; objectClass) throws IOException {
+<span class="fc" id="L62">		final JsonNode node = mapper.readTree(json);</span>
+<span class="fc" id="L63">		checkForTextOutOfNode(json);</span>
+<span class="fc" id="L64">		return mapper.treeToValue(node, objectClass);</span>
+	}
+
+	public static &lt;T&gt; T deserializeObjectFromJson(String json, final TypeReference&lt;T&gt; type) {
+<span class="nc" id="L68">		T data = null;</span>
+
+		try {
+<span class="nc" id="L71">			data = mapper.readValue(json, type);</span>
+<span class="nc" id="L72">		} catch (Exception e) {</span>
+<span class="nc" id="L73">			e.printStackTrace();</span>
+			// Handle the problem
+<span class="nc" id="L75">		}</span>
+<span class="nc" id="L76">		return data;</span>
+	}
+
+	// - - - - DESERIALIZING - - - -
+
+	public static JsonNode deserializeToNode(String dev) throws IOException {
+<span class="nc" id="L82">		return mapper.readTree(dev);</span>
+	}
+
+	public static Object deserializeToMapOfObjects(String dev) throws IOException {
+<span class="nc" id="L86">		return mapper.readValue(dev, mapTypeReference);</span>
+	}
+
+	public static Object convertJsonNodeToObject(JsonNode node) {
+<span class="nc" id="L90">		return mapper.convertValue(node, Map.class);</span>
+	}
+
+	public static JsonNode deserializeToNode(Object map){
+<span class="nc" id="L94">		return mapper.valueToTree(map);</span>
+	}
+
+
+
+<span class="nc" id="L99">	private static class TopographyStore {</span>
+<span class="nc" id="L100">		AttributesTopography attributes = new AttributesTopography();</span>
+<span class="nc" id="L101">		AttributesAgent attributesPedestrian = new AttributesAgent();</span>
+<span class="nc" id="L102">		AttributesCar attributesCar = new AttributesCar();</span>
+<span class="nc" id="L103">		Collection&lt;AttributesObstacle&gt; obstacles = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L104">		Collection&lt;AttributesStairs&gt; stairs = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L105">		Collection&lt;AttributesTarget&gt; targets = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L106">		Collection&lt;AttributesTargetChanger&gt; targetChangers = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L107">		Collection&lt;AttributesAbsorbingArea&gt; absorbingAreas = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L108">		Collection&lt;AttributesSource&gt; sources = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L109">		Collection&lt;AttributesMeasurementArea&gt; measurementAreas = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L110">		Collection&lt;? extends DynamicElement&gt; dynamicElements = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L111">		AttributesTeleporter teleporter = null;</span>
+	}
+
+	public static AttributesSimulation deserializeAttributesSimulation(String json) throws IOException  {
+<span class="nc" id="L115">		return deserializeObjectFromJson(json, AttributesSimulation.class);</span>
+	}
+
+	public static AttributesSimulation deserializeAttributesSimulationFromNode(JsonNode node)
+			throws JsonProcessingException {
+<span class="nc" id="L120">		return mapper.treeToValue(node, AttributesSimulation.class);</span>
+	}
+
+	public static AttributesPsychology deserializeAttributesPsychology(String json) throws IOException  {
+<span class="nc" id="L124">		return deserializeObjectFromJson(json, AttributesPsychology.class);</span>
+	}
+
+	public static AttributesPsychology deserializeAttributesPsychologyFromNode(JsonNode node)
+			throws JsonProcessingException {
+<span class="nc" id="L129">		return mapper.treeToValue(node, AttributesPsychology.class);</span>
+	}
+
+	public static List&lt;Attributes&gt; deserializeAttributesListFromNode(JsonNode node) throws JsonProcessingException {
+<span class="nc" id="L133">		DynamicClassInstantiator&lt;Attributes&gt; instantiator = new DynamicClassInstantiator&lt;&gt;();</span>
+<span class="nc" id="L134">		List&lt;Attributes&gt; attributesList = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L135">		Iterator&lt;Map.Entry&lt;String, JsonNode&gt;&gt; it = node.fields();</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">		while (it.hasNext()) {</span>
+<span class="nc" id="L137">			Map.Entry&lt;String, JsonNode&gt; entry = it.next();</span>
+<span class="nc" id="L138">			Attributes attributes = mapper.treeToValue(entry.getValue(), instantiator.getClassFromName(entry.getKey()));</span>
+<span class="nc" id="L139">			attributesList.add(attributes);</span>
+<span class="nc" id="L140">		}</span>
+<span class="nc" id="L141">		return attributesList;</span>
+	}
+
+	public static Topography deserializeTopography(String json) throws IOException {
+<span class="nc" id="L145">		checkForTextOutOfNode(json);</span>
+<span class="nc" id="L146">		return deserializeTopographyFromNode(mapper.readTree(json));</span>
+	}
+
+	public static Topography deserializeTopographyFromNode(JsonNode node) throws IllegalArgumentException {
+<span class="nc" id="L150">		TopographyStore store = mapper.convertValue(node, TopographyStore.class);</span>
+<span class="nc" id="L151">		Topography topography = new Topography(store.attributes, store.attributesPedestrian, store.attributesCar);</span>
+<span class="nc" id="L152">		store.obstacles.forEach(obstacle -&gt; topography.addObstacle(new Obstacle(obstacle)));</span>
+<span class="nc" id="L153">		store.stairs.forEach(stairs -&gt; topography.addStairs(new Stairs(stairs)));</span>
+<span class="nc" id="L154">		store.targets.forEach(target -&gt; topography.addTarget(new Target(target)));</span>
+<span class="nc" id="L155">		store.targetChangers.forEach(targetChanger -&gt; topography.addTargetChanger(new TargetChanger(targetChanger)));</span>
+<span class="nc" id="L156">		store.absorbingAreas.forEach(absorbingArea -&gt; topography.addAbsorbingArea(new AbsorbingArea(absorbingArea)));</span>
+<span class="nc" id="L157">		store.sources.forEach(source -&gt; topography.addSource(new Source(source)));</span>
+<span class="nc" id="L158">		store.measurementAreas.forEach(area -&gt; topography.addMeasurementArea(new MeasurementArea(area)));</span>
+
+<span class="nc" id="L160">		store.dynamicElements.forEach(topography::addInitialElement);</span>
+
+<span class="nc bnc" id="L162" title="All 2 branches missed.">		if (store.teleporter != null)</span>
+<span class="nc" id="L163">			topography.setTeleporter(new Teleporter(store.teleporter));</span>
+
+<span class="nc" id="L165">		return topography;</span>
+	}
+
+	public static void checkForTextOutOfNode(String json) throws IOException {
+		// via stackoverflow.com/a/26026359
+<span class="fc" id="L170">		JsonParser jp = mapper.getFactory().createParser(json);</span>
+<span class="fc" id="L171">		mapper.readValue(jp, JsonNode.class);</span>
+		try {
+<span class="pc bpc" id="L173" title="1 of 2 branches missed.">			if (jp.nextToken() != null)</span>
+<span class="nc" id="L174">				throw new TextOutOfNodeException();</span>
+<span class="nc" id="L175">		} catch (IOException e) { // can be thrown in nextToken()</span>
+<span class="nc" id="L176">			throw new TextOutOfNodeException();</span>
+		} finally {
+<span class="fc" id="L178">			jp.close();</span>
+		}
+<span class="fc" id="L180">	}</span>
+
+	/**
+	 * Pass a node representing an array of @see StimulusInfo objects.
+	 *
+	 * Usually, this array is extracted by reading in a scenario file as @see JsonNode
+	 * and you call &quot;get(&quot;stimulusInfos&quot;) on this @see JsonNode.
+	 */
+	public static StimulusInfoStore deserializeStimuliFromArrayNode(JsonNode node) throws IllegalArgumentException {
+<span class="fc" id="L189">		StimulusInfoStore stimulusInfoStore = new StimulusInfoStore();</span>
+
+<span class="fc bfc" id="L191" title="All 2 branches covered.">		if (node != null) {</span>
+<span class="fc" id="L192">			List&lt;StimulusInfo&gt; stimulusInfoList = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L193">			node.forEach(stimulusInfoNode -&gt; stimulusInfoList.add(mapper.convertValue(stimulusInfoNode, StimulusInfo.class)));</span>
+<span class="fc" id="L194">			stimulusInfoStore.setStimulusInfos(stimulusInfoList);</span>
+		}
+
+<span class="fc" id="L197">		return stimulusInfoStore;</span>
+	}
+
+	public static StimulusInfoStore deserializeStimuli(String json) throws IOException {
+<span class="nc" id="L201">		return mapper.readValue(json, StimulusInfoStore.class);</span>
+	}
+
+	public static Pedestrian deserializePedestrian(String json) throws IOException {
+<span class="nc" id="L205">		return mapper.readValue(json, Pedestrian.class);</span>
+	}
+
+	public static Car deserializeCar(String json) throws IOException {
+<span class="nc" id="L209">		return mapper.readValue(json, Car.class);</span>
+	}
+
+	public static Attributes deserializeScenarioElementType(String json, ScenarioElementType type) throws IOException {
+		// TODO [priority=low] [task=refactoring] find a better way!
+<span class="nc bnc" id="L214" title="All 11 branches missed.">		switch (type) {</span>
+			case OBSTACLE:
+<span class="nc" id="L216">				return mapper.readValue(json, AttributesObstacle.class);</span>
+			case PEDESTRIAN:
+<span class="nc" id="L218">				return mapper.readValue(json, AttributesAgent.class);</span>
+			case SOURCE:
+<span class="nc" id="L220">				return mapper.readValue(json, AttributesSource.class);</span>
+			case TARGET:
+<span class="nc" id="L222">				return mapper.readValue(json, AttributesTarget.class);</span>
+			case TARGET_CHANGER:
+<span class="nc" id="L224">				return mapper.readValue(json, AttributesTargetChanger.class);</span>
+			case ABSORBING_AREA:
+<span class="nc" id="L226">				return mapper.readValue(json, AttributesAbsorbingArea.class);</span>
+			case STAIRS:
+<span class="nc" id="L228">				return mapper.readValue(json, AttributesStairs.class);</span>
+			case MEASUREMENT_AREA:
+<span class="nc" id="L230">				return mapper.readValue(json, AttributesMeasurementArea.class);</span>
+			case TELEPORTER:
+<span class="nc" id="L232">				return mapper.readValue(json, AttributesTeleporter.class);</span>
+			case CAR:
+<span class="nc" id="L234">				return mapper.readValue(json, AttributesCar.class);</span>
+			default:
+<span class="nc" id="L236">				return null;</span>
+		}
+	}
+
+	// - - - - SERIALIZING - - - -
+
+	// could also serialize each ModelType individually and add the strings with comma and brackets
+	// in between - but building a proper mini-Json-ObjectNode seems a more stable and elegant solution
+	public static String serializeModelPreset(ModelDefinition modelDefinition)
+			throws JsonProcessingException { // may also throw one of the instantiator's exceptions
+
+<span class="nc" id="L247">		ObjectNode node = mapper.createObjectNode();</span>
+<span class="nc" id="L248">		node.put(MAIN_MODEL_KEY, modelDefinition.getMainModel());</span>
+<span class="nc" id="L249">		node.set(&quot;attributesModel&quot;, serializeAttributesModelToNode(modelDefinition.getAttributesList()));</span>
+<span class="nc" id="L250">		return prettyWriter.writeValueAsString(node);</span>
+	}
+
+	public static ObjectNode serializeAttributesModelToNode(final Attributes... attributesList) {
+<span class="nc" id="L254">		return serializeAttributesModelToNode(Arrays.stream(attributesList).collect(Collectors.toList()));</span>
+	}
+
+	public static ObjectNode serializeAttributesModelToNode(final List&lt;Attributes&gt; attributesList) {
+<span class="nc" id="L258">		List&lt;Pair&lt;String, Attributes&gt;&gt; attributePairList = attributesListToNameObjectPairList(attributesList);</span>
+
+<span class="nc" id="L260">		ObjectNode attributesModelNode = mapper.createObjectNode();</span>
+<span class="nc" id="L261">		attributePairList.forEach(pair -&gt; attributesModelNode.set(pair.getLeft(),</span>
+<span class="nc" id="L262">				mapper.convertValue(pair.getRight(), JsonNode.class)));</span>
+
+<span class="nc" id="L264">		return attributesModelNode;</span>
+	}
+
+	private static List&lt;Pair&lt;String, Attributes&gt;&gt; attributesListToNameObjectPairList(Attributes... attributesList) {
+<span class="nc" id="L268">		return attributesListToNameObjectPairList(Arrays.stream(attributesList).collect(Collectors.toList()));</span>
+	}
+	private static List&lt;Pair&lt;String, Attributes&gt;&gt; attributesListToNameObjectPairList(List&lt;Attributes&gt; attributesList) {
+<span class="nc" id="L271">		List&lt;Pair&lt;String, Attributes&gt;&gt; list = new ArrayList&lt;&gt;(attributesList.size());</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">		for (Attributes a : attributesList)</span>
+<span class="nc" id="L273">			list.add(Pair.of(a.getClass().getName(), a));</span>
+<span class="nc" id="L274">		return list;</span>
+	}
+
+	public static ObjectNode serializeTopographyToNode(Topography topography) {
+<span class="nc" id="L278">		ObjectNode topographyNode = mapper.createObjectNode();</span>
+
+<span class="nc" id="L280">		JsonNode attributesNode = mapper.convertValue(topography.getAttributes(), JsonNode.class);</span>
+		// manually remove that field to match the old gson-format, seems easier than avoiding it selectively
+		// TODO what does this mean?
+<span class="nc" id="L283">		((ObjectNode) attributesNode.get(&quot;bounds&quot;)).remove(&quot;type&quot;);</span>
+<span class="nc" id="L284">		topographyNode.set(&quot;attributes&quot;, attributesNode);</span>
+
+<span class="nc" id="L286">		ArrayNode obstacleNodes = mapper.createArrayNode();</span>
+<span class="nc" id="L287">		topography.getObstacles()</span>
+<span class="nc" id="L288">				.forEach(obstacle -&gt; obstacleNodes.add(mapper.convertValue(obstacle.getAttributes(), JsonNode.class)));</span>
+<span class="nc" id="L289">		topographyNode.set(&quot;obstacles&quot;, obstacleNodes);</span>
+
+<span class="nc" id="L291">		ArrayNode measurementAreaNodes = mapper.createArrayNode();</span>
+<span class="nc" id="L292">		topography.getMeasurementAreas()</span>
+<span class="nc" id="L293">				.forEach(area -&gt; measurementAreaNodes.add(mapper.convertValue(area.getAttributes(), JsonNode.class)));</span>
+<span class="nc" id="L294">		topographyNode.set(&quot;measurementAreas&quot;, measurementAreaNodes);</span>
+
+<span class="nc" id="L296">		ArrayNode stairNodes = mapper.createArrayNode();</span>
+<span class="nc" id="L297">		topography.getStairs()</span>
+<span class="nc" id="L298">				.forEach(stair -&gt; stairNodes.add(mapper.convertValue(stair.getAttributes(), JsonNode.class)));</span>
+<span class="nc" id="L299">		topographyNode.set(&quot;stairs&quot;, stairNodes);</span>
+
+<span class="nc" id="L301">		ArrayNode targetNodes = mapper.createArrayNode();</span>
+<span class="nc" id="L302">		topography.getTargets()</span>
+<span class="nc" id="L303">				.forEach(target -&gt; targetNodes.add(mapper.convertValue(target.getAttributes(), JsonNode.class)));</span>
+<span class="nc" id="L304">		topographyNode.set(&quot;targets&quot;, targetNodes);</span>
+
+<span class="nc" id="L306">		ArrayNode targetChangerNodes = mapper.createArrayNode();</span>
+<span class="nc" id="L307">		topography.getTargetChangers()</span>
+<span class="nc" id="L308">				.forEach(targetChanger -&gt; targetChangerNodes.add(mapper.convertValue(targetChanger.getAttributes(), JsonNode.class)));</span>
+<span class="nc" id="L309">		topographyNode.set(&quot;targetChangers&quot;, targetChangerNodes);</span>
+
+<span class="nc" id="L311">		ArrayNode absorbingAreaNodes = mapper.createArrayNode();</span>
+<span class="nc" id="L312">		topography.getAbsorbingAreas()</span>
+<span class="nc" id="L313">				.forEach(absorbingArea -&gt; absorbingAreaNodes.add(mapper.convertValue(absorbingArea.getAttributes(), JsonNode.class)));</span>
+<span class="nc" id="L314">		topographyNode.set(&quot;absorbingAreas&quot;, absorbingAreaNodes);</span>
+
+<span class="nc" id="L316">		ArrayNode sourceNodes = mapper.createArrayNode();</span>
+<span class="nc" id="L317">		topography.getSources()</span>
+<span class="nc" id="L318">				.forEach(source -&gt; sourceNodes.add(mapper.convertValue(source.getAttributes(), JsonNode.class)));</span>
+<span class="nc" id="L319">		topographyNode.set(&quot;sources&quot;, sourceNodes);</span>
+
+<span class="nc" id="L321">		ArrayNode dynamicElementNodes = mapper.createArrayNode();</span>
+<span class="nc" id="L322">		topography.getPedestrianDynamicElements().getInitialElements()</span>
+<span class="nc" id="L323">				.forEach(ped -&gt; dynamicElementNodes.add(mapper.convertValue(ped, JsonNode.class))); // TODO [priority=medium] [task=check] initial elements is the right list, isn't it?</span>
+<span class="nc" id="L324">		topography.getCarDynamicElements().getInitialElements()</span>
+<span class="nc" id="L325">				.forEach(car -&gt; dynamicElementNodes.add(mapper.convertValue(car, JsonNode.class))); // TODO [priority=medium] [task=test] verify that this works</span>
+<span class="nc" id="L326">		topographyNode.set(&quot;dynamicElements&quot;, dynamicElementNodes);</span>
+
+<span class="nc" id="L328">		JsonNode attributesPedestrianNode = mapper.convertValue(topography.getAttributesPedestrian(), JsonNode.class);</span>
+<span class="nc" id="L329">		topographyNode.set(&quot;attributesPedestrian&quot;, attributesPedestrianNode);</span>
+<span class="nc bnc" id="L330" title="All 2 branches missed.">		if (attributesPedestrianNode != null)</span>
+<span class="nc" id="L331">			((ObjectNode) attributesPedestrianNode).remove(&quot;id&quot;);</span>
+
+<span class="nc" id="L333">		AttributesTeleporter attributesTeleporter = null;</span>
+<span class="nc bnc" id="L334" title="All 2 branches missed.">		if(topography.getTeleporter() != null) {</span>
+<span class="nc" id="L335">			attributesTeleporter = topography.getTeleporter().getAttributes();</span>
+		}
+<span class="nc" id="L337">		JsonNode node = mapper.convertValue(attributesTeleporter, JsonNode.class);</span>
+<span class="nc" id="L338">		topographyNode.set(&quot;teleporter&quot;, node);</span>
+
+<span class="nc" id="L340">		JsonNode attributesCarNode = mapper.convertValue(topography.getAttributesCar(), JsonNode.class);</span>
+<span class="nc" id="L341">		topographyNode.set(&quot;attributesCar&quot;, attributesCarNode);</span>
+
+<span class="nc" id="L343">		return topographyNode;</span>
+	}
+
+	public static String serializeAttributesSimulation(AttributesSimulation attributesSimulation)
+			throws JsonProcessingException {
+<span class="nc" id="L348">		return prettyWriter.writeValueAsString(mapper.convertValue(attributesSimulation, JsonNode.class));</span>
+	}
+
+	public static String serializeAttributesPsychology(AttributesPsychology attributesPsychology)
+			throws JsonProcessingException {
+<span class="nc" id="L353">		return prettyWriter.writeValueAsString(mapper.convertValue(attributesPsychology, JsonNode.class));</span>
+	}
+
+	public static String serializeAttributesStrategyModel(AttributesStrategyModel attributesStrategyModel)
+			throws JsonProcessingException {
+<span class="nc" id="L358">		return prettyWriter.writeValueAsString(mapper.convertValue(attributesStrategyModel, JsonNode.class));</span>
+	}
+
+	public static String serializeTopography(Topography topography) throws JsonProcessingException {
+<span class="nc" id="L362">		return prettyWriter.writeValueAsString(serializeTopographyToNode(topography));</span>
+	}
+
+	public static String serializeMainModelAttributesModelBundle(List&lt;Attributes&gt; attributesList, String mainModel)
+			throws JsonProcessingException {
+<span class="nc" id="L367">		ObjectNode node = mapper.createObjectNode();</span>
+<span class="nc" id="L368">		node.put(MAIN_MODEL_KEY, mainModel);</span>
+<span class="nc" id="L369">		node.set(&quot;attributesModel&quot;, serializeAttributesModelToNode(attributesList));</span>
+<span class="nc" id="L370">		return prettyWriter.writeValueAsString(node);</span>
+	}
+
+	public static String serializeStimuli(StimulusInfoStore stimulusInfoStore)
+			throws JsonProcessingException {
+<span class="nc" id="L375">		return prettyWriter.writeValueAsString(mapper.convertValue(stimulusInfoStore, JsonNode.class));</span>
+	}
+
+	public static ObjectNode serializeStimuliToNode(StimulusInfoStore stimulusInfoStore) {
+<span class="nc" id="L379">		return mapper.valueToTree(stimulusInfoStore);</span>
+	}
+
+	public static ObjectNode serializeAttributesStrategyModelToNode(AttributesStrategyModel attributesStrategyModel) {
+<span class="nc" id="L383">		return mapper.valueToTree(attributesStrategyModel);</span>
+	}
+
+
+	public static String serializeObjectPretty(Object object) {
+		try {
+<span class="nc" id="L389">			return prettyWriter.writeValueAsString(mapper.convertValue(object, JsonNode.class));</span>
+<span class="nc" id="L390">		} catch (JsonProcessingException | IllegalArgumentException e) {</span>
+<span class="nc" id="L391">			throw new RuntimeException(e);</span>
+		}
+	}
+
+	public static String serializeObject(Object object) {
+		try {
+<span class="nc" id="L397">			return writer.writeValueAsString(mapper.convertValue(object, JsonNode.class));</span>
+<span class="nc" id="L398">		} catch (JsonProcessingException | IllegalArgumentException e) {</span>
+<span class="nc" id="L399">			throw new RuntimeException(e);</span>
+		}
+	}
+
+	public static String getScenarioStoreHash(Object object){
+<span class="nc" id="L404">		JsonNode jsonNode = mapper.convertValue(object, JsonNode.class);</span>
+<span class="nc" id="L405">		JsonNode attrSimulation = jsonNode.findPath(AttributesSimulation.JSON_KEY);</span>
+<span class="nc bnc" id="L406" title="All 2 branches missed.">		if (! attrSimulation.isMissingNode()){</span>
+<span class="nc" id="L407">			((ObjectNode)attrSimulation).remove(&quot;simulationSeed&quot;);</span>
+<span class="nc" id="L408">			((ObjectNode)attrSimulation).remove(&quot;useFixedSeed&quot;);</span>
+<span class="nc" id="L409">			((ObjectNode)attrSimulation).remove(&quot;simulationSeed&quot;);</span>
+		}
+
+		try {
+<span class="nc" id="L413">			String scenarioString = prettyWriter.writeValueAsString(jsonNode);</span>
+<span class="nc" id="L414">			return DigestUtils.sha1Hex(scenarioString);</span>
+<span class="nc" id="L415">		} catch (JsonProcessingException e) {</span>
+<span class="nc" id="L416">			throw new RuntimeException(e);</span>
+		}
+	}
+
+	public static JsonNode toJsonNode(final Object object) {
+<span class="nc" id="L421">		return mapper.convertValue(object, JsonNode.class);</span>
+	}
+
+	public static String serializeJsonNode(JsonNode node) throws JsonProcessingException {
+<span class="nc" id="L425">		return prettyWriter.writeValueAsString(node);</span>
+	}
+
+	// CLONE VIA SERIALIZE -&gt; DESERIALIZE
+
+	// MANIPULATE JSON
+
+	public static String addAttributesModel(String attributesClassName, String json) throws IOException {
+<span class="nc" id="L433">		JsonNode node = mapper.readTree(json);</span>
+<span class="nc" id="L434">		JsonNode attributesModelNode = node.get(&quot;attributesModel&quot;);</span>
+<span class="nc" id="L435">		DynamicClassInstantiator&lt;Attributes&gt; instantiator = new DynamicClassInstantiator&lt;&gt;();</span>
+<span class="nc" id="L436">		((ObjectNode) attributesModelNode).set(</span>
+				attributesClassName,
+<span class="nc" id="L438">				mapper.convertValue(instantiator.createObject(attributesClassName), JsonNode.class));</span>
+<span class="nc" id="L439">		return prettyWriter.writeValueAsString(node);</span>
+	}
+	
+	public static JsonNode readTree(String json) throws IOException {
+<span class="nc" id="L443">		return mapper.readTree(json);</span>
+	}
+
+	public static ObjectNode createObjectNode() {
+<span class="nc" id="L447">		return mapper.createObjectNode();</span>
+	}
+	
+	public static &lt;T&gt; T convertValue(Object fromValue, Class&lt;T&gt; toValueType) {
+<span class="nc" id="L451">		return mapper.convertValue(fromValue, toValueType);</span>
+	}
+	
+	public static String writeValueAsString(Object value) throws JsonProcessingException {
+<span class="nc" id="L455">		return prettyWriter.writeValueAsString(value);</span>
+	}
+
+	/**
+	 * Create a SHA-1 hash based on the given {@link AttributesFloorField} and {@link Topography}.
+	 * Use the Jackson view {@link Views.CacheView} to EXCLUDE the @link AttributesFloorField#cacheDir
+	 * field to allow reallocation of created floor field caches.
+	 *
+	 */
+	public static String getFloorFieldHash(final Topography topography, final AttributesFloorField attr)  {
+		try {
+<span class="fc" id="L466">			String topographyStr = mapper</span>
+<span class="fc" id="L467">									.writerWithDefaultPrettyPrinter()</span>
+<span class="fc" id="L468">									.withView(Views.CacheView.class)</span>
+<span class="fc" id="L469">									.writeValueAsString(topography);</span>
+<span class="fc" id="L470">			String attrString = mapper</span>
+<span class="fc" id="L471">									.writerWithDefaultPrettyPrinter()</span>
+<span class="fc" id="L472">									.withView(Views.CacheView.class)</span>
+<span class="fc" id="L473">									.writeValueAsString(attr);</span>
+<span class="fc" id="L474">			String hashIt = attrString + &quot;\n&quot; + topographyStr;</span>
+<span class="fc" id="L475">			String hash = DigestUtils.sha1Hex(hashIt.getBytes());</span>
+<span class="fc" id="L476">			logger.debugf(&quot;created Hash: %s&quot;, hash);</span>
+<span class="fc" id="L477">			logger.tracef(&quot;used String for hash: \n%s&quot;, hashIt);</span>
+<span class="fc" id="L478">			return hash;</span>
+<span class="nc" id="L479">		} catch (JsonProcessingException e) {</span>
+<span class="nc" id="L480">			logger.error(&quot;cannot create hash of topography and floor field attributes for cache access.&quot;);</span>
+		}
+<span class="nc" id="L482">		return DigestUtils.sha1Hex(&quot;error&quot;);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

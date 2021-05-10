@@ -1,0 +1,88 @@
+<h1> MeshEikonalSolverFMMRefined</h1>
+
+<p>
+This class computes the traveling time T using the fast marching method for arbitrary triangulated meshes.
+The quality of the result depends on the quality of the triangulation. For a high accuracy the triangulation
+should not contain too many non-acute triangles.
+
+@param <V>   the type of the vertices of the triangulation
+@param <E>   the type of the half-edges of the triangulation
+@param <F>   the type of the faces of the triangulation
+</p>
+
+<hr>
+<h2> Field: namePotential</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: pointComparator</h2>
+<p>
+Comparator for the heap. Vertices of points with small potentials are at the top of the heap.
+</p>
+
+<hr>
+<h2> Field: nameVirtualSupport</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: targetVertices</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: logger</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: distFunc</h2>
+<p>
+Gives the distance to the boundary i.e. the targets
+</p>
+
+<hr>
+<h2> Field: triangulation</h2>
+<p>
+The triangulation the solver uses.
+</p>
+
+<hr>
+<h2> Field: refinePredicate</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: nameNonAccuteEdge</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: identifier</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: refiner</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: namePathFindingTag</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: timeCostFunction</h2>
+<p>
+The time cost function defined on the geometry.
+</p>
+
+<hr>
+<h2> Field: narrowBand</h2>
+<p>
+The narrow-band of the fast marching method.
+</p>
+
+<hr>
+<h2> Field: localSover</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: calculationFinished</h2>
+<p>
+Indicates that the computation of T has been completed.
+</p>
+

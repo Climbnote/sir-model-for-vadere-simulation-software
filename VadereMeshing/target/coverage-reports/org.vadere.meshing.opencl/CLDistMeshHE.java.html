@@ -1,0 +1,649 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CLDistMeshHE.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.opencl</a> &gt; <span class="el_source">CLDistMeshHE.java</span></div><h1>CLDistMeshHE.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.opencl;
+
+
+import org.vadere.util.logging.Logger;
+import org.jetbrains.annotations.NotNull;
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.opencl.CLContextCallback;
+import org.lwjgl.opencl.CLProgramCallback;
+import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
+import org.vadere.meshing.mesh.gen.AMesh;
+import org.vadere.meshing.mesh.gen.AVertex;
+import org.vadere.meshing.mesh.gen.CLGatherer;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.opencl.CLInfo;
+import org.vadere.util.opencl.CLOperation;
+import org.vadere.util.opencl.CLUtils;
+import org.vadere.util.opencl.OpenCLException;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.util.*;
+
+import static org.lwjgl.opencl.CL10.*;
+import static org.lwjgl.opencl.CL11.CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE;
+import static org.lwjgl.system.MemoryStack.stackPush;
+import static org.lwjgl.system.MemoryUtil.NULL;
+import static org.lwjgl.system.MemoryUtil.memUTF8;
+
+/**
+ * @author Benedikt Zoennchen
+ *
+ * DistMesh GPU implementation.
+ */
+public class CLDistMeshHE extends CLOperation {
+
+<span class="nc" id="L40">    private static Logger log = Logger.getLogger(CLDistMeshHE.class);</span>
+
+    static {
+<span class="nc" id="L43">        log.setDebug();</span>
+<span class="nc" id="L44">    }</span>
+
+    // CL kernel ids
+    private long clKernelForces;
+    private long clKernelMove;
+    private long clKernelLengths;
+    private long clKernelPartialSF;
+    private long clKernelCompleteSF;
+
+    private long clKernelFlipStage1;
+    private long clKernelFlipStage2;
+    private long clKernelFlipStage3;
+    private long clKernelUnlockFaces;
+
+    private long clKernelLabelEdges;
+    private long clKernelLabelEdgesUpdate;
+    private long clKernelCheckTriangles;
+
+    // error code buffer
+    private IntBuffer errcode_ret;
+
+    // CL callbacks
+    private CLContextCallback contextCB;
+    private CLProgramCallback programCB;
+
+
+    // data on the host
+    private DoubleBuffer vD;
+    private FloatBuffer vF;
+    private IntBuffer e;
+    private IntBuffer t;
+    private IntBuffer vToE;
+    private IntBuffer borderV;
+    private IntBuffer edgeLabels;
+<span class="nc" id="L78">    private double delta = 0.02;</span>
+<span class="nc" id="L79">    private float fDelta = 0.02f;</span>
+
+    // addresses to memory on the GPU
+    private long clVertices;
+    private long clBorderVertices;
+    private long clEdges;
+    private long clVtoE;
+    private long clFaces;
+    private long clForces;
+    private long clLengths;
+    private long clqLengths;
+    private long clPartialSum;
+    private long clScalingFactor;
+    private long clEdgeLabels;
+    private long clIllegalEdges;
+    private long clIllegalTriangles;
+
+    // size
+    private int numberOfVertices;
+    private int numberOfEdges;
+    private int numberOfFaces;
+
+    private long maxGroupSize;
+    private long maxComputeUnits;
+    private long prefdWorkGroupSizeMultiple;
+
+    private PointerBuffer clGlobalWorkSizeEdges;
+    private PointerBuffer clGlobalWorkSizeVertices;
+    private PointerBuffer clGlobalWorkSizeTriangles;
+
+    private PointerBuffer clGloblWorkSizeSFPartial;
+    private PointerBuffer clLocalWorkSizeSFPartial;
+
+    private PointerBuffer clGloblWorkSizeSFComplete;
+    private PointerBuffer clLocalWorkSizeSFComplete;
+    private PointerBuffer clLocalWorkSizeOne;
+
+    // time measurement
+    private PointerBuffer clEvent;
+    private ByteBuffer startTime;
+    private ByteBuffer endTime;
+    private PointerBuffer retSize;
+    private ByteBuffer source;
+
+    private AMesh mesh;
+
+<span class="nc" id="L125">    private boolean doublePrecision = true;</span>
+<span class="nc" id="L126">    private boolean hasToRead = false;</span>
+
+    public CLDistMeshHE(@NotNull AMesh mesh) {
+<span class="nc" id="L129">        super(CL_DEVICE_TYPE_GPU);</span>
+<span class="nc" id="L130">        this.mesh = mesh;</span>
+<span class="nc" id="L131">        this.mesh.garbageCollection();</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        if(doublePrecision) {</span>
+<span class="nc" id="L133">            this.vD = CLGatherer.getVerticesD(mesh);</span>
+        }
+        else {
+<span class="nc" id="L136">            this.vF = CLGatherer.getVerticesF(mesh);</span>
+        }
+<span class="nc" id="L138">        this.e = CLGatherer.getHalfEdges(mesh);</span>
+<span class="nc" id="L139">        this.t = CLGatherer.getFaces(mesh);</span>
+<span class="nc" id="L140">        this.vToE = CLGatherer.getEdgeOfVertex(mesh);</span>
+<span class="nc" id="L141">        this.borderV = CLGatherer.getBorderVertices(mesh);</span>
+
+<span class="nc" id="L143">        this.numberOfVertices = mesh.getNumberOfVertices();</span>
+<span class="nc" id="L144">        this.numberOfEdges = mesh.getNumberOfEdges();</span>
+<span class="nc" id="L145">        this.numberOfFaces = mesh.getNumberOfFaces();</span>
+<span class="nc" id="L146">        this.edgeLabels = MemoryUtil.memAllocInt(numberOfEdges);</span>
+
+<span class="nc bnc" id="L148" title="All 2 branches missed.">        for(int i = 0; i &lt; numberOfEdges; i++) {</span>
+<span class="nc" id="L149">            this.edgeLabels.put(i, 0);</span>
+        }
+<span class="nc" id="L151">    }</span>
+
+    private void buildProgram() throws OpenCLException {
+<span class="nc" id="L154">        try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L155">            IntBuffer errcode_ret = stack.callocInt(1);</span>
+
+<span class="nc" id="L157">            PointerBuffer strings = stack.callocPointer(1);</span>
+<span class="nc" id="L158">            PointerBuffer lengths = stack.callocPointer(1);</span>
+
+            try {
+<span class="nc bnc" id="L161" title="All 2 branches missed.">                if(doublePrecision) {</span>
+<span class="nc" id="L162">                    source = CLUtils.ioResourceToByteBuffer(&quot;DistMeshDoubleHE.cl&quot;, 4096);</span>
+                }
+                else {
+<span class="nc" id="L165">                    source = CLUtils.ioResourceToByteBuffer(&quot;DistMeshHE.cl&quot;, 4096);</span>
+                }
+<span class="nc" id="L167">            } catch (IOException e) {</span>
+<span class="nc" id="L168">                throw new RuntimeException(e);</span>
+<span class="nc" id="L169">            }</span>
+
+<span class="nc" id="L171">            strings.put(0, source);</span>
+<span class="nc" id="L172">            lengths.put(0, source.remaining());</span>
+
+<span class="nc" id="L174">            clProgram = clCreateProgramWithSource(clContext, strings, lengths, errcode_ret);</span>
+
+<span class="nc" id="L176">            int errcode = clBuildProgram(clProgram, clDevice, &quot;&quot;, programCB, NULL);</span>
+<span class="nc" id="L177">            CLInfo.checkCLError(errcode);</span>
+
+<span class="nc" id="L179">            clKernelLengths = clCreateKernel(clProgram, &quot;computeLengths&quot;, errcode_ret);</span>
+<span class="nc" id="L180">            CLInfo.checkCLError(errcode_ret);</span>
+
+<span class="nc" id="L182">            PointerBuffer pp = stack.mallocPointer(1);</span>
+<span class="nc" id="L183">            clGetKernelWorkGroupInfo(clKernelLengths, clDevice, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, pp, null);</span>
+<span class="nc" id="L184">            prefdWorkGroupSizeMultiple = pp.get(0);</span>
+<span class="nc" id="L185">            log.info(&quot;PREF_WORK_GRP_SIZE_MUL = &quot; + prefdWorkGroupSizeMultiple);</span>
+
+<span class="nc" id="L187">            clGetDeviceInfo(clDevice, CL_DEVICE_MAX_WORK_GROUP_SIZE, pp, null);</span>
+<span class="nc" id="L188">            maxGroupSize = pp.get(0);</span>
+<span class="nc" id="L189">            clGetDeviceInfo(clDevice, CL_DEVICE_MAX_COMPUTE_UNITS, pp, null);</span>
+<span class="nc" id="L190">            maxComputeUnits = pp.get(0);</span>
+
+<span class="nc" id="L192">            clKernelPartialSF = clCreateKernel(clProgram, &quot;computePartialSF&quot;, errcode_ret);</span>
+<span class="nc" id="L193">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L194">            clKernelCompleteSF = clCreateKernel(clProgram, &quot;computeCompleteSF&quot;, errcode_ret);</span>
+<span class="nc" id="L195">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L196">            clKernelForces = clCreateKernel(clProgram, &quot;computeForces&quot;, errcode_ret);</span>
+<span class="nc" id="L197">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L198">            clKernelMove = clCreateKernel(clProgram, &quot;moveVertices&quot;, errcode_ret);</span>
+<span class="nc" id="L199">            CLInfo.checkCLError(errcode_ret);</span>
+
+<span class="nc" id="L201">            clKernelFlipStage1 = clCreateKernel(clProgram, &quot;flipStage1&quot;, errcode_ret);</span>
+<span class="nc" id="L202">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L203">            clKernelFlipStage2 = clCreateKernel(clProgram, &quot;flipStage2&quot;, errcode_ret);</span>
+<span class="nc" id="L204">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L205">            clKernelFlipStage3 = clCreateKernel(clProgram, &quot;flipStage3&quot;, errcode_ret);</span>
+<span class="nc" id="L206">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L207">            clKernelUnlockFaces = clCreateKernel(clProgram, &quot;unlockFaces&quot;, errcode_ret);</span>
+<span class="nc" id="L208">            CLInfo.checkCLError(errcode_ret);</span>
+
+<span class="nc" id="L210">            clKernelLabelEdges = clCreateKernel(clProgram, &quot;label&quot;, errcode_ret);</span>
+<span class="nc" id="L211">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L212">            clKernelLabelEdgesUpdate = clCreateKernel(clProgram, &quot;updateLabel&quot;, errcode_ret);</span>
+<span class="nc" id="L213">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L214">            clKernelCheckTriangles = clCreateKernel(clProgram, &quot;checkTriangles&quot;, errcode_ret);</span>
+<span class="nc" id="L215">            CLInfo.checkCLError(errcode_ret);</span>
+        }
+<span class="nc" id="L217">    }</span>
+
+    private void createMemory() throws OpenCLException {
+<span class="nc" id="L220">        try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L221">            IntBuffer errcode_ret = stack.callocInt(1);</span>
+
+<span class="nc bnc" id="L223" title="All 2 branches missed.">            int factor = doublePrecision ? 8 : 4; // 8 or 4 byte for a floating point</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">            if (doublePrecision) {</span>
+<span class="nc" id="L225">                clVertices = clCreateBuffer(clContext, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, vD, errcode_ret);</span>
+            } else {
+<span class="nc" id="L227">                clVertices = clCreateBuffer(clContext, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, vF, errcode_ret);</span>
+            }
+<span class="nc" id="L229">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L230">            clVtoE = clCreateBuffer(clContext, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, vToE, errcode_ret);</span>
+<span class="nc" id="L231">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L232">            clBorderVertices = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, borderV, errcode_ret);</span>
+<span class="nc" id="L233">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L234">            clEdges = clCreateBuffer(clContext, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, e, errcode_ret);</span>
+<span class="nc" id="L235">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L236">            clFaces = clCreateBuffer(clContext, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, t, errcode_ret);</span>
+<span class="nc" id="L237">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L238">            clForces = clCreateBuffer(clContext, CL_MEM_READ_WRITE, factor * 2 * numberOfVertices, errcode_ret);</span>
+<span class="nc" id="L239">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L240">            clLengths = clCreateBuffer(clContext, CL_MEM_READ_WRITE, factor * 2 * numberOfEdges, errcode_ret);</span>
+<span class="nc" id="L241">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L242">            clqLengths = clCreateBuffer(clContext, CL_MEM_READ_WRITE, factor * 2 * numberOfEdges, errcode_ret);</span>
+<span class="nc" id="L243">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L244">            clScalingFactor = clCreateBuffer(clContext, CL_MEM_READ_WRITE, factor, errcode_ret);</span>
+<span class="nc" id="L245">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L246">            clEdgeLabels = clCreateBuffer(clContext, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, edgeLabels, errcode_ret);</span>
+<span class="nc" id="L247">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L248">            clIllegalEdges = clCreateBuffer(clContext, CL_MEM_READ_WRITE, 4, errcode_ret);</span>
+<span class="nc" id="L249">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L250">            clIllegalTriangles = clCreateBuffer(clContext, CL_MEM_READ_WRITE, 4, errcode_ret);</span>
+<span class="nc" id="L251">            CLInfo.checkCLError(errcode_ret);</span>
+        }
+<span class="nc" id="L253">    }</span>
+
+    private void initialKernelArgs() throws OpenCLException {
+<span class="nc" id="L256">        try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L257">            IntBuffer errcode_ret = stack.callocInt(1);</span>
+
+<span class="nc bnc" id="L259" title="All 2 branches missed.">            int factor = doublePrecision ? 8 : 4;</span>
+<span class="nc" id="L260">            int sizeSFPartial = numberOfEdges;</span>
+
+<span class="nc" id="L262">            clSetKernelArg1p(clKernelLengths, 0, clVertices);</span>
+<span class="nc" id="L263">            clSetKernelArg1p(clKernelLengths, 1, clEdges);</span>
+<span class="nc" id="L264">            clSetKernelArg1p(clKernelLengths, 2, clLengths);</span>
+<span class="nc" id="L265">            clSetKernelArg1p(clKernelLengths, 3, clqLengths);</span>
+
+<span class="nc" id="L267">            clSetKernelArg1i(clKernelPartialSF, 0, sizeSFPartial);</span>
+<span class="nc" id="L268">            clSetKernelArg1p(clKernelPartialSF, 1, clqLengths);</span>
+<span class="nc" id="L269">            clSetKernelArg(clKernelPartialSF, 2, factor * 2 * maxGroupSize);</span>
+<span class="nc" id="L270">            clPartialSum = clCreateBuffer(clContext, CL_MEM_READ_WRITE, factor * 2 * prefdWorkGroupSizeMultiple, errcode_ret);</span>
+<span class="nc" id="L271">            CLInfo.checkCLError(errcode_ret);</span>
+<span class="nc" id="L272">            clSetKernelArg1p(clKernelPartialSF, 3, clPartialSum);</span>
+
+<span class="nc" id="L274">            int sizeSFComplete = Math.min((int) prefdWorkGroupSizeMultiple, numberOfEdges); // one item per work group</span>
+<span class="nc" id="L275">            clSetKernelArg1i(clKernelCompleteSF, 0, sizeSFComplete);</span>
+<span class="nc bnc" id="L276" title="All 2 branches missed.">            if (numberOfEdges &gt; prefdWorkGroupSizeMultiple) {</span>
+<span class="nc" id="L277">                clSetKernelArg1p(clKernelCompleteSF, 1, clPartialSum);</span>
+            } else {
+<span class="nc" id="L279">                clSetKernelArg1p(clKernelCompleteSF, 1, clqLengths);</span>
+            }
+<span class="nc" id="L281">            clSetKernelArg(clKernelCompleteSF, 2, factor * 2 * sizeSFComplete);</span>
+<span class="nc" id="L282">            clSetKernelArg1p(clKernelCompleteSF, 3, clScalingFactor);</span>
+
+<span class="nc" id="L284">            clSetKernelArg1p(clKernelForces, 0, clVertices);</span>
+<span class="nc" id="L285">            clSetKernelArg1p(clKernelForces, 1, clEdges);</span>
+<span class="nc" id="L286">            clSetKernelArg1p(clKernelForces, 2, clVtoE);</span>
+<span class="nc" id="L287">            clSetKernelArg1p(clKernelForces, 3, clLengths);</span>
+<span class="nc" id="L288">            clSetKernelArg1p(clKernelForces, 4, clScalingFactor);</span>
+<span class="nc" id="L289">            clSetKernelArg1p(clKernelForces, 5, clForces);</span>
+
+            // clSetKernelArg1i(clKernelMove, 0, numberOfVertices);
+<span class="nc" id="L292">            clSetKernelArg1p(clKernelMove, 0, clVertices);</span>
+<span class="nc" id="L293">            clSetKernelArg1p(clKernelMove, 1, clBorderVertices);</span>
+<span class="nc" id="L294">            clSetKernelArg1p(clKernelMove, 2, clForces);</span>
+<span class="nc bnc" id="L295" title="All 2 branches missed.">            if (doublePrecision) {</span>
+<span class="nc" id="L296">                clSetKernelArg1d(clKernelMove, 3, delta);</span>
+            } else {
+<span class="nc" id="L298">                clSetKernelArg1f(clKernelMove, 3, fDelta);</span>
+            }
+
+<span class="nc" id="L301">            clSetKernelArg1p(clKernelLabelEdges, 0, clVertices);</span>
+<span class="nc" id="L302">            clSetKernelArg1p(clKernelLabelEdges, 1, clEdges);</span>
+<span class="nc" id="L303">            clSetKernelArg1p(clKernelLabelEdges, 2, clEdgeLabels);</span>
+<span class="nc" id="L304">            clSetKernelArg1p(clKernelLabelEdges, 3, clIllegalEdges);</span>
+
+<span class="nc" id="L306">            clSetKernelArg1p(clKernelLabelEdgesUpdate, 0, clVertices);</span>
+<span class="nc" id="L307">            clSetKernelArg1p(clKernelLabelEdgesUpdate, 1, clEdges);</span>
+<span class="nc" id="L308">            clSetKernelArg1p(clKernelLabelEdgesUpdate, 2, clEdgeLabels);</span>
+<span class="nc" id="L309">            clSetKernelArg1p(clKernelLabelEdgesUpdate, 3, clIllegalEdges);</span>
+
+<span class="nc" id="L311">            clSetKernelArg1p(clKernelFlipStage1, 0, clEdges);</span>
+<span class="nc" id="L312">            clSetKernelArg1p(clKernelFlipStage1, 1, clEdgeLabels);</span>
+<span class="nc" id="L313">            clSetKernelArg1p(clKernelFlipStage1, 2, clFaces);</span>
+
+<span class="nc" id="L315">            clSetKernelArg1p(clKernelFlipStage2, 0, clEdges);</span>
+<span class="nc" id="L316">            clSetKernelArg1p(clKernelFlipStage2, 1, clEdgeLabels);</span>
+<span class="nc" id="L317">            clSetKernelArg1p(clKernelFlipStage2, 2, clFaces);</span>
+
+<span class="nc" id="L319">            clSetKernelArg1p(clKernelFlipStage3, 0, clVertices);</span>
+<span class="nc" id="L320">            clSetKernelArg1p(clKernelFlipStage3, 1, clVtoE);</span>
+<span class="nc" id="L321">            clSetKernelArg1p(clKernelFlipStage3, 2, clEdges);</span>
+<span class="nc" id="L322">            clSetKernelArg1p(clKernelFlipStage3, 3, clEdgeLabels);</span>
+<span class="nc" id="L323">            clSetKernelArg1p(clKernelFlipStage3, 4, clFaces);</span>
+
+<span class="nc" id="L325">            clSetKernelArg1p(clKernelUnlockFaces, 0, clFaces);</span>
+
+<span class="nc" id="L327">            clSetKernelArg1p(clKernelCheckTriangles, 0, clVertices);</span>
+<span class="nc" id="L328">            clSetKernelArg1p(clKernelCheckTriangles, 1, clEdges);</span>
+<span class="nc" id="L329">            clSetKernelArg1p(clKernelCheckTriangles, 2, clFaces);</span>
+<span class="nc" id="L330">            clSetKernelArg1p(clKernelCheckTriangles, 3, clIllegalTriangles);</span>
+
+<span class="nc" id="L332">            clGloblWorkSizeSFPartial = MemoryUtil.memAllocPointer(1);</span>
+<span class="nc" id="L333">            clLocalWorkSizeSFPartial = MemoryUtil.memAllocPointer(1);</span>
+<span class="nc" id="L334">            clGloblWorkSizeSFPartial.put(0, (int) (maxGroupSize * prefdWorkGroupSizeMultiple));</span>
+<span class="nc" id="L335">            clLocalWorkSizeSFPartial.put(0, (int) maxGroupSize);</span>
+
+<span class="nc" id="L337">            clGloblWorkSizeSFComplete = MemoryUtil.memAllocPointer(1);</span>
+<span class="nc" id="L338">            clLocalWorkSizeSFComplete = MemoryUtil.memAllocPointer(1);</span>
+<span class="nc" id="L339">            clLocalWorkSizeOne = MemoryUtil.memAllocPointer(1);</span>
+
+<span class="nc" id="L341">            clGloblWorkSizeSFComplete.put(0, ceilPowerOf2(sizeSFComplete));</span>
+<span class="nc" id="L342">            clLocalWorkSizeSFComplete.put(0, ceilPowerOf2(sizeSFComplete));</span>
+<span class="nc" id="L343">            clLocalWorkSizeOne.put(0, 1);</span>
+<span class="nc" id="L344">            clGlobalWorkSizeEdges = MemoryUtil.memAllocPointer(1);</span>
+<span class="nc" id="L345">            clGlobalWorkSizeVertices = MemoryUtil.memAllocPointer(1);</span>
+<span class="nc" id="L346">            clGlobalWorkSizeTriangles = MemoryUtil.memAllocPointer(1);</span>
+<span class="nc" id="L347">            clGlobalWorkSizeEdges.put(0, numberOfEdges);</span>
+<span class="nc" id="L348">            clGlobalWorkSizeVertices.put(0, numberOfVertices);</span>
+<span class="nc" id="L349">            clGlobalWorkSizeTriangles.put(0, numberOfFaces);</span>
+
+<span class="nc" id="L351">            clEvent = MemoryUtil.memAllocPointer(1);</span>
+<span class="nc" id="L352">            startTime = MemoryUtil.memAlloc(8);</span>
+<span class="nc" id="L353">            endTime = MemoryUtil.memAlloc(8);</span>
+<span class="nc" id="L354">            retSize = MemoryUtil.memAllocPointer(1);</span>
+
+<span class="nc" id="L356">            retSize.put(0, 8);</span>
+        }
+<span class="nc" id="L358">    }</span>
+
+  /*  public void refreshPoints() {
+        // 1. get the new points into the host memory
+        if(doublePrecision) {
+            this.vD = CLGatherer.getVerticesD(mesh, vD);
+            th
+        }
+        else {
+            this.vF = CLGatherer.getVerticesF(mesh, vF);
+        }
+
+        // 2. transfer the host memory to the gpu
+        if(doublePrecision) {
+            clEnqueueWriteBuffer(clQueue, clVertices, true, 0, vD, null, null);
+        }
+        else {
+            clEnqueueWriteBuffer(clQueue, clVertices, true, 0, vF, null, null);
+        }
+    }*/
+
+    public boolean step() throws OpenCLException {
+<span class="nc" id="L380">        return step(true);</span>
+    }
+
+    // TODO: think about the use of only 1 work-group!!! It might be bad! solution: use global barrier? force computation? flip hangs after some time?
+    public boolean step(final boolean flipAll) throws OpenCLException {
+<span class="nc" id="L385">        try (MemoryStack stack = stackPush()) {</span>
+
+            /*
+             * DistMesh-Loop
+             * 1. generate scaling factor
+             * 2. generate forces;
+             * 3. update vertices;
+             * 4. check for illegal triangles
+             * 5. flip all
+             *
+             */
+<span class="nc" id="L396">            hasToRead = true;</span>
+<span class="nc" id="L397">            enqueueNDRangeKernel(&quot;compute edge lengths&quot;, clQueue, clKernelLengths, 1, null, clGlobalWorkSizeEdges, null, null, null);</span>
+            //log.info(&quot;computed edge lengths&quot;);
+
+<span class="nc bnc" id="L400" title="All 2 branches missed.">            if (numberOfEdges &gt; prefdWorkGroupSizeMultiple) {</span>
+<span class="nc" id="L401">                enqueueNDRangeKernel(&quot;compute partial sum&quot;, clQueue, clKernelPartialSF, 1, null, clGloblWorkSizeSFPartial, clLocalWorkSizeSFPartial, null, null);</span>
+            }
+
+<span class="nc" id="L404">            enqueueNDRangeKernel(&quot;compute sum&quot;,clQueue, clKernelCompleteSF, 1, null, clGloblWorkSizeSFComplete, clLocalWorkSizeSFComplete, null, null);</span>
+            //log.info(&quot;computed scale factor&quot;);
+
+            // force to use only 1 work group =&gt; local size = local size
+<span class="nc" id="L408">            enqueueNDRangeKernel(&quot;compute forces&quot;, clQueue, clKernelForces, 1, null, clGlobalWorkSizeVertices, null, null, null);</span>
+            //log.info(&quot;computed forces&quot;);
+
+<span class="nc" id="L411">            enqueueNDRangeKernel(&quot;move vertices&quot;,clQueue, clKernelMove, 1, null, clGlobalWorkSizeVertices, null, null, null);</span>
+            //log.info(&quot;move vertices&quot;);
+
+<span class="nc" id="L414">            IntBuffer illegalTriangles = stack.mallocInt(1);</span>
+<span class="nc" id="L415">            illegalTriangles.put(0, 0);</span>
+            //clEnqueueWriteBuffer(clQueue, clIllegalTriangles, true, 0, illegalTriangles, null, null);
+            //enqueueNDRangeKernel(clQueue, clKernelCheckTriangles, 1, null, clGlobalWorkSizeTriangles, null, null, null);
+            //clFinish(clQueue);
+            //clEnqueueReadBuffer(clQueue, clIllegalTriangles, true, 0, illegalTriangles, null, null);
+            //log.info(&quot;check for illegal triangles&quot;);
+<span class="nc bnc" id="L421" title="All 2 branches missed.">            if (illegalTriangles.get(0) == 1) {</span>
+<span class="nc" id="L422">                log.info(&quot;illegal triangle found!&quot;);</span>
+                //return true;
+            }
+
+            // flip as long as there are no more flips possible
+<span class="nc bnc" id="L427" title="All 2 branches missed.">            if (flipAll) {</span>
+<span class="nc" id="L428">                IntBuffer illegalEdges = stack.mallocInt(1);</span>
+                // while there is any illegal edge, do: // TODO: this is not the same as in the java distmesh!
+
+<span class="nc" id="L431">                enqueueNDRangeKernel(&quot;label edges&quot;,clQueue, clKernelLabelEdges, 1, null, clGlobalWorkSizeEdges, null, null, null);</span>
+                //log.info(&quot;label illegal edges&quot;);
+
+                do {
+<span class="nc" id="L435">                    illegalEdges.put(0, 0);</span>
+<span class="nc" id="L436">                    clEnqueueWriteBuffer(clQueue, clIllegalEdges, true, 0, illegalEdges, null, null);</span>
+
+<span class="nc" id="L438">                    enqueueNDRangeKernel(&quot;flip 1&quot;,clQueue, clKernelFlipStage1, 1, null, clGlobalWorkSizeEdges, null, null, null);</span>
+<span class="nc" id="L439">                    enqueueNDRangeKernel(&quot;flip 2&quot;,clQueue, clKernelFlipStage2, 1, null, clGlobalWorkSizeEdges, null, null, null);</span>
+<span class="nc" id="L440">                    enqueueNDRangeKernel(&quot;flip 3&quot;,clQueue, clKernelFlipStage3, 1, null, clGlobalWorkSizeEdges, null, null, null);</span>
+<span class="nc" id="L441">                    enqueueNDRangeKernel(&quot;unlock faces&quot;,clQueue, clKernelUnlockFaces, 1, null, clGlobalWorkSizeTriangles, null, null, null);</span>
+                    //log.info(&quot;flip some illegal edges&quot;);
+
+<span class="nc" id="L444">                    clEnqueueNDRangeKernel(clQueue, clKernelLabelEdgesUpdate, 1, null, clGlobalWorkSizeEdges, null, null, null);</span>
+                    //log.info(&quot;refresh old labels&quot;);
+<span class="nc" id="L446">                    clFinish(clQueue);</span>
+
+                    //clEnqueueReadBuffer(clQueue, clTriLocks, true, 0, triLocks, null, null);
+                    //checkTriLocks();
+<span class="nc" id="L450">                    clEnqueueReadBuffer(clQueue, clIllegalEdges, true, 0, illegalEdges, null, null);</span>
+                    //log.info(&quot;isLegal = &quot; + illegalEdges.get(0));
+
+<span class="nc bnc" id="L453" title="All 2 branches missed.">                } while (illegalEdges.get(0) == 1 &amp;&amp; false);</span>
+                //log.info(&quot;flip all&quot;);
+            }
+
+<span class="nc" id="L457">            clFinish(clQueue);</span>
+
+        }
+<span class="nc" id="L460">        return false;</span>
+    }
+
+    private void readResultFromGPU() {
+<span class="nc" id="L464">        try (MemoryStack stack = stackPush()) {</span>
+<span class="nc bnc" id="L465" title="All 2 branches missed.">            if(doublePrecision) {</span>
+<span class="nc" id="L466">                DoubleBuffer scalingFactorD = stack.mallocDouble(1);</span>
+<span class="nc" id="L467">                clEnqueueReadBuffer(clQueue, clScalingFactor, true, 0, scalingFactorD, null, null);</span>
+<span class="nc" id="L468">                clEnqueueReadBuffer(clQueue, clVertices, true, 0, vD, null, null);</span>
+<span class="nc" id="L469">                log.info(&quot;scale factor = &quot; + scalingFactorD.get(0));</span>
+<span class="nc" id="L470">            }</span>
+            else {
+<span class="nc" id="L472">                FloatBuffer scalingFactorF = stack.mallocFloat(1);</span>
+<span class="nc" id="L473">                clEnqueueReadBuffer(clQueue, clScalingFactor, true, 0, scalingFactorF, null, null);</span>
+<span class="nc" id="L474">                clEnqueueReadBuffer(clQueue, clVertices, true, 0, vF, null, null);</span>
+<span class="nc" id="L475">                log.info(&quot;scale factor = &quot; + scalingFactorF.get(0));</span>
+            }
+
+<span class="nc" id="L478">            clEnqueueReadBuffer(clQueue, clFaces, true, 0, t, null, null);</span>
+<span class="nc" id="L479">            clEnqueueReadBuffer(clQueue, clEdges, true, 0, e, null, null);</span>
+<span class="nc" id="L480">            clEnqueueReadBuffer(clQueue, clVtoE, true, 0, vToE, null, null);</span>
+        }
+<span class="nc" id="L482">    }</span>
+
+    private void readResultFromHost() {
+        //AMesh&lt;P&gt; mesh = new AMesh&lt;&gt;(mesh.getPointConstructor());
+
+<span class="nc" id="L487">        List&lt;IPoint&gt; pointSet = new ArrayList&lt;&gt;(numberOfVertices);</span>
+<span class="nc bnc" id="L488" title="All 2 branches missed.">        if(doublePrecision) {</span>
+<span class="nc bnc" id="L489" title="All 2 branches missed.">            for(int i = 0; i &lt; numberOfVertices*2; i+=2) {</span>
+<span class="nc" id="L490">                pointSet.add(mesh.createPoint(vD.get(i), vD.get(i+1)));</span>
+            }
+        }
+        else {
+<span class="nc bnc" id="L494" title="All 2 branches missed.">            for(int i = 0; i &lt; numberOfVertices*2; i+=2) {</span>
+<span class="nc" id="L495">                pointSet.add(mesh.createPoint(vF.get(i), vF.get(i+1)));</span>
+            }
+        }
+
+        // scatter data
+<span class="nc" id="L500">        mesh.setPositions(pointSet);</span>
+<span class="nc" id="L501">        CLGatherer.scatterFaces(mesh, t);</span>
+<span class="nc" id="L502">        CLGatherer.scatterHalfEdges(mesh, e);</span>
+<span class="nc" id="L503">        CLGatherer.scatterEdgeOfVertex(mesh, vToE);</span>
+<span class="nc" id="L504">    }</span>
+
+    private int ceilPowerOf2(int value) {
+<span class="nc" id="L507">        int tmp = 1;</span>
+<span class="nc bnc" id="L508" title="All 2 branches missed.">        while (tmp &lt;= value) {</span>
+<span class="nc" id="L509">            tmp = tmp &lt;&lt; 1;</span>
+        }
+<span class="nc" id="L511">        return tmp;</span>
+    }
+
+    private long ceilPowerOf2(long value) {
+<span class="nc" id="L515">        long tmp = 1;</span>
+<span class="nc bnc" id="L516" title="All 2 branches missed.">        while (tmp &lt;= value) {</span>
+<span class="nc" id="L517">            tmp = tmp &lt;&lt; 1;</span>
+        }
+<span class="nc" id="L519">        return tmp;</span>
+    }
+
+    @Override
+    protected void clearCL() throws OpenCLException {
+<span class="nc" id="L524">        clReleaseMemObject(clVertices);</span>
+<span class="nc" id="L525">        clReleaseMemObject(clBorderVertices);</span>
+<span class="nc" id="L526">        clReleaseMemObject(clEdges);</span>
+<span class="nc" id="L527">        clReleaseMemObject(clVtoE);</span>
+<span class="nc" id="L528">        clReleaseMemObject(clFaces);</span>
+<span class="nc" id="L529">        clReleaseMemObject(clLengths);</span>
+<span class="nc" id="L530">        clReleaseMemObject(clqLengths);</span>
+<span class="nc" id="L531">        clReleaseMemObject(clPartialSum);</span>
+<span class="nc" id="L532">        clReleaseMemObject(clScalingFactor);</span>
+<span class="nc" id="L533">        clReleaseMemObject(clEdgeLabels);</span>
+<span class="nc" id="L534">        clReleaseMemObject(clIllegalEdges);</span>
+<span class="nc" id="L535">        clReleaseMemObject(clIllegalTriangles);</span>
+
+<span class="nc" id="L537">        clReleaseKernel(clKernelForces);</span>
+<span class="nc" id="L538">        clReleaseKernel(clKernelMove);</span>
+<span class="nc" id="L539">        clReleaseKernel(clKernelLengths);</span>
+<span class="nc" id="L540">        clReleaseKernel(clKernelPartialSF);</span>
+<span class="nc" id="L541">        clReleaseKernel(clKernelCompleteSF);</span>
+
+<span class="nc" id="L543">        clReleaseKernel(clKernelFlipStage1);</span>
+<span class="nc" id="L544">        clReleaseKernel(clKernelFlipStage2);</span>
+<span class="nc" id="L545">        clReleaseKernel(clKernelFlipStage3);</span>
+<span class="nc" id="L546">        clReleaseKernel(clKernelUnlockFaces);</span>
+
+<span class="nc" id="L548">        clReleaseKernel(clKernelLabelEdges);</span>
+<span class="nc" id="L549">        clReleaseKernel(clKernelLabelEdgesUpdate);</span>
+
+<span class="nc" id="L551">        super.clearCL();</span>
+<span class="nc" id="L552">    }</span>
+
+    private void clearHost() {
+<span class="nc bnc" id="L555" title="All 2 branches missed.">        if(doublePrecision) {</span>
+<span class="nc" id="L556">            MemoryUtil.memFree(vD);</span>
+        }
+        else {
+<span class="nc" id="L559">            MemoryUtil.memFree(vF);</span>
+        }
+
+<span class="nc" id="L562">        MemoryUtil.memFree(borderV);</span>
+<span class="nc" id="L563">        MemoryUtil.memFree(e);</span>
+<span class="nc" id="L564">        MemoryUtil.memFree(t);</span>
+<span class="nc" id="L565">        MemoryUtil.memFree(vToE);</span>
+<span class="nc" id="L566">        MemoryUtil.memFree(edgeLabels);</span>
+
+<span class="nc" id="L568">        MemoryUtil.memFree(clEvent);</span>
+<span class="nc" id="L569">        MemoryUtil.memFree(startTime);</span>
+<span class="nc" id="L570">        MemoryUtil.memFree(endTime);</span>
+<span class="nc" id="L571">        MemoryUtil.memFree(retSize);</span>
+<span class="nc" id="L572">        MemoryUtil.memFree(source);</span>
+<span class="nc" id="L573">    }</span>
+
+    public void init() throws OpenCLException {
+<span class="nc" id="L576">        initCallbacks();</span>
+<span class="nc" id="L577">        initCL();</span>
+<span class="nc" id="L578">        buildProgram();</span>
+<span class="nc" id="L579">        createMemory();</span>
+<span class="nc" id="L580">        initialKernelArgs();</span>
+<span class="nc" id="L581">    }</span>
+
+    public void refresh () {
+<span class="nc bnc" id="L584" title="All 2 branches missed.">        if(hasToRead) {</span>
+<span class="nc" id="L585">            readResultFromGPU();</span>
+<span class="nc" id="L586">            readResultFromHost();</span>
+<span class="nc" id="L587">            hasToRead = false;</span>
+        }
+        //printResult();
+<span class="nc" id="L590">    }</span>
+
+    public void finish() throws OpenCLException {
+<span class="nc" id="L593">        refresh();</span>
+        //updateMesh();
+<span class="nc" id="L595">        clearCL();</span>
+<span class="nc" id="L596">        clearHost();</span>
+<span class="nc" id="L597">    }</span>
+
+    private void printTri() {
+<span class="nc bnc" id="L600" title="All 2 branches missed.">        for(int i = 0; i &lt; numberOfFaces*4; i+=4) {</span>
+<span class="nc" id="L601">            log.info(&quot;[&quot; +t.get(i) + &quot;, &quot; + t.get(i+1) + &quot;, &quot; + t.get(i+2) + &quot;]&quot;);</span>
+        }
+<span class="nc" id="L603">    }</span>
+
+    private void printEdges() {
+<span class="nc bnc" id="L606" title="All 2 branches missed.">        for(int i = 0; i &lt; numberOfEdges*4; i+=4) {</span>
+<span class="nc" id="L607">            log.info(&quot;[v0=&quot; +e.get(i) + &quot;, v1=&quot; + e.get(i+1) + &quot;, t_a=&quot; + e.get(i+2) +&quot;, t_b=&quot; + e.get(i+3) +  &quot;]&quot;);</span>
+        }
+<span class="nc" id="L609">    }</span>
+
+    /*
+     *
+     * Assumption: There is only one Platform with a GPU.
+     */
+    public static void main(String... args) throws OpenCLException {
+<span class="nc" id="L616">        AMesh mesh = AMesh.createSimpleTriMesh().createSimpleTriMesh();</span>
+<span class="nc" id="L617">        log.info(&quot;before&quot;);</span>
+<span class="nc" id="L618">        Collection&lt;AVertex&gt; vertices = mesh.getVertices();</span>
+<span class="nc" id="L619">        log.info(vertices);</span>
+
+<span class="nc" id="L621">        CLDistMeshHE clDistMesh = new CLDistMeshHE(mesh);</span>
+<span class="nc" id="L622">        clDistMesh.init();</span>
+
+<span class="nc" id="L624">        clDistMesh.printTri();</span>
+<span class="nc" id="L625">        clDistMesh.printEdges();</span>
+<span class="nc" id="L626">        clDistMesh.step();</span>
+
+        /*clDistMesh.refresh();
+
+        clDistMesh.printTri();
+        clDistMesh.printEdges();
+        clDistMesh.step();*/
+
+<span class="nc" id="L634">        clDistMesh.refresh();</span>
+<span class="nc" id="L635">        clDistMesh.printTri();</span>
+<span class="nc" id="L636">        clDistMesh.printEdges();</span>
+
+<span class="nc" id="L638">        clDistMesh.finish();</span>
+<span class="nc" id="L639">    }</span>
+
+    private static void printPlatformInfo(long platform, String param_name, int param) throws OpenCLException {
+<span class="nc" id="L642">        System.out.println(&quot;\t&quot; + param_name + &quot; = &quot; + CLInfo.getPlatformInfoStringUTF8(platform, param));</span>
+<span class="nc" id="L643">    }</span>
+
+    private static void printDeviceInfo(long device, String param_name, int param) throws OpenCLException {
+<span class="nc" id="L646">        System.out.println(&quot;\t&quot; + param_name + &quot; = &quot; + CLInfo.getDeviceInfoStringUTF8(device, param));</span>
+<span class="nc" id="L647">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

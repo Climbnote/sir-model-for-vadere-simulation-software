@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Trajectory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.simulation</a> &gt; <span class="el_source">Trajectory.java</span></div><h1>Trajectory.java</h1><pre class="source lang-java linenums">package org.vadere.state.simulation;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.state.scenario.Agent;
+import org.vadere.state.scenario.Pedestrian;
+import org.vadere.util.geometry.shapes.VPoint;
+
+/**
+ * A Trajectory is a list of {@link org.vadere.state.scenario.Pedestrian} objects, that can be seen
+ * as pedestrian states of the same pedestrian. The representing pedestrian is the same, so all
+ * {@link org.vadere.state.scenario.Pedestrian} objects has
+ * the same id but the state of a pedestrian changes over time.
+ *
+ * @author Benedikt Zoennchen
+ *
+ */
+public class Trajectory {
+
+	private final Map&lt;Integer, Agent&gt; trajectoryPoints;
+
+	private Optional&lt;Step&gt; firstStep;
+
+	private Optional&lt;Step&gt; lastStep;
+
+	private int pedestrianId;
+
+	private double simStepLengthInSec;
+
+	/**
+	 * Constructs an empty {@link Trajectory} for a pedestrian defined by &lt;tt&gt;pedestrianId&lt;/tt&gt;.
+	 *
+	 * @param pedestrianId
+	 */
+<span class="nc" id="L42">	public Trajectory(final int pedestrianId, final double simStepLengthInSec) {</span>
+<span class="nc" id="L43">		this.pedestrianId = pedestrianId;</span>
+<span class="nc" id="L44">		this.trajectoryPoints = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L45">		this.firstStep = Optional.empty();</span>
+<span class="nc" id="L46">		this.lastStep = Optional.empty();</span>
+<span class="nc" id="L47">		this.simStepLengthInSec = simStepLengthInSec;</span>
+<span class="nc" id="L48">	}</span>
+
+	/**
+	 * Constructs a {@link Trajectory} for a pedestrian defined by &lt;tt&gt;pedestrianId&lt;/tt&gt;
+	 * by extracting the required trajectory points from &lt;tt&gt;pedestrianByStep&lt;/tt&gt;.
+	 *
+	 * Note that calling this constructor for each pedestrian (id) is rather expensive,
+	 * since the complete {@link Map} &lt;tt&gt;pedestrianByStep&lt;/tt&gt; has to be iterated for each
+	 * pedestrian. A better way is to construct all {@link Trajectory} objects at once.
+	 *
+	 * @param pedestrianByStep      container for a set of trajectories
+	 * @param pedestrianId          a specific and unique pedestrian id
+	 * @param simStepLengthInSec    step length of one time step in seconds
+	 */
+<span class="nc" id="L62">	public Trajectory(final Map&lt;Step, List&lt;Agent&gt;&gt; pedestrianByStep, final int pedestrianId, final double simStepLengthInSec) {</span>
+<span class="nc" id="L63">		this.pedestrianId = pedestrianId;</span>
+<span class="nc" id="L64">		this.simStepLengthInSec = simStepLengthInSec;</span>
+
+		// create for each step that contains an pedestrian with the specific pedestrianId
+<span class="nc" id="L67">		this.trajectoryPoints = pedestrianByStep.entrySet().stream()</span>
+<span class="nc" id="L68">				.filter(entry -&gt; containsAgent(entry.getValue()))</span>
+<span class="nc" id="L69">				.collect(Collectors.toMap(e -&gt; e.getKey().getStepNumber(), e -&gt; findAnyAgent(e.getValue())));</span>
+
+<span class="nc" id="L71">		this.firstStep = pedestrianByStep.keySet().stream().filter(step -&gt; trajectoryPoints.containsKey(step.getStepNumber())).min(Step::compareTo);</span>
+<span class="nc" id="L72">		this.lastStep = pedestrianByStep.keySet().stream().filter(step -&gt; trajectoryPoints.containsKey(step.getStepNumber())).max(Step::compareTo);</span>
+
+<span class="nc bnc" id="L74" title="All 2 branches missed.">		if (!isEmpty()) {</span>
+<span class="nc" id="L75">			fill();</span>
+		}
+<span class="nc" id="L77">	}</span>
+
+	private boolean containsAgent(final List&lt;Agent&gt; agents) {
+<span class="nc bnc" id="L80" title="All 2 branches missed.">		return agents.stream().anyMatch(agent -&gt; agent.getId() == pedestrianId);</span>
+	}
+
+	private Agent findAnyAgent(final List&lt;Agent&gt; agents) {
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		return agents.stream().filter(agent -&gt; agent.getId() == pedestrianId).findAny().get();</span>
+	}
+
+	private int last() {
+<span class="nc" id="L88">		return lastStep.get().getStepNumber();</span>
+	}
+
+	private int first() {
+<span class="nc" id="L92">		return firstStep.get().getStepNumber();</span>
+	}
+
+	private boolean hasFirstStep() {
+<span class="nc" id="L96">		return firstStep.isPresent();</span>
+	}
+
+	private boolean hasLastStep() {
+<span class="nc" id="L100">		return lastStep.isPresent();</span>
+	}
+
+	private boolean isMissing(final int step) {
+<span class="nc bnc" id="L104" title="All 2 branches missed.">		return !contains(step);</span>
+	}
+
+	private boolean contains(final int step) {
+<span class="nc" id="L108">		return trajectoryPoints.containsKey(step);</span>
+	}
+
+	/**
+	 * Fills in missing positions e.g. if there is are positions for steps 1, 2, 4, 7, 11 after fill
+	 * there will be positions for steps 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 where position 3 = 2, 5 = 6 = 4,
+	 * 8 = 9 = 10 = 7.
+	 */
+	public void fill() {
+<span class="nc bnc" id="L117" title="All 2 branches missed.">		Stream.iterate(first(), s -&gt; s &lt;= last(), s -&gt; s + 1)</span>
+<span class="nc" id="L118">				.filter(s -&gt; isMissing(s))</span>
+<span class="nc" id="L119">				.forEachOrdered(s -&gt; addStep(s, getAgent(s - 1).get()));</span>
+<span class="nc" id="L120">	}</span>
+
+	public void addStep(final int step, @NotNull final Agent agent) {
+<span class="nc bnc" id="L123" title="All 4 branches missed.">		if(!hasFirstStep() || first() &gt; step) {</span>
+<span class="nc" id="L124">			firstStep = Optional.of(new Step(step));</span>
+		}
+
+<span class="nc bnc" id="L127" title="All 4 branches missed.">		if(!hasLastStep() || last() &lt; step) {</span>
+<span class="nc" id="L128">			lastStep = Optional.of(new Step(step));</span>
+		}
+
+<span class="nc" id="L131">		trajectoryPoints.put(step, agent);</span>
+<span class="nc" id="L132">	}</span>
+
+	public Optional&lt;Integer&gt; getLifeTime() {
+<span class="nc bnc" id="L135" title="All 4 branches missed.">		return getEndStep().isPresent() &amp;&amp; getStartStep().isPresent() ?</span>
+<span class="nc" id="L136">				Optional.of(getEndStep().get().getStepNumber() - getStartStep().get().getStepNumber()) :</span>
+<span class="nc" id="L137">				Optional.empty();</span>
+	}
+
+	/**
+	 * Returns the pedestrian id that specified this trajectory.
+	 * 
+	 * @return the pedestrian id that specified this trajectory
+	 */
+	public int getPedestrianId() {
+<span class="nc" id="L146">		return pedestrianId;</span>
+	}
+
+	/**
+	 * Returns true if the pedestrian is alive at the specific time step, alive means the pedestrain
+	 * appeared and does not jet
+	 * disappeared.
+	 * 
+	 * @param step the time step
+	 * @return true if the pedestrian is alive at the specific time step
+	 */
+	public boolean isAlive(final int step) {
+<span class="nc" id="L158">		return contains(step);</span>
+	}
+
+	public boolean isAlive(final double simTimeInSec) {
+<span class="nc" id="L162">		return isAlive(Step.toCeilStep(simTimeInSec, simStepLengthInSec));</span>
+	}
+
+	/**
+	 * Returns true if the pedestrian is alive or died some time before the specific time step.
+	 * In other words only pedestrian not yet born will return false.
+	 *
+	 * @param step the time step
+	 * @return true if the pedestrian was alive at any time step smaller or equal to current one. (so all alive and dead, but no pedestrian not born yet).
+	 */
+	public boolean wasPedestrianAliveBefore(final Step step){
+<span class="nc bnc" id="L173" title="All 2 branches missed.">		return trajectoryPoints.entrySet().stream().map(Map.Entry::getKey).anyMatch(s -&gt; s &lt;= step.getStepNumber());</span>
+	}
+
+	/**
+	 * Returns true if the pedestrian appeared, otherwise false.
+	 * 
+	 * @param step the time step
+	 * @return true if the pedestrian appeared, otherwise false
+	 */
+	public boolean hasAppeared(final int step) {
+<span class="nc bnc" id="L183" title="All 6 branches missed.">		return contains(step) || hasFirstStep() &amp;&amp; first() &gt;= step;</span>
+	}
+
+	public boolean hasAppeared(final double simTimeInSec) {
+<span class="nc" id="L187">		int base = Step.toFloorStep(simTimeInSec,simStepLengthInSec);</span>
+<span class="nc bnc" id="L188" title="All 6 branches missed.">		return contains(base) || hasFirstStep() &amp;&amp; first() &gt;= base;</span>
+	}
+
+	/**
+	 * Returns true if the pedestrian disappeared, otherwise false.
+	 * 
+	 * @param step the time step
+	 * @return true if the pedestrian disappeared, otherwise false
+	 */
+	public boolean hasDisappeared(final int step) {
+<span class="nc bnc" id="L198" title="All 6 branches missed.">		return isMissing(step) &amp;&amp; (!hasLastStep() || last() &gt; step);</span>
+	}
+
+	public boolean hasDisappeared(final double simTimeInSec) {
+<span class="nc" id="L202">		return hasDisappeared(Step.toCeilStep(simTimeInSec, simStepLengthInSec));</span>
+	}
+
+	private boolean isEmpty() {
+<span class="nc bnc" id="L206" title="All 4 branches missed.">		return !getStartStep().isPresent() || !getEndStep().isPresent();</span>
+	}
+
+	/**
+	 * Returns an Optional&lt;Pedestrian&gt; object. If the pedestrain has not appeared at step, the
+	 * method will return the pedestrian at the
+	 * first step it is alive. If the pedestrain has disappeared at step, this method return the
+	 * pedestrian at the last step it is alive.
+	 * 
+	 * @param step the time step that specify the pedestrian
+	 * @return an Optional&lt;Pedestrian&gt; object which is empty if the trajectory is completely empty.
+	 */
+	public Optional&lt;Agent&gt; getAgent(final int step) {
+<span class="nc bnc" id="L219" title="All 2 branches missed.">		if (!isEmpty()) {</span>
+<span class="nc bnc" id="L220" title="All 2 branches missed.">			if (isAlive(step)) {</span>
+<span class="nc" id="L221">				return Optional.of(trajectoryPoints.get(step));</span>
+<span class="nc bnc" id="L222" title="All 2 branches missed.">			} else if (step &lt;= first()) {</span>
+<span class="nc" id="L223">				return Optional.of(trajectoryPoints.get(first()));</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">			} else if (step &gt;= last()) {</span>
+<span class="nc" id="L225">				return Optional.of(trajectoryPoints.get(last()));</span>
+			} else {
+<span class="nc" id="L227">				return Optional.empty();</span>
+			}
+		}
+<span class="nc" id="L230">		return Optional.empty();</span>
+	}
+
+	public Optional&lt;Agent&gt; getAgent(final double simTimeInSec) {
+<span class="nc bnc" id="L234" title="All 2 branches missed.">		if(!isEmpty()) {</span>
+<span class="nc" id="L235">			int base = Step.toFloorStep(simTimeInSec, simStepLengthInSec);</span>
+<span class="nc" id="L236">			int next = Step.toCeilStep(simTimeInSec, simStepLengthInSec);</span>
+
+<span class="nc bnc" id="L238" title="All 4 branches missed.">			if(base == next || base == last()) {</span>
+<span class="nc" id="L239">				return getAgent(base);</span>
+			} else {
+<span class="nc" id="L241">				double r = simTimeInSec - Step.toSimTimeInSec(base, simStepLengthInSec);</span>
+<span class="nc" id="L242">				Optional&lt;Agent&gt; optionalAgent1 = getAgent(base);</span>
+<span class="nc" id="L243">				Optional&lt;Agent&gt; optionalAgent2 = getAgent(base + 1);</span>
+<span class="nc" id="L244">				Agent agent1 = optionalAgent1.get();</span>
+<span class="nc" id="L245">				Agent agent2 = optionalAgent2.get();</span>
+<span class="nc" id="L246">				VPoint position1 = agent1.getPosition();</span>
+<span class="nc" id="L247">				VPoint position2 = agent2.getPosition();</span>
+<span class="nc" id="L248">				VPoint position = position1.add(position2.subtract(position1).scalarMultiply(r / simStepLengthInSec));</span>
+<span class="nc" id="L249">				Agent agent = agent1.clone();</span>
+<span class="nc" id="L250">				agent.setPosition(position);</span>
+<span class="nc" id="L251">				return Optional.of(agent);</span>
+			}
+		} else {
+<span class="nc" id="L254">			return Optional.empty();</span>
+		}
+	}
+
+	/**
+	 * Return a {@link java.util.stream.Stream&lt;&gt;} stream of
+	 * {@link org.vadere.util.geometry.shapes.VPoint} pedestrian positions
+	 * from the first step (1) to the (step.getStepNumber()) in reverse order.
+	 *
+	 * @param step the step of the last pedestrian position
+	 * @return a stream of pedestrian positions to from 1 to step.getStepNumber() in reverse order
+	 */
+	public Stream&lt;VPoint&gt; getPositionsReverse(final int step) {
+<span class="nc" id="L267">		return getPositionsReverse(Step.toSimTimeInSec(step, simStepLengthInSec));</span>
+	}
+
+	public Stream&lt;VPoint&gt; getPositionsReverse(final double simTimeInSec) {
+<span class="nc" id="L271">		int tail = Step.toFloorStep(simTimeInSec, simStepLengthInSec);</span>
+<span class="nc" id="L272">		int head = Step.toCeilStep(simTimeInSec, simStepLengthInSec);</span>
+
+<span class="nc" id="L274">		Stream&lt;VPoint&gt; headStream = Stream.empty();</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">		if(tail != head) {</span>
+<span class="nc" id="L276">			Optional&lt;Agent&gt; optionalAgent = getAgent(simTimeInSec);</span>
+<span class="nc bnc" id="L277" title="All 2 branches missed.">			if(optionalAgent.isPresent()) {</span>
+<span class="nc" id="L278">				headStream = Stream.of(optionalAgent.get().getPosition());</span>
+			}
+		}
+
+<span class="nc bnc" id="L282" title="All 2 branches missed.">		Stream&lt;VPoint&gt; tailStream = Stream.iterate(tail, s -&gt; s &gt;= first(), s -&gt; s - 1)</span>
+<span class="nc" id="L283">				.map(s -&gt; getAgent(s))</span>
+<span class="nc" id="L284">				.filter(optAgent -&gt; optAgent.isPresent())</span>
+<span class="nc" id="L285">				.map(optAgent -&gt; optAgent.get())</span>
+<span class="nc" id="L286">				.flatMap(agent -&gt; toPointStream(agent));</span>
+
+<span class="nc" id="L288">		return Stream.concat(headStream, tailStream);</span>
+	}
+
+	private Stream&lt;VPoint&gt; toPointStream(@NotNull final Agent agent) {
+		// use the foot step information if available
+<span class="nc bnc" id="L293" title="All 2 branches missed.">		if(agent instanceof Pedestrian) {</span>
+<span class="nc" id="L294">			Pedestrian pedestrian = (Pedestrian)agent;</span>
+<span class="nc bnc" id="L295" title="All 2 branches missed.">			if(!pedestrian.getTrajectory().isEmpty()) {</span>
+<span class="nc" id="L296">				Iterable&lt;FootStep&gt; iterable = () -&gt; pedestrian.getTrajectory().descendingIterator();</span>
+<span class="nc" id="L297">				return StreamSupport.stream(iterable.spliterator(), false).map(footStep -&gt; footStep.getEnd());</span>
+			}
+		}
+<span class="nc" id="L300">		return Stream.of(agent.getPosition());</span>
+	}
+
+	public Optional&lt;Step&gt; getStartStep() {
+<span class="nc" id="L304">		return firstStep;</span>
+	}
+
+	public Optional&lt;Step&gt; getEndStep() {
+<span class="nc" id="L308">		return lastStep;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

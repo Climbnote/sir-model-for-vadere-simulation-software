@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StimulusInfoStore.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.psychology.perception.json</a> &gt; <span class="el_source">StimulusInfoStore.java</span></div><h1>StimulusInfoStore.java</h1><pre class="source lang-java linenums">package org.vadere.state.psychology.perception.json;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.vadere.state.psychology.perception.types.*;
+import org.vadere.state.util.JacksonObjectMapper;
+import org.vadere.util.geometry.shapes.VRectangle;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * This class bundles multiple @see StimulusInfo objects.
+ *
+ * This class is just a wrapper to get a convenient JSON de-/serialization.
+ * The JSON serialization should look like this:
+ *
+ *      &quot;stimulusInfos&quot;: [
+ *                {
+ *                     &quot;timeframe&quot;: {
+ *                         &quot;startTime&quot;:...,
+ *                         &quot;endTime&quot;:...,
+ *                         &quot;repeat&quot;:...,
+ *                         &quot;waitTimeBetweenRepetition&quot;:...
+ *                     },
+ *                     &quot;stimuli&quot;: [
+ *                         {&quot;type&quot;:&quot;ElapsedTime&quot; },
+ *                         {&quot;type&quot;:&quot;WaitInArea&quot;, &quot;area&quot;: ... },
+ *                         ...
+ *                     ]
+ *                },
+ *                {
+ *                    ...
+ *                }
+ *      ]
+ */
+public class StimulusInfoStore {
+
+    // Member Variables
+    private List&lt;StimulusInfo&gt; stimulusInfos;
+
+    // Constructors
+<span class="fc" id="L45">    public StimulusInfoStore() {</span>
+<span class="fc" id="L46">        this.stimulusInfos = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L47">    }</span>
+
+    // Getter
+    public List&lt;StimulusInfo&gt; getStimulusInfos() {
+<span class="fc" id="L51">        return stimulusInfos;</span>
+    }
+
+    // Setter
+    public void setStimulusInfos(List&lt;StimulusInfo&gt; stimulusInfos) {
+<span class="fc" id="L56">        this.stimulusInfos = stimulusInfos;</span>
+<span class="fc" id="L57">    }</span>
+
+    public static void main(String... args) {
+        // Create &quot;Timeframe&quot; and &quot;Stimulus&quot; objects and encapsulate them in &quot;StimulusInfo&quot; objects.
+<span class="nc" id="L61">        Timeframe timeframe = new Timeframe(5, 30, false, 0);</span>
+
+<span class="nc" id="L63">        List&lt;Stimulus&gt; stimuli = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L64">        stimuli.add(new Wait());</span>
+<span class="nc" id="L65">        stimuli.add(new WaitInArea(0, new VRectangle(12.5, 0, 5, 6)));</span>
+        // stimuli.add(new WaitInArea(0, new VCircle(5, 5, 5)));
+
+<span class="nc" id="L68">        StimulusInfo stimulusInfo1 = new StimulusInfo();</span>
+<span class="nc" id="L69">        stimulusInfo1.setTimeframe(timeframe);</span>
+<span class="nc" id="L70">        stimulusInfo1.setStimuli(stimuli);</span>
+
+<span class="nc" id="L72">        List&lt;StimulusInfo&gt; stimulusInfos = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L73">        stimulusInfos.add(stimulusInfo1);</span>
+
+<span class="nc" id="L75">        StimulusInfoStore stimulusInfoStore = new StimulusInfoStore();</span>
+<span class="nc" id="L76">        stimulusInfoStore.setStimulusInfos(stimulusInfos);</span>
+
+        // Use annotations at stimulus classes to specify how JSON &lt;-&gt; Java mapping should look like.
+        // &quot;VShape&quot; are mapped by &quot;JacksonObjectMapper&quot; implementation.
+<span class="nc" id="L80">        ObjectMapper mapper = new JacksonObjectMapper();</span>
+
+        // De/-Serialize an &quot;StimulusInfoStore&quot;:
+        try {
+<span class="nc" id="L84">            String jsonDataString = mapper.writeValueAsString(stimulusInfoStore);</span>
+
+<span class="nc" id="L86">            System.out.println(&quot;Serialized \&quot;StimulusInfoStore\&quot;:&quot;);</span>
+<span class="nc" id="L87">            System.out.println(jsonDataString);</span>
+<span class="nc" id="L88">            System.out.println();</span>
+
+<span class="nc" id="L90">            System.out.println(&quot;Serialized \&quot;StimulusInfo\&quot; elements in the \&quot;StimulusInfoStore\&quot;:&quot;);</span>
+<span class="nc" id="L91">            StimulusInfoStore deserializedStimulusInfoStore = mapper.readValue(jsonDataString, StimulusInfoStore.class);</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">            for (StimulusInfo stimulusInfo : deserializedStimulusInfoStore.getStimulusInfos()) {</span>
+<span class="nc" id="L93">                System.out.print(stimulusInfo.getTimeframe());</span>
+<span class="nc" id="L94">                System.out.print(stimulusInfo.getStimuli());</span>
+<span class="nc" id="L95">            }</span>
+<span class="nc" id="L96">            System.out.println();</span>
+<span class="nc" id="L97">        } catch (IOException e) {</span>
+<span class="nc" id="L98">            e.printStackTrace();</span>
+<span class="nc" id="L99">        }</span>
+
+        // Serialize specific stimuli:
+<span class="nc" id="L102">        System.out.println(&quot;Examples of some stimulus serializations:&quot;);</span>
+
+        try {
+<span class="nc" id="L105">            LinkedList&lt;Integer&gt; newTargetIds = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L106">            newTargetIds.add(1);</span>
+<span class="nc" id="L107">            newTargetIds.add(2);</span>
+
+<span class="nc" id="L109">            String changeTargetEventAsJsonString = mapper.writeValueAsString(new ChangeTarget(0.0, newTargetIds));</span>
+<span class="nc" id="L110">            System.out.println(changeTargetEventAsJsonString);</span>
+<span class="nc" id="L111">        } catch (JsonProcessingException e) {</span>
+<span class="nc" id="L112">            e.printStackTrace();</span>
+<span class="nc" id="L113">        }</span>
+
+<span class="nc" id="L115">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

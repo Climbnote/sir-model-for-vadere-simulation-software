@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PDelaunayTriangulator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.impl</a> &gt; <span class="el_source">PDelaunayTriangulator.java</span></div><h1>PDelaunayTriangulator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.impl;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PMesh;
+import org.vadere.meshing.mesh.gen.PVertex;
+import org.vadere.meshing.mesh.triangulation.triangulator.gen.GenDelaunayTriangulator;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VRectangle;
+
+import java.util.Collection;
+
+public class PDelaunayTriangulator extends GenDelaunayTriangulator&lt;PVertex, PHalfEdge, PFace&gt; {
+
+	public PDelaunayTriangulator(
+			@NotNull final PMesh mesh,
+			@NotNull final VRectangle bound,
+			@NotNull final Collection&lt;? extends IPoint&gt; pointSet) {
+<span class="nc" id="L20">		super(mesh, bound, pointSet);</span>
+<span class="nc" id="L21">	}</span>
+
+	public PDelaunayTriangulator(
+			@NotNull final PMesh mesh,
+			@NotNull final Collection&lt;? extends IPoint&gt; pointSet) {
+<span class="nc" id="L26">		super(mesh, pointSet);</span>
+<span class="nc" id="L27">	}</span>
+
+	public PDelaunayTriangulator(
+			@NotNull final Collection&lt;? extends IPoint&gt; pointSet) {
+<span class="fc" id="L31">		super(new PMesh(), pointSet);</span>
+<span class="fc" id="L32">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

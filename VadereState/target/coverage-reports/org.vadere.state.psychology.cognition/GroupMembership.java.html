@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GroupMembership.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.psychology.cognition</a> &gt; <span class="el_source">GroupMembership.java</span></div><h1>GroupMembership.java</h1><pre class="source lang-java linenums">package org.vadere.state.psychology.cognition;
+
+import java.awt.*;
+
+/**
+ * According to the self-categorization theory (&quot;reicher-2010&quot;), people define
+ * themselves as a member of social categories (see{@link SelfCategory}). When
+ * people share the same {@link SelfCategory}, they often act collectively
+ * if they feel as in-group member to this category.
+ *
+ * For instance, two protesters - which define themselves as in-group members
+ * of the category protesters - walk together during a demonstration.
+ *
+ * This enum shall capture this in- and out-group membership. The membership
+ * can be interpreted as a tree:
+ *
+ * &lt;pre&gt;
+ *       Membership
+ *         /\
+ *        /  \
+ *       /    \
+ *     In      Out
+ *           /  |  \
+ *          /   |   \
+ *         /    |    \
+ * Friendly  Neutral Hostile
+ * &lt;/pre&gt;
+ *
+ * Following outcome may be observed when two people with a given membership
+ * come together:
+ * &lt;ul&gt;
+ *     &lt;li&gt;IN_GROUP / IN_GROUP =&gt; imitate behavior&lt;/li&gt;
+ *     &lt;li&gt;IN_GROUP / OUT_GROUP_FRIENDLY =&gt; imitate behavior&lt;/li&gt;
+ *     &lt;li&gt;IN_GROUP / OUT_GROUP_NEUTRAL =&gt; ignore behavior of IN_GROUP member&lt;/li&gt;
+ *     &lt;li&gt;IN_GROUP / OUT_GROUP_HOSTILE =&gt; react hostile to IN_GROUP member&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * Note: The value &quot;OUT_GROUP&quot; exists for convenience if you do not like to handle
+ * the subcategories FRIENDLY, NEUTRAL and HOSTILE. &quot;OUT_GROUP&quot; should be handled
+ * like &quot;OUT_GROUP_NEUTRAL&quot;. I.e., IN_GROUP / OUT_GROUP =&gt; ignore behavior of
+ * IN_GROUP member.
+ */
+<span class="fc" id="L43">public enum GroupMembership {</span>
+<span class="fc" id="L44">    IN_GROUP,</span>
+<span class="fc" id="L45">    OUT_GROUP,</span>
+<span class="fc" id="L46">    OUT_GROUP_FRIENDLY,</span>
+<span class="fc" id="L47">    OUT_GROUP_NEUTRAL,</span>
+<span class="fc" id="L48">    OUT_GROUP_HOSTILE</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

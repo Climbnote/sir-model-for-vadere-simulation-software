@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>KnowledgeBase.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.psychology</a> &gt; <span class="el_source">KnowledgeBase.java</span></div><h1>KnowledgeBase.java</h1><pre class="source lang-java linenums">package org.vadere.state.psychology;
+
+import org.vadere.state.psychology.perception.types.KnowledgeItem;
+
+import java.util.ArrayList;
+import java.util.regex.Pattern;
+
+/**
+ * Simple Knowledge Store to manage {@link KnowledgeItem}s.
+ */
+public class KnowledgeBase {
+
+	private ArrayList&lt;KnowledgeItem&gt; knowledge;
+
+<span class="fc" id="L15">	public KnowledgeBase() {</span>
+<span class="fc" id="L16">		this.knowledge = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L17">	}</span>
+
+	/**
+	 * remove Information no longer usable at given time.
+	 */
+	public void updateObsolete(double current_time){
+<span class="pc bpc" id="L23" title="1 of 4 branches missed.">		knowledge.removeIf(i-&gt; i.getObsoleteAt() &gt; 0 &amp;&amp; current_time &gt; i.getObsoleteAt());</span>
+<span class="fc" id="L24">	}</span>
+
+	/**
+	 *  True if KnowledgeBase contains this information.
+	 */
+	public boolean knowsAbout(String informationId){
+<span class="fc" id="L30">		return knowledge.stream().anyMatch(i-&gt;i.getInformationId().equals(informationId));</span>
+	}
+	public boolean knowsAbout(Pattern informationIdPattern){
+<span class="fc" id="L33">		return knowledge.stream().anyMatch(i-&gt;informationIdPattern.matcher(i.getInformationId()).matches());</span>
+	}
+
+	public void addInformation(KnowledgeItem info){
+<span class="fc" id="L37">		knowledge.add(info);</span>
+<span class="fc" id="L38">	}</span>
+
+	public void removeInformation(String informationId){
+<span class="fc" id="L41">		knowledge.removeIf(i-&gt;i.getInformationId().equals(informationId));</span>
+<span class="fc" id="L42">	}</span>
+
+	public void removeInformation(Pattern informationIdPattern){
+<span class="fc" id="L45">		knowledge.removeIf(i-&gt; informationIdPattern.matcher(i.getInformationId()).matches());</span>
+<span class="fc" id="L46">	}</span>
+
+	public ArrayList&lt;KnowledgeItem&gt; getKnowledge() {
+<span class="fc" id="L49">		return knowledge;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

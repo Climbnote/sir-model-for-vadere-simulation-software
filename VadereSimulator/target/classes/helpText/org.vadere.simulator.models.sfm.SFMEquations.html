@@ -1,0 +1,20 @@
+<h1> SFMEquations</h1>
+
+<p>
+Implementation of the Social Force Model (Helbing 1995). This implementation
+only captures very basic functionality:<br>
+
+<pre>
+dx/dt = v * normalizer(v)
+dv/dt = (-grad_floorfield * vmax - v) * accTarget - grad_obstacles - grad_pedestrians
+</pre>
+
+The three different gradients are provided through instances of
+IGradientProvider given in the constructor.
+
+</p>
+
+<hr>
+<h2> Field: logger</h2>
+<p>---</p>
+

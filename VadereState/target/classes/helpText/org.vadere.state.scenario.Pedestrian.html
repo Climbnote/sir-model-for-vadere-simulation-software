@@ -1,0 +1,60 @@
+<h1> Pedestrian</h1>
+
+<p>---</p>
+
+<hr>
+<h2> Field: groupIds</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: footstepHistory</h2>
+<p>
+This list stores the last n footsteps. I.e., this list is NOT cleared after each simulation loop like "trajectory" variable.
+</p>
+
+<hr>
+<h2> Field: trajectory</h2>
+<p>
+trajectory is a list of foot steps a pedestrian made during the duration of one time step.
+For all non event driven models this is exactly one foot step. For the event driven update
+one pedestrian can move multiple times during one time step. To save memory the list of foot steps
+will be cleared after each completion of a time step. The output processor <tt>PedestrianStrideProcessor</tt>
+can write out those foot steps.
+</p>
+
+<hr>
+<h2> Field: modelPedestrianMap</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: idAsTarget</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: isChild</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: isLikelyInjured</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: PEDESTRIAN_MAX_SPEED_METER_PER_SECOND</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: groupSizes</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: INVALID_NEXT_EVENT_TIME</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: psychologyStatus</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: type</h2>
+<p>---</p>
+

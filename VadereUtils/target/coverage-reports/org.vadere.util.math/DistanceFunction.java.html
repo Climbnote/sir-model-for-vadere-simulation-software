@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DistanceFunction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.math</a> &gt; <span class="el_source">DistanceFunction.java</span></div><h1>DistanceFunction.java</h1><pre class="source lang-java linenums">package org.vadere.util.math;
+
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+
+import java.util.Collection;
+import java.util.Collections;
+
+/**
+ * @author Benedikt Zoennchen
+ */
+public class DistanceFunction implements IDistanceFunction {
+
+	private final VShape regionBoundingBox;
+	private final Collection&lt;? extends VShape&gt; obstacles;
+	private final Collection&lt;? extends VShape&gt; targets;
+
+<span class="nc" id="L20">	public DistanceFunction(final VRectangle regionBoundingBox, final Collection&lt;? extends VShape&gt; obstacles, final Collection&lt;? extends VShape&gt; targets) {</span>
+<span class="nc" id="L21">		this.regionBoundingBox = regionBoundingBox;</span>
+<span class="nc" id="L22">		this.obstacles = obstacles;</span>
+<span class="nc" id="L23">		this.targets = targets;</span>
+<span class="nc" id="L24">	}</span>
+
+	public DistanceFunction(final VRectangle regionBoundingBox, final Collection&lt;? extends VShape&gt; obstacles) {
+<span class="nc" id="L27">		this(regionBoundingBox, obstacles, Collections.EMPTY_LIST);</span>
+<span class="nc" id="L28">	}</span>
+
+<span class="nc" id="L30">	public DistanceFunction(final VPolygon regionBoundingBox, final Collection&lt;? extends VShape&gt; obstacles, final Collection&lt;? extends VShape&gt; targets) {</span>
+<span class="nc" id="L31">		this.regionBoundingBox = regionBoundingBox;</span>
+<span class="nc" id="L32">		this.obstacles = obstacles;</span>
+<span class="nc" id="L33">		this.targets = targets;</span>
+<span class="nc" id="L34">	}</span>
+
+	public DistanceFunction(final VPolygon regionBoundingBox, final Collection&lt;? extends VShape&gt; obstacles) {
+<span class="nc" id="L37">		this(regionBoundingBox, obstacles, Collections.EMPTY_LIST);</span>
+<span class="nc" id="L38">	}</span>
+
+	//return Math.max(d1, -d2);
+	@Override
+	public Double apply(final IPoint iPoint) {
+<span class="nc" id="L43">		double value = regionBoundingBox.distance(iPoint);</span>
+<span class="nc bnc" id="L44" title="All 2 branches missed.">		for (VShape obstacle : obstacles) {</span>
+<span class="nc" id="L45">			value = doDDiff(value, obstacle.distance(iPoint));</span>
+<span class="nc" id="L46">		}</span>
+<span class="nc bnc" id="L47" title="All 2 branches missed.">		for (VShape target : targets) {</span>
+<span class="nc" id="L48">			value = doDDiff(value, Math.abs(target.distance(iPoint)));</span>
+<span class="nc" id="L49">		}</span>
+<span class="nc" id="L50">		return value;</span>
+	}
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

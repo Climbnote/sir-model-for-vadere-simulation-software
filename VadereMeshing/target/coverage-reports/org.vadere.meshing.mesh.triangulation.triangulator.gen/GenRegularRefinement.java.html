@@ -1,0 +1,884 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GenRegularRefinement.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">GenRegularRefinement.java</span></div><h1>GenRegularRefinement.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.gen.MeshPanel;
+import org.vadere.meshing.mesh.gen.MeshRenderer;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.IRefiner;
+import org.vadere.meshing.utils.color.Colors;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.logging.Logger;
+
+import java.awt.*;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+/**
+ * Implementation of the regular refinement described in RGB Subdivision by Enrico Puppo and Daniele Panozzo
+ * see https://cims.nyu.edu/gcl/papers/TVCG08-PuppoPanozzo.pdf.
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ *
+ * @author Benedikt Zoennchen
+ */
+<span class="nc bnc" id="L35" title="All 2 branches missed.">public class GenRegularRefinement&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements IRefiner&lt;V, E, F&gt; {</span>
+
+<span class="nc" id="L37">	enum Coloring {</span>
+<span class="nc" id="L38">		RED, GREEN, BLUE;</span>
+	}
+
+<span class="nc" id="L41">	private final static Logger logger = Logger.getLogger(GenRegularRefinement.class);</span>
+
+	/**
+	 * the base (mutable) triangulation this refiner is working on.
+	 */
+	private final IIncrementalTriangulation&lt;V, E, F&gt; triangulation;
+
+	/**
+	 * a predicate that decides whether or not an edge should be refined.
+	 */
+	private Predicate&lt;E&gt; edgeRefinementPredicate;
+
+	private boolean finished;
+	private boolean refined;
+	private boolean coarse;
+<span class="nc" id="L56">	public final String propertyLevel = &quot;level&quot;;</span>
+<span class="nc" id="L57">	public final String propertyColor = &quot;color&quot;;</span>
+<span class="nc" id="L58">	public final String propertyFlipable = &quot;flipable&quot;;</span>
+
+	/**
+	 * contains all edges that have to be refined.
+	 */
+	private LinkedList&lt;E&gt; toRefine;
+
+	/**
+	 * contains all vertices that have to be coarsen.
+	 */
+	private LinkedList&lt;V&gt; toCoarse;
+
+<span class="nc bnc" id="L70" title="All 2 branches missed.">	private Predicate&lt;V&gt; coarsePredicate = v -&gt; getLevel(v) &gt; 0;</span>
+	private final static int sleepTime = 1;
+	private int maxLevel;
+
+	private MeshPanel&lt;V, E, F&gt; debugPanel;
+
+	public GenRegularRefinement(
+			@NotNull final IIncrementalTriangulation&lt;V, E, F&gt; triangulation,
+			@NotNull final Predicate&lt;E&gt; edgeRefinementPredicate) {
+<span class="nc" id="L79">		this(triangulation, edgeRefinementPredicate, Integer.MAX_VALUE);</span>
+<span class="nc" id="L80">	}</span>
+
+	public void setEdgeRefinementPredicate(Predicate&lt;E&gt; edgeRefinementPredicate) {
+<span class="nc" id="L83">		this.edgeRefinementPredicate = edgeRefinementPredicate;</span>
+<span class="nc" id="L84">	}</span>
+
+	public void setCoarsePredicate(Predicate&lt;V&gt; coarsePredicate) {
+<span class="nc" id="L87">		this.coarsePredicate = coarsePredicate;</span>
+<span class="nc" id="L88">	}</span>
+
+	public GenRegularRefinement(
+			@NotNull final IIncrementalTriangulation&lt;V, E, F&gt; triangulation,
+			final int level
+<span class="nc" id="L93">			) {</span>
+
+<span class="nc" id="L95">		this.triangulation = triangulation;</span>
+<span class="nc" id="L96">		this.maxLevel = level;</span>
+		//this.edgeRefinementPredicate = e -&gt; getLevel(e) == (maxLevel-1) &amp;&amp; edgeRefinementPredicate.test(e);
+		//this.edgeAddToRefine = e -&gt; getLevel(e) == (maxLevel-1) &amp;&amp; edgeRefinementPredicate.test(e);
+
+		//VPoint p = new VPoint(5,5);
+
+		//this.edgeRefinementPredicate = e -&gt; !getMesh().isBoundary(e) &amp;&amp; getMesh().toTriangle(getMesh().getFace(e)).midPoint().distance(p) &lt; 3.0 &amp;&amp; (!isGreen(e) || getMesh().toLine(e).length() &gt; 0.5);
+<span class="nc bnc" id="L103" title="All 2 branches missed.">		this.edgeRefinementPredicate = e -&gt; getLevel(e) &lt; level;</span>
+<span class="nc" id="L104">		this.finished = false;</span>
+<span class="nc" id="L105">		this.coarse = false;</span>
+<span class="nc" id="L106">		this.toRefine = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L107">		this.toCoarse = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L108">	}</span>
+
+	public GenRegularRefinement(
+			@NotNull final IIncrementalTriangulation&lt;V, E, F&gt; triangulation,
+			@NotNull final Predicate&lt;E&gt; edgeRefinementPredicate,
+			int maxLevel
+<span class="nc" id="L114">			) {</span>
+<span class="nc" id="L115">		this.triangulation = triangulation;</span>
+		//this.edgeRefinementPredicate = e -&gt; getLevel(e) == (maxLevel-1) &amp;&amp; edgeRefinementPredicate.test(e);
+		//this.edgeAddToRefine = e -&gt; getLevel(e) == (maxLevel-1) &amp;&amp; edgeRefinementPredicate.test(e);
+
+		//VPoint p = new VPoint(5,5);
+
+		//this.edgeRefinementPredicate = e -&gt; !getMesh().isBoundary(e) &amp;&amp; getMesh().toTriangle(getMesh().getFace(e)).midPoint().distance(p) &lt; 3.0 &amp;&amp; (!isGreen(e) || getMesh().toLine(e).length() &gt; 0.5);
+<span class="nc bnc" id="L122" title="All 4 branches missed.">		this.edgeRefinementPredicate = e -&gt; getLevel(e) == (maxLevel-1) &amp;&amp; (edgeRefinementPredicate.test(e));</span>
+<span class="nc" id="L123">		this.finished = false;</span>
+<span class="nc" id="L124">		this.coarse = false;</span>
+<span class="nc" id="L125">		this.toRefine = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L126">		this.toCoarse = new LinkedList&lt;&gt;();</span>
+
+		/*var meshRenderer = new MeshRenderer&lt;&gt;(getMesh(), f -&gt; false, f -&gt; {
+			if(isBlue(f)) {
+				return Colors.BLUE;
+			}
+			if(isRed(f)) {
+				return Colors.RED;
+			}
+			if(isGreen(f)) {
+				return Colors.GREEN;
+			}
+			return Color.WHITE;
+		}, e -&gt; {
+			if(isRed(e)) {
+				return Color.RED;
+			}
+			if(isGreen(e)) {
+				return Color.GREEN;
+			}
+			return Color.BLACK;
+		});
+		debugPanel = new MeshPanel&lt;&gt;(meshRenderer, 1000, 1000);
+		debugPanel.display(&quot;debug&quot;);
+		debugPanel.paintImmediately(0, 0, debugPanel.getWidth(), debugPanel.getHeight());*/
+<span class="nc" id="L151">	}</span>
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate() {
+<span class="nc" id="L155">		return generate(true);</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate(boolean finalize) {
+<span class="nc bnc" id="L160" title="All 2 branches missed.">		if(!finished) {</span>
+			do {
+<span class="nc" id="L162">				refine();</span>
+<span class="nc bnc" id="L163" title="All 2 branches missed.">			} while(isRefined());</span>
+		}
+<span class="nc bnc" id="L165" title="All 2 branches missed.">		if(finalize) {</span>
+<span class="nc" id="L166">			triangulation.finish();</span>
+<span class="nc" id="L167">			finished = true;</span>
+		}
+<span class="nc" id="L169">		return triangulation;</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; getTriangulation() {
+<span class="nc" id="L174">		return triangulation;</span>
+	}
+
+	@Override
+	public void refine() {
+<span class="nc bnc" id="L179" title="All 2 branches missed.">		if(!finished) {</span>
+<span class="nc" id="L180">			toRefine = getMesh().streamEdges().filter(e -&gt; edgeRefinementPredicate.test(e)).collect(Collectors.toCollection(LinkedList::new));</span>
+<span class="nc" id="L181">			refined = false;</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">			if(toRefine.isEmpty()) {</span>
+<span class="nc" id="L183">				return;</span>
+			}
+
+			do {
+				/*toRefine = getMesh().streamEdges().filter(e -&gt; edgeRefinementPredicate.test(e)).collect(Collectors.toCollection(LinkedList::new));
+				if(toRefine.isEmpty()) {
+					return;
+				}*/
+<span class="nc" id="L191">				E edge = toRefine.removeFirst();</span>
+<span class="nc bnc" id="L192" title="All 2 branches missed.">				if(edgeRefinementPredicate.test(edge)) {</span>
+<span class="nc" id="L193">					refine(edge, 0);</span>
+				}
+
+				/*debugPanel.paintImmediately(0, 0, debugPanel.getWidth(), debugPanel.getHeight());
+				try {
+					Thread.sleep(sleepTime);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}*/
+<span class="nc bnc" id="L202" title="All 2 branches missed.">			} while (!toRefine.isEmpty());</span>
+
+			//getMesh().getEdges().stream().filter(e -&gt; isRR(e)).forEach(e -&gt; refine(e));
+
+			// TODO make these steps optional: remove blue triangles and quad red triangles
+			//getMesh().getEdges().stream().filter(e -&gt; isRB(e)).forEach(e -&gt; refine(e));
+			/*getMesh().getVertices().stream()
+					.filter(v -&gt; getMesh().degree(v) == 4)
+					.filter(v -&gt; getMesh().streamFaces(v).allMatch(f -&gt; isRed(f)))
+					.forEach(v -&gt; coarse(v));*/
+
+		}
+<span class="nc" id="L214">	}</span>
+
+
+	public boolean refine(@NotNull final Collection&lt;E&gt; edges) {
+<span class="nc" id="L218">		toRefine.addAll(edges);</span>
+<span class="nc" id="L219">		boolean refined = false;</span>
+		//int level = edges.stream().mapToInt(e -&gt; getLevel(e)).max().getAsInt();
+		//setMaxLevel(level+1);
+
+		/*for(E edge : edges) {
+			refine(edge);
+			refined = true;
+		}*/
+
+		do {
+<span class="nc" id="L229">			E edge = toRefine.removeFirst();</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">			if(edgeRefinementPredicate.test(edge)) {</span>
+<span class="nc" id="L231">				refine(edge, 0);</span>
+<span class="nc" id="L232">				refined = true;</span>
+			}
+<span class="nc bnc" id="L234" title="All 2 branches missed.">		} while (!toRefine.isEmpty());</span>
+
+<span class="nc" id="L236">		return refined;</span>
+	}
+
+	public void coarse(@NotNull final Collection&lt;V&gt; vertices) {
+<span class="nc" id="L240">		toCoarse.addAll(vertices);</span>
+<span class="nc" id="L241">		coarse();</span>
+<span class="nc" id="L242">	}</span>
+
+	public void coarse() {
+<span class="nc bnc" id="L245" title="All 2 branches missed.">		if(!finished) {</span>
+<span class="nc" id="L246">			coarse = false;</span>
+<span class="nc bnc" id="L247" title="All 2 branches missed.">			while (!toCoarse.isEmpty()) {</span>
+<span class="nc" id="L248">				V vertex = toCoarse.removeFirst();</span>
+<span class="nc bnc" id="L249" title="All 2 branches missed.">				if(coarsePredicate.test(vertex)) {</span>
+<span class="nc" id="L250">					coarse(vertex);</span>
+				}
+
+
+				/*try {
+					Thread.sleep(sleepTime);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				debugPanel.paintImmediately(0, 0, debugPanel.getWidth(), debugPanel.getHeight());*/
+<span class="nc" id="L260">			}</span>
+		}
+<span class="nc" id="L262">	}</span>
+
+	public boolean isRefined() {
+<span class="nc" id="L265">		return refined;</span>
+	}
+
+	public boolean isFinished() {
+<span class="nc" id="L269">		return finished;</span>
+	}
+
+	@Override
+	public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="nc" id="L274">		return triangulation.getMesh();</span>
+	}
+
+	private boolean isGBGBMerge(@NotNull final V v) {
+<span class="nc bnc" id="L278" title="All 2 branches missed.">		for(E e : getMesh().getEdgeIt(v)) {</span>
+<span class="nc" id="L279">			F f1 = getMesh().getFace(e);</span>
+<span class="nc" id="L280">			F f2 = getMesh().getTwinFace(e);</span>
+<span class="nc bnc" id="L281" title="All 10 branches missed.">			if(!getMesh().isAtBoundary(e) &amp;&amp; !(isBlue(f1) &amp;&amp; isGreen(f2) || isGreen(f1) &amp;&amp; isBlue(f2))) {</span>
+<span class="nc" id="L282">				return false;</span>
+			}
+<span class="nc" id="L284">		}</span>
+<span class="nc" id="L285">		return true;</span>
+	}
+
+	private boolean isGB(@NotNull final E e) {
+<span class="nc" id="L289">		F f1 = getMesh().getFace(e);</span>
+<span class="nc" id="L290">		F f2 = getMesh().getTwinFace(e);</span>
+<span class="nc bnc" id="L291" title="All 10 branches missed.">		return !getMesh().isAtBoundary(e) &amp;&amp; (isBlue(f1) &amp;&amp; isGreen(f2) || isGreen(f1) &amp;&amp; isBlue(f2));</span>
+	}
+
+	private boolean isRB(@NotNull final E e) {
+<span class="nc" id="L295">		F f1 = getMesh().getFace(e);</span>
+<span class="nc" id="L296">		F f2 = getMesh().getTwinFace(e);</span>
+<span class="nc bnc" id="L297" title="All 10 branches missed.">		return !getMesh().isAtBoundary(e) &amp;&amp; (isRed(f1) &amp;&amp; isBlue(f2) || isBlue(f1) &amp;&amp; isRed(f2));</span>
+	}
+
+	private boolean isRR(@NotNull final E e) {
+<span class="nc" id="L301">		F f1 = getMesh().getFace(e);</span>
+<span class="nc" id="L302">		F f2 = getMesh().getTwinFace(e);</span>
+<span class="nc bnc" id="L303" title="All 8 branches missed.">		return !getMesh().isAtBoundary(e) &amp;&amp; (isRed(f1) &amp;&amp; isRed(f2) &amp;&amp; isGreen(e));</span>
+	}
+
+	/*private boolean canFlipToCoarse(@NotNull final E edge) {
+		if(getMesh().isAtBoundary(edge)) {
+			return false;
+		}
+
+		E twin = getMesh().getTwin(edge);
+		F f1 = getMesh().getFace(edge);
+		F f2 = getMesh().getFace(twin);
+		//return !(isRed(f1) &amp;&amp; isRed(f2) || isBlue(f1) &amp;&amp; isGreen(f2));
+		return canGGSwap(edge) ||
+				//(isRed(edge) &amp;&amp; isBlue(f1) &amp;&amp; isBlue(f2)) ||
+				//(isGreen(edge) &amp;&amp; isRed(f1) &amp;&amp; isRed(f2) &amp;&amp; getLevel(f1) == getLevel(f2)) || // check it
+				(isRed(edge) &amp;&amp; ((isBlue(f1) &amp;&amp; isRed(f2)) || (isRed(f1) &amp;&amp; isBlue(f2))));
+	}*/
+
+	private boolean canGGSwap(@NotNull final E edge) {
+<span class="nc bnc" id="L322" title="All 2 branches missed.">		if(getMesh().isAtBoundary(edge)) {</span>
+<span class="nc" id="L323">			return false;</span>
+		}
+
+<span class="nc" id="L326">		F f1 = getMesh().getFace(edge);</span>
+<span class="nc" id="L327">		F f2 = getMesh().getTwinFace(edge);</span>
+
+<span class="nc" id="L329">		int level = getLevel(getMesh().getVertex(edge));</span>
+
+<span class="nc bnc" id="L331" title="All 4 branches missed.">		return isGreen(f1) &amp;&amp; isGreen(f2)</span>
+<span class="nc bnc" id="L332" title="All 8 branches missed.">				&amp;&amp; (getMesh().streamVertices(f1).allMatch(v -&gt; getLevel(v) == level)) || (getMesh().streamVertices(f2).allMatch(v -&gt; getLevel(v) == level));</span>
+
+	}
+
+	private int flipAllToCoarse(@NotNull final V vertex, boolean boundary) {
+<span class="nc" id="L337">		List&lt;E&gt; edges = getMesh().getEdges(vertex);</span>
+<span class="nc" id="L338">		int degree = edges.size();</span>
+<span class="nc bnc" id="L339" title="All 2 branches missed.">		int requiredDegree = boundary ? 3 : 4;</span>
+<span class="nc bnc" id="L340" title="All 2 branches missed.">		for(E e : edges) {</span>
+<span class="nc bnc" id="L341" title="All 2 branches missed.">			if(degree &gt; requiredDegree) {</span>
+<span class="nc bnc" id="L342" title="All 2 branches missed.">				if(flipToCoarse(e)) {</span>
+<span class="nc" id="L343">					degree--;</span>
+				}
+			}
+<span class="nc" id="L346">		}</span>
+
+<span class="nc" id="L348">		return degree;</span>
+	}
+
+	private void coarse(@NotNull final V vertex) {
+<span class="nc bnc" id="L352" title="All 2 branches missed.">		if(isRemoveable(vertex)) {</span>
+<span class="nc" id="L353">			boolean boundary = getMesh().isAtBoundary(vertex);</span>
+<span class="nc bnc" id="L354" title="All 2 branches missed.">			int requiredDegree = boundary ? 3 : 4;</span>
+
+			// flip as much as possible
+<span class="nc" id="L357">			int degree = flipAllToCoarse(vertex, boundary);</span>
+			/*if(!getMesh().streamEdges(vertex).allMatch(e -&gt; getLevel(e) &gt;= getLevel(vertex))) {
+				toCoarse.add(vertex);
+				return;
+			}*/
+			///assert getMesh().streamEdges(vertex).allMatch(e -&gt; getLevel(e) == getLevel(vertex));
+			// check the star!
+<span class="nc bnc" id="L364" title="All 2 branches missed.">			if(degree != requiredDegree) {</span>
+<span class="nc" id="L365">				toCoarse.add(vertex);</span>
+<span class="nc" id="L366">				return;</span>
+			}
+
+<span class="nc bnc" id="L369" title="All 4 branches missed.">			assert degree == requiredDegree : &quot;requiredDegree (&quot; + requiredDegree + &quot;) != &quot; + degree;</span>
+
+<span class="nc" id="L371">			E e1 = null;</span>
+<span class="nc" id="L372">			E next1 = null;</span>
+<span class="nc" id="L373">			E prev1 = null;</span>
+<span class="nc" id="L374">			E e2 = null;</span>
+<span class="nc" id="L375">			E prev2 = null;</span>
+			int level;
+
+
+<span class="nc bnc" id="L379" title="All 2 branches missed.">			if(isGBGBMerge(vertex)) {</span>
+<span class="nc" id="L380">				int vertexLevel = getLevel(vertex);</span>
+<span class="nc bnc" id="L381" title="All 2 branches missed.">				for(E e : getMesh().getEdgeIt(vertex)) {</span>
+<span class="nc bnc" id="L382" title="All 4 branches missed.">					if(!getMesh().isAtBoundary(e) &amp;&amp; getLevel(getMesh().getTwinVertex(e)) == vertexLevel) {</span>
+<span class="nc" id="L383">						e1 = e;</span>
+<span class="nc" id="L384">						next1 = getMesh().getNext(e1);</span>
+<span class="nc" id="L385">						prev1 = getMesh().getPrev(e1);</span>
+<span class="nc" id="L386">						e2 = getMesh().getTwin(getMesh().getNext(getMesh().getTwin(next1)));</span>
+<span class="nc" id="L387">						prev2 = getMesh().getPrev(e2);</span>
+<span class="nc" id="L388">						break;</span>
+					}
+<span class="nc" id="L390">				}</span>
+
+<span class="nc" id="L392">				level = getLevel(next1);</span>
+<span class="nc" id="L393">				triangulation.removeSimpleLink(e1);</span>
+<span class="nc bnc" id="L394" title="All 2 branches missed.">				if(!boundary) {</span>
+<span class="nc" id="L395">					triangulation.removeSimpleLink(e2);</span>
+				}
+<span class="nc" id="L397">				E survivor = triangulation.remove2DVertex(vertex, true);</span>
+<span class="nc" id="L398">				setLevel(survivor, level - 1);</span>
+<span class="nc" id="L399">				setColor(getMesh().getFace(prev1), Coloring.RED);</span>
+<span class="nc bnc" id="L400" title="All 2 branches missed.">				if(!boundary) {</span>
+<span class="nc" id="L401">					setColor(getMesh().getFace(prev2), Coloring.RED);</span>
+				}
+<span class="nc" id="L403">			} else {</span>
+<span class="nc bnc" id="L404" title="All 2 branches missed.">				for(E e : getMesh().getEdgeIt(vertex)) {</span>
+
+<span class="nc bnc" id="L406" title="All 2 branches missed.">					if(!getMesh().isAtBoundary(e) &amp;&amp;</span>
+<span class="nc bnc" id="L407" title="All 2 branches missed.">							(isRed(e) ||</span>
+							//(isRed(getMesh().getFace(e)) &amp;&amp; isRed(getMesh().getTwinFace(e))) ||
+<span class="nc bnc" id="L409" title="All 4 branches missed.">							(isGreen(getMesh().getFace(e)) &amp;&amp; isBlue(getMesh().getTwinFace(e))) ||</span>
+<span class="nc bnc" id="L410" title="All 4 branches missed.">							(isBlue(getMesh().getFace(e)) &amp;&amp; isGreen(getMesh().getTwinFace(e))))) {</span>
+<span class="nc" id="L411">						e1 = e;</span>
+						//et1 = getMesh().getTwin(e1);
+<span class="nc" id="L413">						next1 = getMesh().getNext(e1);</span>
+<span class="nc" id="L414">						prev1 = getMesh().getPrev(e1);</span>
+<span class="nc" id="L415">						e2 = getMesh().getTwin(getMesh().getNext(getMesh().getTwin(next1)));</span>
+<span class="nc" id="L416">						prev2 = getMesh().getPrev(e2);</span>
+<span class="nc" id="L417">						break;</span>
+					}
+<span class="nc" id="L419">				}</span>
+
+<span class="nc" id="L421">				level = getLevel(next1);</span>
+<span class="nc" id="L422">				triangulation.removeSimpleLink(e1);</span>
+<span class="nc bnc" id="L423" title="All 2 branches missed.">				if(!boundary) {</span>
+<span class="nc" id="L424">					triangulation.removeSimpleLink(e2);</span>
+				}
+
+<span class="nc" id="L427">				E survivor = triangulation.remove2DVertex(vertex, true);</span>
+<span class="nc" id="L428">				setLevel(survivor, level - 1);</span>
+			}
+<span class="nc" id="L430">		} else {</span>
+<span class="nc" id="L431">			logger.warn(&quot;we have a problem.&quot;);</span>
+		}
+
+		/*debugPanel.paintImmediately(0, 0, debugPanel.getWidth(), debugPanel.getHeight());
+		try {
+			Thread.sleep(sleepTime);
+		} catch (InterruptedException e1) {
+			e1.printStackTrace();
+		}*/
+<span class="nc" id="L440">	}</span>
+
+	/**
+	 * Refinement of an edge
+	 * @param edge the edge
+	 */
+	private void refine(@NotNull final E edge, int dept) {
+<span class="nc bnc" id="L447" title="All 2 branches missed.">		if(canFlipToRefine(edge)) {</span>
+<span class="nc" id="L448">			flipToRefine(edge);</span>
+		}
+
+<span class="nc bnc" id="L451" title="All 2 branches missed.">		if(isRefinable(edge)) {</span>
+<span class="nc" id="L452">			splitGreen(edge);</span>
+		} else {
+<span class="nc bnc" id="L454" title="All 2 branches missed.">			if(edgeRefinementPredicate.test(edge)) {</span>
+<span class="nc" id="L455">				toRefine.addLast(edge);</span>
+			}
+
+<span class="nc" id="L458">			E twin = getMesh().getTwin(edge);</span>
+<span class="nc" id="L459">			F f1 = getMesh().getFace(edge);</span>
+<span class="nc" id="L460">			F f2 = getMesh().getTwinFace(edge);</span>
+
+<span class="nc bnc" id="L462" title="All 2 branches missed.">			if(!isRefinable(edge, f1)) {</span>
+<span class="nc bnc" id="L463" title="All 2 branches missed.">				if(isBlue(f1)) {</span>
+<span class="nc" id="L464">					E redEdge = findRed(f1);</span>
+<span class="nc" id="L465">					E greenEdge = findGreen(getMesh().getTwinFace(redEdge));</span>
+<span class="nc bnc" id="L466" title="All 2 branches missed.">					if(!greenEdge.equals(edge)) {</span>
+<span class="nc" id="L467">						refine(greenEdge, dept+1);</span>
+					}
+<span class="nc bnc" id="L469" title="All 2 branches missed.">				} else if(isRed(f1)) {</span>
+<span class="nc" id="L470">					E greenEdge = findGreen(f1);</span>
+<span class="nc bnc" id="L471" title="All 2 branches missed.">					if(!greenEdge.equals(edge)) {</span>
+<span class="nc" id="L472">						refine(greenEdge, dept+1);</span>
+					}
+				}
+			}
+
+<span class="nc bnc" id="L477" title="All 2 branches missed.">			if(!isRefinable(twin, f2)) {</span>
+<span class="nc bnc" id="L478" title="All 2 branches missed.">				if(isBlue(f2)) {</span>
+<span class="nc" id="L479">					E redEdge = findRed(f2);</span>
+<span class="nc" id="L480">					E greenEdge = findGreen(getMesh().getTwinFace(redEdge));</span>
+<span class="nc bnc" id="L481" title="All 2 branches missed.">					if(!greenEdge.equals(edge)) {</span>
+<span class="nc" id="L482">						refine(greenEdge, dept+1);</span>
+					}
+<span class="nc bnc" id="L484" title="All 2 branches missed.">				} else if(isRed(f2)) {</span>
+<span class="nc" id="L485">					E greenEdge = findGreen(f2);</span>
+<span class="nc bnc" id="L486" title="All 2 branches missed.">					if(!greenEdge.equals(edge)) {</span>
+<span class="nc" id="L487">						refine(greenEdge, dept+1);</span>
+					}
+				}
+			}
+		}
+<span class="nc" id="L492">	}</span>
+
+	// RGB-Subdivision
+
+	private boolean invalid(@NotNull final E edge) {
+<span class="nc" id="L497">		E twin = getMesh().getTwin(edge);</span>
+<span class="nc bnc" id="L498" title="All 4 branches missed.">		if(!getMesh().isAtBoundary(edge) &amp;&amp; isRed(edge) &amp;&amp;</span>
+<span class="nc bnc" id="L499" title="All 8 branches missed.">				(isRed(getMesh().getNext(edge)) || isRed(getMesh().getPrev(edge)) || isRed(getMesh().getNext(twin)) || isRed(getMesh().getPrev(twin)))) {</span>
+<span class="nc" id="L500">			return true;</span>
+		}
+<span class="nc" id="L502">		return false;</span>
+	}
+
+	private List&lt;E&gt; valid() {
+<span class="nc" id="L506">		return getMesh().streamEdges().filter(e -&gt; invalid(e)).collect(Collectors.toList());</span>
+	}
+
+	/**
+	 * Splits a green edge.
+	 * @param edge
+	 */
+	private void splitGreen(@NotNull final E edge) {
+<span class="nc" id="L514">		boolean isBoundary1 = getMesh().isBoundary(edge);</span>
+<span class="nc" id="L515">		boolean isBoundary2 = getMesh().isBoundary(getMesh().getTwin(edge));</span>
+
+<span class="nc bnc" id="L517" title="All 4 branches missed.">		boolean isGreen1 = !isBoundary1 &amp;&amp; isGreen(getMesh().getFace(edge));</span>
+<span class="nc bnc" id="L518" title="All 4 branches missed.">		boolean isGreen2 = !isBoundary2 &amp;&amp; isGreen(getMesh().getTwinFace(edge));</span>
+
+//		boolean isRed1 = isRed(getMesh().getFace(edge));
+//		boolean isRed2 = isRed(getMesh().getTwinFace(edge));
+
+<span class="nc" id="L523">		int level = getLevel(edge);</span>
+
+<span class="nc bnc" id="L525" title="All 2 branches missed.">		V v1 = !isBoundary1 ? getMesh().getOpposite(edge) : null;</span>
+<span class="nc bnc" id="L526" title="All 2 branches missed.">		V v2 = !isBoundary2 ? getMesh().getOpposite(getMesh().getTwin(edge)) : null;</span>
+
+		// split operation
+<span class="nc" id="L529">		V v = split(edge);</span>
+<span class="nc" id="L530">		toCoarse.addFirst(v);</span>
+		// end split operation
+
+		// adjust the possible two edges that split the old faces
+<span class="nc bnc" id="L534" title="All 2 branches missed.">		if(!isBoundary1) {</span>
+<span class="nc" id="L535">			adjustMiddleEdge(getMesh().getEdge(v1, v).get(), level, isGreen1);</span>
+		}
+
+<span class="nc bnc" id="L538" title="All 2 branches missed.">		if(!isBoundary2) {</span>
+<span class="nc" id="L539">			adjustMiddleEdge(getMesh().getEdge(v2, v).get(), level, isGreen2);</span>
+		}
+
+<span class="nc bnc" id="L542" title="All 2 branches missed.">		for(E e : getMesh().getEdgeIt(v)) {</span>
+<span class="nc bnc" id="L543" title="All 2 branches missed.">			if(edgeRefinementPredicate.test(e)) {</span>
+<span class="nc" id="L544">				toRefine.addLast(e);</span>
+			}
+
+			//TODO: required?
+<span class="nc" id="L548">			E pe = getMesh().getPrev(e);</span>
+<span class="nc bnc" id="L549" title="All 2 branches missed.">			if(edgeRefinementPredicate.test(pe)) {</span>
+<span class="nc" id="L550">				toRefine.addLast(getMesh().getPrev(pe));</span>
+			}
+<span class="nc" id="L552">		}</span>
+
+		/*for(E e : getMesh().getEdges()) {
+			if(canFlipToRefine(e)) {
+				flipToCoarse(e, toRefine);
+			}
+		}*/
+<span class="nc" id="L559">	}</span>
+
+	/**
+	 *
+	 *
+	 * @param edge      the actual edge
+	 * @param level     the level of the former edge that this edge splits
+	 * @param isGreen   color of the former triangle the edge splits
+	 */
+	private void adjustMiddleEdge(@NotNull final E edge, final int level, final boolean isGreen) {
+<span class="nc" id="L569">		setFlipable(edge, true);</span>
+<span class="nc bnc" id="L570" title="All 2 branches missed.">		if(isGreen) {</span>
+<span class="nc" id="L571">			setColor(edge, Coloring.RED);</span>
+<span class="nc" id="L572">			setLevel(edge, level);</span>
+		} else { // face is red
+<span class="nc" id="L574">			setGreen(edge);</span>
+<span class="nc" id="L575">			setLevel(edge, level + 1);</span>
+
+<span class="nc bnc" id="L577" title="All 2 branches missed.">			if(canFlipToRefine(getMesh().getNext(edge))) {</span>
+<span class="nc" id="L578">				flipToRefine(getMesh().getNext(edge));</span>
+			}
+
+<span class="nc" id="L581">			E e1Twin = getMesh().getTwin(edge);</span>
+<span class="nc bnc" id="L582" title="All 2 branches missed.">			if(canFlipToRefine(getMesh().getPrev(e1Twin))) {</span>
+<span class="nc" id="L583">				flipToRefine(getMesh().getPrev(e1Twin));</span>
+			}
+		}
+<span class="nc" id="L586">	}</span>
+
+	private V split(@NotNull final E edge) {
+<span class="nc" id="L589">		boolean isBoundary1 = getMesh().isBoundary(edge);</span>
+<span class="nc" id="L590">		boolean isBoundary2 = getMesh().isBoundary(getMesh().getTwin(edge));</span>
+
+<span class="nc" id="L592">		E prev = getMesh().getPrev(edge);</span>
+<span class="nc" id="L593">		E next = getMesh().getNext(edge);</span>
+<span class="nc" id="L594">		E twin = getMesh().getTwin(edge);</span>
+<span class="nc" id="L595">		E twinNext = getMesh().getNext(twin);</span>
+<span class="nc" id="L596">		boolean flipable = isFlipable(edge);</span>
+
+<span class="nc" id="L598">		V v1 = getMesh().getVertex(next);</span>
+<span class="nc" id="L599">		V v2 = getMesh().getVertex(twinNext);</span>
+<span class="nc" id="L600">		int level = getLevel(edge);</span>
+
+<span class="nc" id="L602">		Pair&lt;E, E&gt; split = triangulation.splitEdge(edge, false);</span>
+<span class="nc" id="L603">		V v = getMesh().getVertex(split.getLeft());</span>
+
+<span class="nc" id="L605">		setLevel(v, level + 1);</span>
+
+<span class="nc" id="L607">		setLevel(getMesh().getNext(prev), level + 1);</span>
+<span class="nc" id="L608">		setLevel(getMesh().getPrev(next), level + 1);</span>
+<span class="nc" id="L609">		setColor(getMesh().getNext(prev), Coloring.GREEN);</span>
+<span class="nc" id="L610">		setColor(getMesh().getPrev(next), Coloring.GREEN);</span>
+<span class="nc" id="L611">		setFlipable(getMesh().getNext(prev), flipable);</span>
+<span class="nc" id="L612">		setFlipable(getMesh().getPrev(next), flipable);</span>
+
+<span class="nc bnc" id="L614" title="All 2 branches missed.">		if(!isBoundary1) {</span>
+<span class="nc" id="L615">			E e1 = getMesh().getEdge(v1, v).get();</span>
+<span class="nc" id="L616">			setFlipable(e1, true);</span>
+		}
+
+<span class="nc bnc" id="L619" title="All 2 branches missed.">		if(!isBoundary2) {</span>
+<span class="nc" id="L620">			E e2 = getMesh().getEdge(v2, v).get();</span>
+<span class="nc" id="L621">			setFlipable(e2, true);</span>
+		}
+<span class="nc" id="L623">		return v;</span>
+	}
+
+	private void flipToRefine(@NotNull final E edge) {
+<span class="nc bnc" id="L627" title="All 4 branches missed.">		if(canFlipToRefine(edge) &amp;&amp; isFlipable(edge)) {</span>
+
+<span class="nc" id="L629">			F f1 = getMesh().getFace(edge);</span>
+<span class="nc" id="L630">			F f2 = getMesh().getTwinFace(edge);</span>
+<span class="nc" id="L631">			E twin = getMesh().getTwin(edge);</span>
+
+
+<span class="nc" id="L634">			int level = getLevel(edge);</span>
+<span class="nc" id="L635">			triangulation.flip(edge);</span>
+
+<span class="nc" id="L637">			setLevel(edge, level + 1);</span>
+			//setLevel(f1, level + 1);
+			//setLevel(f2, level + 1);
+
+<span class="nc" id="L641">			setColor(f1, Coloring.GREEN);</span>
+<span class="nc" id="L642">			setColor(f2, Coloring.GREEN);</span>
+
+<span class="nc" id="L644">			setGreen(edge);</span>
+			//setGreen(getMesh().getNext(edge), toRefine);
+			//setGreen(getMesh().getPrev(edge), toRefine);
+<span class="nc" id="L647">			setGreen(twin);</span>
+			//setGreen(getMesh().getNext(twin), toRefine);
+			//setGreen(getMesh().getPrev(twin), toRefine);
+<span class="nc bnc" id="L650" title="All 2 branches missed.">			if(edgeRefinementPredicate.test(edge)) {</span>
+<span class="nc" id="L651">				toRefine.addLast(edge);</span>
+			}
+
+		}
+<span class="nc" id="L655">	}</span>
+
+	private boolean flipToCoarse(@NotNull final E edge) {
+<span class="nc bnc" id="L658" title="All 2 branches missed.">		if(isFlipable(edge)) {</span>
+<span class="nc" id="L659">			F f1 = getMesh().getFace(edge);</span>
+<span class="nc" id="L660">			F f2 = getMesh().getTwinFace(edge);</span>
+<span class="nc" id="L661">			E twin = getMesh().getTwin(edge);</span>
+
+<span class="nc" id="L663">			int level = getLevel(edge);</span>
+
+<span class="nc bnc" id="L665" title="All 2 branches missed.">			if(canGGSwap(edge)) {</span>
+<span class="nc" id="L666">				triangulation.flip(edge);</span>
+<span class="nc" id="L667">				setLevel(edge, level - 1);</span>
+<span class="nc" id="L668">				setColor(edge, Coloring.RED);</span>
+<span class="nc" id="L669">				return true;</span>
+<span class="nc bnc" id="L670" title="All 6 branches missed.">			} else if(isBlue(f1) &amp;&amp; isBlue(f2) &amp;&amp; isRed(edge)) {</span>
+<span class="nc" id="L671">				triangulation.flip(edge);</span>
+<span class="nc" id="L672">				setLevel(edge, level + 1);</span>
+<span class="nc" id="L673">				setColor(edge, Coloring.GREEN);</span>
+<span class="nc" id="L674">				return true;</span>
+<span class="nc bnc" id="L675" title="All 10 branches missed.">			} else if(isRed(edge) &amp;&amp; ((isBlue(f2) &amp;&amp; isRed(f1)) || (isBlue(f1) &amp;&amp; isRed(f2)))) {</span>
+<span class="nc" id="L676">				triangulation.flip(edge);</span>
+<span class="nc" id="L677">				return true;</span>
+			}
+
+			//setLevel(f1, level + 1);
+			//setLevel(f2, level + 1);
+
+			//setColor(f1, Coloring.BLUE);
+			//setColor(f2, Coloring.BLUE);
+
+		}
+<span class="nc" id="L687">		return false;</span>
+	}
+
+	public void setGreen(E edge) {
+<span class="nc" id="L691">		setColor(edge, Coloring.GREEN);</span>
+		/*if(edgeRefinementPredicate.test(edge)) {
+			toRefine.addLast(edge);
+		}*/
+<span class="nc" id="L695">	}</span>
+
+	private E findGreen(@NotNull final F face) {
+<span class="nc" id="L698">		int level = Integer.MAX_VALUE;</span>
+<span class="nc" id="L699">		E result = null;</span>
+<span class="nc bnc" id="L700" title="All 2 branches missed.">		for(E e : getMesh().getEdgeIt(face)) {</span>
+<span class="nc bnc" id="L701" title="All 4 branches missed.">			if(isGreen(e) &amp;&amp; getLevel(e) &lt; level) {</span>
+<span class="nc" id="L702">				level = getLevel(e);</span>
+<span class="nc" id="L703">				result = e;</span>
+			}
+<span class="nc" id="L705">		}</span>
+<span class="nc" id="L706">		return result;</span>
+	}
+
+	private E findRed(@NotNull final F face) {
+<span class="nc" id="L710">		int level = Integer.MAX_VALUE;</span>
+<span class="nc" id="L711">		E result = null;</span>
+<span class="nc bnc" id="L712" title="All 2 branches missed.">		for(E e : getMesh().getEdgeIt(face)) {</span>
+<span class="nc bnc" id="L713" title="All 4 branches missed.">			if(isRed(e) &amp;&amp; getLevel(e) &lt; level) {</span>
+<span class="nc" id="L714">				level = getLevel(e);</span>
+<span class="nc" id="L715">				result = e;</span>
+			}
+<span class="nc" id="L717">		}</span>
+<span class="nc" id="L718">		return result;</span>
+	}
+
+	private boolean canFlipToRefine(@NotNull final E edge) {
+<span class="nc" id="L722">		F f1 = getMesh().getFace(edge);</span>
+<span class="nc" id="L723">		F f2 = getMesh().getTwinFace(edge);</span>
+<span class="nc bnc" id="L724" title="All 12 branches missed.">		return !getMesh().isAtBoundary(edge) &amp;&amp; isRed(edge) &amp;&amp; isBlue(f1) &amp;&amp; isBlue(f2) &amp;&amp; getLevel(edge) == getLevel(f1) &amp;&amp; getLevel(edge) == getLevel(f2);</span>
+	}
+
+	private boolean isRemoveable(@NotNull V vertex) {
+<span class="nc" id="L728">		int level = getLevel(vertex);</span>
+<span class="nc bnc" id="L729" title="All 4 branches missed.">		return level &gt; 0 &amp;&amp; level &gt;= getMesh().streamVertices(vertex).mapToInt(v -&gt; getLevel(v)).max().orElse(0);</span>
+	}
+
+	/**
+	 * An edge at level l is refinable (i.e. it can be split) if and only if it is green and its two adjacent triangles t0 and t1
+	 * are both at level l. In case of a boundary edge, only one such triangle exists.
+	 *
+	 * @param edge the edge
+	 * @return true if the edge is refinable, false otherwise
+	 */
+	private boolean isRefinable(@NotNull E edge) {
+<span class="nc" id="L740">		boolean refinable1 = isRefinable(edge, getMesh().getFace(edge));</span>
+<span class="nc" id="L741">		boolean refinable2 = isRefinable(getMesh().getTwin(edge), getMesh().getTwinFace(edge));</span>
+<span class="nc bnc" id="L742" title="All 4 branches missed.">		return  refinable1 &amp;&amp; refinable2;</span>
+	}
+
+	private boolean isRefinable(@NotNull E edge, @NotNull F face) {
+<span class="nc" id="L746">		int level = getLevel(edge);</span>
+<span class="nc bnc" id="L747" title="All 6 branches missed.">		return isGreen(edge) &amp;&amp; (getMesh().isBoundary(edge) || getLevel(face) == level);</span>
+	}
+
+	public boolean isGreen(@NotNull E edge) {
+<span class="nc bnc" id="L751" title="All 2 branches missed.">		return getColor(edge) == Coloring.GREEN;</span>
+	}
+
+	public boolean isRed(@NotNull E edge) {
+<span class="nc bnc" id="L755" title="All 2 branches missed.">		return getColor(edge) == Coloring.RED;</span>
+	}
+
+	/**
+	 * A triangle is blue if two of its edges are at the same level l and the third edge is at level (l-1).
+	 *
+	 * @param face a triangle
+	 * @return true if if the triangle is blue, false otherwise
+	 */
+	public boolean isBlue(@NotNull final F face) {
+<span class="nc bnc" id="L765" title="All 4 branches missed.">		assert getMesh().getVertices(face).size() == 3;</span>
+<span class="nc" id="L766">		E e1 = getMesh().getEdge(face);</span>
+<span class="nc" id="L767">		E e2 = getMesh().getNext(e1);</span>
+<span class="nc" id="L768">		E e3 = getMesh().getNext(e2);</span>
+<span class="nc" id="L769">		int level1 = getLevel(e1);</span>
+<span class="nc" id="L770">		int level2 = getLevel(e2);</span>
+<span class="nc" id="L771">		int level3 = getLevel(e3);</span>
+<span class="nc bnc" id="L772" title="All 12 branches missed.">		return level1 == level2 &amp;&amp; level3 == level1 - 1 || level1 == level3 &amp;&amp; level2 == level1 - 1 || level2 == level3 &amp;&amp; level1 == level2 - 1;</span>
+	}
+
+	/**
+	 * A triangle is red if two of its edges are at the same level l and the third edge is at level (l+1).
+	 *
+	 * @param face a triangle
+	 * @return true if the triangle is red, false otherwise
+	 */
+	public boolean isRed(@NotNull final F face) {
+		//assert getMesh().getVertices(face).size() == 3;
+<span class="nc" id="L783">		E e1 = getMesh().getEdge(face);</span>
+<span class="nc" id="L784">		E e2 = getMesh().getNext(e1);</span>
+<span class="nc" id="L785">		E e3 = getMesh().getNext(e2);</span>
+<span class="nc" id="L786">		int level1 = getLevel(e1);</span>
+<span class="nc" id="L787">		int level2 = getLevel(e2);</span>
+<span class="nc" id="L788">		int level3 = getLevel(e3);</span>
+<span class="nc bnc" id="L789" title="All 12 branches missed.">		return level1 == level2 &amp;&amp; level3 == level1 + 1 || level1 == level3 &amp;&amp; level2 == level1 + 1 || level2 == level3 &amp;&amp; level1 == level2 + 1;</span>
+	}
+
+	/**
+	 * A triangle is green if all of its edges are at the same level.
+	 *
+	 * @param face a triangle
+	 * @return true if the triangle is green, false otherwise
+	 */
+	public boolean isGreen(@NotNull final F face) {
+<span class="nc bnc" id="L799" title="All 4 branches missed.">		assert getMesh().getVertices(face).size() == 3;</span>
+<span class="nc" id="L800">		E e1 = getMesh().getEdge(face);</span>
+<span class="nc" id="L801">		E e2 = getMesh().getNext(e1);</span>
+<span class="nc" id="L802">		E e3 = getMesh().getNext(e2);</span>
+<span class="nc bnc" id="L803" title="All 4 branches missed.">		return getLevel(e1) == getLevel(e2) &amp;&amp; getLevel(e1) == getLevel(e3);</span>
+	}
+
+	private int getLevel(@NotNull final V vertex) {
+<span class="nc" id="L807">		return getMesh().getIntegerData(vertex, propertyLevel);</span>
+	}
+
+	public int getLevel(@NotNull final E edge) {
+<span class="nc" id="L811">		int level = getMesh().getIntegerData(edge, propertyLevel);;</span>
+<span class="nc" id="L812">		return level;</span>
+	}
+
+	/**
+	 * The level of a triangle is defined to be the lowest amongst the levels of its edges.
+	 *
+	 * @param face a triangle
+	 * @return the level of the triangle
+	 */
+	private int getLevel(@NotNull final F face) {
+<span class="nc bnc" id="L822" title="All 4 branches missed.">		assert getMesh().getVertices(face).size() == 3;</span>
+<span class="nc" id="L823">		E e1 = getMesh().getEdge(face);</span>
+<span class="nc" id="L824">		E e2 = getMesh().getNext(e1);</span>
+<span class="nc" id="L825">		E e3 = getMesh().getNext(e2);</span>
+<span class="nc" id="L826">		return Math.min(getLevel(e1), Math.min(getLevel(e2), getLevel(e3)));</span>
+	}
+
+	public void setLevel(@NotNull final V vertex, final int level) {
+<span class="nc" id="L830">		getMesh().setIntegerData(vertex, propertyLevel, level);</span>
+<span class="nc" id="L831">	}</span>
+
+	public void setLevel(@NotNull final E edge, final int level) {
+<span class="nc" id="L834">		getMesh().setIntegerData(edge, propertyLevel, level);</span>
+<span class="nc" id="L835">		getMesh().setIntegerData(getMesh().getTwin(edge), propertyLevel, level);</span>
+<span class="nc" id="L836">	}</span>
+
+	public void setFlipable(@NotNull final E edge, final boolean flipable) {
+<span class="nc" id="L839">		getMesh().setBooleanData(edge, propertyFlipable, flipable);</span>
+<span class="nc" id="L840">		getMesh().setBooleanData(getMesh().getTwin(edge), propertyFlipable, flipable);</span>
+<span class="nc" id="L841">	}</span>
+
+	/**
+	 * Make sure no original edges will be flipped.
+	 * Such that the structure of the base triangulation is still there.
+	 *
+	 * @param edge the edge
+	 * @return true if the edge is not part of any edge of the base triangulation, false otherwise
+	 */
+	private boolean isFlipable(@NotNull final E edge){
+<span class="nc" id="L851">		return getMesh().getBooleanData(edge, propertyFlipable);</span>
+	}
+
+	private Coloring getColor(@NotNull final V vertex) {
+<span class="nc" id="L855">		return getMesh().getData(vertex, propertyColor, Coloring.class).orElse(Coloring.GREEN);</span>
+	}
+
+	private Coloring getColor(@NotNull final E edge) {
+<span class="nc" id="L859">		Optional&lt;Coloring&gt; color = getMesh().getData(edge, propertyColor, Coloring.class);</span>
+<span class="nc" id="L860">		return color.orElse(Coloring.GREEN);</span>
+	}
+
+	private Coloring getColor(@NotNull final F face) {
+<span class="nc" id="L864">		return getMesh().getData(face, propertyColor, Coloring.class).orElse(Coloring.GREEN);</span>
+	}
+
+	private void setColor(@NotNull final V vertex, final Coloring coloring) {
+<span class="nc" id="L868">		getMesh().setData(vertex, propertyColor, coloring);</span>
+<span class="nc" id="L869">	}</span>
+
+	private void setColor(@NotNull final E edge, final Coloring coloring) {
+<span class="nc" id="L872">		getMesh().setData(edge, propertyColor, coloring);</span>
+<span class="nc" id="L873">		getMesh().setData(getMesh().getTwin(edge), propertyColor, coloring);</span>
+<span class="nc" id="L874">	}</span>
+
+	private void setColor(@NotNull final F face, final Coloring coloring) {
+<span class="nc" id="L877">		getMesh().setData(face, propertyColor, coloring);</span>
+<span class="nc" id="L878">	}</span>
+
+	public void setMaxLevel(int maxLevel) {
+<span class="nc" id="L881">		this.maxLevel = maxLevel;</span>
+<span class="nc" id="L882">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

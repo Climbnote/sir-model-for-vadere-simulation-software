@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesTarget.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.scenario</a> &gt; <span class="el_source">AttributesTarget.java</span></div><h1>AttributesTarget.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.scenario;
+
+import com.fasterxml.jackson.annotation.JsonView;
+
+import org.vadere.state.attributes.AttributesEmbedShape;
+import org.vadere.state.scenario.Pedestrian;
+import org.vadere.state.util.Views;
+import org.vadere.util.geometry.shapes.VShape;
+
+/**
+ * Attributes of a target area, used by TargetController in VadereSimulation.
+ * 
+ */
+public class AttributesTarget extends AttributesEmbedShape {
+
+<span class="pc" id="L16">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private int id = ID_NOT_SET;
+	/**
+	 * True: elements are removed from the simulation after entering.
+	 * False: the target id is removed from the target id list, but the element remains.
+	 */
+<span class="pc" id="L22">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private boolean absorbing = true;
+	/** Shape and position. */
+	private VShape shape;
+	/**
+	 * Waiting time in seconds on this area.
+	 * If &quot;individualWaiting&quot; is true, then each element waits the given time on this area before
+	 * &quot;absorbing&quot; takes place.
+	 * If it is false, then the element waits this exact time before switching in &quot;no waiting&quot; mode
+	 * and back. This way, a traffic light can be simulated.
+	 */
+<span class="pc" id="L33">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private double waitingTime = 0;
+	/**
+	 * Waiting time on the target in the yellow phase (before red and green).
+	 * This can be used to cycle traffic lights in red, green or yellow phase, so that (Y -&gt; R -&gt; Y
+	 * -&gt; G) cycles.
+	 * Needed on crossings, otherwise cars bump into each other.
+	 */
+<span class="pc" id="L41">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private double waitingTimeYellowPhase = 0;
+	/**
+	 * Number of elements that can wait or be absorbed at one time in parallel on this area.
+	 * If zero, an infinite amount can wait or be absorbed.
+	 */
+<span class="pc" id="L47">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private int parallelWaiters = 0;
+	/**
+	 * True: each element on the target area is treated individually.
+	 * False: the target waits for &quot;waitingTime&quot; and then enters &quot;no waiting mode&quot; for the same time
+	 * (and then goes back to waiting mode). See &quot;waitingTime&quot;.
+	 */
+<span class="pc" id="L54">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private boolean individualWaiting = true;
+
+	// TODO should be &quot;reachedDistance&quot;; agents do not necessarily get deleted/absorbed
+<span class="pc" id="L58">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private double deletionDistance = 0.1;
+
+	/**
+	 * If set to false, starts with green phase (nonblocking), otherwise blocks the path (red
+	 * phase).
+	 */
+<span class="pc" id="L65">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private boolean startingWithRedLight = false;
+
+	/**
+	 * If non-negative, determines the desired speed the particle (pedestrian, car) is assigned
+	 * after passing this target.
+	 * Can be used to model street networks with differing maximal speeds on roads.
+	 */
+<span class="pc" id="L73">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private double nextSpeed = -1.0;
+
+<span class="nc" id="L76">	public AttributesTarget() {}</span>
+
+<span class="fc" id="L78">	public AttributesTarget(final VShape shape) {</span>
+<span class="fc" id="L79">		this.shape = shape;</span>
+<span class="fc" id="L80">	}</span>
+
+<span class="nc" id="L82">	public AttributesTarget(final VShape shape, final int id, final boolean absorbing) {</span>
+<span class="nc" id="L83">		this.shape = shape;</span>
+<span class="nc" id="L84">		this.id = id;</span>
+<span class="nc" id="L85">		this.absorbing = absorbing;</span>
+<span class="nc" id="L86">	}</span>
+
+<span class="nc" id="L88">	public AttributesTarget(Pedestrian pedestrian) {</span>
+<span class="nc" id="L89">		this.shape = pedestrian.getShape();</span>
+<span class="nc" id="L90">		this.absorbing = true;</span>
+<span class="nc" id="L91">		this.id = pedestrian.getIdAsTarget();</span>
+<span class="nc" id="L92">		this.waitingTime = 0;</span>
+<span class="nc" id="L93">		this.waitingTimeYellowPhase = 0;</span>
+<span class="nc" id="L94">		this.parallelWaiters = 0;</span>
+<span class="nc" id="L95">		this.individualWaiting = true;</span>
+<span class="nc" id="L96">		this.startingWithRedLight = false;</span>
+<span class="nc" id="L97">		this.nextSpeed = -1;</span>
+<span class="nc" id="L98">	}</span>
+
+	// Getters...
+
+	public boolean isIndividualWaiting() {
+<span class="nc" id="L103">		return individualWaiting;</span>
+	}
+
+	public boolean isAbsorbing() {
+<span class="nc" id="L107">		return absorbing;</span>
+	}
+
+	public int getId() {
+<span class="nc" id="L111">		return id;</span>
+	}
+
+	@Override
+	public void setShape(VShape shape) {
+<span class="fc" id="L116">		this.shape = shape;</span>
+<span class="fc" id="L117">	}</span>
+
+	@Override
+	public VShape getShape() {
+<span class="nc" id="L121">		return shape;</span>
+	}
+
+	public double getWaitingTime() {
+<span class="nc" id="L125">		return waitingTime;</span>
+	}
+
+	public double getWaitingTimeYellowPhase() {
+<span class="nc" id="L129">		return waitingTimeYellowPhase;</span>
+	}
+
+	public int getParallelWaiters() {
+<span class="nc" id="L133">		return parallelWaiters;</span>
+	}
+
+	/**
+	 * Within this distance, pedestrians have reached the target. It is actually not a &quot;deletion&quot;
+	 * distance but a &quot;reached&quot; distance. Pedestrians do not necessarily get deleted. They can have
+	 * further targets.
+	 */
+	public double getDeletionDistance() {
+<span class="nc" id="L142">		return deletionDistance;</span>
+	}
+
+	public boolean isStartingWithRedLight() {
+<span class="nc" id="L146">		return startingWithRedLight;</span>
+	}
+
+	public double getNextSpeed() {
+<span class="nc" id="L150">		return nextSpeed;</span>
+	}
+
+	public void setReachedDistance(double reachedDistance) {
+<span class="nc" id="L154">		checkSealed();</span>
+<span class="nc" id="L155">		this.deletionDistance = reachedDistance;</span>
+<span class="nc" id="L156">	}</span>
+
+	public void setId(int id) {
+<span class="fc" id="L159">		checkSealed();</span>
+<span class="fc" id="L160">		this.id = id;</span>
+<span class="fc" id="L161">	}</span>
+
+	public void setAbsorbing(boolean absorbing) {
+<span class="fc" id="L164">		checkSealed();</span>
+<span class="fc" id="L165">		this.absorbing = absorbing;</span>
+<span class="fc" id="L166">	}</span>
+
+	public void setWaitingTime(double waitingTime) {
+<span class="fc" id="L169">		checkSealed();</span>
+<span class="fc" id="L170">		this.waitingTime = waitingTime;</span>
+<span class="fc" id="L171">	}</span>
+
+	public void setWaitingTimeYellowPhase(double waitingTimeYellowPhase) {
+<span class="fc" id="L174">		checkSealed();</span>
+<span class="fc" id="L175">		this.waitingTimeYellowPhase = waitingTimeYellowPhase;</span>
+<span class="fc" id="L176">	}</span>
+
+	public void setParallelWaiters(int parallelWaiters) {
+<span class="fc" id="L179">		checkSealed();</span>
+<span class="fc" id="L180">		this.parallelWaiters = parallelWaiters;</span>
+<span class="fc" id="L181">	}</span>
+
+	public void setIndividualWaiting(boolean individualWaiting) {
+<span class="fc" id="L184">		checkSealed();</span>
+<span class="fc" id="L185">		this.individualWaiting = individualWaiting;</span>
+<span class="fc" id="L186">	}</span>
+
+	public void setDeletionDistance(double deletionDistance) {
+<span class="fc" id="L189">		checkSealed();</span>
+<span class="fc" id="L190">		this.deletionDistance = deletionDistance;</span>
+<span class="fc" id="L191">	}</span>
+
+	public void setStartingWithRedLight(boolean startingWithRedLight) {
+<span class="fc" id="L194">		checkSealed();</span>
+<span class="fc" id="L195">		this.startingWithRedLight = startingWithRedLight;</span>
+<span class="fc" id="L196">	}</span>
+
+	public void setNextSpeed(double nextSpeed) {
+<span class="fc" id="L199">		checkSealed();</span>
+<span class="fc" id="L200">		this.nextSpeed = nextSpeed;</span>
+<span class="fc" id="L201">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

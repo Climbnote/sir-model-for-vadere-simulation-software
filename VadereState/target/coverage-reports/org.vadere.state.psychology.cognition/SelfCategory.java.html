@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SelfCategory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.psychology.cognition</a> &gt; <span class="el_source">SelfCategory.java</span></div><h1>SelfCategory.java</h1><pre class="source lang-java linenums">package org.vadere.state.psychology.cognition;
+
+/**
+ * According to the self-categorization theory (&quot;reicher-2010&quot;), people define
+ * themselves as a member of social categories. People can have multiple
+ * categories, e.g., father, football fan, colleague. At a specific point in
+ * time, only one category is salient.
+ *
+ * Our agents use these categorizations to derive a specific behavior:
+ * &lt;ul&gt;
+ *     &lt;li&gt;
+ *         TARGET_ORIENTED agents try to reach the target as quickly as possible.
+ *     &lt;/li&gt;
+ *     &lt;li&gt;
+ *         E.g., if an agents is &quot;COOPERATIVE&quot; (category), the pedestrian swaps places
+ *         (behavior) with other &quot;COOPERATIVE&quot; pedestrians (only if both feel committed
+ *         to this category as in-group member, see {@łink GroupMembership}.
+ *         &lt;/li&gt;
+ *     &lt;li&gt;
+ *         THREATENED agents maximize the distance to a threat.
+ *     &lt;/li&gt;
+ * &lt;/ul&gt;
+ * Usually, the self category of an agent changes during a simulation.
+ */
+<span class="fc" id="L25">public enum SelfCategory {</span>
+<span class="fc" id="L26">    TARGET_ORIENTED,</span>
+<span class="fc" id="L27">    COOPERATIVE,</span>
+<span class="fc" id="L28">    THREATENED,</span>
+<span class="fc" id="L29">    COMMON_FATE,</span>
+<span class="fc" id="L30">    WAIT,</span>
+<span class="fc" id="L31">    CHANGE_TARGET,</span>
+<span class="fc" id="L32">    EVADE</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

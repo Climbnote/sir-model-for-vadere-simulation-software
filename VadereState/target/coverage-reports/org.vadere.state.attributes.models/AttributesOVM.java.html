@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesOVM.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.models</a> &gt; <span class="el_source">AttributesOVM.java</span></div><h1>AttributesOVM.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.models;
+
+import org.vadere.annotation.factories.attributes.ModelAttributeClass;
+import org.vadere.state.attributes.Attributes;
+import org.vadere.util.geometry.shapes.VPoint;
+
+@ModelAttributeClass
+public class AttributesOVM extends Attributes {
+
+	private AttributesODEIntegrator attributesODEIntegrator;
+<span class="nc" id="L11">	private double sensitivity = 1.0;</span>
+<span class="nc" id="L12">	private double sightDistance = 10.0;</span>
+<span class="nc" id="L13">	private double sightDistanceFactor = 1.0;</span>
+<span class="nc" id="L14">	private VPoint firstDistanceRandom = new VPoint(5, 15);</span>
+<span class="nc" id="L15">	private boolean ignoreOtherCars = true;</span>
+
+<span class="nc" id="L17">	public AttributesOVM() {</span>
+<span class="nc" id="L18">		attributesODEIntegrator = new AttributesODEIntegrator();</span>
+<span class="nc" id="L19">	}</span>
+
+	// Getters
+	public double getSensitivity() {
+<span class="nc" id="L23">		return sensitivity;</span>
+	}
+
+	public boolean isIgnoreOtherCars() {
+<span class="nc" id="L27">		return this.ignoreOtherCars;</span>
+	}
+
+	public double getSightDistanceFactor() {
+<span class="nc" id="L31">		return sightDistanceFactor;</span>
+	}
+
+	public double getSightDistance() {
+<span class="nc" id="L35">		return sightDistance;</span>
+	}
+
+	public VPoint getFirstDistanceRandom() {
+<span class="nc" id="L39">		return firstDistanceRandom;</span>
+	}
+
+
+	public AttributesODEIntegrator getAttributesODEIntegrator() {
+<span class="nc" id="L44">		return attributesODEIntegrator;</span>
+	}
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GenConstrainedDelaunayTriangulator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">GenConstrainedDelaunayTriangulator.java</span></div><h1>GenConstrainedDelaunayTriangulator.java</h1><pre class="source lang-java linenums">
+
+package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.gen.IncrementalTriangulation;
+import org.vadere.meshing.mesh.impl.PSLG;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.ITriangulator;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.logging.Logger;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+
+/**
+ * This class is an implementation of the algorithm of Sloan [1]
+ * to compute the Constrained Delaunay Triangulation (CDT).
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ *
+ * &lt;b&gt;References:&lt;/b&gt;
+ * &lt;ol&gt;
+ *     &lt;li&gt;
+ *           &lt;a href=&quot;https://www.newcastle.edu.au/__data/assets/pdf_file/0019/22519/23_A-fast-algortithm-for-generating-constrained-Delaunay-triangulations.pdf&quot;&gt;Algorithm of Sloan&lt;/a&gt;
+ *     &lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * @author Benedikt Zoennchen
+ */
+public class GenConstrainedDelaunayTriangulator&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements ITriangulator&lt;V, E, F&gt; {
+<span class="nc" id="L51">	private final static Logger logger = Logger.getLogger(GenConstrainedDelaunayTriangulator.class);</span>
+	private final IIncrementalTriangulation&lt;V, E, F&gt; triangulation;
+	private final Collection&lt;VLine&gt; constrains;
+	private final Collection&lt;Pair&lt;V, V&gt;&gt; vConstrains;
+	private final Set&lt;E&gt; eConstrains;
+	private final Collection&lt;IPoint&gt; points;
+	private final Map&lt;V, VLine&gt; projectionMap;
+	private boolean generated;
+	private boolean conforming;
+	private boolean allowSegmentFaces;
+
+	public GenConstrainedDelaunayTriangulator(
+			@NotNull final Supplier&lt;IMesh&lt;V, E, F&gt;&gt; meshSupply,
+			@NotNull final PSLG pslg,
+			final boolean confirming) {
+<span class="nc" id="L66">		this(new IncrementalTriangulation&lt;&gt;(meshSupply.get(), pslg.getBoundingBox()), pslg, confirming);</span>
+<span class="nc" id="L67">	}</span>
+
+	public GenConstrainedDelaunayTriangulator(
+			@NotNull final IIncrementalTriangulation&lt;V, E, F&gt; triangulation,
+			@NotNull final PSLG pslg,
+			final boolean confirming) {
+<span class="nc" id="L73">		this(triangulation, pslg.getAllSegments(), confirming);</span>
+<span class="nc" id="L74">	}</span>
+
+	public GenConstrainedDelaunayTriangulator(
+			@NotNull final IIncrementalTriangulation&lt;V, E, F&gt; triangulation,
+			@NotNull final Collection&lt;VLine&gt; constrains,
+			final boolean confirming) {
+<span class="nc" id="L80">		this(triangulation, constrains, confirming, true);</span>
+<span class="nc" id="L81">	}</span>
+
+	public GenConstrainedDelaunayTriangulator(
+			@NotNull final IIncrementalTriangulation&lt;V, E, F&gt; triangulation,
+			@NotNull final Collection&lt;VLine&gt; constrains,
+			final boolean confirming,
+<span class="nc" id="L87">			final boolean allowSegmentFaces) {</span>
+
+<span class="nc" id="L89">		this.conforming = confirming;</span>
+<span class="nc" id="L90">		this.constrains = constrains;</span>
+<span class="nc" id="L91">		this.allowSegmentFaces = allowSegmentFaces;</span>
+<span class="nc" id="L92">		this.points = Collections.EMPTY_LIST;</span>
+<span class="nc" id="L93">		this.vConstrains = new ArrayList&lt;&gt;(constrains.size());</span>
+<span class="nc" id="L94">		this.eConstrains = new HashSet&lt;&gt;(constrains.size());</span>
+<span class="nc" id="L95">		this.projectionMap = new HashMap&lt;&gt;();</span>
+
+		/**
+		 * This prevent the flipping of constrained edges
+		 */
+<span class="nc bnc" id="L100" title="All 4 branches missed.">		Predicate&lt;E&gt; canIllegal = e -&gt; !eConstrains.contains(e) &amp;&amp; !eConstrains.contains(getMesh().getTwin(e));</span>
+<span class="nc" id="L101">		this.triangulation = triangulation;</span>
+<span class="nc" id="L102">		this.triangulation.setCanIllegalPredicate(canIllegal);</span>
+<span class="nc" id="L103">	}</span>
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate(final boolean finalize) {
+<span class="nc bnc" id="L107" title="All 2 branches missed.">		if(!generated) {</span>
+<span class="nc" id="L108">			computeDelaunayTriangulation(false);</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">			for(Pair&lt;V, V&gt; constrain : vConstrains) {</span>
+				//System.out.println(&quot;force constrains for &quot; + constrain.getLeft() + &quot;, &quot; + constrain.getRight());
+<span class="nc" id="L111">				LinkedList&lt;E&gt; newEdges = forceConstrain(constrain);</span>
+				//System.out.println(&quot;reinforce Delaunay criteria &quot; + constrain.getLeft() + &quot;, &quot; + constrain.getRight());
+<span class="nc" id="L113">				reinforceDelaunayCriteria(constrain, newEdges);</span>
+<span class="nc" id="L114">			}</span>
+<span class="nc" id="L115">			generated = true;</span>
+		}
+
+<span class="nc bnc" id="L118" title="All 2 branches missed.">		for(Pair&lt;V, V&gt; constrain : vConstrains) {</span>
+<span class="nc" id="L119">			V v1 = constrain.getLeft();</span>
+<span class="nc" id="L120">			V v2 = constrain.getRight();</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">			for(E e : getMesh().getEdgeIt(v1)) {</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">				if(getMesh().getTwinVertex(e).equals(v2)) {</span>
+<span class="nc" id="L123">					eConstrains.add(e);</span>
+<span class="nc" id="L124">					eConstrains.add(getMesh().getTwin(e));</span>
+<span class="nc" id="L125">					break;</span>
+				}
+<span class="nc" id="L127">			}</span>
+<span class="nc" id="L128">		}</span>
+
+<span class="nc bnc" id="L130" title="All 2 branches missed.">		if(!allowSegmentFaces) {</span>
+<span class="nc" id="L131">			split();</span>
+		}
+
+<span class="nc bnc" id="L134" title="All 2 branches missed.">		if(conforming) {</span>
+<span class="nc" id="L135">			reinforceConformingCriteria();</span>
+		}
+
+<span class="nc bnc" id="L138" title="All 2 branches missed.">		if(finalize) {</span>
+<span class="nc" id="L139">			getTriangulation().finish();</span>
+		}
+
+<span class="nc" id="L142">		return triangulation;</span>
+	}
+
+	private void split() {
+<span class="nc" id="L146">		List&lt;E&gt; edges = getMesh().getEdges();</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">		for(E edge : edges) {</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">			if(!eConstrains.contains(edge)) {</span>
+<span class="nc" id="L149">				V v1 = getMesh().getVertex(edge);</span>
+<span class="nc" id="L150">				V v2 = getMesh().getTwinVertex(edge);</span>
+<span class="nc bnc" id="L151" title="All 4 branches missed.">				if(isSegmentVertex(v1) &amp;&amp; isSegmentVertex(v2)) {</span>
+<span class="nc" id="L152">					getTriangulation().splitEdge(edge, true);</span>
+				}
+			}
+<span class="nc" id="L155">		}</span>
+<span class="nc" id="L156">	}</span>
+
+	private boolean isSegmentVertex(@NotNull final V v) {
+<span class="nc" id="L159">		return getMesh().streamEdges(v).anyMatch(e -&gt; eConstrains.contains(e));</span>
+	}
+
+	// TODO: this is slow!
+	private void reinforceConformingCriteria() {
+		/*
+		 * TODO: remember the 2 vertices and connect them to all created vertices by splitting!
+		 *
+		 * corner vertices have 2 possible split lines!
+		 */
+<span class="nc" id="L169">		Map&lt;E, VLine&gt; projectionLines = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">		for(E constrain : eConstrains) {</span>
+<span class="nc" id="L171">			VLine projectionLine = new VLine(getMesh().toPoint(getMesh().getVertex(constrain)), getMesh().toPoint(getMesh().getTwinVertex(constrain)));</span>
+<span class="nc" id="L172">			projectionLines.put(constrain, projectionLine);</span>
+<span class="nc" id="L173">		}</span>
+
+
+		Optional&lt;E&gt; nonConformingEdge;
+		do {
+			// TODO this seems expensive!
+<span class="nc" id="L179">			nonConformingEdge = eConstrains.stream()</span>
+<span class="nc bnc" id="L180" title="All 2 branches missed.">					.filter(edge -&gt; !getMesh().isAtBoundary(edge))</span>
+<span class="nc" id="L181">					.filter(edge -&gt; getTriangulation().isDelaunayIllegal(edge))</span>
+<span class="nc" id="L182">					.findAny();</span>
+
+<span class="nc bnc" id="L184" title="All 2 branches missed.">			if(nonConformingEdge.isPresent()) {</span>
+				// this call will remove 2 element from eConstrains and will add 4 new ones
+<span class="nc" id="L186">				VLine line = projectionLines.get(nonConformingEdge.get());</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">				if(line == null) {</span>
+<span class="nc" id="L188">					line = projectionMap.get(getMesh().getVertex(nonConformingEdge.get()));</span>
+				}
+<span class="nc" id="L190">				V splitVertex = split(nonConformingEdge.get(), eConstrains);</span>
+<span class="nc" id="L191">				projectionMap.put(splitVertex, line);</span>
+			}
+<span class="nc bnc" id="L193" title="All 2 branches missed.">		} while (nonConformingEdge.isPresent());</span>
+<span class="nc" id="L194">	}</span>
+
+	// remove again!
+	/*public void step(boolean finalize) {
+		if(!generated) {
+			computeDelaunayTriangulation(finalize);
+			for(Pair&lt;V, V&gt; constrain : vConstrains) {
+				LinkedList&lt;E&gt; newEdges = forceConstrain(constrain);
+				reinforceDelaunayCriteria(constrain, newEdges);
+			}
+			//triangulation.finish();
+			generated = true;
+		}
+
+		if(!vConstrains.isEmpty()) {
+			Pair&lt;V, V&gt; constrain = vConstrains.iterator().next();
+			vConstrains.remove(constrain);
+			V v1 = constrain.getLeft();
+			V v2 = constrain.getRight();
+			for(E e : getMesh().getEdgeIt(v1)) {
+				if(getMesh().getTwinVertex(e).equals(v2)) {
+					eConstrains.add(e);
+					eConstrains.add(getMesh().getTwin(e));
+					break;
+				}
+			}
+		}
+	}*/
+
+	@Override
+	public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="nc" id="L225">		return triangulation.getMesh();</span>
+	}
+
+	public Collection&lt;E&gt; getConstrains() {
+<span class="nc" id="L229">		return eConstrains;</span>
+	}
+
+	public Map&lt;V, VLine&gt; getProjections() {
+<span class="nc" id="L233">		return projectionMap;</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; getTriangulation() {
+<span class="nc" id="L238">		return triangulation;</span>
+	}
+
+	private void reinforceDelaunayCriteria(@NotNull final Pair&lt;V, V&gt; contrain, @NotNull final LinkedList&lt;E&gt; newEdges) {
+<span class="nc" id="L242">		V v1 = contrain.getLeft();</span>
+<span class="nc" id="L243">		V v2 = contrain.getRight();</span>
+
+<span class="nc bnc" id="L245" title="All 2 branches missed.">		while (!newEdges.isEmpty()) {</span>
+<span class="nc" id="L246">			E edge = newEdges.removeFirst();</span>
+<span class="nc" id="L247">			VLine vEdge = triangulation.getMesh().toLine(edge);</span>
+
+			// the edge is not actually equal to the constrain
+<span class="nc bnc" id="L250" title="All 2 branches missed.">			if(GeometryUtils.intersectLine(v1.getX(), v1.getY(), v2.getX(), v2.getY(), vEdge.x1, vEdge.y1, vEdge.x2, vEdge.y2, GeometryUtils.DOUBLE_EPS)) {</span>
+<span class="nc bnc" id="L251" title="All 2 branches missed.">				if(triangulation.isIllegal(edge)) {</span>
+<span class="nc" id="L252">					triangulation.flip(edge);</span>
+<span class="nc" id="L253">					newEdges.addLast(edge);</span>
+				}
+			}
+
+<span class="nc" id="L257">		}</span>
+<span class="nc" id="L258">	}</span>
+
+	private LinkedList&lt;E&gt; forceConstrain(@NotNull final Pair&lt;V, V&gt; contrain) {
+<span class="nc" id="L261">		LinkedList&lt;E&gt; newEdges = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L262">		V v1 = contrain.getLeft();</span>
+<span class="nc" id="L263">		V v2 = contrain.getRight();</span>
+<span class="nc" id="L264">		LinkedList&lt;E&gt; intersectingEdges = triangulation.getIntersectingEdges(v1, v2);</span>
+
+<span class="nc bnc" id="L266" title="All 2 branches missed.">		while (!intersectingEdges.isEmpty()) {</span>
+<span class="nc" id="L267">			E edge = intersectingEdges.removeFirst();</span>
+
+<span class="nc" id="L269">			VLine vEdge = triangulation.getMesh().toLine(edge);</span>
+
+			// to be save, TODO inconsistent geometry check which may lead to a deadlock (isLeftOfRobust is &quot;robust&quot; while intersectLineSegment is not&quot;)
+<span class="nc bnc" id="L272" title="All 2 branches missed.">			if(GeometryUtils.intersectLineSegment(vEdge.x1, vEdge.y1, vEdge.x2, vEdge.y2, v1.getX(), v1.getY(), v2.getX(), v2.getY())) {</span>
+<span class="nc" id="L273">				E next = triangulation.getMesh().getNext(edge);</span>
+<span class="nc" id="L274">				E prev = triangulation.getMesh().getPrev(edge);</span>
+<span class="nc" id="L275">				E twin = triangulation.getMesh().getTwin(edge);</span>
+<span class="nc" id="L276">				IPoint q = triangulation.getMesh().getPoint(triangulation.getMesh().getNext(twin));</span>
+
+				// convex quadrilateral
+<span class="nc bnc" id="L279" title="All 4 branches missed.">				if(triangulation.isLeftOf(q.getX(), q.getY(), prev) &amp;&amp; triangulation.isLeftOf(q.getX(), q.getY(), next)) {</span>
+<span class="nc" id="L280">					triangulation.flip(edge);</span>
+
+<span class="nc" id="L282">					vEdge = triangulation.getMesh().toLine(edge);</span>
+<span class="nc bnc" id="L283" title="All 2 branches missed.">					if(GeometryUtils.intersectLineSegment(vEdge.x1, vEdge.y1, vEdge.x2, vEdge.y2, v1.getX(), v1.getY(), v2.getX(), v2.getY())) {</span>
+<span class="nc" id="L284">						intersectingEdges.addLast(edge);</span>
+					} else {
+<span class="nc" id="L286">						newEdges.add(edge);</span>
+					}
+				}
+				else {
+<span class="nc" id="L290">					intersectingEdges.addLast(edge);</span>
+				}
+			}
+<span class="nc" id="L293">		}</span>
+
+<span class="nc" id="L295">		return newEdges;</span>
+	}
+
+	private void computeDelaunayTriangulation(final boolean finalize) {
+<span class="nc" id="L299">		triangulation.init();</span>
+<span class="nc" id="L300">		IMesh&lt;V, E, F&gt; mesh = triangulation.getMesh();</span>
+
+<span class="nc" id="L302">		triangulation.insert(points);</span>
+
+<span class="nc bnc" id="L304" title="All 2 branches missed.">		for(VLine constrain : constrains) {</span>
+<span class="nc" id="L305">			boolean insertPair = true;</span>
+<span class="nc" id="L306">			IPoint p1 = mesh.createPoint(constrain.x1, constrain.y1);</span>
+<span class="nc" id="L307">			IPoint p2 = mesh.createPoint(constrain.x2, constrain.y2);</span>
+
+<span class="nc" id="L309">			E edge1 = triangulation.insert(p1);</span>
+<span class="nc" id="L310">			V v1 = triangulation.getMesh().getVertex(edge1);</span>
+			// could not insertVertex p1
+<span class="nc bnc" id="L312" title="All 2 branches missed.">			if(!getMesh().getPoint(v1).equals(p1)) {</span>
+<span class="nc" id="L313">				logger.warn(&quot;could not insertVertex &quot; + p1);</span>
+<span class="nc" id="L314">				insertPair = false;</span>
+			}
+
+<span class="nc" id="L317">			E edge2 = triangulation.insert(p2);</span>
+<span class="nc" id="L318">			V v2 = triangulation.getMesh().getVertex(edge2);</span>
+			// could not insertVertex p2
+<span class="nc bnc" id="L320" title="All 2 branches missed.">			if(!getMesh().getPoint(v2).equals(p2)) {</span>
+<span class="nc" id="L321">				logger.warn(&quot;could not insertVertex &quot; + p2);</span>
+<span class="nc" id="L322">				insertPair = false;</span>
+			}
+
+<span class="nc bnc" id="L325" title="All 2 branches missed.">			if(insertPair) {</span>
+<span class="nc" id="L326">				vConstrains.add(Pair.of(v1, v2));</span>
+			}
+<span class="nc" id="L328">		}</span>
+
+<span class="nc bnc" id="L330" title="All 2 branches missed.">		if(finalize) {</span>
+<span class="nc" id="L331">			triangulation.finish();</span>
+		}
+<span class="nc" id="L333">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

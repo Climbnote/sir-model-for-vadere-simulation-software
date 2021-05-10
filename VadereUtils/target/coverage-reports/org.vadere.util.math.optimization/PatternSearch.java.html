@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PatternSearch.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.math.optimization</a> &gt; <span class="el_source">PatternSearch.java</span></div><h1>PatternSearch.java</h1><pre class="source lang-java linenums">package org.vadere.util.math.optimization;
+
+import org.apache.commons.math3.util.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.VCircle;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.logging.Logger;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.PriorityQueue;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+public class PatternSearch {
+<span class="nc" id="L19">	private static Logger log = Logger.getLogger(PatternSearch.class);</span>
+	private final double distanceThreshold;
+	private final Function&lt;VPoint, Double&gt; eval;
+	private final VCircle evalArea;
+	private double globalLen;
+	private VPoint globalBase;
+	private VCircle normCircle;
+<span class="nc" id="L26">	private boolean globalSearch = true;</span>
+	private final List&lt;VPoint&gt; basePoints;
+	private int numberOfCircles;
+	private int numberOfPoints;
+	private int nShink;
+<span class="nc" id="L31">	private int starts = 3;</span>
+	private List&lt;LocalOptimizer&gt; localOptimizers;
+	private int evalCounter;
+
+
+	public PatternSearch(@NotNull final VCircle evalArea,
+	                     @NotNull final Function&lt;VPoint, Double&gt; eval,
+	                     final double distanceThreshold,
+	                     @NotNull final List&lt;VPoint&gt; basePoints,
+	                     int numberOfCircle,
+<span class="nc" id="L41">	                     int numberOfPoints) {</span>
+<span class="nc" id="L42">		this.distanceThreshold = distanceThreshold;</span>
+<span class="nc" id="L43">		this.eval = eval;</span>
+<span class="nc" id="L44">		this.evalArea = evalArea;</span>
+<span class="nc" id="L45">		this.globalLen = evalArea.getRadius();</span>
+<span class="nc" id="L46">		this.globalBase = new VPoint(0, 0);</span>
+<span class="nc" id="L47">		this.normCircle = new VCircle(globalBase, evalArea.getRadius());</span>
+<span class="nc" id="L48">		this.basePoints = basePoints.stream().map(p -&gt; p.scalarMultiply(evalArea.getRadius())).collect(Collectors.toList());</span>
+<span class="nc" id="L49">		this.numberOfCircles = numberOfCircle;</span>
+<span class="nc" id="L50">		this.numberOfPoints = numberOfPoints;</span>
+<span class="nc" id="L51">		this.nShink = 0;</span>
+<span class="nc" id="L52">		this.localOptimizers = new ArrayList&lt;&gt;(starts);</span>
+<span class="nc" id="L53">	}</span>
+
+	public PatternSearch(@NotNull final VCircle evalArea,
+	                     @NotNull final Function&lt;VPoint, Double&gt; eval,
+	                     final double distanceThreshold,
+	                     @NotNull final List&lt;VPoint&gt; basePoints,
+<span class="nc" id="L59">	                     double edgeLen) {</span>
+<span class="nc" id="L60">		this.distanceThreshold = distanceThreshold;</span>
+<span class="nc" id="L61">		this.eval = eval;</span>
+<span class="nc" id="L62">		this.evalArea = evalArea;</span>
+<span class="nc" id="L63">		this.globalLen = edgeLen;</span>
+<span class="nc" id="L64">		this.globalBase = new VPoint(0, 0);</span>
+<span class="nc" id="L65">		this.normCircle = new VCircle(globalBase, evalArea.getRadius());</span>
+<span class="nc" id="L66">		this.basePoints = basePoints.stream().map(p -&gt; p.scalarMultiply(evalArea.getRadius())).collect(Collectors.toList());</span>
+		//log.info(basePoints.size());
+<span class="nc" id="L68">		this.numberOfCircles = 0;</span>
+<span class="nc" id="L69">		this.numberOfPoints = 0;</span>
+<span class="nc" id="L70">		this.localOptimizers = new ArrayList&lt;&gt;(starts);</span>
+
+<span class="nc" id="L72">	}</span>
+
+	public void optimize() {
+<span class="nc bnc" id="L75" title="All 2 branches missed.">		if(globalSearch) {</span>
+<span class="nc" id="L76">			globalSearch();</span>
+<span class="nc" id="L77">			evalCounter = basePoints.size();</span>
+		} else {
+<span class="nc" id="L79">			localOptimizers.add(new LocalOptimizer(globalBase, evalArea.getRadius()));</span>
+		}
+
+<span class="nc" id="L82">		boolean updateRequired = true;</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">		while (updateRequired) {</span>
+<span class="nc" id="L84">			updateRequired = false;</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">			for(LocalOptimizer localOptimizer : localOptimizers) {</span>
+<span class="nc bnc" id="L86" title="All 4 branches missed.">				updateRequired = updateRequired || localOptimizer.update();</span>
+<span class="nc" id="L87">			}</span>
+		}
+<span class="nc" id="L89">	}</span>
+
+	public double getMinValue() {
+<span class="nc" id="L92">		return localOptimizers.stream().mapToDouble(localOptimizer -&gt; localOptimizer.getMinValue()).min().getAsDouble();</span>
+	}
+
+	public VPoint getGlobalBase() {
+<span class="nc" id="L96">		double minValue = Double.MAX_VALUE;</span>
+<span class="nc" id="L97">		VPoint base = normCircle.getCenter();</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">		for(LocalOptimizer localOptimizer : localOptimizers) {</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">			if(minValue &gt; localOptimizer.getMinValue()) {</span>
+<span class="nc" id="L100">				base = localOptimizer.getBase();</span>
+<span class="nc" id="L101">				minValue = localOptimizer.getMinValue();</span>
+			}
+<span class="nc" id="L103">		}</span>
+
+<span class="nc" id="L105">		return base;</span>
+	}
+
+	public VPoint getArgMin() {
+		//log.info(&quot;evalCounter = &quot; + evalCounter);
+<span class="nc" id="L110">		return getGlobalBase().add(evalArea.getCenter());</span>
+	}
+
+	private void globalSearch() {
+<span class="nc" id="L114">		PriorityQueue&lt;Pair&lt;VPoint, Double&gt;&gt; list = new PriorityQueue&lt;&gt;(Comparator.comparingDouble(p -&gt; -p.getValue()));</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">		for(VPoint evalPoint : basePoints) {</span>
+<span class="nc" id="L116">			double evaluation = eval(evalPoint);</span>
+<span class="nc bnc" id="L117" title="All 4 branches missed.">			if(list.size() &gt;= starts &amp;&amp; evaluation &lt; list.peek().getSecond()) {</span>
+<span class="nc" id="L118">				list.poll();</span>
+			}
+<span class="nc bnc" id="L120" title="All 2 branches missed.">			else if(list.size() &lt; starts){</span>
+<span class="nc" id="L121">				list.add(Pair.create(evalPoint, evaluation));</span>
+			}
+<span class="nc" id="L123">		}</span>
+<span class="nc bnc" id="L124" title="All 4 branches missed.">		globalLen = Math.min(globalLen, Math.max(evalArea.getRadius() / (numberOfCircles &gt; 0 ? numberOfCircles : 1), 2 * Math.PI * evalArea.getRadius() / (numberOfPoints &gt; 0 ? numberOfPoints : 1)));</span>
+
+<span class="nc bnc" id="L126" title="All 2 branches missed.">		for(Pair&lt;VPoint, Double&gt; pair : list) {</span>
+<span class="nc" id="L127">			localOptimizers.add(new LocalOptimizer(pair.getFirst(), evalArea.getRadius() / 8));</span>
+<span class="nc" id="L128">		}</span>
+<span class="nc" id="L129">	}</span>
+
+	private boolean contains(@NotNull final VPoint point) {
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		return normCircle.getRadius() * normCircle.getRadius() &gt;= normCircle.getCenter().distanceSq(point) - GeometryUtils.DOUBLE_EPS;</span>
+	}
+
+	private boolean onCircle(@NotNull final VPoint point) {
+<span class="nc bnc" id="L136" title="All 2 branches missed.">		return Math.abs(normCircle.getRadius() * normCircle.getRadius() - normCircle.getCenter().distanceSq(point)) &lt; GeometryUtils.DOUBLE_EPS;</span>
+	}
+
+
+	private double eval(final double x, final double y) {
+<span class="nc" id="L141">		evalCounter++;</span>
+<span class="nc" id="L142">		return eval.apply(evalArea.getCenter().add(x, y));</span>
+	}
+
+	private double eval(final VPoint point) {
+<span class="nc" id="L146">		evalCounter++;</span>
+<span class="nc" id="L147">		return eval.apply(evalArea.getCenter().add(point));</span>
+	}
+
+	private class LocalOptimizer {
+		private VPoint[] crossPoints;
+		private VPoint base;
+<span class="nc" id="L153">		private int nPoints = 4;</span>
+		private double minValue;
+		private double len;
+		private int nShrink;
+		private int iteration;
+
+<span class="nc" id="L159">		private LocalOptimizer(@NotNull final VPoint base, final double len) {</span>
+<span class="nc" id="L160">			this.crossPoints = new VPoint[nPoints];</span>
+<span class="nc" id="L161">			this.iteration = 0;</span>
+<span class="nc" id="L162">			this.minValue = eval(base);</span>
+<span class="nc" id="L163">			this.base = base;</span>
+<span class="nc" id="L164">			this.nShrink = 2;</span>
+<span class="nc" id="L165">			this.len = len;</span>
+<span class="nc" id="L166">			recomputeCrossPoints();</span>
+<span class="nc" id="L167">		}</span>
+
+		private boolean update() {
+<span class="nc bnc" id="L170" title="All 2 branches missed.">			if(len &gt; distanceThreshold) {</span>
+<span class="nc bnc" id="L171" title="All 2 branches missed.">				if(!explore()) {</span>
+<span class="nc" id="L172">					shrink();</span>
+				}
+<span class="nc" id="L174">				recomputeCrossPoints();</span>
+<span class="nc" id="L175">				iteration++;</span>
+<span class="nc" id="L176">				return true;</span>
+			}
+<span class="nc" id="L178">			return false;</span>
+		}
+
+		private void recomputeCrossPoints() {
+<span class="nc" id="L182">			crossPoints[0] = new VPoint(len, 0);</span>
+<span class="nc" id="L183">			crossPoints[1] = new VPoint(-len, 0);</span>
+<span class="nc" id="L184">			crossPoints[2] = new VPoint(0, len);</span>
+<span class="nc" id="L185">			crossPoints[3] = new VPoint(0, -len);</span>
+			// globalBase on circle center.distance(pos) - this.radius
+
+			// globalBase is on the circle
+<span class="nc bnc" id="L189" title="All 2 branches missed.">			if(onCircle(base)) {</span>
+				//log.info(&quot;onCircle&quot;);
+<span class="nc bnc" id="L191" title="All 2 branches missed.">				for(int i = 0; i &lt; crossPoints.length; i++) {</span>
+<span class="nc" id="L192">					VPoint crossPoint = base.add(crossPoints[i]);</span>
+<span class="nc bnc" id="L193" title="All 2 branches missed.">					if(!contains(crossPoint)) {</span>
+<span class="nc" id="L194">						VPoint rotatedCrossPoint = base.rotate((crossPoints[i].x + crossPoints[i].y) / normCircle.getRadius()).subtract(base);</span>
+<span class="nc" id="L195">						crossPoints[i] = rotatedCrossPoint;</span>
+					}
+				}
+			} else {
+				//log.info(&quot;not onCircle&quot;);
+<span class="nc bnc" id="L200" title="All 2 branches missed.">				for(int i = 0; i &lt; crossPoints.length; i++) {</span>
+<span class="nc" id="L201">					VPoint crossPoint = base.add(crossPoints[i]);</span>
+<span class="nc bnc" id="L202" title="All 2 branches missed.">					if(!contains(crossPoint)) {</span>
+<span class="nc" id="L203">						Optional&lt;VPoint&gt; intersectionPoint = normCircle.getSegmentIntersectionPoints(crossPoint.x, crossPoint.y, base.x, base.y);</span>
+<span class="nc bnc" id="L204" title="All 2 branches missed.">						if(intersectionPoint.isPresent()) {</span>
+<span class="nc" id="L205">							crossPoints[i] = intersectionPoint.get().subtract(base);</span>
+						}
+					}
+				}
+			}
+			/*if(normCircle.contains(globalBase)) {
+				for(int i = 0; i &lt; crossPoints.length; i++) {
+					VPoint crossPoint = globalBase.add(crossPoints[i]);
+					if(!normCircle.contains(crossPoint)) {
+						Optional&lt;VPoint&gt; intersectionPoint = normCircle.getSegmentIntersectionPoints(crossPoint.x, crossPoint.y, globalBase.x, globalBase.y);
+						if(intersectionPoint.isPresent()) {
+							crossPoints[i] = intersectionPoint.get().subtract(globalBase);
+						}
+					}
+				}
+			}*/
+<span class="nc" id="L221">		}</span>
+
+		public double getMinValue() {
+<span class="nc" id="L224">			return minValue;</span>
+		}
+
+		public VPoint getArgMin() {
+<span class="nc" id="L228">			return getBase().add(evalArea.getCenter());</span>
+		}
+
+		public VPoint getBase() {
+<span class="nc" id="L232">			return base;</span>
+		}
+
+		private void shrink() {
+<span class="nc" id="L236">			len /= nShrink;</span>
+<span class="nc" id="L237">			nShrink++;</span>
+<span class="nc" id="L238">		}</span>
+
+		private boolean explore() {
+<span class="nc" id="L241">			boolean success = false;</span>
+<span class="nc" id="L242">			VPoint minArg = null;</span>
+<span class="nc bnc" id="L243" title="All 2 branches missed.">			for(VPoint point : crossPoints) {</span>
+<span class="nc" id="L244">				VPoint evalPoint = point.add(base);</span>
+				//if(contains(evalPoint)) {
+<span class="nc" id="L246">					double evaluation = eval(evalPoint);</span>
+<span class="nc bnc" id="L247" title="All 2 branches missed.">					if(evaluation &lt; minValue) {</span>
+<span class="nc" id="L248">						minValue = evaluation;</span>
+<span class="nc" id="L249">						minArg = evalPoint;</span>
+<span class="nc" id="L250">						success = true;</span>
+					}
+			//	}
+			}
+
+<span class="nc bnc" id="L255" title="All 2 branches missed.">			if(success) {</span>
+<span class="nc" id="L256">				base = minArg;</span>
+			}
+
+<span class="nc" id="L259">			return success;</span>
+		}
+
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

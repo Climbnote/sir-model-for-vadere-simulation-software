@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GenUniformRefinementTriangulator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">GenUniformRefinementTriangulator.java</span></div><h1>GenUniformRefinementTriangulator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.apache.commons.lang3.tuple.Pair;;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.ITriangulationSupplier;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.ITriangulator;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.math.IDistanceFunction;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+
+import java.util.*;
+
+/**
+ * &lt;p&gt;Triangulation creator: This class is implements an algorithm which refines a given triangulation
+ * (which might be empty), by recursively splitting existing triangles (starting with the super triangle if
+ * the triangulation is empty) into parts. More precisely, each tringle which should be split will be split
+ * at its longest edge in one iteration. Which generates a new set of triangles. The process is repeated until
+ * there is no more triangle which has to be split left.&lt;/p&gt;
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public class GenUniformRefinementTriangulator&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements ITriangulator&lt;V, E, F&gt; {
+	private final Collection&lt;? extends VShape&gt; boundary;
+	private final VRectangle bbox;
+	private final IEdgeLengthFunction lenFunc;
+	private IIncrementalTriangulation&lt;V, E, F&gt; triangulation;
+	private Set&lt;IPoint&gt; points;
+	private IMesh&lt;V, E, F&gt; mesh;
+	private  LinkedList&lt;F&gt; toRefineEdges;
+<span class="nc" id="L43">	private static final Logger logger = Logger.getLogger(GenUniformRefinementTriangulator.class);</span>
+	private final IDistanceFunction distFunc;
+	private final Map&lt;IPoint,Integer&gt; creationOrder;
+	private boolean initialized;
+	private boolean generated;
+
+    /**
+     * &lt;p&gt;Default constructor.&lt;/p&gt;
+     *
+     * @param supplier      a supplier to construct a completely fresh and empty triangulation {@link IIncrementalTriangulation}
+     * @param bound         the bounding box containing all boundaries and the topography with respect to the distance function distFunc
+     * @param boundary      the boundaries e.g. obstacles
+     * @param lenFunc       a edge length function
+     * @param distFunc      a signed distance function
+     */
+	public GenUniformRefinementTriangulator(
+			final ITriangulationSupplier&lt;V, E, F&gt; supplier,
+			final VRectangle bound,
+			final Collection&lt;? extends VShape&gt; boundary,
+			final IEdgeLengthFunction lenFunc,
+<span class="nc" id="L63">			final IDistanceFunction distFunc) {</span>
+
+<span class="nc" id="L65">	    this.distFunc = distFunc;</span>
+<span class="nc" id="L66">		this.triangulation = supplier.get();</span>
+<span class="nc" id="L67">		this.mesh = triangulation.getMesh();</span>
+<span class="nc" id="L68">		this.boundary = boundary;</span>
+<span class="nc" id="L69">		this.lenFunc = lenFunc;</span>
+<span class="nc" id="L70">		this.bbox = bound;</span>
+<span class="nc" id="L71">		this.points = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L72">        this.toRefineEdges = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L73">        this.creationOrder = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L74">        this.initialized = false;</span>
+<span class="nc" id="L75">        this.generated = false;</span>
+<span class="nc" id="L76">	}</span>
+
+	/**
+	 * &lt;p&gt;Initializes this triangulator. This has to be called before
+	 * {@link GenUniformRefinementTriangulator#step()} can be called.&lt;/p&gt;
+	 */
+    public void init() {
+<span class="nc" id="L83">        triangulation.init();</span>
+<span class="nc" id="L84">	    toRefineEdges.addAll(triangulation.getMesh().getFaces());</span>
+<span class="nc" id="L85">	    initialized = true;</span>
+<span class="nc" id="L86">    }</span>
+
+	/**
+	 * &lt;p&gt;Implements one split-iteration.&lt;/p&gt;
+	 */
+	public void step() {
+<span class="nc" id="L92">	    synchronized (mesh) {</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">	    	if(!initialized) {</span>
+<span class="nc" id="L94">	    		init();</span>
+		    }
+
+<span class="nc bnc" id="L97" title="All 2 branches missed.">            if (!toRefineEdges.isEmpty()) {</span>
+<span class="nc" id="L98">                F face = toRefineEdges.removeLast();</span>
+<span class="nc" id="L99">                E edge = getLongestEdge(face);</span>
+
+<span class="nc bnc" id="L101" title="All 2 branches missed.">                if(!isCompleted(edge)) {</span>
+<span class="nc" id="L102">                    refine(edge);</span>
+                }
+            }
+<span class="nc" id="L105">        }</span>
+<span class="nc" id="L106">    }</span>
+
+	@Override
+	public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="nc" id="L110">		return mesh;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Returns true if there is no more triangle which has to be split.&lt;/p&gt;
+	 *
+	 * @return true if there is no more triangle which has to be split, false otherwise
+	 */
+	public boolean isFinished() {
+<span class="nc" id="L119">        return toRefineEdges.isEmpty();</span>
+    }
+
+	/**
+	 * Generates the triangulation, i.e.
+	 * &lt;ol&gt;
+	 *     &lt;li&gt;{@link GenUniformRefinementTriangulator#init()}&lt;/li&gt;
+	 *     &lt;li&gt;{@link GenUniformRefinementTriangulator#step()} until {@link GenUniformRefinementTriangulator#isFinished()}&lt;/li&gt;
+	 *     &lt;li&gt;{@link GenUniformRefinementTriangulator#finish()}&lt;/li&gt;
+	 * &lt;/ol&gt;
+	 *
+	 * @return the generated triangulation
+	 */
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate() {
+<span class="nc" id="L133">		return generate(true);</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate(boolean finalize) {
+<span class="nc bnc" id="L138" title="All 2 branches missed.">		if(!generated) {</span>
+<span class="nc" id="L139">			logger.info(&quot;start triangulation generation&quot;);</span>
+<span class="nc" id="L140">			init();</span>
+
+<span class="nc bnc" id="L142" title="All 2 branches missed.">			while (!isFinished()) {</span>
+<span class="nc" id="L143">				step();</span>
+			}
+
+<span class="nc bnc" id="L146" title="All 2 branches missed.">			if(finalize) {</span>
+<span class="nc" id="L147">				finish();</span>
+			}
+
+<span class="nc" id="L150">			logger.info(&quot;end triangulation generation&quot;);</span>
+<span class="nc" id="L151">			generated = true;</span>
+		}
+<span class="nc" id="L153">		return triangulation;</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; getTriangulation() {
+<span class="nc" id="L158">		return triangulation;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Removes useless and unwanted triangles.&lt;/p&gt;
+	 */
+    public void finish() {
+<span class="nc" id="L165">        synchronized (mesh) {</span>
+<span class="nc" id="L166">            removeTrianglesOutsideBBox();</span>
+<span class="nc" id="L167">            removeTrianglesInsideObstacles();</span>
+<span class="nc" id="L168">            triangulation.finish();</span>
+<span class="nc" id="L169">        }</span>
+<span class="nc" id="L170">    }</span>
+
+    private E getLongestEdge(F face) {
+<span class="nc bnc" id="L173" title="All 2 branches missed.">	    return mesh.streamEdges(face).reduce((e1, e2) -&gt; mesh.toLine(e1).length() &gt; mesh.toLine(e2).length() ? e1 : e2).get();</span>
+    }
+
+	private void removeTrianglesOutsideBBox() {
+<span class="nc bnc" id="L177" title="All 2 branches missed.">		triangulation.shrinkBorder(f -&gt; distFunc.apply(triangulation.getMesh().toTriangle(f).midPoint()) &gt; 0, true);</span>
+<span class="nc" id="L178">	}</span>
+
+	private void removeTrianglesInsideObstacles() {
+<span class="nc" id="L181">		List&lt;F&gt; faces = triangulation.getMesh().getFaces();</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">		for(F face : faces) {</span>
+<span class="nc bnc" id="L183" title="All 4 branches missed.">			if(!triangulation.getMesh().isDestroyed(face) &amp;&amp; !triangulation.getMesh().isHole(face)) {</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">				triangulation.createHole(face, f -&gt; distFunc.apply(triangulation.getMesh().toTriangle(f).midPoint()) &gt; 0, true);</span>
+			}
+<span class="nc" id="L186">		}</span>
+<span class="nc" id="L187">	}</span>
+
+	private boolean isCompleted(E edge) {
+<span class="nc bnc" id="L190" title="All 2 branches missed.">		if(mesh.isBoundary(edge)){</span>
+<span class="nc" id="L191">			edge = mesh.getTwin(edge);</span>
+		}
+
+<span class="nc" id="L194">		F face = mesh.getFace(edge);</span>
+<span class="nc" id="L195">		F twin = mesh.getTwinFace(edge);</span>
+
+<span class="nc" id="L197">		VTriangle triangle = mesh.toTriangle(face);</span>
+<span class="nc" id="L198">		VLine line = mesh.toLine(edge);</span>
+
+<span class="nc bnc" id="L200" title="All 2 branches missed.">		return (line.length() &lt;= lenFunc.apply(line.midPoint()));</span>
+	}
+
+    private void refine(final E edge) {
+<span class="nc" id="L204">        IPoint midPoint = mesh.toLine(edge).midPoint();</span>
+<span class="nc" id="L205">	    IPoint p = mesh.createPoint(midPoint.getX(), midPoint.getY());</span>
+
+<span class="nc bnc" id="L207" title="All 2 branches missed.">        if(!points.contains(p)) {</span>
+<span class="nc" id="L208">            points.add(p);</span>
+<span class="nc" id="L209">            creationOrder.put(p, points.size()-1);</span>
+<span class="nc" id="L210">            Pair&lt;E, E&gt; createdEdges = triangulation.splitEdge(p, edge, true);</span>
+<span class="nc" id="L211">            List&lt;F&gt; createdFaces = new ArrayList&lt;&gt;(4);</span>
+
+
+<span class="nc bnc" id="L214" title="All 2 branches missed.">            if(createdEdges.getRight() != null) {</span>
+<span class="nc" id="L215">                E e1 = createdEdges.getRight();</span>
+<span class="nc" id="L216">                E e2 = mesh.getTwin(createdEdges.getRight());</span>
+
+<span class="nc" id="L218">                F f1 = mesh.getFace(e1);</span>
+<span class="nc" id="L219">                F f2 = mesh.getFace(e2);</span>
+
+<span class="nc" id="L221">                toRefineEdges.addFirst(f1);</span>
+<span class="nc" id="L222">                toRefineEdges.addFirst(f2);</span>
+
+            }
+
+
+<span class="nc bnc" id="L227" title="All 2 branches missed.">            if(createdEdges.getLeft() != null) {</span>
+<span class="nc" id="L228">                E e1 = createdEdges.getLeft();</span>
+<span class="nc" id="L229">                E e2 = mesh.getTwin(createdEdges.getLeft());</span>
+
+<span class="nc" id="L231">                Integer index1 = creationOrder.get(mesh.getPoint(mesh.getNext(e1)));</span>
+<span class="nc" id="L232">                Integer index2 = creationOrder.get(mesh.getPoint(mesh.getNext(e2)));</span>
+
+
+<span class="nc" id="L235">                toRefineEdges.addFirst(mesh.getFace(e2));</span>
+<span class="nc" id="L236">                toRefineEdges.addFirst(mesh.getFace(e1));</span>
+
+            }
+        }
+<span class="nc" id="L240">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

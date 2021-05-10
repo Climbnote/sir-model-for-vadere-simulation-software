@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Timer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.logging</a> &gt; <span class="el_source">Timer.java</span></div><h1>Timer.java</h1><pre class="source lang-java linenums">package org.vadere.util.logging;
+
+<span class="nc" id="L3">public class Timer {</span>
+
+	private long runtime;
+	private long startTime;
+
+	/**
+	 * Starts the timer.
+	 */
+	public void start() {
+<span class="nc" id="L12">		runtime = 0;</span>
+<span class="nc" id="L13">		startTime = System.nanoTime();</span>
+<span class="nc" id="L14">	}</span>
+
+	/**
+	 * Pause the timer, so the timer stop adding run time.
+	 */
+	public void pause() {
+<span class="nc" id="L20">		runtime += System.nanoTime() - startTime;</span>
+<span class="nc" id="L21">	}</span>
+
+	/**
+	 * Unpause the timer, so the timer continue adding run time.
+	 */
+	public void unpause() {
+<span class="nc" id="L27">		startTime = System.nanoTime();</span>
+<span class="nc" id="L28">	}</span>
+
+	/**
+	 * Stops the timer, so the timer stop adding run time and reset the calculated runtime to 0.
+	 *
+	 * @return returns the calculated run time
+	 */
+	public double end() {
+<span class="nc" id="L36">		pause();</span>
+<span class="nc" id="L37">		runtime += System.nanoTime() - startTime;</span>
+<span class="nc" id="L38">		long result = runtime;</span>
+<span class="nc" id="L39">		return result;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L44">		return &quot;runtime: &quot; + runtime / 1000000.0 + &quot;[msec]&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

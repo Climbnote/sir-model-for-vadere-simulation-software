@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BeachLineInternal.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.voronoi</a> &gt; <span class="el_source">BeachLineInternal.java</span></div><h1>BeachLineInternal.java</h1><pre class="source lang-java linenums">package org.vadere.util.voronoi;
+
+import java.util.List;
+
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.math.MathUtil;
+
+/**
+ * Internal node of the Red-Black Tree data structure of the Beach Line.
+ */
+public class BeachLineInternal implements BeachLineNode {
+	private BeachLineNode leftChild;
+	private BeachLineNode rightChild;
+	private BeachLineInternal parent;
+
+	private VPoint leftSite;
+	private VPoint rightSite;
+
+	private HalfEdge halfEdge;
+
+	BeachLineInternal(BeachLineNode leftChild, BeachLineNode rightChild,
+<span class="nc" id="L22">			VPoint leftSite, VPoint rightSite) {</span>
+<span class="nc" id="L23">		this.leftChild = leftChild;</span>
+<span class="nc" id="L24">		this.rightChild = rightChild;</span>
+<span class="nc" id="L25">		this.leftSite = leftSite;</span>
+<span class="nc" id="L26">		this.rightSite = rightSite;</span>
+<span class="nc" id="L27">	}</span>
+
+	double getBreakPoint(double sweepLine) {
+
+		// desired intersection of the two parabolas
+		double result;
+
+		// TODO [priority=medium] [task=refactoring] QuickFix for avoid exception if both points are equals
+<span class="nc bnc" id="L35" title="All 2 branches missed.">		if (leftSite.equals(rightSite)) {</span>
+<span class="nc" id="L36">			rightSite = new VPoint(rightSite.x + 0.000000001, rightSite.y);</span>
+		}
+
+<span class="nc" id="L39">		double xA = leftSite.x;</span>
+<span class="nc" id="L40">		double yA = leftSite.y;</span>
+<span class="nc" id="L41">		double xB = rightSite.x;</span>
+<span class="nc" id="L42">		double yB = rightSite.y;</span>
+
+<span class="nc bnc" id="L44" title="All 2 branches missed.">		if (Math.abs(yA - sweepLine) &lt; 0.000001) {</span>
+<span class="nc" id="L45">			return xA;</span>
+		}
+
+<span class="nc bnc" id="L48" title="All 2 branches missed.">		if (Math.abs(yB - sweepLine) &lt; 0.000001) {</span>
+<span class="nc" id="L49">			return xB;</span>
+		}
+
+<span class="nc" id="L52">		double coefA = 1 / (2 * (yA - sweepLine));</span>
+<span class="nc" id="L53">		double coefB = 1 / (2 * (yB - sweepLine));</span>
+
+		// coefficients of quadratic equation
+<span class="nc" id="L56">		double a = coefA - coefB;</span>
+<span class="nc" id="L57">		double b = coefA * (-2 * xA) - coefB * (-2 * xB);</span>
+<span class="nc" id="L58">		double c = coefA</span>
+<span class="nc" id="L59">				* (Math.pow(xA, 2) + Math.pow(yA, 2) - Math.pow(sweepLine, 2));</span>
+<span class="nc" id="L60">		c = c - coefB</span>
+<span class="nc" id="L61">				* (Math.pow(xB, 2) + Math.pow(yB, 2) - Math.pow(sweepLine, 2));</span>
+
+		// all intersections of the parabolas
+<span class="nc" id="L64">		List&lt;Double&gt; sol = MathUtil.solveQuadratic(a, b, c);</span>
+
+<span class="nc bnc" id="L66" title="All 2 branches missed.">		if (sol.size() == 2) {</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">			if (leftSite.y &gt; rightSite.y) {</span>
+<span class="nc" id="L68">				result = Math.min(sol.get(0), sol.get(1));</span>
+			} else {
+<span class="nc" id="L70">				result = Math.max(sol.get(0), sol.get(1));</span>
+			}
+<span class="nc bnc" id="L72" title="All 2 branches missed.">		} else if (sol.size() == 1) {</span>
+<span class="nc" id="L73">			result = sol.get(0);</span>
+		} else {
+<span class="nc" id="L75">			throw new IllegalStateException(</span>
+					&quot;There must be at least one intersection of the parabolas: leftPoint=&quot;
+							+ leftSite + &quot;, rightPoint=&quot; + rightSite);
+		}
+
+<span class="nc" id="L80">		return result;</span>
+	}
+
+	BeachLineNode getRightChild() {
+<span class="nc" id="L84">		return rightChild;</span>
+	}
+
+	void setRightChild(BeachLineNode rightChild) {
+<span class="nc" id="L88">		this.rightChild = rightChild;</span>
+<span class="nc" id="L89">	}</span>
+
+	BeachLineNode getLeftChild() {
+<span class="nc" id="L92">		return leftChild;</span>
+	}
+
+	void setLeftChild(BeachLineNode leftChild) {
+<span class="nc" id="L96">		this.leftChild = leftChild;</span>
+<span class="nc" id="L97">	}</span>
+
+	VPoint getRightSite() {
+<span class="nc" id="L100">		return rightSite;</span>
+	}
+
+	VPoint getLeftSite() {
+<span class="nc" id="L104">		return leftSite;</span>
+	}
+
+	HalfEdge getHalfEgde() {
+<span class="nc" id="L108">		return halfEdge;</span>
+	}
+
+	void setHalfEdge(HalfEdge halfEdge) {
+<span class="nc" id="L112">		this.halfEdge = halfEdge;</span>
+<span class="nc" id="L113">	}</span>
+
+	void replaceNode(BeachLineLeaf arc, BeachLineInternal upperNode) {
+<span class="nc bnc" id="L116" title="All 2 branches missed.">		if (leftChild == arc) {</span>
+<span class="nc" id="L117">			leftChild = upperNode;</span>
+<span class="nc bnc" id="L118" title="All 2 branches missed.">		} else if (rightChild == arc) {</span>
+<span class="nc" id="L119">			rightChild = upperNode;</span>
+		} else {
+<span class="nc" id="L121">			throw new IllegalArgumentException(</span>
+					&quot;The arc is not a child of this node.&quot;);
+		}
+<span class="nc" id="L124">	}</span>
+
+	@Override
+	public BeachLineInternal getParent() {
+<span class="nc" id="L128">		return parent;</span>
+	}
+
+	@Override
+	public void setParent(BeachLineInternal parent) {
+<span class="nc" id="L133">		this.parent = parent;</span>
+<span class="nc" id="L134">	}</span>
+
+	public void setLeftSite(VPoint leftSite) {
+<span class="nc" id="L137">		this.leftSite = leftSite;</span>
+<span class="nc" id="L138">	}</span>
+
+	public void setRightSite(VPoint rightSite) {
+<span class="nc" id="L141">		this.rightSite = rightSite;</span>
+<span class="nc" id="L142">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

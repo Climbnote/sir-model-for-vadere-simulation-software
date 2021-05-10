@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Geometry.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry</a> &gt; <span class="el_source">Geometry.java</span></div><h1>Geometry.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry;
+
+import java.awt.Point;
+import java.awt.geom.Rectangle2D;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+
+/**
+ * A generic geometry. Represented by a polygon (borders) with inner polygons
+ * (obstacles), if any.
+ * 
+ * 
+ */
+public class Geometry {
+
+	private Set&lt;VPolygon&gt; polygons;
+	private Rectangle2D boundary;
+
+<span class="fc" id="L27">	public Geometry(VPolygon... polygons) {</span>
+<span class="fc" id="L28">		this.polygons = new HashSet&lt;&gt;(Arrays.asList(polygons));</span>
+<span class="fc" id="L29">		this.boundary = new Rectangle2D.Double();</span>
+<span class="pc bpc" id="L30" title="1 of 2 branches missed.">		for (VPolygon polygon : polygons) {</span>
+<span class="nc" id="L31">			this.boundary = polygon.getBounds2D().createUnion(</span>
+					this.boundary);
+		}
+<span class="fc" id="L34">	}</span>
+
+	/**
+	 * Returns a list of all points of this geometry.
+	 * 
+	 * @return A list of points.
+	 */
+	public List&lt;VPoint&gt; getPoints() {
+<span class="fc" id="L42">		List&lt;VPoint&gt; resultList = new LinkedList&lt;VPoint&gt;();</span>
+
+		// add obstacles
+<span class="fc bfc" id="L45" title="All 2 branches covered.">		for (VPolygon p : this.polygons) {</span>
+<span class="fc" id="L46">			resultList.addAll(p.getPoints());</span>
+<span class="fc" id="L47">		}</span>
+
+<span class="fc" id="L49">		return resultList;</span>
+	}
+
+	/**
+	 * Returns the list of all polygons of this geometry, including the
+	 * boundary.
+	 * 
+	 * @return
+	 */
+	public List&lt;VPolygon&gt; getPolygons() {
+<span class="nc" id="L59">		return new LinkedList&lt;VPolygon&gt;(this.polygons);</span>
+	}
+
+	/**
+	 * Checks if a given point is in the geometry, including inner polygons.
+	 * 
+	 * @param toCheck
+	 *        Point to check
+	 */
+	public boolean contains(VPoint toCheck) {
+<span class="nc bnc" id="L69" title="All 2 branches missed.">		for (VPolygon p : polygons) {</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">			if (p.contains(toCheck)) {</span>
+<span class="nc" id="L71">				return true;</span>
+			}
+<span class="nc" id="L73">		}</span>
+<span class="nc" id="L74">		return false;</span>
+	}
+
+	/**
+	 * Determines whether a point lies on the boundary of this geometry.
+	 * 
+	 * @param p
+	 * @return
+	 */
+	public boolean onBoundary(Point p) {
+<span class="nc" id="L84">		throw new UnsupportedOperationException(</span>
+				&quot;onBoundary is not implemented yet.&quot;);
+	}
+
+	/**
+	 * Checks intersection with a given polygon
+	 * 
+	 * @param polygon
+	 * @param createMidpoints
+	 *        if true, every line is splitEdge into two by inserting a midpoint.
+	 * @return
+	 */
+	public boolean intersects(VPolygon polygon, boolean createMidpoints,
+			boolean useEndpoints) {
+
+<span class="nc" id="L99">		List&lt;VPoint&gt; pointList = getPoints();</span>
+<span class="nc" id="L100">		List&lt;VPoint&gt; points = new LinkedList&lt;VPoint&gt;(pointList);</span>
+
+		// if midpoints should be created, loop over the pointList and create
+		// them
+<span class="nc bnc" id="L104" title="All 4 branches missed.">		if (createMidpoints &amp;&amp; !pointList.isEmpty()) {</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">			for (int i = 0; i &lt; pointList.size() - 1; i++) {</span>
+<span class="nc" id="L106">				points.add(GeometryUtils.interpolate(pointList.get(i),</span>
+<span class="nc" id="L107">						pointList.get(i + 1), 0.5));</span>
+			}
+<span class="nc" id="L109">			VPoint interpolated = GeometryUtils.interpolate(</span>
+<span class="nc" id="L110">					pointList.get(pointList.size() - 1), pointList.get(0), 0.5);</span>
+<span class="nc" id="L111">			points.add(interpolated);</span>
+		}
+
+		// add first point so we get a closed loop
+<span class="nc bnc" id="L115" title="All 2 branches missed.">		if (!pointList.isEmpty()) {</span>
+<span class="nc" id="L116">			points.add(points.get(0));</span>
+		}
+
+
+		// create the geometry to check intersection with
+		// TODO [priority=low] [task=refactoring] maybe check with polygon only?
+		// Geometry geometry = new Geometry();
+		// geometry.addPolygon(polygon);
+
+
+		// loop over all lines and check intersection
+<span class="nc bnc" id="L127" title="All 2 branches missed.">		for (int i = 0; i &lt; points.size() - 1; i++) {</span>
+<span class="nc" id="L128">			VLine intersectingLine = new VLine(points.get(i), points.get(i + 1));</span>
+
+<span class="nc bnc" id="L130" title="All 2 branches missed.">			if (polygon.intersects(intersectingLine)) {</span>
+<span class="nc" id="L131">				return true;</span>
+			}
+		}
+
+		// loop over this points
+<span class="nc bnc" id="L136" title="All 2 branches missed.">		for (VPoint p : pointList) {</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">			if (polygon.contains(p)) {</span>
+<span class="nc" id="L138">				return true;</span>
+			}
+<span class="nc" id="L140">		}</span>
+
+		// loop over polygons points
+<span class="nc bnc" id="L143" title="All 2 branches missed.">		for (VPoint p : polygon.getPoints()) {</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">			if (this.contains(p)) {</span>
+<span class="nc" id="L145">				return true;</span>
+			}
+<span class="nc" id="L147">		}</span>
+
+<span class="nc" id="L149">		return false;</span>
+	}
+
+	public Rectangle2D getBounds2D() {
+<span class="nc" id="L153">		return this.boundary;</span>
+	}
+
+	public void addPolygon(VPolygon polygon) {
+<span class="fc" id="L157">		this.polygons.add(polygon);</span>
+<span class="fc" id="L158">		this.boundary = this.boundary.createUnion(polygon.getBounds2D());</span>
+<span class="fc" id="L159">	}</span>
+
+	public boolean intersect(VLine line) {
+<span class="pc bpc" id="L162" title="1 of 2 branches missed.">		for (VPolygon polygon : polygons) {</span>
+<span class="fc bfc" id="L163" title="All 2 branches covered.">			if (polygon.intersects(line)) {</span>
+<span class="fc" id="L164">				return true;</span>
+			}
+<span class="fc" id="L166">		}</span>
+<span class="nc" id="L167">		return false;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

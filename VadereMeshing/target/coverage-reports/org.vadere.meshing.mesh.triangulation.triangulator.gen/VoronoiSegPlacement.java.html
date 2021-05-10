@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VoronoiSegPlacement.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">VoronoiSegPlacement.java</span></div><h1>VoronoiSegPlacement.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.IPlacementStrategy;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VTriangle;
+
+import java.util.function.Function;
+
+/**
+ * Computes insertion points based on a Frontal-Delaunay strategy, that is
+ * the point lies on the Voronoi segment of the corresponding Voronoi-diagram.
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+<span class="nc bnc" id="L26" title="All 2 branches missed.">public class VoronoiSegPlacement&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements IPlacementStrategy&lt;V, E ,F&gt; {</span>
+	private IMesh&lt;V, E, F&gt; mesh;
+	private Function&lt;IPoint, Double&gt; circumRadiusFunc;
+
+	public VoronoiSegPlacement(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+<span class="nc" id="L32">			@NotNull final Function&lt;IPoint, Double&gt; circumRadiusFunc) {</span>
+<span class="nc" id="L33">		this.mesh = mesh;</span>
+<span class="nc" id="L34">		this.circumRadiusFunc = circumRadiusFunc;</span>
+<span class="nc" id="L35">	}</span>
+
+	@Override
+	public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="nc" id="L39">		return mesh;</span>
+	}
+
+	@Override
+	public VPoint computePlacement(@NotNull final E edge) {
+<span class="nc" id="L44">		return computePlacement(edge, null);</span>
+	}
+
+	@Override
+	public VPoint computePlacement(@NotNull final E edge, @Nullable final VTriangle triangle) {
+<span class="nc" id="L49">		F face = getMesh().getFace(edge);</span>
+<span class="nc" id="L50">		E shortestEdge = edge;</span>
+<span class="nc" id="L51">		VLine line = getMesh().toLine(edge);</span>
+
+<span class="nc" id="L53">		VPoint midpoint = line.midPoint();</span>
+<span class="nc" id="L54">		VPoint c = triangle.getCircumcenter();</span>
+<span class="nc" id="L55">		double pq = 0.5 * line.length();</span>
+		//double pc = new VLine(c, new VPoint(getMesh().getPoint(shortestEdge))).length();
+
+<span class="nc" id="L58">		double r = circumRadiusFunc.apply(midpoint);</span>
+		/*if(getMesh().isAtBoundary(shortestEdge)) {
+			double s = ((2 * pq) / Math.sqrt(3));
+			if(s / circumRadiusFunc.apply(getMesh().toTriangle(face).midPoint()) &lt; maxRadiusRatio) {
+				r = s;
+			}
+		}*/
+
+<span class="nc" id="L66">		double mc = new VLine(c, midpoint).length();</span>
+<span class="nc" id="L67">		double rmax = (pq * pq + mc * mc) / (2 * mc);</span>
+<span class="nc" id="L68">		r = Math.min(Math.max(r, pq), rmax);</span>
+
+		// to prevent numerical errors:
+<span class="nc" id="L71">		double tmp = r * r - pq * pq;</span>
+
+<span class="nc bnc" id="L73" title="All 2 branches missed.">		if(tmp &lt; GeometryUtils.DOUBLE_EPS) {</span>
+<span class="nc" id="L74">			tmp = 0;</span>
+		} else {
+<span class="nc" id="L76">			tmp = Math.sqrt(tmp);</span>
+		}
+
+<span class="nc" id="L79">		double d = tmp + r;</span>
+		/*VPoint e;
+		VPoint x;
+		if(!getMesh().isBoundary(getMesh().getTwinFace(shortestEdge))) {
+			VPoint cc = getMesh().toTriangle(getMesh().getTwinFace(shortestEdge)).getCircumcenter();
+			e = c.subtract(cc).norm3D();
+			x = midpoint.add(e.scalarMultiply(d));
+		} else {
+			if(c.distanceSq(midpoint) &lt; GeometryUtils.DOUBLE_EPS) {
+				x = midpoint;
+			} else {
+				// would otherwise result in a very large angle3D at the boundary
+				if(d / Math.sqrt((3*pq * pq)) &lt; 0.8) {
+					x = midpoint;
+				}
+				else {
+					e = c.subtract(midpoint).norm3D();
+					x = midpoint.add(e.scalarMultiply(d));
+				}
+			}
+		}*/
+
+		VPoint e;
+		VPoint x;
+		VPoint cc;
+<span class="nc bnc" id="L104" title="All 2 branches missed.">		if(!getMesh().isAtBoundary(edge)) {</span>
+<span class="nc" id="L105">			cc = getMesh().toTriangle(getMesh().getTwinFace(edge)).getCircumcenter();</span>
+		} else {
+<span class="nc" id="L107">			double incircleRadius = Math.sqrt(3) / 6.0 * line.length();</span>
+<span class="nc" id="L108">			VPoint dir = line.asVPoint().rotate(Math.PI * 0.5).setMagnitude(incircleRadius);</span>
+<span class="nc" id="L109">			cc = midpoint.add(dir);</span>
+		}
+
+<span class="nc" id="L112">		e = c.subtract(cc).norm();</span>
+<span class="nc" id="L113">		x = midpoint.add(e.scalarMultiply(d));</span>
+<span class="nc bnc" id="L114" title="All 6 branches missed.">		assert !Double.isNaN(x.getX()) &amp;&amp; !Double.isNaN(x.getY());</span>
+<span class="nc" id="L115">		return x;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

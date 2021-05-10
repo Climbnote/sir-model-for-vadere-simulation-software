@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AFace.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">AFace.java</span></div><h1>AFace.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+import org.vadere.meshing.mesh.inter.IFace;
+
+/**
+ * An array-based implementation of {@link IFace}.
+ *
+ * @author Benedikt Zoennchen
+ */
+public class AFace implements IFace, Cloneable {
+
+	/**
+	 * One of the array index of the half-edges bordering this face.
+	 */
+	private int edge;
+
+	/**
+	 * The array-index of this face
+	 */
+	private int id;
+
+	/**
+	 * If true this face is a border face, otherwise its not.
+	 */
+	private boolean border;
+
+	/**
+	 * If true the face is destroyed which means it can be removed from the array-based mesh data structure.
+	 */
+<span class="fc" id="L30">	private boolean destroyed = false;</span>
+
+	/**
+	 * Default constructor. To construct a face where you have already some half-edges
+	 * bordering this face.
+	 *  @param id     the array-index of this face
+	 * @param edge   the array-index of one edge of this face
+	 * @param border indicator if this face is a border face or not
+	 */
+<span class="fc" id="L39">	AFace(final int id, final int edge, boolean border) {</span>
+<span class="fc" id="L40">		this.border = border;</span>
+<span class="fc" id="L41">		this.edge = edge;</span>
+<span class="fc" id="L42">		this.id = id;</span>
+<span class="fc" id="L43">	}</span>
+
+	/**
+	 * This constructor can be used for constructing a new face without having
+	 * constructed the bordering half-edges jet.
+	 */
+<span class="fc" id="L49">	AFace(final int id, boolean border) {</span>
+<span class="fc" id="L50">		this.border = border;</span>
+<span class="fc" id="L51">		this.edge = -1;</span>
+<span class="fc" id="L52">		this.id = id;</span>
+<span class="fc" id="L53">	}</span>
+
+	/**
+	 * Returns true if this face is a border face, false otherwise.
+	 *
+	 * @return true if this face is a border face, false otherwise
+	 */
+	boolean isBorder() {
+<span class="nc" id="L61">		return border;</span>
+	}
+
+	/**
+	 * Destroys the face. After this call the face can be removed from the array based mesh data structure.
+	 */
+	void destroy() {
+<span class="nc" id="L68">		setEdge(-1);</span>
+<span class="nc" id="L69">		destroyed = true;</span>
+<span class="nc" id="L70">	}</span>
+
+	/**
+	 * Sets one of the half-edges bordering this face.
+	 *
+	 * @param edge the array-index of a half-edge bordering this face
+	 */
+	void setEdge(final int edge) {
+<span class="fc" id="L78">		this.edge = edge;</span>
+<span class="fc" id="L79">	}</span>
+
+	/**
+	 * Sets the array-index of this face. Note that this method should
+	 * only be called by the garbage collector in {@link AMesh} which
+	 * adjust indices to remove destroyed base elements.
+	 *
+	 * @param id the new array-index of this face
+	 */
+	void setId(final int id) {
+<span class="nc" id="L89">		this.id = id;</span>
+<span class="nc" id="L90">	}</span>
+
+	/**
+	 * Returns the array-index of an half-edge of this face.
+	 *
+	 * @return the array-index of an half-edge of this face
+	 */
+	int getEdge() {
+<span class="fc" id="L98">		return edge;</span>
+	}
+
+	/**
+	 * Returns the array-indedx of this face.
+	 *
+	 * @return the array-indedx of this face.
+	 */
+	public int getId() {
+<span class="fc" id="L107">	    return id;</span>
+    }
+
+	/**
+	 * Returns true if this face is destroyed and can be removed from the mesh data structure,
+	 * false otherwise.
+	 *
+	 * @return true if this face is destroyed, false otherwise
+	 */
+	boolean isDestroyed() {
+<span class="nc" id="L117">		return destroyed;</span>
+	}
+
+	/**
+	 * Sets this face to be a border face or a non-border face with respect to
+	 * the parameter border.
+	 *
+	 * @param border if true this face becomes a border face, otherwise it becomes a non-border face
+	 */
+	public void setBorder(boolean border) {
+<span class="nc" id="L127">		this.border = border;</span>
+<span class="nc" id="L128">	}</span>
+
+	@Override
+    protected AFace clone()  {
+        try {
+<span class="nc" id="L133">            return (AFace) super.clone();</span>
+<span class="nc" id="L134">        } catch (CloneNotSupportedException e) {</span>
+<span class="nc" id="L135">            throw new InternalError(e.getMessage());</span>
+        }
+    }
+
+	@Override
+	public String toString() {
+<span class="nc" id="L141">		return id + &quot;,&quot; + border +&quot;,&quot; + destroyed;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

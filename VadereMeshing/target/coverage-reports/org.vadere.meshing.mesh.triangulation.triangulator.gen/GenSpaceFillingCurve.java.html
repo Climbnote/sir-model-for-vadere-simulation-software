@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GenSpaceFillingCurve.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">GenSpaceFillingCurve.java</span></div><h1>GenSpaceFillingCurve.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.shapes.IPoint;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * &lt;p&gt;A {@link GenSpaceFillingCurve} is a (linked-)list of nodes {@link SFCNode} in the order in which
+ * the curve would travers these nodes. Each node contains a half-edge which refers to
+ * a face.&lt;/p&gt;
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+<span class="nc bnc" id="L26" title="All 2 branches missed.">public class GenSpaceFillingCurve&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; {</span>
+	private SFCNode&lt;V, E, F&gt; head;
+	private Map&lt;E, SFCNode&lt;V, E, F&gt;&gt; edgeToNode;
+
+<span class="nc" id="L30">	public GenSpaceFillingCurve(){</span>
+<span class="nc" id="L31">		head = null;</span>
+<span class="nc" id="L32">		edgeToNode = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L33">	}</span>
+
+	public void insertFirst(final SFCNode&lt;V, E, F&gt; node) {
+<span class="nc bnc" id="L36" title="All 4 branches missed.">		assert head == null;</span>
+
+<span class="nc bnc" id="L38" title="All 2 branches missed.">		if(head != null) {</span>
+<span class="nc" id="L39">			throw new IllegalArgumentException(&quot;the space filling curve has already a first element&quot;);</span>
+		}
+
+<span class="nc" id="L42">		head = node;</span>
+<span class="nc" id="L43">		edgeToNode.put(head.getEdge(), head);</span>
+<span class="nc" id="L44">	}</span>
+
+	/**
+	 * &lt;p&gt;Replaces the anchor element by two elements i.e. consecutive elements left followed by right.&lt;/p&gt;
+	 *
+	 * @param left      the left element
+	 * @param right     the right element
+	 * @param anchor    the replaced element
+	 */
+	public void replace(
+			@NotNull final SFCNode&lt;V, E, F&gt; left,
+			@NotNull final SFCNode&lt;V, E, F&gt; right,
+			@NotNull SFCNode&lt;V, E, F&gt; anchor) {
+<span class="nc bnc" id="L57" title="All 4 branches missed.">		assert asList().contains(anchor);</span>
+<span class="nc" id="L58">		insertNext(right, anchor);</span>
+<span class="nc" id="L59">		insertNext(left, anchor);</span>
+<span class="nc" id="L60">		remove(anchor);</span>
+<span class="nc" id="L61">	}</span>
+
+	/**
+	 * &lt;p&gt;Replaces the anchor element by two elements i.e. consecutive elements left followed by right.&lt;/p&gt;
+	 *
+	 * @param left      the left element
+	 * @param middle    the middle element
+	 * @param right     the right element
+	 * @param anchor    the replaced element
+	 */
+	public void replace(
+			@NotNull final SFCNode&lt;V, E, F&gt; left,
+			@NotNull final SFCNode&lt;V, E, F&gt; middle,
+			@NotNull final SFCNode&lt;V, E, F&gt; right,
+			@NotNull SFCNode&lt;V, E, F&gt; anchor) {
+<span class="nc bnc" id="L76" title="All 4 branches missed.">		assert asList().contains(anchor);</span>
+<span class="nc" id="L77">		insertNext(right, anchor);</span>
+<span class="nc" id="L78">		insertNext(middle, anchor);</span>
+<span class="nc" id="L79">		insertNext(left, anchor);</span>
+<span class="nc" id="L80">		remove(anchor);</span>
+<span class="nc" id="L81">	}</span>
+
+	public SFCNode&lt;V, E, F&gt; getNode(@NotNull final E edge) {
+<span class="nc" id="L84">		return edgeToNode.get(edge);</span>
+	}
+
+
+	public SFCNode&lt;V, E, F&gt; getNode(@NotNull final F face) {
+<span class="nc" id="L89">		return edgeToNode.get(face);</span>
+	}
+
+	/**
+	 * &lt;p&gt;Removes an element from the SFC in O(1).&lt;/p&gt;
+	 *
+	 * @param anchor the element which will be removed
+	 */
+	public void remove(@NotNull final SFCNode&lt;V, E, F&gt; anchor) {
+<span class="nc bnc" id="L98" title="All 4 branches missed.">		assert asList().contains(anchor);</span>
+
+<span class="nc bnc" id="L100" title="All 2 branches missed.">		if(anchor == head) {</span>
+<span class="nc" id="L101">			head = head.next;</span>
+<span class="nc" id="L102">			head.prev = null;</span>
+		}
+		else {
+<span class="nc" id="L105">			anchor.prev.next = anchor.next;</span>
+<span class="nc" id="L106">			anchor.next.prev = anchor.prev;</span>
+		}
+
+		// maybe we already replaced the anchor in edgeToNode
+<span class="nc bnc" id="L110" title="All 2 branches missed.">		if(edgeToNode.get(anchor.getEdge()).equals(anchor)) {</span>
+<span class="nc" id="L111">			edgeToNode.remove(anchor.getEdge());</span>
+		}
+<span class="nc" id="L113">		anchor.destroy();</span>
+<span class="nc" id="L114">	}</span>
+
+	/**
+	 * &lt;p&gt;Inserts a node after the anchor element in O(1).&lt;/p&gt;
+	 *
+	 * @param node      the node
+	 * @param anchor    the anchor element
+	 */
+	public void insertNext(@NotNull final SFCNode&lt;V, E, F&gt; node, @NotNull SFCNode&lt;V, E, F&gt; anchor) {
+<span class="nc bnc" id="L123" title="All 4 branches missed.">		assert asList().contains(anchor);</span>
+
+<span class="nc" id="L125">		SFCNode&lt;V, E, F&gt; anchorNext = anchor.next;</span>
+<span class="nc" id="L126">		anchor.next = node;</span>
+<span class="nc" id="L127">		node.prev = anchor;</span>
+<span class="nc" id="L128">		node.next = anchorNext;</span>
+
+		// tail!
+<span class="nc bnc" id="L131" title="All 2 branches missed.">		if(anchorNext != null) {</span>
+<span class="nc" id="L132">			anchorNext.prev = node;</span>
+		}
+
+<span class="nc" id="L135">		edgeToNode.put(node.getEdge(), node);</span>
+<span class="nc" id="L136">	}</span>
+
+	/**
+	 * Returns the SFC as ordered &lt;tt&gt;List&lt;/tt&gt;.
+	 * @return the whole SFC as in an ordered list
+	 */
+	public List&lt;SFCNode&lt;V, E, F&gt;&gt; asList() {
+		List&lt;SFCNode&lt;V, E, F&gt;&gt; list;
+<span class="nc bnc" id="L144" title="All 2 branches missed.">		if(head == null) {</span>
+<span class="nc" id="L145">			list = Collections.EMPTY_LIST;</span>
+		}
+		else {
+<span class="nc" id="L148">			list = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L149">			SFCNode&lt;V, E, F&gt; node = head;</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">			while (node != null) {</span>
+<span class="nc" id="L151">				list.add(node);</span>
+<span class="nc" id="L152">				node = node.next;</span>
+			}
+		}
+<span class="nc" id="L155">		return list;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L160">		return asList().toString();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

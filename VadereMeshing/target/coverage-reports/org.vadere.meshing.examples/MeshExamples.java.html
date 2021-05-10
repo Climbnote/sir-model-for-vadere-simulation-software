@@ -1,0 +1,965 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MeshExamples.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.examples</a> &gt; <span class="el_source">MeshExamples.java</span></div><h1>MeshExamples.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.examples;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.gen.AFace;
+import org.vadere.meshing.mesh.gen.AHalfEdge;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PMesh;
+import org.vadere.meshing.mesh.impl.PMeshPanel;
+import org.vadere.meshing.mesh.impl.PSLG;
+import org.vadere.meshing.mesh.inter.IMeshDistanceFunction;
+import org.vadere.meshing.mesh.inter.IPointConstructor;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.EikMeshPoint;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.impl.PEikMesh;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.ADelaunayTriangulator;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.PContrainedDelaunayTriangulator;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.PVoronoiVertexInsertion;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.PDelaunayTriangulator;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.PVoronoiSegmentInsertion;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.PRuppertsTriangulator;
+import org.vadere.meshing.utils.io.movie.MovRecorder;
+import org.vadere.meshing.utils.io.poly.PSLGGenerator;
+import org.vadere.meshing.utils.io.tex.TexGraphGenerator;
+import org.vadere.util.data.cellgrid.IPotentialPoint;
+import org.vadere.util.data.cellgrid.PathFindingTag;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VCircle;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.math.IDistanceFunction;
+
+import java.awt.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+<span class="nc bnc" id="L53" title="All 2 branches missed.">public class MeshExamples {</span>
+<span class="nc" id="L54">	private static Logger logger = Logger.getLogger(MeshExamples.class);</span>
+
+	public static void main(String... args) throws InterruptedException, IOException {
+		/*for(int i = 1; i &lt;= 629; i++) {
+			System.out.println(i + &quot; &quot; + i + &quot; &quot; + (i + 1));
+		}*/
+		//eikMeshRandom();
+		//eikMeshGreenland();
+		//ruppertsTriangulationKaiserslauternLarge();
+		//ruppertsTriangulationPoly();
+		//ruppertsTriangulationPolyGreenland();
+//		delaunayTriangulation();
+		//dirichletRefinment();
+//		delaunayRefinment();
+//		constrainedDelaunayTriangulation();
+		//eikMeshKaiserslautern();
+		//eikMeshKaiserslauternApprox();
+<span class="nc" id="L71">		eikMeshA();</span>
+		//eikMeshEik();
+<span class="nc" id="L73">	}</span>
+
+	public static void faceTest() throws InterruptedException {
+<span class="nc" id="L76">		VPoint p1 = new VPoint(-1,0);</span>
+<span class="nc" id="L77">		VPoint p2 = new VPoint(1, 0);</span>
+<span class="nc" id="L78">		VPoint p3 = new VPoint(0, Math.sqrt(4-1));</span>
+<span class="nc" id="L79">		VPoint p4 = new VPoint(4,4);</span>
+<span class="nc" id="L80">		VPoint p5 = new VPoint(3,0);</span>
+<span class="nc" id="L81">		List&lt;VPoint&gt; points = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L82">		points.add(p1);</span>
+<span class="nc" id="L83">		points.add(p2);</span>
+<span class="nc" id="L84">		points.add(p3);</span>
+<span class="nc" id="L85">		points.add(p4);</span>
+<span class="nc" id="L86">		points.add(p5);</span>
+
+<span class="nc" id="L88">		VTriangle triangle = new VTriangle(p1, p2, p3);</span>
+<span class="nc" id="L89">		VPoint c = triangle.getCircumcenter();</span>
+<span class="nc" id="L90">		VLine line = new VLine(p2, p3);</span>
+<span class="nc" id="L91">		VPoint midpoint = line.midPoint();</span>
+<span class="nc" id="L92">		VPoint toC = midpoint.subtract(c).norm().scalarMultiply(triangle.getCircumscribedRadius());</span>
+<span class="nc" id="L93">		VPoint newPoint = midpoint.subtract(c).scalarMultiply(2).add(c).add(toC);</span>
+
+<span class="nc" id="L95">		points.add(newPoint);</span>
+
+<span class="nc" id="L97">		PDelaunayTriangulator delaunayTriangulation = new PDelaunayTriangulator(points);</span>
+<span class="nc" id="L98">		delaunayTriangulation.generate();</span>
+
+<span class="nc" id="L100">		System.out.println(TexGraphGenerator.toTikz(delaunayTriangulation.getMesh()));</span>
+<span class="nc" id="L101">		System.out.println(newPoint);</span>
+<span class="nc" id="L102">		System.out.println(triangle.getCircumcenter());</span>
+<span class="nc" id="L103">		VPoint ca = new VTriangle(p2,p3,p4).getCircumcenter();</span>
+<span class="nc" id="L104">		System.out.println(&quot;ca&quot; + ca);</span>
+<span class="nc" id="L105">		System.out.println(&quot;cca&quot; + new VTriangle(p2,p3,ca).getCircumcenter());</span>
+<span class="nc" id="L106">		System.out.println(&quot;ccar&quot; + new VTriangle(p2,p3,ca).getCircumscribedRadius());</span>
+<span class="nc" id="L107">		System.out.println(midpoint);</span>
+<span class="nc" id="L108">		System.out.println(new VTriangle(newPoint, p2, p3).getCircumcenter());</span>
+<span class="nc" id="L109">		System.out.println(new VTriangle(newPoint, p2, p3).getCircumscribedRadius());</span>
+<span class="nc" id="L110">		PMeshPanel panel = new PMeshPanel(delaunayTriangulation.getMesh(), 500, 500);</span>
+<span class="nc" id="L111">		panel.display(&quot;A square mesh&quot;);</span>
+<span class="nc" id="L112">		panel.repaint();</span>
+<span class="nc" id="L113">	}</span>
+
+	public static void square() {
+<span class="nc" id="L116">		var mesh = new PMesh();</span>
+
+<span class="nc bnc" id="L118" title="All 4 branches missed.">		assert mesh.getNumberOfFaces() == 0;</span>
+
+<span class="nc" id="L120">		mesh.toFace(</span>
+				new VPoint(0,0),
+				new VPoint(1, 0),
+				new VPoint(1, 1),
+				new VPoint(0, 1));
+
+<span class="nc bnc" id="L126" title="All 4 branches missed.">		assert mesh.getNumberOfFaces() == 1;</span>
+
+<span class="nc" id="L128">		var panel = new PMeshPanel(mesh, 500, 500);</span>
+<span class="nc" id="L129">		panel.display(&quot;A square mesh&quot;);</span>
+<span class="nc" id="L130">		panel.repaint();</span>
+
+<span class="nc" id="L132">		mesh.getNext(mesh.getEdge(mesh.getFace()));</span>
+<span class="nc" id="L133">		mesh.streamPoints(mesh.getBorder()).parallel();</span>
+
+
+<span class="nc" id="L136">		System.out.println(TexGraphGenerator.toTikz(mesh));</span>
+<span class="nc" id="L137">	}</span>
+
+	public static void delaunayTriangulation() {
+
+		// (1) generate a point set
+<span class="nc" id="L142">		Random random = new Random(0);</span>
+<span class="nc" id="L143">		int width = 10;</span>
+<span class="nc" id="L144">		int height = 10;</span>
+<span class="nc" id="L145">		int numberOfPoints = 100;</span>
+<span class="nc" id="L146">		Supplier&lt;VPoint&gt; supply = () -&gt; new VPoint(random.nextDouble()*width, random.nextDouble()*height);</span>
+<span class="nc" id="L147">		Stream&lt;VPoint&gt; randomPoints = Stream.generate(supply);</span>
+<span class="nc" id="L148">		List&lt;VPoint&gt; points = randomPoints.limit(numberOfPoints).collect(Collectors.toList());</span>
+
+		// (2) compute the Delaunay triangulation
+<span class="nc" id="L151">		var delaunayTriangulator = new ADelaunayTriangulator(points);</span>
+<span class="nc" id="L152">		var triangulation = delaunayTriangulator.generate();</span>
+
+		// \definecolor{mygreen}{RGB}{85,168,104}
+<span class="nc" id="L155">		Color green = new Color(85, 168, 104);</span>
+<span class="nc" id="L156">		Color red = new Color(196,78,82);</span>
+
+<span class="nc" id="L158">		var face = triangulation.locateFace(new VPoint(5,5)).get();</span>
+<span class="nc" id="L159">		var mesh = triangulation.getMesh();</span>
+<span class="nc" id="L160">		var deletePoints = mesh.getVertices(face);</span>
+<span class="nc" id="L161">		var surroundingFaces = mesh.getFaces(deletePoints.get(0));</span>
+<span class="nc" id="L162">		var ringEdges = mesh</span>
+<span class="nc" id="L163">				.streamEdges(deletePoints.get(0))</span>
+<span class="nc" id="L164">				.map(edge -&gt; mesh.getPrev(edge)).collect(Collectors.toList());</span>
+		/*System.out.println(TexGraphGenerator.toTikz(
+				delaunayTriangulator.getMesh(),
+				f -&gt; surroundingFaces.contains(f) ? red : Color.WHITE,
+				1.0f));*/
+
+
+
+
+		//triangulation.remove(deletePoints.get(0));
+
+<span class="nc" id="L175">		var face2 = triangulation.locateFace(new VPoint(5,5)).get();</span>
+<span class="nc" id="L176">		var list = ringEdges.stream().map(e -&gt; mesh.getFace(e)).collect(Collectors.toList());</span>
+<span class="nc" id="L177">		surroundingFaces.addAll(list);</span>
+<span class="nc" id="L178">		System.out.println(TexGraphGenerator.toTikz(</span>
+<span class="nc" id="L179">				delaunayTriangulator.getMesh(),</span>
+		//		f -&gt; surroundingFaces.contains(f) ? green : Color.WHITE,
+				1.0f));
+
+
+<span class="nc" id="L184">		String propertyName = &quot;area&quot;;</span>
+<span class="nc" id="L185">		LinkedList&lt;AHalfEdge&gt; visitedEdges = delaunayTriangulator.generate().straightGatherWalk2D(5, 5, delaunayTriangulator.getMesh().getFace());</span>
+<span class="nc bnc" id="L186" title="All 2 branches missed.">		for(AFace f : delaunayTriangulator.getMesh().getFaces()) {</span>
+<span class="nc" id="L187">			delaunayTriangulator.getMesh().setData(f, propertyName, delaunayTriangulator.getMesh().toTriangle(f).getArea());</span>
+<span class="nc" id="L188">		}</span>
+
+<span class="nc" id="L190">		double areaSum = delaunayTriangulator.getMesh().streamFaces().mapToDouble(f -&gt; delaunayTriangulator.getMesh().getData(f, propertyName, Double.class).get()).sum();</span>
+<span class="nc" id="L191">		double averageArea = areaSum / delaunayTriangulator.getMesh().getNumberOfFaces();</span>
+<span class="nc" id="L192">		System.out.println(&quot;Triangulated area = &quot; + areaSum);</span>
+<span class="nc" id="L193">		System.out.println(&quot;Average triangle area = &quot; + averageArea);</span>
+<span class="nc" id="L194">		System.out.println(&quot;Area triangulated = &quot; + (100 * (areaSum / (width * height))) + &quot; %&quot;);</span>
+
+
+<span class="nc" id="L197">		VPoint q = delaunayTriangulator.getMesh().toTriangle(delaunayTriangulator.getMesh().getFace(visitedEdges.peekFirst())).midPoint();</span>
+<span class="nc" id="L198">		Set&lt;AFace&gt; faceSet = visitedEdges.stream().map(e -&gt; delaunayTriangulator.getMesh().getFace(e)).collect(Collectors.toSet());</span>
+
+		//\definecolor{myred}{RGB}{196,78,82}
+
+
+		/*System.out.println(TexGraphGenerator.toTikz(
+				delaunayTriangulator.getMesh(),
+				//f -&gt; delaunayTriangulation.getMesh().toTriangle(f).isNonAcute() ? red : Color.WHITE,
+				1.0f));*/
+
+
+		//System.out.println(TexGraphGenerator.toTikz(delaunayTriangulator.getMesh(), f -&gt; faceSet.contains(f) ? red : Color.WHITE, 1.0f, new VLine(q, new VPoint(5,5))));
+
+		/*delaunayTriangulation.getMesh().locate(5, 5);
+
+		var panel = new PMeshPanel&lt;&gt;(
+				delaunayTriangulation.getMesh(),
+				500,
+				500,
+				f -&gt; delaunayTriangulation.getMesh().toTriangle(f).isNonAcute() ? red : Color.WHITE);
+		panel.display(&quot;Delaunay triangulation&quot;);
+		panel.repaint();*/
+
+
+<span class="nc" id="L222">	}</span>
+
+	public static void constrainedDelaunayTriangulation() throws IOException {
+<span class="nc" id="L225">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/a.poly&quot;);</span>
+<span class="nc" id="L226">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L227">		Collection&lt;VLine&gt; constrains = pslg.getAllSegments();</span>
+<span class="nc" id="L228">		var cdt = new PContrainedDelaunayTriangulator(</span>
+				pslg,
+				true);
+<span class="nc" id="L231">		cdt.generate();</span>
+
+
+<span class="nc" id="L234">		Collection&lt;VPoint&gt; allPoints = new ArrayList&lt;&gt;(constrains.size() * 2);</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">		for(VLine line : constrains) {</span>
+<span class="nc" id="L236">			allPoints.add(line.getVPoint1());</span>
+<span class="nc" id="L237">			allPoints.add(line.getVPoint2());</span>
+<span class="nc" id="L238">		}</span>
+
+<span class="nc" id="L240">		var dt = new PDelaunayTriangulator(</span>
+				allPoints
+		);
+<span class="nc" id="L243">		dt.generate();</span>
+
+<span class="nc" id="L245">		Color green = new Color(85, 168, 104);</span>
+<span class="nc" id="L246">		Color red = new Color(196,78,82);</span>
+<span class="nc" id="L247">		var allConstrains = cdt.getConstrains();</span>
+<span class="nc bnc" id="L248" title="All 2 branches missed.">		Function&lt;PHalfEdge, Color&gt; colorFunction = e -&gt; allConstrains.contains(e) ? red : Color.GRAY;</span>
+
+<span class="nc" id="L250">		System.out.println(TexGraphGenerator.toTikz(cdt.getMesh(), f -&gt; Color.WHITE, colorFunction, 1.0f, false));</span>
+		//System.out.println(TexGraphGenerator.toTikz(dt.getMesh(), 1.0f));
+
+
+<span class="nc" id="L254">		PMeshPanel panel = new PMeshPanel(cdt.getMesh(), 1000, 1000);</span>
+<span class="nc" id="L255">		panel.display(&quot;A square mesh&quot;);</span>
+<span class="nc" id="L256">		panel.repaint();</span>
+
+
+<span class="nc" id="L259">	}</span>
+
+	public static void eikMeshRandom() throws IOException {
+<span class="nc" id="L262">		ArrayList&lt;EikMeshPoint&gt; points = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L263">		Random random = new Random(0);</span>
+<span class="nc bnc" id="L264" title="All 2 branches missed.">		for(int i = 0; i &lt; 1000; i++) {</span>
+<span class="nc" id="L265">			points.add(new EikMeshPoint(random.nextDouble() * 10, random.nextDouble() * 10));</span>
+		}
+
+<span class="nc" id="L268">		PDelaunayTriangulator dt = new PDelaunayTriangulator(points);</span>
+<span class="nc" id="L269">		dt.generate();</span>
+
+<span class="nc" id="L271">		Function&lt;PFace, Color&gt; colorFunction = f -&gt;  {</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">			return !dt.getTriangulation().isValid(f) ? Color.RED : Color.WHITE;</span>
+			//return new Color(quality, quality, quality);
+		};
+
+<span class="nc" id="L276">		PMeshPanel panel = new PMeshPanel(dt.getMesh(), 1000, 1000);</span>
+<span class="nc" id="L277">		panel.display(&quot; Voronoi Vertex Insertion&quot;);</span>
+
+<span class="nc" id="L279">		VPolygon bound = dt.getMesh().toPolygon(dt.getMesh().getBorder());</span>
+<span class="nc" id="L280">		var eikMesh = new PEikMesh(</span>
+<span class="nc" id="L281">				p -&gt; 1.0 /*+ Math.abs(bound.distance(p))*/,</span>
+<span class="nc" id="L282">				dt.getTriangulation()</span>
+		);
+
+<span class="nc" id="L285">		System.out.println(TexGraphGenerator.toTikz(eikMesh.getMesh()));</span>
+<span class="nc bnc" id="L286" title="All 2 branches missed.">		while (!eikMesh.isFinished()) {</span>
+			try {
+<span class="nc" id="L288">				Thread.sleep(30);</span>
+<span class="nc" id="L289">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L290">				e.printStackTrace();</span>
+<span class="nc" id="L291">			}</span>
+
+<span class="nc" id="L293">			synchronized (eikMesh.getMesh()) {</span>
+<span class="nc" id="L294">				eikMesh.improve();</span>
+<span class="nc" id="L295">			}</span>
+<span class="nc" id="L296">			panel.repaint();</span>
+		}
+
+		//var recorder = new MovRecorder&lt;&gt;(eikMesh, panel.getMeshRenderer(), 1024, 800, eikMesh.getMesh().getBound());
+		//recorder.record();
+		//recorder.finish();
+
+		//System.out.println(TexGraphGenerator.toTikz(eikMesh.getMesh()));
+		//System.out.println(&quot;finished&quot;);
+<span class="nc" id="L305">	}</span>
+
+	public static void ruppertsTriangulationKaiserslautern() throws IOException {
+<span class="nc" id="L308">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/kaiserslautern.poly&quot;);</span>
+<span class="nc" id="L309">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L310">		Collection&lt;VLine&gt; lines = pslg.getAllSegments();</span>
+<span class="nc" id="L311">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L312">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+
+<span class="nc" id="L314">		IDistanceFunction distanceFunction = IDistanceFunction.create(segmentBound, holes);</span>
+<span class="nc" id="L315">		IEdgeLengthFunction h = p -&gt; 0.01 /*+ 0.2*Math.abs(distanceFunction.apply(p))*/;</span>
+<span class="nc" id="L316">		var ruppert = new PRuppertsTriangulator(</span>
+				pslg,
+				//p -&gt; 0.01,
+				10.0
+				);
+
+<span class="nc" id="L322">		PMeshPanel panel = new PMeshPanel(ruppert.getMesh(), 1000, 1000);</span>
+<span class="nc" id="L323">		panel.display(&quot; Voronoi Vertex Insertion&quot;);</span>
+
+<span class="nc bnc" id="L325" title="All 2 branches missed.">		while (!ruppert.isFinished()) {</span>
+			try {
+<span class="nc" id="L327">				Thread.sleep(20);</span>
+<span class="nc" id="L328">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L329">				e.printStackTrace();</span>
+<span class="nc" id="L330">			}</span>
+
+<span class="nc" id="L332">			synchronized (ruppert.getMesh()) {</span>
+<span class="nc" id="L333">				ruppert.step();</span>
+<span class="nc" id="L334">			}</span>
+<span class="nc" id="L335">			panel.repaint();</span>
+		}
+
+		/*var eikMesh = new PEikMeshGen&lt;&gt;(h, ruppert.getTriangulation());
+
+		while (!eikMesh.isFinished()) {
+			try {
+				Thread.sleep(30);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
+			synchronized (eikMesh.getMesh()) {
+				eikMesh.improve();
+			}
+			panel.repaint();
+		}*/
+
+<span class="nc" id="L353">		System.out.println(TexGraphGenerator.toTikz(ruppert.getMesh()));</span>
+<span class="nc" id="L354">		System.out.println(&quot;finished&quot;);</span>
+<span class="nc" id="L355">	}</span>
+
+	public static void ruppertsTriangulationKaiserslauternLarge() throws IOException {
+<span class="nc" id="L358">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/kaiserslautern_large.poly&quot;);</span>
+<span class="nc" id="L359">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L360">		Collection&lt;VLine&gt; lines = pslg.getAllSegments();</span>
+<span class="nc" id="L361">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L362">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+
+<span class="nc" id="L364">		IDistanceFunction distanceFunction = IDistanceFunction.create(segmentBound, holes);</span>
+<span class="nc" id="L365">		IEdgeLengthFunction h = p -&gt; 0.01 /*+ 0.2*Math.abs(distanceFunction.apply(p))*/;</span>
+<span class="nc" id="L366">		var ruppert = new PRuppertsTriangulator(</span>
+				pslg,
+				//p -&gt; 0.01,
+				10.0
+		);
+
+<span class="nc" id="L372">		PMeshPanel panel = new PMeshPanel(ruppert.getMesh(), 1000, 1000);</span>
+<span class="nc" id="L373">		panel.display(&quot; Voronoi Vertex Insertion&quot;);</span>
+
+<span class="nc bnc" id="L375" title="All 2 branches missed.">		while (!ruppert.isFinished()) {</span>
+			try {
+<span class="nc" id="L377">				Thread.sleep(20);</span>
+<span class="nc" id="L378">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L379">				e.printStackTrace();</span>
+<span class="nc" id="L380">			}</span>
+
+<span class="nc" id="L382">			synchronized (ruppert.getMesh()) {</span>
+<span class="nc" id="L383">				ruppert.step();</span>
+<span class="nc" id="L384">			}</span>
+<span class="nc" id="L385">			panel.repaint();</span>
+		}
+
+		/*var eikMesh = new PEikMeshGen&lt;&gt;(h, ruppert.getTriangulation());
+
+		while (!eikMesh.isFinished()) {
+			try {
+				Thread.sleep(30);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
+			synchronized (eikMesh.getMesh()) {
+				eikMesh.improve();
+			}
+			panel.repaint();
+		}*/
+
+<span class="nc" id="L403">		System.out.println(TexGraphGenerator.toTikz(ruppert.getMesh()));</span>
+<span class="nc" id="L404">		System.out.println(&quot;finished&quot;);</span>
+<span class="nc" id="L405">	}</span>
+
+	public static void ruppertsTriangulationPoly() throws IOException {
+<span class="nc" id="L408">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/a.poly&quot;);</span>
+<span class="nc" id="L409">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L410">		Collection&lt;VLine&gt; segments = pslg.getAllSegments();</span>
+<span class="nc" id="L411">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L412">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+
+<span class="nc" id="L414">		System.out.println(TexGraphGenerator.toTikz(segments));</span>
+
+<span class="nc" id="L416">		double theta = 20.0;</span>
+<span class="nc" id="L417">		var ruppert = new PRuppertsTriangulator(</span>
+				pslg,
+<span class="nc" id="L419">				p -&gt; Double.POSITIVE_INFINITY,</span>
+				theta
+		);
+		//cdt.generate();
+		//ruppertsTriangulator.generate();
+
+
+<span class="nc" id="L426">		Function&lt;PFace, Color&gt; colorFunction = f -&gt;  {</span>
+<span class="nc bnc" id="L427" title="All 2 branches missed.">			float quality = ruppert.getMesh().isBoundary(f) ? 1.0f : (float)GeometryUtils.qualityOf(ruppert.getMesh().toTriangle(f));</span>
+<span class="nc" id="L428">			return new Color(quality, quality, quality);</span>
+		};
+<span class="nc" id="L430">		final var coinstrains = ruppert.getSegments();</span>
+		//System.out.println(TexGraphGenerator.toTikz(ruppert.getMesh(), colorFunction, 1.0f));
+<span class="nc bnc" id="L432" title="All 2 branches missed.">		PMeshPanel panel = new PMeshPanel(ruppert.getMesh(), 1000, 1000, f -&gt; Color.WHITE, e -&gt; coinstrains.contains(e) ? Color.RED : Color.GRAY);</span>
+<span class="nc" id="L433">		panel.display(&quot;Rupperts Algorithm&quot;);</span>
+
+<span class="nc bnc" id="L435" title="All 2 branches missed.">		while (!ruppert.isFinished()) {</span>
+			try {
+<span class="nc" id="L437">				Thread.sleep(30);</span>
+<span class="nc" id="L438">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L439">				e.printStackTrace();</span>
+<span class="nc" id="L440">			}</span>
+
+<span class="nc" id="L442">			synchronized (ruppert.getMesh()) {</span>
+<span class="nc" id="L443">				ruppert.step();</span>
+<span class="nc" id="L444">			}</span>
+<span class="nc" id="L445">			panel.repaint();</span>
+		}
+<span class="nc" id="L447">		System.out.println(TexGraphGenerator.toTikz(ruppert.getMesh(), colorFunction, 50.0f));</span>
+<span class="nc" id="L448">		System.out.println(&quot;finished&quot;);</span>
+<span class="nc" id="L449">	}</span>
+
+	public static void ruppertsTriangulationPolyGreenland() throws IOException {
+<span class="nc" id="L452">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/greenland.poly&quot;);</span>
+<span class="nc" id="L453">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L454">		double theta = 20;</span>
+<span class="nc" id="L455">		PRuppertsTriangulator ruppert = new PRuppertsTriangulator(</span>
+				pslg,
+<span class="nc" id="L457">				p -&gt; Double.POSITIVE_INFINITY,</span>
+				theta
+		);
+
+
+//		EdgeLengthFunctionApprox edgeLengthFunctionApprox = new EdgeLengthFunctionApprox(pslg);
+//		edgeLengthFunctionApprox.printPython();
+
+<span class="nc" id="L465">		System.out.println();</span>
+//		edgeLengthFunctionApprox.smooth(0.3);
+//		edgeLengthFunctionApprox.printPython();
+
+<span class="nc" id="L469">		Function&lt;PFace, Color&gt; colorFunction = f -&gt;  {</span>
+<span class="nc bnc" id="L470" title="All 2 branches missed.">			float quality = ruppert.getMesh().isBoundary(f) ? 1.0f : (float)GeometryUtils.qualityOf(ruppert.getMesh().toTriangle(f));</span>
+<span class="nc" id="L471">			return new Color(quality, quality, quality);</span>
+		};
+
+<span class="nc" id="L474">		final var segments = ruppert.getSegments();</span>
+
+<span class="nc bnc" id="L476" title="All 2 branches missed.">		PMeshPanel panel = new PMeshPanel(ruppert.getMesh(), 800, 800, f -&gt; Color.WHITE, e -&gt; segments.contains(e) ? Color.RED : Color.GRAY);</span>
+<span class="nc" id="L477">		panel.display(&quot;Rupperts Algorithm&quot;);</span>
+
+<span class="nc bnc" id="L479" title="All 2 branches missed.">		while (!ruppert.isFinished()) {</span>
+			try {
+<span class="nc" id="L481">				Thread.sleep(5);</span>
+<span class="nc" id="L482">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L483">				e.printStackTrace();</span>
+<span class="nc" id="L484">			}</span>
+
+<span class="nc" id="L486">			synchronized (ruppert.getMesh()) {</span>
+<span class="nc" id="L487">				ruppert.step();</span>
+<span class="nc" id="L488">			}</span>
+<span class="nc" id="L489">			panel.repaint();</span>
+		}
+<span class="nc" id="L491">		logger.info(TexGraphGenerator.toTikz(ruppert.getMesh(), colorFunction, 1.0f));</span>
+<span class="nc" id="L492">	}</span>
+
+	public static void ruppertsTriangulation() {
+
+		// bounding polygon
+<span class="nc" id="L497">		VPolygon boundingBox = GeometryUtils.toPolygon(</span>
+				new VCircle(new VPoint(15.0/2.0, 15.0/2.0), 14.0),
+				100);
+
+		// first polygon
+<span class="nc" id="L502">		VPolygon house = GeometryUtils.toPolygon(</span>
+				new VPoint(1, 1),
+				new VPoint(1, 5),
+				new VPoint(3, 7),
+				new VPoint(5,5),
+				new VPoint(5,1));
+
+<span class="nc" id="L509">		PSLG pslg = new PSLG(boundingBox, Arrays.asList(house));</span>
+
+<span class="nc" id="L511">		PRuppertsTriangulator ruppertsTriangulator = new PRuppertsTriangulator(</span>
+				pslg,
+				20);
+
+<span class="nc" id="L515">		ruppertsTriangulator.generate();</span>
+
+
+<span class="nc" id="L518">		Function&lt;PFace, Color&gt; colorFunction = f -&gt;  {</span>
+<span class="nc bnc" id="L519" title="All 2 branches missed.">			float quality = ruppertsTriangulator.getMesh().isBoundary(f) ? 1.0f : (float)GeometryUtils.qualityOf(ruppertsTriangulator.getMesh().toTriangle(f));</span>
+<span class="nc" id="L520">			return new Color(quality, quality, quality);</span>
+		};
+<span class="nc" id="L522">		System.out.println(TexGraphGenerator.toTikz(ruppertsTriangulator.getMesh(), colorFunction, 1.0f));</span>
+<span class="nc" id="L523">		PMeshPanel panel = new PMeshPanel(ruppertsTriangulator.getMesh(), 1000, 1000);</span>
+<span class="nc" id="L524">		panel.display(&quot;Rupperts Algorithm&quot;);</span>
+
+		/*while (true) {
+			synchronized (ruppertsTriangulator.getMesh()) {
+				ruppertsTriangulator.step();
+			}
+
+			try {
+				Thread.sleep(300);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}*/
+<span class="nc" id="L537">	}</span>
+
+	/*@NotNull IDistanceFunction distanceFunc,
+			@NotNull IEdgeLengthFunction edgeLengthFunc,
+			double initialEdgeLen,
+			@NotNull VRectangle bound,
+			@NotNull Collection&lt;? extends VShape&gt; obstacleShapes,
+			@NotNull IPointConstructor&lt;P&gt; pointConstructor*/
+
+	public static void eikMeshA() throws IOException, InterruptedException {
+<span class="nc" id="L547">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/a.poly&quot;);</span>
+<span class="nc" id="L548">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+
+//		IPointConstructor&lt;EikMeshPoint&gt; pointConstructor = (x, y) -&gt; new EikMeshPoint(x, y);
+
+		// (1) construct background mesh distance function
+//		IDistanceFunction approxDistanceFunction = IMeshDistanceFunction.createDistanceFunction(pslg);
+
+		// (2) construct initial mesh using Ruppert's algorithm
+		/*double minCircumRadius = 0.015;
+		double c = 1.0;
+		double theta = 20.0;
+		Function&lt;IPoint, Double&gt; circumRadiusFunc = p -&gt; minCircumRadius + c * Math.abs(approxDistanceFunction.apply(p));
+		PRuppertsTriangulator&lt;EikMeshPoint, Double, Double&gt; ruppertsTriangulator = new PRuppertsTriangulator&lt;&gt;(
+				pslg, circumRadiusFunc, theta, pointConstructor
+		);
+
+		Color green = new Color(85, 168, 104);
+		Color red = new Color(196,78,82);
+		Function&lt;PFace&lt;EikMeshPoint, Double, Double&gt;, Color&gt; colorFunction = f -&gt;  {
+			return !ruppertsTriangulator.getTriangulation().isValid(f) ? red : Color.WHITE;
+			//return new Color(quality, quality, quality);
+		};
+
+		while (!ruppertsTriangulator.isFinished()) {
+			ruppertsTriangulator.step();
+			panel.repaint();
+			Thread.sleep(20);
+
+		}*/
+
+
+		// (3) use EikMesh to improve the mesh
+		//IDistanceFunction d = IDistanceFunction.create(pslg.getSegmentBound(), pslg.getHoles());
+<span class="nc" id="L581">		PEikMesh meshImprover = new PEikMesh(pslg.getSegmentBound(), 0.04, pslg.getHoles());</span>
+
+<span class="nc" id="L583">		var panel = new PMeshPanel(meshImprover.getMesh(), 500, 500);</span>
+<span class="nc" id="L584">		panel.display(&quot;EikMesh&quot;);</span>
+
+<span class="nc bnc" id="L586" title="All 2 branches missed.">		while (!meshImprover.isFinished()) {</span>
+<span class="nc" id="L587">			meshImprover.improve();</span>
+<span class="nc" id="L588">			panel.repaint();</span>
+<span class="nc" id="L589">			Thread.sleep(30);</span>
+		}
+<span class="nc" id="L591">		meshImprover.finish();</span>
+<span class="nc" id="L592">		panel.repaint();</span>
+<span class="nc" id="L593">		System.out.println(TexGraphGenerator.toTikz(meshImprover.getMesh()));</span>
+
+		/*var recorder = new MovRecorder&lt;&gt;(meshImprover, panel.getMeshRenderer(), 1024, 800, meshImprover.getMesh().getBound());
+		recorder.record();
+		recorder.finish();*/
+<span class="nc" id="L598">	}</span>
+
+	public static void eikMeshEik() throws IOException, InterruptedException {
+<span class="nc" id="L601">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/eikmesh.poly&quot;);</span>
+<span class="nc" id="L602">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+
+//		IPointConstructor&lt;EikMeshPoint&gt; pointConstructor = (x, y) -&gt; new EikMeshPoint(x, y);
+
+		// (1) construct background mesh distance function
+//		IDistanceFunction approxDistanceFunction = IMeshDistanceFunction.createDistanceFunction(pslg);
+
+		// (2) construct initial mesh using Ruppert's algorithm
+		/*double minCircumRadius = 0.015;
+		double c = 1.0;
+		double theta = 20.0;
+		Function&lt;IPoint, Double&gt; circumRadiusFunc = p -&gt; minCircumRadius + c * Math.abs(approxDistanceFunction.apply(p));
+		PRuppertsTriangulator&lt;EikMeshPoint, Double, Double&gt; ruppertsTriangulator = new PRuppertsTriangulator&lt;&gt;(
+				pslg, circumRadiusFunc, theta, pointConstructor
+		);
+
+		Color green = new Color(85, 168, 104);
+		Color red = new Color(196,78,82);
+		Function&lt;PFace&lt;EikMeshPoint, Double, Double&gt;, Color&gt; colorFunction = f -&gt;  {
+			return !ruppertsTriangulator.getTriangulation().isValid(f) ? red : Color.WHITE;
+			//return new Color(quality, quality, quality);
+		};
+
+		while (!ruppertsTriangulator.isFinished()) {
+			ruppertsTriangulator.step();
+			panel.repaint();
+			Thread.sleep(20);
+		}*/
+
+
+		// (3) use EikMesh to improve the mesh
+		//IDistanceFunction d = IDistanceFunction.create(pslg.getSegmentBound(), pslg.getHoles());
+<span class="nc" id="L634">		PEikMesh meshImprover = new PEikMesh(pslg.getSegmentBound(), 0.5, pslg.getHoles());</span>
+
+<span class="nc" id="L636">		var panel = new PMeshPanel(meshImprover.getMesh(), 1000, 1000);</span>
+		/*panel.display(&quot;EikMesh&quot;);
+
+		while (!meshImprover.isFinished()) {
+			meshImprover.improve();
+			panel.repaint();
+			Thread.sleep(30);
+		}
+		meshImprover.finish();
+		panel.repaint();*/
+		//System.out.println(TexGraphGenerator.toTikz(meshImprover.getMesh()));
+
+<span class="nc" id="L648">		var recorder = new MovRecorder&lt;&gt;(meshImprover, panel.getMeshRenderer(), 1024, 800);</span>
+<span class="nc" id="L649">		recorder.record();</span>
+<span class="nc" id="L650">		recorder.finish();</span>
+
+<span class="nc" id="L652">	}</span>
+
+	public static void eikMeshKaiserslauternApprox() throws IOException, InterruptedException {
+<span class="nc" id="L655">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/kaiserslautern.poly&quot;);</span>
+<span class="nc" id="L656">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L657">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L658">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+
+<span class="nc" id="L660">		IPointConstructor&lt;EikMeshPoint&gt; pointConstructor = (x, y) -&gt; new EikMeshPoint(x, y);</span>
+
+		// (1) construct background mesh distance function
+		//IDistanceFunction approxDistanceFunction = IMeshDistanceFunction.createDistanceFunction(boundingBox, holes);
+
+		//IDistanceFunction distanceFunction = IDistanceFunction.create(segmentBound, holes);
+
+<span class="nc" id="L667">		IDistanceFunction distanceFunction = IMeshDistanceFunction.createDistanceFunction(pslg);</span>
+
+		// (2) construct initial mesh using Ruppert's algorithm
+<span class="nc" id="L670">		double minCircumRadius = 0.015;</span>
+<span class="nc" id="L671">		double c = 1.0;</span>
+<span class="nc" id="L672">		double theta = 25.0;</span>
+<span class="nc" id="L673">		Function&lt;IPoint, Double&gt; circumRadiusFunc = p -&gt; minCircumRadius + c * Math.abs(distanceFunction.apply(p));</span>
+
+<span class="nc" id="L675">		PRuppertsTriangulator ruppertsTriangulator = new PRuppertsTriangulator(</span>
+				pslg, circumRadiusFunc, theta
+		);
+
+<span class="nc" id="L679">		Color green = new Color(85, 168, 104);</span>
+<span class="nc" id="L680">		Color red = new Color(196,78,82);</span>
+
+
+		/*while (!ruppertsTriangulator.isFinished()) {
+			ruppertsTriangulator.step();
+			panel.repaint();
+			Thread.sleep(20);
+		}*/
+
+<span class="nc" id="L689">		System.out.println(new VRectangle(segmentBound.getBounds2D()));</span>
+
+		// (3) use EikMesh to improve the mesh
+<span class="nc" id="L692">		double h0 = 5.0;</span>
+<span class="nc" id="L693">		PEikMesh meshImprover = new PEikMesh(</span>
+				distanceFunction,
+<span class="nc" id="L695">				p -&gt; h0 + 0.3 * Math.abs(distanceFunction.apply(p)),</span>
+				h0,
+<span class="nc" id="L697">				new VRectangle(segmentBound.getBounds2D()),</span>
+<span class="nc" id="L698">				pslg.getHoles()</span>
+		);
+
+<span class="nc" id="L701">		Function&lt;PFace, Color&gt; colorFunction = f -&gt;  {</span>
+			//return !meshImprover.getTriangulation().isValid(f) ? red : Color.WHITE;
+			//return new Color(quality, quality, quality);
+<span class="nc" id="L704">			return Color.WHITE;</span>
+		};
+
+<span class="nc" id="L707">		PMeshPanel panel = new PMeshPanel(meshImprover.getMesh(), 1000, 1000);</span>
+<span class="nc" id="L708">		panel.display(&quot;EikMesh&quot;);</span>
+
+
+<span class="nc bnc" id="L711" title="All 2 branches missed.">		while (!meshImprover.isFinished()) {</span>
+<span class="nc" id="L712">			synchronized (meshImprover.getMesh()) {</span>
+<span class="nc" id="L713">				meshImprover.improve();</span>
+<span class="nc" id="L714">			}</span>
+<span class="nc" id="L715">			panel.repaint();</span>
+<span class="nc" id="L716">			Thread.sleep(10);</span>
+		}
+
+		//logger.info(TexGraphGenerator.toTikz(meshImprover.getMesh()));
+<span class="nc" id="L720">	}</span>
+
+	public static void eikMeshKaiserslautern() throws IOException, InterruptedException {
+<span class="nc" id="L723">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/kaiserslautern.poly&quot;);</span>
+<span class="nc" id="L724">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L725">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L726">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+
+<span class="nc" id="L728">		IPointConstructor&lt;EikMeshPoint&gt; pointConstructor = (x, y) -&gt; new EikMeshPoint(x, y);</span>
+
+		// (1) construct background mesh distance function
+		//IDistanceFunction approxDistanceFunction = IMeshDistanceFunction.createDistanceFunction(boundingBox, holes);
+
+<span class="nc" id="L733">		IDistanceFunction distanceFunction = IDistanceFunction.create(segmentBound, holes);</span>
+
+		// (2) construct initial mesh using Ruppert's algorithm
+<span class="nc" id="L736">		double minCircumRadius = 0.015;</span>
+<span class="nc" id="L737">		double c = 1.0;</span>
+<span class="nc" id="L738">		double theta = 25.0;</span>
+<span class="nc" id="L739">		Function&lt;IPoint, Double&gt; circumRadiusFunc = p -&gt; minCircumRadius + c * Math.abs(distanceFunction.apply(p));</span>
+
+<span class="nc" id="L741">		PRuppertsTriangulator ruppertsTriangulator = new PRuppertsTriangulator(</span>
+				pslg, circumRadiusFunc, theta
+		);
+
+<span class="nc" id="L745">		Color green = new Color(85, 168, 104);</span>
+<span class="nc" id="L746">		Color red = new Color(196,78,82);</span>
+
+
+		/*while (!ruppertsTriangulator.isFinished()) {
+			ruppertsTriangulator.step();
+			panel.repaint();
+			Thread.sleep(20);
+		}*/
+
+<span class="nc" id="L755">		System.out.println(new VRectangle(segmentBound.getBounds2D()));</span>
+
+		// (3) use EikMesh to improve the mesh
+<span class="nc" id="L758">		double h0 = 5.0;</span>
+<span class="nc" id="L759">		PEikMesh meshImprover = new PEikMesh(</span>
+				distanceFunction,
+<span class="nc" id="L761">				p -&gt; h0 + 0.3 * Math.abs(distanceFunction.apply(p)),</span>
+				h0,
+<span class="nc" id="L763">				new VRectangle(segmentBound.getBounds2D()),</span>
+<span class="nc" id="L764">				pslg.getHoles()</span>
+		);
+
+<span class="nc" id="L767">		Function&lt;PFace, Color&gt; colorFunction = f -&gt;  {</span>
+			//return !meshImprover.getTriangulation().isValid(f) ? red : Color.WHITE;
+			//return new Color(quality, quality, quality);
+<span class="nc" id="L770">			return Color.WHITE;</span>
+		};
+
+<span class="nc" id="L773">		PMeshPanel panel = new PMeshPanel(meshImprover.getMesh(), 1000, 1000);</span>
+		/*panel.display(&quot;EikMesh&quot;);
+
+
+		while (!meshImprover.isFinished()) {
+			synchronized (meshImprover.getMesh()) {
+				meshImprover.improve();
+			}
+			panel.repaint();
+			Thread.sleep(10);
+		}
+
+		logger.info(TexGraphGenerator.toTikz(meshImprover.getMesh()));*/
+
+<span class="nc" id="L787">		var recorder = new MovRecorder&lt;&gt;(meshImprover, panel.getMeshRenderer(), 1024, 800);</span>
+<span class="nc" id="L788">		recorder.record();</span>
+<span class="nc" id="L789">		recorder.finish();</span>
+<span class="nc" id="L790">	}</span>
+
+	public static void eikMeshGreenland() throws IOException, InterruptedException {
+<span class="nc" id="L793">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/greenland.poly&quot;);</span>
+<span class="nc" id="L794">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L795">		IPointConstructor&lt;EikMeshPoint&gt; pointConstructor = (x, y) -&gt; new EikMeshPoint(x, y);</span>
+
+		// (1) construct background mesh distance function
+<span class="nc" id="L798">		IDistanceFunction approxDistanceFunction = IMeshDistanceFunction.createDistanceFunction(pslg);</span>
+
+		// (2) construct initial mesh using Ruppert's algorithm
+		//double minCircumRadius = 0.015;
+<span class="nc" id="L802">		double c = 1.0;</span>
+<span class="nc" id="L803">		double theta = 20;</span>
+		//Function&lt;IPoint, Double&gt; circumRadiusFunc = p -&gt; minCircumRadius + c * Math.abs(approxDistanceFunction.apply(p));
+
+<span class="nc" id="L806">		PRuppertsTriangulator ruppertsTriangulator = new PRuppertsTriangulator(</span>
+<span class="nc" id="L807">				pslg, p -&gt; Double.POSITIVE_INFINITY, theta</span>
+		);
+<span class="nc" id="L809">		ruppertsTriangulator.generate();</span>
+
+<span class="nc" id="L811">		Color green = new Color(85, 168, 104);</span>
+<span class="nc" id="L812">		Color red = new Color(196,78,82);</span>
+
+
+		/*while (!ruppertsTriangulator.isFinished()) {
+			ruppertsTriangulator.step();
+			panel.repaint();
+			Thread.sleep(20);
+		}*/
+
+		// (3) use EikMesh to improve the mesh
+<span class="nc" id="L822">		var eikMesh = new PEikMesh(</span>
+<span class="nc" id="L823">				p -&gt; 1.0 + 0.2*Math.abs(pslg.getSegmentBound().distance(p)),</span>
+<span class="nc" id="L824">				ruppertsTriangulator.getTriangulation()</span>
+		);
+
+<span class="nc" id="L827">		Function&lt;PFace, Color&gt; colorFunction = f -&gt;  {</span>
+			//return !meshImprover.getTriangulation().isValid(f) ? red : Color.WHITE;
+			//return new Color(quality, quality, quality);
+<span class="nc" id="L830">			return Color.WHITE;</span>
+		};
+
+<span class="nc" id="L833">		PMeshPanel panel = new PMeshPanel(eikMesh.getMesh(), 1000, 1000, colorFunction);</span>
+<span class="nc" id="L834">		panel.display(&quot;EikMesh&quot;);</span>
+
+
+<span class="nc bnc" id="L837" title="All 2 branches missed.">		while (!eikMesh.isFinished()) {</span>
+<span class="nc" id="L838">			synchronized (eikMesh.getMesh()) {</span>
+<span class="nc" id="L839">				eikMesh.improve();</span>
+<span class="nc" id="L840">			}</span>
+<span class="nc" id="L841">			panel.repaint();</span>
+<span class="nc" id="L842">			Thread.sleep(20);</span>
+			/*try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}*/
+		}
+
+<span class="nc" id="L850">	}</span>
+
+	public static void dirichletRefinment() throws InterruptedException, IOException {
+<span class="nc" id="L853">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/a.poly&quot;);</span>
+<span class="nc" id="L854">		boolean duplicatedLines = false;</span>
+<span class="nc" id="L855">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L856">		Collection&lt;VLine&gt; lines = pslg.getAllSegments();</span>
+<span class="nc" id="L857">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L858">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+
+		//IDistanceFunction distanceFunction = IDistanceFunction.create(boundingBox, hole);
+<span class="nc" id="L861">		PVoronoiSegmentInsertion delaunayRefinement = new PVoronoiSegmentInsertion(</span>
+				pslg,
+<span class="nc" id="L863">				(x, y) -&gt; new EikMeshPoint(x, y),</span>
+<span class="nc" id="L864">				p -&gt; 0.01);</span>
+
+<span class="nc" id="L866">		Function&lt;PFace, Color&gt; colorFunction = f -&gt;  {</span>
+<span class="nc bnc" id="L867" title="All 2 branches missed.">			float quality = delaunayRefinement.getMesh().isBoundary(f) ? 1.0f : (float)GeometryUtils.qualityOf(delaunayRefinement.getMesh().toTriangle(f));</span>
+<span class="nc" id="L868">			return new Color(quality, quality, quality);</span>
+		};
+
+<span class="nc" id="L871">		PMeshPanel panel = new PMeshPanel(delaunayRefinement.getMesh(), 1000, 1000, colorFunction);</span>
+<span class="nc" id="L872">		panel.display(&quot;Dirichlet Refinement&quot;);</span>
+
+<span class="nc bnc" id="L874" title="All 2 branches missed.">		while (!delaunayRefinement.isFinished()) {</span>
+<span class="nc" id="L875">			synchronized (delaunayRefinement.getMesh()) {</span>
+<span class="nc" id="L876">				delaunayRefinement.refine();</span>
+<span class="nc" id="L877">			}</span>
+
+<span class="nc" id="L879">			panel.repaint();</span>
+<span class="nc" id="L880">			Thread.sleep(100);</span>
+		}
+<span class="nc" id="L882">		System.out.println(TexGraphGenerator.toTikz(delaunayRefinement.getMesh(), colorFunction, 10.0f));</span>
+		//panel.repaint();
+<span class="nc" id="L884">	}</span>
+
+	public static void delaunayRefinment() throws InterruptedException, IOException {
+<span class="nc" id="L887">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/a.poly&quot;);</span>
+<span class="nc" id="L888">		boolean duplicatedLines = false;</span>
+<span class="nc" id="L889">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L890">		Collection&lt;VLine&gt; lines = pslg.getAllSegments();</span>
+<span class="nc" id="L891">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L892">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+
+<span class="nc" id="L894">		var frontalMethod = new PVoronoiVertexInsertion(</span>
+				pslg,
+<span class="nc" id="L896">				p -&gt; 0.01);</span>
+
+<span class="nc" id="L898">		Function&lt;PFace, Color&gt; colorFunction = f -&gt;  {</span>
+<span class="nc bnc" id="L899" title="All 2 branches missed.">			float quality = frontalMethod.getMesh().isBoundary(f) ? 1.0f : (float)GeometryUtils.qualityOf(frontalMethod.getMesh().toTriangle(f));</span>
+<span class="nc" id="L900">			return new Color(quality, quality, quality);</span>
+		};
+
+<span class="nc" id="L903">		PMeshPanel panel = new PMeshPanel(frontalMethod.getMesh(), 1000, 1000, colorFunction);</span>
+<span class="nc" id="L904">		panel.display(&quot;Delaunay Refinement&quot;);</span>
+
+		//frontalMethod.generate();
+<span class="nc" id="L907">		synchronized (frontalMethod.getMesh()) {</span>
+<span class="nc" id="L908">			frontalMethod.refine();</span>
+<span class="nc" id="L909">		}</span>
+<span class="nc bnc" id="L910" title="All 2 branches missed.">		while (!frontalMethod.isFinished()) {</span>
+<span class="nc" id="L911">			synchronized (frontalMethod.getMesh()) {</span>
+<span class="nc" id="L912">				frontalMethod.refine();</span>
+<span class="nc" id="L913">			}</span>
+
+<span class="nc" id="L915">			panel.repaint();</span>
+<span class="nc" id="L916">			Thread.sleep(10);</span>
+		}
+<span class="nc" id="L918">		System.out.println(&quot;finished&quot;);</span>
+<span class="nc" id="L919">		System.out.println(TexGraphGenerator.toTikz(frontalMethod.getMesh(), colorFunction, 10.0f));</span>
+<span class="nc" id="L920">		panel.repaint();</span>
+<span class="nc" id="L921">	}</span>
+
+
+	private static boolean  isLowOfQuality(@NotNull final VTriangle triangle) {
+<span class="nc" id="L925">		double alpha = 30; // lowest angle3D in degree</span>
+<span class="nc" id="L926">		double radAlpha = Math.toRadians(alpha);</span>
+
+<span class="nc bnc" id="L928" title="All 2 branches missed.">		return GeometryUtils.angle(triangle.p1, triangle.p2, triangle.p3) &lt; radAlpha</span>
+<span class="nc bnc" id="L929" title="All 2 branches missed.">				|| GeometryUtils.angle(triangle.p3, triangle.p1, triangle.p2) &lt; radAlpha</span>
+<span class="nc bnc" id="L930" title="All 2 branches missed.">				|| GeometryUtils.angle(triangle.p2, triangle.p3, triangle.p1) &lt; radAlpha;</span>
+	}
+
+	public static class PotentialPoint extends EikMeshPoint implements IPotentialPoint {
+
+		private double potential;
+		private PathFindingTag tag;
+
+		public PotentialPoint(double x, double y) {
+<span class="nc" id="L939">			super(x, y, false);</span>
+<span class="nc" id="L940">			this.potential = Double.MAX_VALUE;</span>
+<span class="nc" id="L941">			this.tag = PathFindingTag.Undefined;</span>
+<span class="nc" id="L942">		}</span>
+
+		@Override
+		public double getPotential() {
+<span class="nc" id="L946">			return potential;</span>
+		}
+
+		@Override
+		public void setPotential(final double potential) {
+<span class="nc" id="L951">			this.potential = potential;</span>
+<span class="nc" id="L952">		}</span>
+
+		@Override
+		public void setPathFindingTag(@NotNull final PathFindingTag tag) {
+<span class="nc" id="L956">			this.tag = tag;</span>
+<span class="nc" id="L957">		}</span>
+
+		@Override
+		public PathFindingTag getPathFindingTag() {
+<span class="nc" id="L961">			return tag;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

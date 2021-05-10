@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SimpleUniformRealPointProvider.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.random</a> &gt; <span class="el_source">SimpleUniformRealPointProvider.java</span></div><h1>SimpleUniformRealPointProvider.java</h1><pre class="source lang-java linenums">package org.vadere.util.random;
+
+import org.apache.commons.math3.distribution.RealDistribution;
+import org.apache.commons.math3.distribution.UniformRealDistribution;
+import org.apache.commons.math3.random.JDKRandomGenerator;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VPoint;
+
+import java.util.Random;
+
+public class SimpleUniformRealPointProvider implements IPointProvider {
+
+	private RealDistribution xDist;
+	private RealDistribution yDist;
+
+
+<span class="nc" id="L17">	public SimpleUniformRealPointProvider(final Random random, double xUpperBound,  double yUpperBound){</span>
+<span class="nc" id="L18">		xDist = new UniformRealDistribution(new JDKRandomGenerator(random.nextInt()), 0.0, xUpperBound);</span>
+<span class="nc" id="L19">		yDist = new UniformRealDistribution(new JDKRandomGenerator(random.nextInt()), 0.0, yUpperBound);</span>
+<span class="nc" id="L20">	}</span>
+
+
+<span class="nc" id="L23">	public SimpleUniformRealPointProvider(final Random random, double xLowerBound, double xUpperBound,  double yLowerBound, double yUpperBound){</span>
+<span class="nc" id="L24">		xDist = new UniformRealDistribution(new JDKRandomGenerator(random.nextInt()), xLowerBound, xUpperBound);</span>
+<span class="nc" id="L25">		yDist = new UniformRealDistribution(new JDKRandomGenerator(random.nextInt()), yLowerBound, yUpperBound);</span>
+<span class="nc" id="L26">	}</span>
+
+
+	@Override
+	public double getSupportUpperBoundX() {
+<span class="nc" id="L31">		return xDist.getSupportUpperBound();</span>
+	}
+
+	@Override
+	public double getSupportLowerBoundX() {
+<span class="nc" id="L36">		return xDist.getSupportLowerBound();</span>
+	}
+
+	@Override
+	public double getSupportUpperBoundY() {
+<span class="nc" id="L41">		return yDist.getSupportUpperBound();</span>
+	}
+
+	@Override
+	public double getSupportLowerBoundY() {
+<span class="nc" id="L46">		return yDist.getSupportLowerBound();</span>
+	}
+
+	@Override
+	public IPoint nextPoint() {
+<span class="nc" id="L51">		return new VPoint(xDist.sample(), yDist.sample());</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

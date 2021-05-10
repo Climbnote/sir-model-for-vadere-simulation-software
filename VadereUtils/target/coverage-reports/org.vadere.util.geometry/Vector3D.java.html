@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Vector3D.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry</a> &gt; <span class="el_source">Vector3D.java</span></div><h1>Vector3D.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry;
+
+import java.awt.Point;
+
+/**
+ * A point in 3D.
+ * 
+ */
+public class Vector3D extends Point implements Comparable&lt;Vector3D&gt; {
+
+	private static final long serialVersionUID = 8102390144168734089L;
+
+	public final double x;
+	public final double y;
+	public final double z;
+	public final int index;
+
+<span class="nc" id="L18">	public static final Vector3D ZERO = new Vector3D(0, 0, 0);</span>
+
+	/**
+	 * Constant for comparison of double values. Everything below this is
+	 * considered equal.
+	 */
+	public static final double DOUBLE_EPS = 1e-8;
+
+	/**
+	 * @param x
+	 * @param y
+	 * @param z
+	 */
+<span class="nc" id="L31">	public Vector3D(double x, double y, double z, int index) {</span>
+<span class="nc" id="L32">		this.x = x;</span>
+<span class="nc" id="L33">		this.y = y;</span>
+<span class="nc" id="L34">		this.z = z;</span>
+<span class="nc" id="L35">		this.index = index;</span>
+<span class="nc" id="L36">	}</span>
+
+	public Vector3D(double x, double y, double z) {
+<span class="nc" id="L39">		this(x, y, z, -1);</span>
+<span class="nc" id="L40">	}</span>
+
+	public Vector3D add(Vector3D c) {
+<span class="nc" id="L43">		return new Vector3D(this.x + c.x, this.y + c.y, this.z + c.z, -1);</span>
+	}
+
+	public Vector3D sub(Vector3D p) {
+<span class="nc" id="L47">		return add(new Vector3D(-p.x, -p.y, -p.z, -1));</span>
+	}
+
+	/**
+	 * Normalizes the given point (now considered a vector) to the given length.
+	 * If it is the zero vector, it is returned unchanged.
+	 * 
+	 * @param length
+	 * @return
+	 */
+	public Vector3D normalize(double length) {
+<span class="nc bnc" id="L58" title="All 2 branches missed.">		if (this.equals(ZERO)) {</span>
+<span class="nc" id="L59">			return ZERO;</span>
+		}
+<span class="nc" id="L61">		return new Vector3D(x / distTo(ZERO) * length, y / distTo(ZERO)</span>
+<span class="nc" id="L62">				* length, z / distTo(ZERO) * length);</span>
+	}
+
+	/**
+	 * Euclidian distance to a given point.
+	 * 
+	 * @param p
+	 * @return
+	 */
+	public double distTo(Vector3D p) {
+<span class="nc" id="L72">		double x = this.x - p.x;</span>
+<span class="nc" id="L73">		double y = this.y - p.y;</span>
+<span class="nc" id="L74">		double z = this.z - p.z;</span>
+<span class="nc" id="L75">		return Math.sqrt(x * x + y * y + z * z);</span>
+	}
+
+	/**
+	 * Interpolates a point between this to a given target with the given
+	 * factor.&lt;br&gt;
+	 * Formula: result = this + factor*(target-this)
+	 * 
+	 * @param target
+	 * @param factor
+	 * @return
+	 */
+	public Vector3D interpolate(Vector3D target, double factor) {
+<span class="nc" id="L88">		Vector3D result = new Vector3D(x + factor * (target.x - x), y + factor</span>
+				* (target.y - y), z + factor * (target.z - z));
+<span class="nc" id="L90">		return result;</span>
+	}
+
+	/**
+	 * Checks whether the given point is greater than the current point with
+	 * respect to:&lt;br&gt;
+	 * 1. x-coordinate -&gt; 2. y-coordinate -&gt; 3. z-coordinate
+	 * 
+	 * @param p
+	 *        point to compare with
+	 * @return true if the current point is greater than p, false otherwise.
+	 */
+	public boolean isGreaterThan(Vector3D p) {
+<span class="nc bnc" id="L103" title="All 2 branches missed.">		if (this.x &gt; p.x + DOUBLE_EPS) {</span>
+<span class="nc" id="L104">			return true;</span>
+		}
+<span class="nc bnc" id="L106" title="All 4 branches missed.">		if (Math.abs(this.x - p.x) &lt; DOUBLE_EPS &amp;&amp; this.y &gt; p.y + DOUBLE_EPS) {</span>
+<span class="nc" id="L107">			return true;</span>
+		}
+<span class="nc bnc" id="L109" title="All 2 branches missed.">		if (Math.abs(this.x - p.x) &lt; DOUBLE_EPS</span>
+<span class="nc bnc" id="L110" title="All 4 branches missed.">				&amp;&amp; Math.abs(this.y - p.y) &lt; DOUBLE_EPS</span>
+				&amp;&amp; this.z &gt; p.z + DOUBLE_EPS) {
+<span class="nc" id="L112">			return true;</span>
+		}
+<span class="nc" id="L114">		return false;</span>
+	}
+
+	/**
+	 * Checks wether the given point is greater than the current point with
+	 * respect to:&lt;br&gt;
+	 * 1. x-coordinate -&gt; 2. y-coordinate -&gt; -&gt; 3. z-coordinate
+	 * 
+	 * @param p
+	 *        point to compare with
+	 * @return 1 if the current point is greater than p, -1 if smaller, 0
+	 *         otherwise.
+	 */
+	@Override
+	public int compareTo(Vector3D p) {
+<span class="nc bnc" id="L129" title="All 2 branches missed.">		if (isGreaterThan(p)) {</span>
+<span class="nc" id="L130">			return 1;</span>
+		}
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		if (Math.abs(p.x - this.x) &lt; DOUBLE_EPS</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">				&amp;&amp; Math.abs(p.y - this.y) &lt; DOUBLE_EPS</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">				&amp;&amp; Math.abs(p.z - this.z) &lt; DOUBLE_EPS) {</span>
+<span class="nc" id="L135">			return 0;</span>
+		}
+<span class="nc" id="L137">		return -1;</span>
+	}
+
+	/**
+	 * Uses compareTo to implement the object.equals method.
+	 */
+	@Override
+	public boolean equals(Object obj) {
+<span class="nc bnc" id="L145" title="All 2 branches missed.">		if (obj == null) {</span>
+<span class="nc" id="L146">			return false;</span>
+		}
+<span class="nc" id="L148">		Vector3D objP = (Vector3D) obj;</span>
+
+<span class="nc bnc" id="L150" title="All 2 branches missed.">		if (this.compareTo(objP) == 0) {</span>
+<span class="nc" id="L151">			return true;</span>
+		}
+<span class="nc" id="L153">		return false;</span>
+	};
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L158">		return (int) (this.x * 93563 + this.y * 17 + this.z);</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L163">		return &quot;(&quot; + this.x + &quot;,&quot; + this.y + &quot;,&quot; + this.z + &quot;)&quot;;</span>
+	}
+
+	public Vector3D multiply(double factor) {
+<span class="nc" id="L167">		return new Vector3D(this.x * factor, this.y * factor, this.z * factor);</span>
+	}
+
+	/**
+	 * Computes the cross product of two vectors and store it in the cross
+	 * vector.
+	 * 
+	 * @param v1
+	 * @param v2
+	 * @param cross
+	 */
+	public Vector3D cross(Vector3D p2) {
+<span class="nc" id="L179">		return new Vector3D(this.y * p2.z - this.z * p2.y, this.z * p2.x</span>
+				- this.x * p2.z, this.x * p2.y - this.y * p2.x);
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

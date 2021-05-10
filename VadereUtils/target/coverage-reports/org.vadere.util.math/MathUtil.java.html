@@ -1,0 +1,499 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MathUtil.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.math</a> &gt; <span class="el_source">MathUtil.java</span></div><h1>MathUtil.java</h1><pre class="source lang-java linenums">package org.vadere.util.math;
+
+import java.awt.Point;
+import java.util.*;
+import java.util.AbstractMap.SimpleEntry;
+
+import org.apache.commons.math3.complex.Complex;
+import org.vadere.util.geometry.shapes.VPoint;
+
+/**
+ * Math utilities not covered by java.lang.Math
+ * 
+ */
+<span class="nc" id="L14">public class MathUtil {</span>
+
+<span class="fc" id="L16">	private final static List&lt;Point&gt; neumannNeighborhood = getNeumannNeighborhood(new Point(0, 0));</span>
+
+	// epsilon for finite differences see https://en.wikipedia.org/wiki/Numerical_differentiation#Practical_considerations_using_floating_point_arithmetic
+<span class="fc" id="L19">	public static double EPSILON = Math.sqrt(Math.ulp(1.0));</span>
+
+	public static double toPositiveSmallestRadian(final double radian) {
+<span class="nc" id="L22">		double result = radian;</span>
+<span class="nc bnc" id="L23" title="All 2 branches missed.">		if(result &lt; 0) {</span>
+<span class="nc bnc" id="L24" title="All 2 branches missed.">			while (result &lt; 0) {</span>
+<span class="nc" id="L25">				result += 2 * Math.PI;</span>
+			}
+		}
+<span class="nc bnc" id="L28" title="All 2 branches missed.">		else if(result &gt; 2 * Math.PI) {</span>
+<span class="nc bnc" id="L29" title="All 2 branches missed.">			while (result &gt; 2 * Math.PI) {</span>
+<span class="nc" id="L30">				result -= Math.PI;</span>
+			}
+		}
+
+<span class="nc" id="L34">		return result;</span>
+	}
+
+	/**
+	 * The two-norm3D of a vector.
+	 * 
+	 * @param vector
+	 *        a double vector with arbitrary number of entries x1,x2,....
+	 * @return sqrt(x1^2+x2^2+...)
+	 */
+	public static double norm2(double[] vector) {
+<span class="nc" id="L45">		double result = 0;</span>
+<span class="nc bnc" id="L46" title="All 2 branches missed.">		for (int i = 0; i &lt; vector.length; i++) {</span>
+<span class="nc" id="L47">			result += vector[i] * vector[i];</span>
+		}
+<span class="nc" id="L49">		return Math.sqrt(result);</span>
+	}
+
+	/**
+	 * The one-norm3D of a vector.
+	 * 
+	 * @param vector
+	 *        a double vector with arbitrary number of entries x1,x2,....
+	 * @return abs(x1)+abs(x2)+...
+	 */
+	public static double norm1(double[] vector) {
+<span class="nc" id="L60">		double result = 0;</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">		for (int i = 0; i &lt; vector.length; i++) {</span>
+<span class="nc" id="L62">			result += Math.abs(vector[i]);</span>
+		}
+<span class="nc" id="L64">		return result;</span>
+	}
+
+	public static double expAp(final double y) {
+<span class="nc" id="L68">		double x = 1d + y / 256d;</span>
+<span class="nc" id="L69">		x *= x; x *= x; x *= x; x *= x;</span>
+<span class="nc" id="L70">		x *= x; x *= x; x *= x; x *= x;</span>
+<span class="nc" id="L71">		return x;</span>
+	}
+
+	/**
+	 * The value of the gradient of the 2D smooth function with compact support
+	 * given by exp(1/((x/cut)^2-1)).
+	 * 
+	 * @param x
+	 *        2D position where the gradient should be evaluated.
+	 * @param cut
+	 *        if abs(x)&gt;cut, the function (and its gradient) is zero.
+	 * @param grad
+	 *        a 2D vector where the result is stored.
+	 */
+	public static void cutExpGrad2D(double[] x, double cut, double[] grad) {
+<span class="nc" id="L86">		double absx = Math.sqrt(x[0] * x[0] + x[1] * x[1]) / cut;</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">		if (absx &gt;= 1) {</span>
+<span class="nc" id="L88">			grad[0] = 0;</span>
+<span class="nc" id="L89">			grad[1] = 0;</span>
+		} else {
+<span class="nc" id="L91">			double denom = absx * absx - 1;</span>
+<span class="nc" id="L92">			grad[0] = -2 * Math.exp(1 / denom) * x[0] / (cut * cut) * 1</span>
+					/ (denom * denom);
+<span class="nc" id="L94">			grad[1] = -2 * Math.exp(1 / denom) * x[1] / (cut * cut) * 1</span>
+					/ (denom * denom);
+		}
+<span class="nc" id="L97">	}</span>
+
+	/**
+	 * The value of the 2D smooth function with compact support given by
+	 * exp(1/((x/cut)^2-1)).
+	 * 
+	 * @param x
+	 *        2D position where the gradient should be evaluated.
+	 * @param cut
+	 *        if abs(x)&gt;cut, the function is zero.
+	 * @return
+	 */
+	public static double cutExp(double x, double cut) {
+<span class="nc" id="L110">		double absx = Math.abs(x) / cut;</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">		if (absx &gt;= 1) {</span>
+<span class="nc" id="L112">			return 0;</span>
+		} else {
+<span class="nc" id="L114">			return Math.exp(1 / ((absx * absx) - 1));</span>
+		}
+	}
+
+	/**
+	 * The value of the 2D smooth function with compact support given by
+	 * exp(1/((x/cut)^(2p)-1)).
+	 * 
+	 * @param x
+	 *        2D position where the gradient should be evaluated.
+	 * @param cut
+	 *        if abs(x)&gt;cut, the function is zero.
+	 * @return
+	 */
+	public static double cutExp(double x, double cut, double p) {
+<span class="nc" id="L129">		double absx = Math.abs(x) / cut;</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">		if (absx &gt;= 1) {</span>
+<span class="nc" id="L131">			return 0;</span>
+		} else {
+<span class="nc" id="L133">			return Math.exp(1 / (Math.pow(absx, 2 * p) - 1));</span>
+		}
+	}
+
+	/**
+	 * Adds a vector to another one.
+	 * 
+	 * @param vec
+	 *        the initial vector that contains the solution later on.
+	 * @param vecToAdd
+	 *        the vector that should be added.
+	 */
+	public static void vecAdd(double[] vec, double[] vecToAdd) {
+<span class="nc bnc" id="L146" title="All 2 branches missed.">		for (int i = 0; i &lt; vec.length; i++) {</span>
+<span class="nc" id="L147">			vec[i] += vecToAdd[i];</span>
+		}
+<span class="nc" id="L149">	}</span>
+
+	/**
+	 * Multiplies the given vector with a scalar.
+	 * 
+	 * @param vec
+	 * @param scalar
+	 */
+	public static void mult(double[] vec, double scalar) {
+<span class="nc bnc" id="L158" title="All 2 branches missed.">		for (int i = 0; i &lt; vec.length; i++) {</span>
+<span class="nc" id="L159">			vec[i] *= scalar;</span>
+		}
+<span class="nc" id="L161">	}</span>
+
+	/**
+	 * computes the &quot;smallest distance on the circle&quot; of the angle3D
+	 * (x+v,x,x2-x)
+	 * 
+	 * @param x
+	 *        the starting position
+	 * @param v
+	 *        the viewing direction
+	 * @param x2
+	 *        the position that should be evaluated
+	 * @return a value between 0.0 and 1.0 that indicates how much of the
+	 *         position is visible. 1.0 is fully visible, 0.0 is hidden.
+	 */
+	public static double smallestViewingAngle(double[] x, double[] v, double[] x2) {
+		// compute the &quot;smallest distance on the circle&quot; between the two angles
+		// double phi1 = Math.atan2(x2[1]-x[1], x2[0]-x[0]);
+		// double phi2 = Math.atan2(v[1], v[0]);
+		// double phi = Math.min(Math.abs(phi1-phi2), 2*Math.PI -
+		// Math.abs(phi1-phi2));
+
+<span class="nc" id="L183">		double aa = ((x[0] + v[0] - x2[0]) * (x[0] + v[0] - x2[0]) + (x[1]</span>
+				+ v[1] - x2[1])
+				* (x[1] + v[1] - x2[1]));
+<span class="nc" id="L186">		double b = Math.sqrt((x[0] - x2[0]) * (x[0] - x2[0]) + (x[1] - x2[1])</span>
+				* (x[1] - x2[1]));
+<span class="nc" id="L188">		double c = Math.sqrt((v[0]) * (v[0]) + (v[1]) * (v[1]));</span>
+<span class="nc bnc" id="L189" title="All 2 branches missed.">		if (c == 0.0) {</span>
+<span class="nc" id="L190">			c = 1e-10;</span>
+		}
+
+		// this clamping is necessary as sometimes rounding errors get
+		// the argument above / below -1/+1 which causes acos to result
+		// in NaN.
+<span class="nc" id="L196">		double arg = Math.min(1,</span>
+<span class="nc" id="L197">				Math.max(-1, (b * b + c * c - aa) / (2 * b * c)));</span>
+<span class="nc" id="L198">		double phi = Math.acos(arg);</span>
+
+<span class="nc" id="L200">		return phi;</span>
+	}
+
+	/**
+	 * Computes the portion of a position x2 that is visible from position x
+	 * given the direction in v.
+	 * 
+	 * @param x
+	 *        the starting position
+	 * @param v
+	 *        the viewing direction
+	 * @param x2
+	 *        the position that should be evaluated
+	 * @return a value between 0.0 and 1.0 that indicates how much of the
+	 *         position is visible. 1.0 is fully visible, 0.0 is hidden.
+	 */
+	public static double visiblePortion(double[] x, double[] v, double[] x2) {
+<span class="nc" id="L217">		double portion = 0;</span>
+
+<span class="nc" id="L219">		double phi = smallestViewingAngle(x, v, x2);</span>
+
+		// double sx = (MathUtil.norm2(v)+1) * 2.0;
+		// double sy = (MathUtil.norm2(v)+1) * 2.0;
+
+		// compute the visible range portion
+<span class="nc" id="L225">		double visibleRange = 0.6;</span>
+		// portion = Math.exp(-Math.pow(Math.hypot((x[0]-x2[0])/sx,
+		// (x[1]-x2[1])/sy),2)) * Math.cos(phi * visibleRange);
+
+<span class="nc" id="L229">		portion = 1 * Math.cos(phi * visibleRange);</span>
+
+		// make positive only
+<span class="nc" id="L232">		portion = Math.max(0.0, portion);</span>
+
+		// make a smooth step function
+		// portion = step(portion-0.3, 0.03);
+
+<span class="nc" id="L237">		return portion;</span>
+	}
+
+	/**
+	 * A smooth &quot;step&quot; function with given sigma.
+	 * 
+	 * @param t
+	 *        the value where the function should be evaluated
+	 * @param sigma
+	 *        the sigma for smoothing the step
+	 * @return step(t)
+	 */
+	public static double step(double t, double sigma) {
+<span class="nc" id="L250">		return 1 / (1 + Math.exp(-t / sigma));</span>
+	}
+
+	/**
+	 * If the vector is nonzero, sets it to the same direction with length = 1.
+	 * 
+	 * @param vec
+	 */
+	public static void normalize(double[] vec) {
+<span class="nc" id="L259">		double norm = norm2(vec);</span>
+<span class="nc bnc" id="L260" title="All 2 branches missed.">		if (norm &gt; 0) {</span>
+<span class="nc" id="L261">			double newX = vec[0] / norm;</span>
+<span class="nc" id="L262">			double newY = vec[1] / norm;</span>
+<span class="nc" id="L263">			vec[0] = newX;</span>
+<span class="nc" id="L264">			vec[1] = newY;</span>
+		}
+<span class="nc" id="L266">	}</span>
+
+	/**
+	 * Generates quasi random numbers in two dimensions using a VERY simple
+	 * algorithm.
+	 * 
+	 * @param rndSource
+	 *        the random number source that is used in the algorithm.
+	 * @param count
+	 *        number of points in two dimensions that should be created
+	 * @param width
+	 *        width of the area where the points should be created
+	 * @param height
+	 *        height of the area where the points should be created
+	 * @param randomFrac
+	 *        0...1, specifies the amount that is added after the bin is
+	 *        chosen
+	 * @return an array with dimension [count][2]
+	 */
+	public static double[][] quasiRandom2D(Random rndSource, int count,
+			double width, double height, double randomFrac) {
+<span class="pc bpc" id="L287" title="1 of 2 branches missed.">		if (count == 0) {</span>
+<span class="nc" id="L288">			count = 1;</span>
+		}
+
+<span class="fc" id="L291">		double[][] result = new double[count][2];</span>
+
+		// generate a grid with twice the number of bins as we want results
+<span class="fc" id="L294">		double areaSideLenPerPed = Math.sqrt((width * height) / (count));</span>
+<span class="fc" id="L295">		int binsX = (int) Math.max(1, Math.ceil((width) / areaSideLenPerPed));</span>
+<span class="fc" id="L296">		int binsY = (int) Math.max(1, Math.ceil((height) / areaSideLenPerPed));</span>
+<span class="fc" id="L297">		double sideLenX = width / binsX;</span>
+<span class="fc" id="L298">		double sideLenY = height / binsY;</span>
+
+		// create a coordinate list to draw from later
+<span class="fc" id="L301">		List&lt;SimpleEntry&lt;Integer, Integer&gt;&gt; binCoodinates = new LinkedList&lt;&gt;();</span>
+<span class="fc bfc" id="L302" title="All 2 branches covered.">		for (int i = 0; i &lt; binsX; i++) {</span>
+<span class="fc bfc" id="L303" title="All 2 branches covered.">			for (int k = 0; k &lt; binsY; k++) {</span>
+<span class="fc" id="L304">				binCoodinates.add(new SimpleEntry&lt;&gt;(i, k));</span>
+			}
+		}
+
+		// randomly draw from the coordinate list and fill the result
+<span class="fc bfc" id="L309" title="All 2 branches covered.">		for (int i = 0; i &lt; count; i++) {</span>
+<span class="fc" id="L310">			int nextIndex = rndSource.nextInt(binCoodinates.size());</span>
+<span class="fc" id="L311">			SimpleEntry&lt;Integer, Integer&gt; coords = binCoodinates</span>
+<span class="fc" id="L312">					.remove(nextIndex);</span>
+<span class="fc" id="L313">			result[i][0] = Math.min(width, coords.getKey() * sideLenX</span>
+<span class="fc" id="L314">					+ rndSource.nextDouble() * sideLenX * randomFrac);</span>
+<span class="fc" id="L315">			result[i][1] = Math.min(height, coords.getValue()</span>
+<span class="fc" id="L316">					* sideLenY + rndSource.nextDouble()</span>
+							* sideLenY * randomFrac);
+		}
+
+<span class="fc" id="L320">		return result;</span>
+	}
+
+	/**
+	 * Computes the cross product of two vectors and store it in the cross
+	 * vector.
+	 * 
+	 * @param v1
+	 *        vector 1
+	 * @param v2
+	 *        vector 2
+	 * @param cross
+	 *        3D vector that will contain the result: cross = (v1 x v2)
+	 */
+	public static void cross(double[] v1, double[] v2, double[] cross) {
+<span class="nc" id="L335">		cross[0] = v1[1] * v2[2] - v1[2] * v2[1];</span>
+<span class="nc" id="L336">		cross[1] = v1[2] * v2[0] - v1[0] * v2[2];</span>
+<span class="nc" id="L337">		cross[2] = v1[0] * v2[1] - v1[1] * v2[0];</span>
+<span class="nc" id="L338">	}</span>
+
+	/**
+	 * Returns a list of absolute coordinates which correspond to the Moore
+	 * neighborhood of the given point p.
+	 */
+	public static List&lt;Point&gt; getMooreNeighborhood(Point p) {
+<span class="nc" id="L345">		List&lt;Point&gt; mooreNeighborhood = new LinkedList&lt;&gt;();</span>
+
+<span class="nc" id="L347">		mooreNeighborhood.add(new Point(p.x + 1, p.y));</span>
+<span class="nc" id="L348">		mooreNeighborhood.add(new Point(p.x, p.y + 1));</span>
+<span class="nc" id="L349">		mooreNeighborhood.add(new Point(p.x + 1, p.y + 1));</span>
+<span class="nc" id="L350">		mooreNeighborhood.add(new Point(p.x - 1, p.y));</span>
+<span class="nc" id="L351">		mooreNeighborhood.add(new Point(p.x, p.y - 1));</span>
+<span class="nc" id="L352">		mooreNeighborhood.add(new Point(p.x - 1, p.y - 1));</span>
+<span class="nc" id="L353">		mooreNeighborhood.add(new Point(p.x + 1, p.y - 1));</span>
+<span class="nc" id="L354">		mooreNeighborhood.add(new Point(p.x - 1, p.y + 1));</span>
+
+<span class="nc" id="L356">		return mooreNeighborhood;</span>
+	}
+
+	/**
+	 * Returns a list of absolute coordinates which correspond to the Neumann
+	 * neighborhood of the given point p.
+	 */
+	public static List&lt;Point&gt; getNeumannNeighborhood(final Point p) {
+<span class="fc" id="L364">		List&lt;Point&gt; neumannNeighborhood = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L365">		neumannNeighborhood.add(new Point(p.x - 1, p.y));</span>
+<span class="fc" id="L366">		neumannNeighborhood.add(new Point(p.x + 1, p.y));</span>
+<span class="fc" id="L367">		neumannNeighborhood.add(new Point(p.x, p.y - 1));</span>
+<span class="fc" id="L368">		neumannNeighborhood.add(new Point(p.x, p.y + 1));</span>
+<span class="fc" id="L369">		return neumannNeighborhood;</span>
+	}
+
+	/**
+	 * Returns a list of relative offsets which correspond to the Neumann
+	 * neighborhood.
+	 */
+	public static List&lt;Point&gt; getRelativeNeumannNeighborhood() {
+<span class="nc" id="L377">		return neumannNeighborhood;</span>
+	}
+
+	/**
+	 * Returns the value of the sigmoid function.
+	 */
+	public static double sigmoid(double t) {
+<span class="nc" id="L384">		return 1.0 / (1.0 + Math.exp(-t));</span>
+	}
+
+	/**
+	 * Returns the real solutions of the quadratic equation ax^2+bx+c=0
+	 */
+	public static List&lt;Double&gt; solveQuadratic(double a, double b, double c) {
+<span class="nc" id="L391">		ArrayList&lt;Double&gt; result = new ArrayList&lt;&gt;(2);</span>
+<span class="nc bnc" id="L392" title="All 2 branches missed.">		if (a != 0) {</span>
+<span class="nc" id="L393">			double discr = (b * b) - (4 * a * c);</span>
+
+			// one solution
+<span class="nc bnc" id="L396" title="All 2 branches missed.">			if (discr == 0) {</span>
+<span class="nc" id="L397">				Collections.addAll(result, -b / (2.0 * a));</span>
+<span class="nc bnc" id="L398" title="All 2 branches missed.">			} else if (discr &gt; 0) {</span>
+<span class="nc" id="L399">				Collections.addAll(result, (-b + Math.sqrt(discr)) / (2.0 * a), (-b - Math.sqrt(discr)) / (2.0 * a));</span>
+			}
+<span class="nc bnc" id="L401" title="All 2 branches missed.">		} else if (b != 0) {</span>
+<span class="nc" id="L402">			result.add(-c / b);</span>
+		} else {
+			//throw new IllegalArgumentException(&quot;ax^2 + bx + c = 0 is not a valid quadratic equation for a=b=0.&quot;);
+		}
+
+<span class="nc" id="L407">		return result;</span>
+	}
+
+	/**
+	 * Returns the max real solutions of the quadratic equation ax^2+bx+c=0 or Double.MAX_VALUE if there is no solution.
+	 */
+	public static double solveQuadraticMax(double a, double b, double c) {
+<span class="nc bnc" id="L414" title="All 2 branches missed.">		if (a != 0) {</span>
+<span class="nc" id="L415">			double discr = (b * b) - (4 * a * c);</span>
+
+			// one solution
+<span class="nc bnc" id="L418" title="All 2 branches missed.">			if (discr == 0) {</span>
+<span class="nc" id="L419">				return -b / (2.0 * a);</span>
+<span class="nc bnc" id="L420" title="All 2 branches missed.">			} else if (discr &gt; 0) {</span>
+<span class="nc" id="L421">				return Math.max((-b + Math.sqrt(discr)) / (2.0 * a), (-b - Math.sqrt(discr)) / (2.0 * a));</span>
+			}
+<span class="nc bnc" id="L423" title="All 2 branches missed.">		} else if (c != 0) {</span>
+<span class="nc" id="L424">			return -c / b;</span>
+		} else {
+<span class="nc" id="L426">			throw new IllegalArgumentException(&quot;ax^2 + bx + c = 0 is not a valid quadratic equation for a=b=0.&quot;);</span>
+		}
+
+<span class="nc" id="L429">		return Double.MAX_VALUE;</span>
+	}
+
+	/**
+	 * Returns true if the point p lies on the left of the vector defined by ab.
+	 */
+	public static boolean pOverLineAB(VPoint p, VPoint a, VPoint b) {
+
+<span class="nc" id="L437">		double criteria = (p.x - a.x) * (a.y - b.y) + (p.y - a.y) * (b.x - a.x);</span>
+
+<span class="nc bnc" id="L439" title="All 2 branches missed.">		return criteria &gt; 0;</span>
+	}
+
+	public static VPoint proectVector(final VPoint origin,
+			final VPoint projection) {
+<span class="nc" id="L444">		double tmp = (origin.x * projection.x + origin.y * projection.y)</span>
+				/ (projection.x * projection.x + projection.y * projection.y);
+<span class="nc" id="L446">		return new VPoint(projection.x * tmp, projection.y * tmp);</span>
+	}
+
+	/**
+	 * Transforms an array of Complex numbers to a double array of doubled length. At even indicies
+	 * there are the real parts and at odd indicies are the imaginary parts of the complex numbers.
+	 *
+	 * @param complex a array of Complex numbers
+	 * @return a double array representing the same complex numbers
+	 */
+	public static double[] toDouble(final Complex[] complex) {
+<span class="nc" id="L457">		double[] pairs = new double[complex.length*2];</span>
+<span class="nc bnc" id="L458" title="All 2 branches missed.">		for(int i = 0; i &lt; complex.length*2; i += 2) {</span>
+<span class="nc" id="L459">			pairs[i] = complex[i/2].getReal();</span>
+<span class="nc" id="L460">			pairs[i+1] = complex[i/2].getImaginary();</span>
+		}
+<span class="nc" id="L462">		return pairs;</span>
+	}
+
+	/**
+	 * Transforms an array of Complex numbers to a float array of doubled length. At even indicies
+	 * there are the real parts and at odd indicies are the imaginary parts of the complex numbers.
+	 *
+	 * @param complex a array of Complex numbers
+	 * @return a float array representing the same complex numbers
+	 */
+	public static float[] toFloat(final Complex[] complex) {
+<span class="nc" id="L473">		float[] pairs = new float[complex.length*2];</span>
+<span class="nc bnc" id="L474" title="All 2 branches missed.">		for(int i = 0; i &lt; complex.length*2; i += 2) {</span>
+<span class="nc" id="L475">			pairs[i] = (float)complex[i/2].getReal();</span>
+<span class="nc" id="L476">			pairs[i+1] = (float)complex[i/2].getImaginary();</span>
+		}
+<span class="nc" id="L478">		return pairs;</span>
+	}
+
+	/**
+	 * Transform the real numbers to complex numbers i.e. the imaginary part is zero.
+	 * @param realValues
+	 * @return a complex array representing the same real numbers
+	 */
+	public static Complex[] toComplex(final double[] realValues) {
+<span class="nc" id="L487">		Complex[] complex = new Complex[realValues.length];</span>
+<span class="nc bnc" id="L488" title="All 2 branches missed.">		for(int i = 0; i &lt; realValues.length; i++) {</span>
+<span class="nc" id="L489">			complex[i] = Complex.valueOf(realValues[i], 0.0);</span>
+		}
+<span class="nc" id="L491">		return complex;</span>
+	}
+
+	public static double clamp(double val, double min, double max) {
+<span class="nc" id="L495">		return Math.max(min, Math.min(max, val));</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

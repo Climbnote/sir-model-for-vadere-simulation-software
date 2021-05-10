@@ -1,0 +1,540 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PMesh.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">PMesh.java</span></div><h1>PMesh.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IPointLocator;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.logging.Logger;
+
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * @author Benedikt Zoennchen
+ */
+<span class="pc bpc" id="L20" title="1 of 2 branches missed.">public class PMesh implements IMesh&lt;PVertex, PHalfEdge, PFace&gt; {</span>
+
+<span class="fc" id="L22">	private static Logger log = Logger.getLogger(PMesh.class);</span>
+
+	private int numberOfEdges;
+	private int numberOfFaces;
+	private int numberOfHoles;
+	private int numberOfVertices;
+
+	private List&lt;PFace&gt; faces;
+	private List&lt;PFace&gt; holes;
+	private PFace boundary;
+	private List&lt;PHalfEdge&gt; edges;
+	private List&lt;PVertex&gt; vertices;
+
+<span class="fc" id="L35">	public PMesh() {</span>
+<span class="fc" id="L36">		clear();</span>
+<span class="fc" id="L37">	}</span>
+
+	@Override
+	public void clear() {
+<span class="fc" id="L41">		this.faces = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L42">		this.holes = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L43">		this.edges = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L44">		this.vertices = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L45">		this.boundary = new PFace(true);</span>
+<span class="fc" id="L46">		this.numberOfEdges = 0;</span>
+<span class="fc" id="L47">		this.numberOfFaces = 0;</span>
+<span class="fc" id="L48">		this.numberOfHoles = 0;</span>
+<span class="fc" id="L49">		this.numberOfVertices = 0;</span>
+<span class="fc" id="L50">	}</span>
+
+	@Override
+	public PMesh construct() {
+<span class="fc" id="L54">		return new PMesh();</span>
+	}
+
+	@Override
+	public void garbageCollection() {
+<span class="pc bnc" id="L59" title="All 2 branches missed.">		faces = faces.stream().filter(f -&gt; !isDestroyed(f)).collect(Collectors.toList());</span>
+<span class="pc bnc" id="L60" title="All 2 branches missed.">		edges = edges.stream().filter(e -&gt; !isDestroyed(e)).collect(Collectors.toList());</span>
+<span class="pc bnc" id="L61" title="All 2 branches missed.">		vertices = vertices.stream().filter(v -&gt; !isDestroyed(v)).collect(Collectors.toList());</span>
+<span class="fc" id="L62">	}</span>
+
+	@Override
+	public PHalfEdge getNext(@NotNull final PHalfEdge halfEdge) {
+<span class="fc" id="L66">		return halfEdge.getNext();</span>
+	}
+
+	@Override
+	public PHalfEdge getPrev(@NotNull final PHalfEdge halfEdge) {
+<span class="fc" id="L71">		return halfEdge.getPrevious();</span>
+	}
+
+	@Override
+	public PHalfEdge getTwin(@NotNull final PHalfEdge halfEdge) {
+<span class="fc" id="L76">		return halfEdge.getTwin();</span>
+	}
+
+	@Override
+	public PFace getFace(@NotNull final PHalfEdge halfEdge) {
+<span class="fc" id="L81">		return halfEdge.getFace();</span>
+	}
+
+	@Override
+	public PHalfEdge getEdge(@NotNull final PVertex vertex) {
+<span class="fc" id="L86">		return vertex.getEdge();</span>
+	}
+
+	@Override
+	public double getX(@NotNull final PVertex vertex) {
+<span class="fc" id="L91">		return vertex.getX();</span>
+	}
+
+	@Override
+	public double getY(@NotNull final PVertex vertex) {
+<span class="fc" id="L96">		return vertex.getY();</span>
+	}
+
+	@Override
+	public void setCoords(@NotNull final PVertex vertex, double x, double y) {
+<span class="nc" id="L101">		vertex.setPoint(new VPoint(x, y));</span>
+<span class="nc" id="L102">	}</span>
+
+	@Override
+	public PHalfEdge getEdge(@NotNull final PFace face) {
+<span class="fc" id="L106">		return face.getEdge();</span>
+	}
+
+	@Override
+	public IPoint getPoint(@NotNull final PHalfEdge halfEdge) {
+<span class="fc" id="L111">		return getVertex(halfEdge).getPoint();</span>
+	}
+
+	@Override
+	public PVertex getVertex(@NotNull final PHalfEdge halfEdge) {
+<span class="fc" id="L116">		return halfEdge.getEnd();</span>
+	}
+
+	@Override
+	public IPoint getPoint(@NotNull final PVertex vertex) {
+<span class="fc" id="L121">		return vertex.getPoint();</span>
+	}
+
+	@Override
+	public &lt;CV&gt; Optional&lt;CV&gt; getData(@NotNull final PVertex vertex, @NotNull final String name, @NotNull final Class&lt;CV&gt; clazz) {
+<span class="fc" id="L126">		return Optional.ofNullable(vertex.getData(name, clazz));</span>
+	}
+
+	@Override
+	public &lt;CV&gt; void setData(@NotNull final PVertex vertex, @NotNull final String name, final CV data) {
+<span class="fc" id="L131">		vertex.setData(name, data);</span>
+<span class="fc" id="L132">	}</span>
+
+	@Override
+	public &lt;CE&gt; Optional&lt;CE&gt; getData(@NotNull final PHalfEdge edge, @NotNull final String name, @NotNull final Class&lt;CE&gt; clazz) {
+<span class="nc" id="L136">		return Optional.ofNullable(edge.getData(name, clazz));</span>
+	}
+
+	@Override
+	public &lt;CE&gt; void setData(@NotNull final PHalfEdge edge, @NotNull final String name, @Nullable final CE data) {
+<span class="nc" id="L141">		edge.setData(name, data);</span>
+<span class="nc" id="L142">	}</span>
+
+	@Override
+	public &lt;CF&gt; Optional&lt;CF&gt; getData(@NotNull final PFace face, @NotNull final String name, @NotNull final Class&lt;CF&gt; clazz) {
+<span class="nc" id="L146">		return Optional.ofNullable(face.getData(name, clazz));</span>
+	}
+
+	@Override
+	public &lt;CF&gt; void setData(@NotNull final PFace face, @NotNull final String name, @Nullable final CF data) {
+<span class="nc" id="L151">		face.setData(name, data);</span>
+<span class="nc" id="L152">	}</span>
+
+	@Override
+	public PFace getFace() {
+<span class="pc bpc" id="L156" title="1 of 4 branches missed.">		return faces.stream().filter(face -&gt; !isDestroyed(face)).filter(f -&gt; !isBoundary(f)).findAny().get();</span>
+	}
+
+	@Override
+	public boolean isBoundary(@NotNull final PFace face) {
+<span class="fc" id="L161">		return face.isBoundary();</span>
+	}
+
+	@Override
+	public boolean isHole(@NotNull final PFace face) {
+<span class="fc bfc" id="L166" title="All 4 branches covered.">		return isBoundary(face) &amp;&amp; face != boundary;</span>
+	}
+
+	@Override
+	public boolean isBoundary(@NotNull final PHalfEdge halfEdge) {
+<span class="fc" id="L171">		return halfEdge.isBoundary();</span>
+	}
+
+	@Override
+	public boolean isDestroyed(@NotNull final PFace face) {
+<span class="fc" id="L176">		return face.isDestroyed();</span>
+	}
+
+	@Override
+	public boolean isDestroyed(@NotNull final PHalfEdge edge) {
+<span class="fc bfc" id="L181" title="All 2 branches covered.">		return !edge.isValid();</span>
+	}
+
+	@Override
+	public boolean isDestroyed(@NotNull final PVertex vertex) {
+<span class="fc" id="L186">		return vertex.isDestroyed();</span>
+	}
+
+	@Override
+	public void setTwin(@NotNull final PHalfEdge halfEdge, @NotNull final PHalfEdge twin) {
+<span class="fc" id="L191">		halfEdge.setTwin(twin);</span>
+<span class="fc" id="L192">		twin.setTwin(halfEdge);</span>
+<span class="fc" id="L193">	}</span>
+
+	@Override
+	public void setNext(@NotNull final PHalfEdge halfEdge, @NotNull final PHalfEdge next) {
+<span class="fc" id="L197">		halfEdge.setNext(next);</span>
+<span class="fc" id="L198">		next.setPrevious(halfEdge);</span>
+<span class="fc" id="L199">	}</span>
+
+	@Override
+	public void setPrev(@NotNull final PHalfEdge halfEdge, @NotNull final PHalfEdge prev) {
+<span class="fc" id="L203">		halfEdge.setPrevious(prev);</span>
+<span class="fc" id="L204">		prev.setNext(halfEdge);</span>
+<span class="fc" id="L205">	}</span>
+
+	@Override
+	public void setFace(@NotNull final PHalfEdge halfEdge, @NotNull final PFace face) {
+<span class="fc" id="L209">		halfEdge.setFace(face);</span>
+<span class="fc" id="L210">	}</span>
+
+	@Override
+	public void setEdge(@NotNull final PFace face, @NotNull final PHalfEdge edge) {
+<span class="fc" id="L214">		face.setEdge(edge);</span>
+<span class="fc" id="L215">	}</span>
+
+	@Override
+	public void setEdge(@NotNull final PVertex vertex, @NotNull final PHalfEdge edge) {
+<span class="pc bpc" id="L219" title="2 of 4 branches missed.">		assert edge.getEnd().equals(vertex);</span>
+<span class="pc bpc" id="L220" title="1 of 2 branches missed.">		if(!edge.getEnd().equals(vertex)) {</span>
+<span class="nc" id="L221">			throw new IllegalArgumentException(&quot;end of the edge is not equals to the vertex:&quot; + vertex + &quot; != &quot; + edge.getEnd());</span>
+		}
+<span class="fc" id="L223">		vertex.setEdge(edge);</span>
+<span class="fc" id="L224">	}</span>
+
+	@Override
+	public void setVertex(@NotNull final PHalfEdge halfEdge, @NotNull final PVertex vertex) {
+		/*if(halfEdge.getEnd().getEdge() == halfEdge) {
+			System.out.println(&quot;error44&quot;);
+		}
+
+
+		if(!vertex.getEdge().getEnd().equals(vertex)) {
+			System.out.println(&quot;error2&quot;);
+		}*/
+<span class="fc" id="L236">		halfEdge.setEnd(vertex);</span>
+<span class="fc" id="L237">	}</span>
+
+
+	/*@Override
+	public List&lt;PHalfEdge&lt;P&gt;&gt; getEdges(@NotNull final PVertex&lt;P&gt; vertex) {
+		return
+		//return streamEdges().filter(edge -&gt; !edge.isValid()).filter(edge -&gt; getVertex(edge).equals(vertex)).collect(Collectors.toList());
+	}*/
+
+	@Override
+	public int getNumberOfVertices() {
+<span class="fc" id="L248">		return numberOfVertices;</span>
+	}
+
+	@Override
+	public int getNumberOfFaces() {
+<span class="fc" id="L253">		return numberOfFaces;</span>
+	}
+
+	@Override
+	public boolean tryLock(@NotNull final PVertex vertex) {
+<span class="nc" id="L258">		return vertex.getLock().tryLock();</span>
+	}
+
+	@Override
+	public void unlock(@NotNull final PVertex vertex) {
+<span class="nc" id="L263">		vertex.getLock().unlock();</span>
+<span class="nc" id="L264">	}</span>
+
+	private void addEdge(@NotNull PHalfEdge edge) {
+<span class="pc bpc" id="L267" title="2 of 4 branches missed.">		assert !edges.contains(edge);</span>
+<span class="fc" id="L268">		edges.add(edge);</span>
+<span class="fc" id="L269">		numberOfEdges++;</span>
+<span class="fc" id="L270">	}</span>
+
+	@Override
+	public PHalfEdge createEdge(@NotNull final PVertex vertex) {
+<span class="fc" id="L274">		PHalfEdge edge = new PHalfEdge(vertex);</span>
+<span class="fc" id="L275">		addEdge(edge);</span>
+<span class="fc" id="L276">		return edge;</span>
+	}
+
+	@Override
+	public PHalfEdge createEdge(@NotNull final PVertex vertex, @NotNull final PFace face) {
+<span class="fc" id="L281">		PHalfEdge edge = new PHalfEdge(vertex, face);</span>
+<span class="fc" id="L282">		addEdge(edge);</span>
+<span class="fc" id="L283">		return edge;</span>
+	}
+
+	@Override
+	public PFace createFace() {
+<span class="fc" id="L288">		return createFace(false);</span>
+	}
+
+	@Override
+	public PFace createFace(final boolean hole) {
+<span class="fc" id="L293">		PFace face = new PFace(hole);</span>
+<span class="fc" id="L294">		faces.add(face);</span>
+<span class="fc bfc" id="L295" title="All 2 branches covered.">		if(hole) {</span>
+<span class="fc" id="L296">			numberOfHoles++;</span>
+<span class="fc" id="L297">			holes.add(face);</span>
+		}
+		else {
+<span class="fc" id="L300">			numberOfFaces++;</span>
+		}
+<span class="fc" id="L302">		return face;</span>
+	}
+
+	@Override
+	public IPoint createPoint(double x, double y) {
+<span class="fc" id="L307">		return new VPoint(x, y);</span>
+	}
+
+
+	// TODO: maybe remove insertVertex!
+	@Override
+	public PVertex createVertex(double x, double y) {
+<span class="fc" id="L314">		return createVertex(createPoint(x, y));</span>
+	}
+
+	@Override
+	public PVertex createVertex(@NotNull final IPoint point) {
+<span class="fc" id="L319">		return new PVertex(point);</span>
+	}
+
+	@Override
+	public PFace getBorder() {
+<span class="fc" id="L324">		return boundary;</span>
+	}
+
+	@Override
+	public void insert(@NotNull final PVertex vertex) {
+<span class="nc" id="L329">		numberOfVertices++;</span>
+<span class="nc" id="L330">		vertices.add(vertex);</span>
+<span class="nc" id="L331">	}</span>
+
+	@Override
+	public void insertVertex(@NotNull final PVertex vertex) {
+<span class="fc" id="L335">		numberOfVertices++;</span>
+<span class="fc" id="L336">		vertices.add(vertex);</span>
+<span class="fc" id="L337">	}</span>
+
+	@Override
+	public void toHole(@NotNull final PFace face) {
+<span class="nc bnc" id="L341" title="All 4 branches missed.">		assert !isHole(face);</span>
+<span class="nc bnc" id="L342" title="All 2 branches missed.">		if(!isHole(face)) {</span>
+<span class="nc" id="L343">			holes.add(face);</span>
+<span class="nc" id="L344">			face.setBoundary(true);</span>
+<span class="nc" id="L345">			numberOfHoles++;</span>
+<span class="nc" id="L346">			numberOfFaces--;</span>
+		}
+<span class="nc" id="L348">	}</span>
+
+	@Override
+	public void destroyFace(@NotNull final PFace face) {
+		//faces.remove(face);
+<span class="pc bpc" id="L353" title="1 of 2 branches missed.">		if(isHole(face)) {</span>
+			//holes.remove(face);
+<span class="nc" id="L355">			numberOfHoles--;</span>
+		}
+		else {
+<span class="fc" id="L358">			numberOfFaces--;</span>
+		}
+<span class="fc" id="L360">		face.destroy();</span>
+<span class="fc" id="L361">	}</span>
+
+	@Override
+	public void destroyEdge(@NotNull final PHalfEdge edge) {
+		//edges.remove(edge);
+<span class="fc" id="L366">		edge.destroy();</span>
+<span class="fc" id="L367">		numberOfEdges--; // we destroy the edge and its twin!</span>
+<span class="fc" id="L368">	}</span>
+
+	@Override
+	public void setDown(@NotNull final PVertex up, @NotNull final PVertex down) {
+<span class="fc" id="L372">		up.setDown(down);</span>
+<span class="fc" id="L373">	}</span>
+
+	@Override
+	public PVertex getDown(@NotNull final PVertex vertex) {
+<span class="fc" id="L377">		return vertex.getDown();</span>
+	}
+
+	@Override
+	public void destroyVertex(@NotNull final PVertex vertex) {
+		//vertices.remove(vertex);
+<span class="fc bfc" id="L383" title="All 2 branches covered.">		if(!isDestroyed(vertex)) {</span>
+<span class="fc" id="L384">			vertex.destroy();</span>
+<span class="fc" id="L385">			numberOfVertices--;</span>
+		}
+<span class="fc" id="L387">	}</span>
+
+	@Override
+	public void setPoint(@NotNull final PVertex vertex, @NotNull final IPoint point) {
+<span class="nc" id="L391">		vertex.setPoint(point);</span>
+<span class="nc" id="L392">	}</span>
+
+	@Override
+	public Stream&lt;PHalfEdge&gt; streamEdges() {
+<span class="fc bfc" id="L396" title="All 2 branches covered.">		return edges.stream().filter(e -&gt; !isDestroyed(e));</span>
+	}
+
+	@Override
+	public Stream&lt;PHalfEdge&gt; streamEdgesParallel() {
+<span class="nc bnc" id="L401" title="All 2 branches missed.">		return edges.parallelStream().filter(e -&gt; !isDestroyed(e));</span>
+	}
+
+	@Override
+<span class="fc bfc" id="L405" title="All 2 branches covered.">	public Stream&lt;PVertex&gt; streamVertices() { return vertices.stream().filter(v -&gt; !isDestroyed(v)); }</span>
+
+	@Override
+	public Stream&lt;PVertex&gt; streamVerticesParallel() {
+<span class="nc bnc" id="L409" title="All 2 branches missed.">		return vertices.parallelStream().filter(v -&gt; !isDestroyed(v));</span>
+	}
+
+	@Override
+	public Iterable&lt;PHalfEdge&gt; getEdgeIt() {
+<span class="fc" id="L414">		return () -&gt; edges.iterator();</span>
+	}
+
+	@Override
+	public PVertex getRandomVertex(@NotNull final Random random) {
+<span class="fc" id="L419">		int startIndex = random.nextInt(vertices.size());</span>
+<span class="fc" id="L420">		int index = startIndex;</span>
+
+		// look above
+<span class="pc bpc" id="L423" title="2 of 4 branches missed.">		while (index &lt; vertices.size() &amp;&amp; isDestroyed(vertices.get(index))) {</span>
+<span class="nc" id="L424">			index++;</span>
+		}
+
+		// look below
+<span class="pc bpc" id="L428" title="1 of 2 branches missed.">		if(isDestroyed(vertices.get(index))) {</span>
+<span class="nc" id="L429">			index = startIndex - 1;</span>
+
+<span class="nc bnc" id="L431" title="All 4 branches missed.">			while (index &gt;= 0 &amp;&amp; isDestroyed(vertices.get(index))) {</span>
+<span class="nc" id="L432">				index--;</span>
+			}
+		}
+
+<span class="fc" id="L436">		return vertices.get(index);</span>
+	}
+
+	@Override
+	public Stream&lt;PFace&gt; streamFaces(@NotNull final Predicate&lt;PFace&gt; predicate) {
+<span class="fc bfc" id="L441" title="All 2 branches covered.">		return faces.stream().filter(f -&gt; !isDestroyed(f)).filter(predicate);</span>
+	}
+
+	@Override
+	public Stream&lt;PFace&gt; streamHoles() {
+<span class="pc bpc" id="L446" title="1 of 2 branches missed.">		return holes.stream().filter(h -&gt; !isDestroyed(h));</span>
+	}
+
+	@Override
+	public int getNumberOfEdges() {
+<span class="fc" id="L451">		return numberOfEdges;</span>
+	}
+
+	@Override
+	public int getNumberOfHoles() {
+<span class="fc" id="L456">		return numberOfHoles;</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;PVertex, PHalfEdge, PFace&gt; toTriangulation(@NotNull final IPointLocator.Type type) {
+<span class="nc" id="L461">		return IIncrementalTriangulation.createPTriangulation(type, this);</span>
+	}
+
+	@Override
+	public void arrangeMemory(@NotNull final Iterable&lt;PFace&gt; faceOrder) {
+		try {
+<span class="nc" id="L467">			throw new UnsupportedOperationException(&quot;not jet implemented.&quot;);</span>
+<span class="nc" id="L468">		} catch (UnsupportedOperationException e) {</span>
+<span class="nc" id="L469">			log.warn(e.getMessage());</span>
+		}
+<span class="nc" id="L471">	}</span>
+
+	@Override
+	public synchronized PMesh clone() {
+		try {
+<span class="nc" id="L476">			PMesh clone = (PMesh)super.clone();</span>
+<span class="nc" id="L477">			clone.faces = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L478">			clone.holes = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L479">			clone.edges = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L480">			clone.vertices = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L481">			clone.numberOfVertices = numberOfVertices;</span>
+<span class="nc" id="L482">			clone.numberOfEdges = numberOfEdges;</span>
+<span class="nc" id="L483">			clone.numberOfHoles = numberOfHoles;</span>
+<span class="nc" id="L484">			clone.numberOfFaces = numberOfFaces;</span>
+
+<span class="nc" id="L486">			Map&lt;PVertex, PVertex&gt; vertexMap = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L487">			Map&lt;PHalfEdge, PHalfEdge&gt; edgeMap = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L488">			Map&lt;PFace, PFace&gt; faceMap = new HashMap&lt;&gt;();</span>
+
+			// faces are not complete: missing edge
+<span class="nc bnc" id="L491" title="All 2 branches missed.">			for(PVertex v : vertices) {</span>
+<span class="nc" id="L492">				PVertex cV = v.clone();</span>
+<span class="nc" id="L493">				clone.vertices.add(cV);</span>
+<span class="nc" id="L494">				vertexMap.put(v, cV);</span>
+<span class="nc" id="L495">			}</span>
+
+			// edges are not complete: missing next, prev, twin, face
+<span class="nc bnc" id="L498" title="All 2 branches missed.">			for(PHalfEdge e : edges) {</span>
+<span class="nc" id="L499">				PHalfEdge cE = e.clone();</span>
+<span class="nc" id="L500">				edgeMap.put(e, cE);</span>
+<span class="nc" id="L501">				cE.setEnd(vertexMap.get(e.getEnd()));</span>
+<span class="nc" id="L502">				clone.edges.add(cE);</span>
+<span class="nc" id="L503">			}</span>
+
+			// faces are complete
+<span class="nc" id="L506">			clone.boundary = boundary.clone();</span>
+<span class="nc" id="L507">			faceMap.put(boundary, clone.boundary);</span>
+<span class="nc" id="L508">			clone.boundary.setEdge(edgeMap.get(boundary.getEdge()));</span>
+<span class="nc bnc" id="L509" title="All 2 branches missed.">			for(PFace f : faces) {</span>
+<span class="nc" id="L510">				PFace cF = f.clone();</span>
+<span class="nc" id="L511">				faceMap.put(f, cF);</span>
+<span class="nc" id="L512">				cF.setEdge(edgeMap.get(f.getEdge()));</span>
+<span class="nc" id="L513">				clone.faces.add(cF);</span>
+<span class="nc bnc" id="L514" title="All 2 branches missed.">				if(isHole(f)) {</span>
+<span class="nc" id="L515">					clone.holes.add(cF);</span>
+				}
+<span class="nc" id="L517">			}</span>
+
+<span class="nc bnc" id="L519" title="All 2 branches missed.">			for(PVertex cV : clone.vertices) {</span>
+<span class="nc" id="L520">				cV.setEdge(edgeMap.get(cV.getEdge()));</span>
+<span class="nc" id="L521">				cV.setDown(null);</span>
+<span class="nc" id="L522">			}</span>
+
+<span class="nc bnc" id="L524" title="All 2 branches missed.">			for(PHalfEdge cE : clone.edges) {</span>
+<span class="nc" id="L525">				cE.setFace(faceMap.get(cE.getFace()));</span>
+<span class="nc" id="L526">				cE.setNext(edgeMap.get(cE.getNext()));</span>
+<span class="nc" id="L527">				cE.setPrevious(edgeMap.get(cE.getPrevious()));</span>
+<span class="nc" id="L528">				cE.setTwin(edgeMap.get(cE.getTwin()));</span>
+<span class="nc" id="L529">			}</span>
+
+			// here we assume that the point-constructor is stateless!
+
+<span class="nc" id="L533">			return clone;</span>
+
+<span class="nc" id="L535">		} catch (CloneNotSupportedException e) {</span>
+<span class="nc" id="L536">			throw new InternalError(e.getMessage());</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

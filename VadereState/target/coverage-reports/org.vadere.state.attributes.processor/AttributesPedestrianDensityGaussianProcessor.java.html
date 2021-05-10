@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesPedestrianDensityGaussianProcessor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.processor</a> &gt; <span class="el_source">AttributesPedestrianDensityGaussianProcessor.java</span></div><h1>AttributesPedestrianDensityGaussianProcessor.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.processor;
+
+/**
+ * @author Mario Teixeira Parente
+ *
+ */
+
+<span class="nc" id="L8">public class AttributesPedestrianDensityGaussianProcessor extends AttributesPedestrianDensityProcessor {</span>
+<span class="nc" id="L9">	private double scale = 10;</span>
+<span class="nc" id="L10">	private double standardDeviation = 0.7;</span>
+<span class="nc" id="L11">	private boolean obstacleDensity = true;</span>
+
+	public double getScale() {
+<span class="nc" id="L14">		return scale;</span>
+	}
+
+	public double getStandardDeviation() {
+<span class="nc" id="L18">		return standardDeviation;</span>
+	}
+
+	public boolean isObstacleDensity() {
+<span class="nc" id="L22">		return obstacleDensity;</span>
+	}
+
+	public void setScale(double scale) {
+<span class="nc" id="L26">		checkSealed();</span>
+<span class="nc" id="L27">		this.scale = scale;</span>
+<span class="nc" id="L28">	}</span>
+
+	public void setStandardDeviation(double standardDeviation) {
+<span class="nc" id="L31">		checkSealed();</span>
+<span class="nc" id="L32">		this.standardDeviation = standardDeviation;</span>
+<span class="nc" id="L33">	}</span>
+
+	public void setObstacleDensity(boolean obstacleDensity) {
+<span class="nc" id="L36">		checkSealed();</span>
+<span class="nc" id="L37">		this.obstacleDensity = obstacleDensity;</span>
+<span class="nc" id="L38">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

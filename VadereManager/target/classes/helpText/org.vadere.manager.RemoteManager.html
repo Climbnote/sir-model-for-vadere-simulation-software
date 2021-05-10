@@ -1,0 +1,48 @@
+<h1> RemoteManager</h1>
+
+<p>
+This class acts as interface between the TraCI handling and the actual simulation. All
+synchronization is handled by the <a href='/helpText/org.vadere.manager.RemoteScenarioRun.html' class='class_link'>RemoteScenarioRun</a> class. All access to the simulation
+state must be wrapped within a <a href='/helpText/org.vadere.manager.traci.commandHandler.StateAccessHandler.html' class='class_link'>StateAccessHandler</a> to decouple the <a href='/helpText/org.vadere.simulator.control.simulation.SimulationState.html' class='class_link'>SimulationState</a>
+from the command handing.
+
+Within the <a href='/helpText/rel_/StateAccessHandler#execute(RemoteManager, SimulationState).html' class='class_link'>StateAccessHandler#execute(RemoteManager, SimulationState)</a> method the {@link
+SimulationState} is save to access and change. Be really careful what you change!
+</p>
+
+<hr>
+<h2> Field: subscriptions</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: currentSimulationRun</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: simCfg</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: currentSimulationThread</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: clientCloseCommandReceived</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: simulationFinished</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: defaultOutputdir</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: logger</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: guiSupport</h2>
+<p>---</p>
+

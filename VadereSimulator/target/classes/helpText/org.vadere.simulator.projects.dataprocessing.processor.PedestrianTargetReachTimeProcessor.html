@@ -1,0 +1,11 @@
+<h1> PedestrianTargetReachTimeProcessor</h1>
+
+<p>
+Log the time when a pedestrian reaches its final target. If a pedestrian does not reach the target
+before the simulation ends, log Double.POSITIVE_INFINITY (i.e., we enter the post loop and the
+topography still holds pedestrians).
+
+Use a simple map with pedestrian.getId() as key and update the value in each simulation step.
+This is a naive and inefficient approach, but it works.
+</p>
+

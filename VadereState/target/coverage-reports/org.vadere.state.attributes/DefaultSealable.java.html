@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DefaultSealable.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes</a> &gt; <span class="el_source">DefaultSealable.java</span></div><h1>DefaultSealable.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes;
+
+import org.apache.commons.attributes.Sealable;
+
+/**
+ * Our implementation of {@link Sealable}.
+ * The {@code sealed} flag shall not be serialized.
+ * 
+ * @author Jakob Schöttl
+ *
+ */
+<span class="fc" id="L12">public class DefaultSealable implements Sealable {</span>
+	
+	/** Should not be serialized. */
+	private transient boolean sealed;
+
+	/**
+	 * Apache Commons' DefaultSealable throws an exception if the object is already sealed.
+	 */
+	@Override
+	public void seal() {
+		// Attributes currently are sealed right before the simulation starts.
+		// Throwing an exception when they are already sealed makes a second simulation fail.
+		// Solutions (other than not throwing a exception) are:
+		// - Seal as soon as the objects are loaded from JSON.
+		// - Copy all attributes before starting a simulation.
+		//   This does not make sense, since the attributes are read-only anyway.
+
+//		if (sealed)
+//			throw new IllegalStateException(&quot;Object is already sealed.&quot;);
+<span class="nc" id="L31">		sealed = true;</span>
+<span class="nc" id="L32">	}</span>
+	
+	protected void checkSealed() {
+<span class="pc bpc" id="L35" title="1 of 2 branches missed.">		if (sealed)</span>
+<span class="nc" id="L36">			throw new IllegalStateException(&quot;Object is sealed.&quot;);</span>
+<span class="fc" id="L37">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

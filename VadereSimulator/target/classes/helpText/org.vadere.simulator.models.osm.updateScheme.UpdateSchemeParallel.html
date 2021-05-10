@@ -1,0 +1,41 @@
+<h1> UpdateSchemeParallel</h1>
+
+<p>
+The implementation of the parallel update scheme described in 'How update schemes influence crowd simulations' i.e. seitz-2014b.
+The implementation is not based on the time credit concept but on event times similar to the event driven update scheme.
+The difference is that all events which starts within a time span of <tt>currentTimeInSec</tt> - <tt>timeStepInSec</tt> and <tt>currentTimeInSec</tt>
+will be performed in parallel on the bases of the situation (i.e. agents position) at <tt>currentTimeInSec</tt> - <tt>timeStepInSec</tt>.
+</p>
+
+<hr>
+<h2> Field: executorService</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: topography</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: undoPedestrians</h2>
+<p>
+marks an agent which shall move back because of conflicts.
+</p>
+
+<hr>
+<h2> Field: osmBehaviorController</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: logger</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: NUMBER_OF_THREADS</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: movePedestrians</h2>
+<p>
+marks an agent that will move in the time span.
+</p>
+

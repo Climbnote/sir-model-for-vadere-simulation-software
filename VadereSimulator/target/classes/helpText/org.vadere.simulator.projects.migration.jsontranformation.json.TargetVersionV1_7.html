@@ -1,0 +1,32 @@
+<h1> TargetVersionV1_7</h1>
+
+<p>
+Introduce new node "scenario.attributesPsychology" into JSON.
+
+Move "scenario.attributesSimulation.usePsychologyLayer"
+to this new node.
+
+This new node "scenario.attributesPsychology" holds
+also the newly introduced "AttributesPsychologyLayer"
+which is populated with default values when the migration
+assistant runs.
+
+The final JSON looks like this then:
+
+{
+"name" : "ScenarioName",
+...
+"scenario" : {
+"attributesSimulation": { ... },
+"attributesPsychology": {
+"usePsychologyLayer": true,
+"psychologyLayer": {
+"perception": "SimplePerceptionModel",
+"cognition": "CooperativeCognitionModel"
+}
+},
+...
+}
+}
+</p>
+

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MovRecorder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.utils.io.movie</a> &gt; <span class="el_source">MovRecorder.java</span></div><h1>MovRecorder.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.utils.io.movie;
+
+import org.jcodec.api.awt.SequenceEncoder;
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.gen.MeshRenderer;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.EikMeshPoint;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.gen.GenEikMesh;
+import org.vadere.util.geometry.shapes.VRectangle;
+
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.util.Date;
+
+import javax.imageio.ImageIO;
+
+/**
+ *
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public class MovRecorder&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; {
+	private MeshRenderer&lt;V, E, F&gt; meshRenderer;
+	private GenEikMesh&lt;V, E, F&gt; eikMesh;
+<span class="nc" id="L32">	private int initImageCount = 10;</span>
+<span class="nc" id="L33">	private int refineImageCount = 1;</span>
+	private final double width;
+	private final double height;
+	private SequenceEncoder enc;
+	private Date todaysDate;
+
+	public MovRecorder(
+			@NotNull final GenEikMesh&lt;V, E, F&gt; eikMesh,
+			@NotNull final MeshRenderer&lt;V, E, F&gt; meshRenderer,
+			final double width,
+<span class="nc" id="L43">			final double height) throws IOException {</span>
+<span class="nc" id="L44">		this.eikMesh = eikMesh;</span>
+<span class="nc" id="L45">		this.meshRenderer = meshRenderer;</span>
+<span class="nc" id="L46">		this.width = width;</span>
+<span class="nc" id="L47">		this.height = height;</span>
+<span class="nc" id="L48">		this.todaysDate = new java.util.Date();</span>
+<span class="nc" id="L49">		File outputFile = new File(&quot;./eikmesh_&quot;+todaysDate.toString()+&quot;.mov&quot;);</span>
+<span class="nc" id="L50">		this.enc = new SequenceEncoder(outputFile);</span>
+<span class="nc" id="L51">	}</span>
+
+	public void record() throws IOException {
+		// record init
+<span class="nc bnc" id="L55" title="All 2 branches missed.">		while (!eikMesh.isInitialized()) {</span>
+<span class="nc" id="L56">			eikMesh.initialize();</span>
+<span class="nc" id="L57">			BufferedImage bi = meshRenderer.renderImage((int)Math.ceil(width), (int)Math.ceil(height));</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">			for(int i = 0; i &lt; initImageCount; i++) {</span>
+<span class="nc" id="L59">				enc.encodeImage(bi);</span>
+			}
+<span class="nc" id="L61">		}</span>
+
+		// record refine
+<span class="nc bnc" id="L64" title="All 2 branches missed.">		while (!eikMesh.isFinished()) {</span>
+<span class="nc" id="L65">			eikMesh.improve();</span>
+<span class="nc" id="L66">			BufferedImage bi = meshRenderer.renderImage((int)Math.ceil(width), (int)Math.ceil(height));</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">			for(int i = 0; i &lt; refineImageCount; i++) {</span>
+<span class="nc" id="L68">				enc.encodeImage(bi);</span>
+			}
+<span class="nc" id="L70">		}</span>
+
+<span class="nc" id="L72">		BufferedImage bi = meshRenderer.renderImage((int)Math.ceil(width), (int)Math.ceil(height));</span>
+<span class="nc" id="L73">		File outputFile = new File(&quot;./eikmesh_last&quot;+todaysDate.toString()+&quot;.png&quot;);</span>
+<span class="nc" id="L74">		ImageIO.write(bi, &quot;png&quot;, outputFile);</span>
+<span class="nc" id="L75">	}</span>
+
+	public void finish() throws IOException {
+<span class="nc" id="L78">		enc.finish();</span>
+<span class="nc" id="L79">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

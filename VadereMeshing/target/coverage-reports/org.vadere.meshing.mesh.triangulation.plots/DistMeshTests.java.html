@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DistMeshTests.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.plots</a> &gt; <span class="el_source">DistMeshTests.java</span></div><h1>DistMeshTests.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.plots;
+
+import org.apache.commons.lang3.time.StopWatch;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+import org.vadere.meshing.mesh.triangulation.improver.distmesh.Distmesh;
+import org.vadere.meshing.mesh.triangulation.improver.distmesh.DistmeshPanel;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.math.IDistanceFunction;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Predicate;
+
+import javax.swing.*;
+
+/**
+ * @author Benedikt Zoennchen
+ */
+<span class="nc" id="L23">public class DistMeshTests extends JFrame {</span>
+
+<span class="nc" id="L25">	private static final Logger log = Logger.getLogger(DistMeshTests.class);</span>
+
+	private static void testVisual()
+    {
+<span class="nc" id="L29">	    VRectangle bbox = new VRectangle(-1.01, -1.01, 2.02, 2.02);</span>
+	    //double initialEdgeLength = 0.07; // 0.1
+<span class="nc" id="L31">	    double initialEdgeLength = 0.03; // 0.05</span>
+
+	    //IDistanceFunction distanceFunc = p -&gt; Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY()) - 1.0;
+	    //IDistanceFunction distanceFunc = p -&gt; Math.abs(0.7 - Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY())) - 0.3;
+<span class="nc" id="L35">	    VPolygon hex = VShape.generateHexagon(0.4);</span>
+<span class="nc" id="L36">	    IDistanceFunction quader = p -&gt; Math.max(Math.abs(p.getX()), Math.abs(p.getY())) - 1.0;</span>
+<span class="nc" id="L37">	    IDistanceFunction circ = p -&gt; Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY()) - 1.0;</span>
+<span class="nc" id="L38">	    IDistanceFunction distanceFunc = IDistanceFunction.intersect(quader, IDistanceFunction.create(bbox, hex));</span>
+
+
+<span class="nc" id="L41">	    IEdgeLengthFunction edgeLengthFunction = p -&gt; 1.0 + Math.max(-distanceFunc.apply(p), 0) * 8.0;</span>
+<span class="nc" id="L42">	    List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L43">	    obstacles.add(hex);</span>
+<span class="nc" id="L44">	    obstacles.add(new VRectangle(-1,-1,2,2));</span>
+
+
+<span class="nc" id="L47">	    Distmesh meshGenerator = new Distmesh(distanceFunc,</span>
+<span class="nc" id="L48">			    p -&gt; 1.0,</span>
+			    initialEdgeLength,
+			    bbox, obstacles);
+
+<span class="nc" id="L52">	    StopWatch overAllTime = new StopWatch();</span>
+<span class="nc" id="L53">	    overAllTime.start();</span>
+
+<span class="nc bnc" id="L55" title="All 2 branches missed.">	    Predicate&lt;VTriangle&gt; predicate = t -&gt; meshGenerator.getQuality(t) &lt; 0.4;</span>
+<span class="nc" id="L56">	    DistmeshPanel distmeshPanel = new DistmeshPanel(meshGenerator, 1000, 800, bbox, predicate);</span>
+
+<span class="nc" id="L58">	    JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L59">	    frame.setVisible(true);</span>
+<span class="nc" id="L60">	    frame.setTitle(&quot;DistMesh: uniformCircle(&quot;+ initialEdgeLength +&quot;)&quot;);</span>
+<span class="nc" id="L61">	    frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+
+<span class="nc" id="L63">	    int step = 0;</span>
+<span class="nc" id="L64">	    log.debug(&quot;#vertices: &quot; + meshGenerator.getPoints().size());</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">	    while (step &lt; 300) {</span>
+
+<span class="nc" id="L67">		    meshGenerator.step();</span>
+<span class="nc" id="L68">		    step++;</span>
+		    try {
+<span class="nc" id="L70">			    Thread.sleep(10);</span>
+<span class="nc" id="L71">		    } catch (InterruptedException e) {</span>
+<span class="nc" id="L72">			    e.printStackTrace();</span>
+<span class="nc" id="L73">		    }</span>
+<span class="nc" id="L74">		    distmeshPanel.repaint();</span>
+<span class="nc" id="L75">		    double quality = meshGenerator.getQuality();</span>
+<span class="nc" id="L76">		    log.debug(&quot;quality: &quot; + quality);</span>
+<span class="nc" id="L77">		    log.debug(&quot;min-quality: &quot; + meshGenerator.getMinQuality());</span>
+		    //log.debug(&quot;min-quality: &quot; + meshGenerator.getMinQuality());
+<span class="nc" id="L79">		    log.debug(&quot;step: &quot; + step);</span>
+<span class="nc" id="L80">		    log.debug(&quot;#triangulations: &quot; + meshGenerator.getNumberOfReTriangulations());</span>
+<span class="nc" id="L81">	    }</span>
+<span class="nc" id="L82">	    overAllTime.stop();</span>
+<span class="nc" id="L83">    }</span>
+
+
+    public static void main(String[] args) {
+<span class="nc" id="L87">	    testVisual();</span>
+<span class="nc" id="L88">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

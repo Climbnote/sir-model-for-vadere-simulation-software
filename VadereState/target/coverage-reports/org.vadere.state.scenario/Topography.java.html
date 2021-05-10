@@ -1,0 +1,813 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Topography.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.scenario</a> &gt; <span class="el_source">Topography.java</span></div><h1>Topography.java</h1><pre class="source lang-java linenums">package org.vadere.state.scenario;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonView;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.state.attributes.Attributes;
+import org.vadere.state.attributes.scenario.AttributesAgent;
+import org.vadere.state.attributes.scenario.AttributesCar;
+import org.vadere.state.attributes.scenario.AttributesDynamicElement;
+import org.vadere.state.attributes.scenario.AttributesObstacle;
+import org.vadere.state.attributes.scenario.AttributesTopography;
+import org.vadere.state.util.Views;
+import org.vadere.util.geometry.LinkedCellsGrid;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.math.IDistanceFunction;
+import org.vadere.util.math.IDistanceFunctionCached;
+import org.vadere.util.random.IReachablePointProvider;
+import org.vadere.util.random.SimpleReachablePointProvider;
+
+import java.awt.geom.Rectangle2D;
+import java.awt.geom.RectangularShape;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+<span class="pc bpc" id="L40" title="1 of 2 branches missed.">@JsonIgnoreProperties(value = {&quot;allOtherAttributes&quot;, &quot;obstacleDistanceFunction&quot;, &quot;contextId&quot;, &quot;reachablePointProvider&quot;})</span>
+public class Topography implements DynamicElementMover{
+
+	/** Transient to prevent JSON serialization. */
+<span class="fc" id="L44">	private static Logger logger = Logger.getLogger(Topography.class);</span>
+
+	private IDistanceFunctionCached obstacleDistanceFunction;
+	private IReachablePointProvider reachablePointProvider;
+
+	/** A possible empty string identifying a context object. */
+	private String contextId;
+
+	// TODO [priority=low] [task=feature] magic number, use attributes / parameter?
+	/**
+	 * Cell size of the internal storage of DynamicElements. Is used in the LinkedCellsGrid.
+	 */
+	private static final double CELL_SIZE = 2;
+
+	private final AttributesTopography attributes;
+
+	/**
+	 * Obstacles of scenario by id. Tree maps ensures same update order during
+	 * iteration between frames.
+	 */
+	private final List&lt;Obstacle&gt; obstacles;
+	/**
+	 * Sources of scenario by id. Tree maps ensures same update order during
+	 * iteration between frames.
+	 */
+	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid
+	private final List&lt;Source&gt; sources;
+	/**
+	 * Targets of scenario by id. Tree maps ensures same update order during
+	 * iteration between frames.
+	 */
+	private final LinkedList&lt;Target&gt; targets;
+	/**
+	 * TargetChangers of scenario
+	 */
+	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid
+	private final LinkedList&lt;TargetChanger&gt; targetChangers;
+	/**
+	 * AbsorbingAreas of scenario by id. Tree maps ensures same update order during
+	 * iteration between frames.
+	 */
+	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid
+	private final LinkedList&lt;AbsorbingArea&gt; absorbingAreas;
+	/**
+	 * MeasurementAreas.
+	 */
+	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid
+	private final LinkedList&lt;MeasurementArea&gt; measurementAreas;
+	/**
+	 * List of obstacles used as a boundary for the whole topography.
+	 */
+	private List&lt;Obstacle&gt; boundaryObstacles;
+
+	private final List&lt;Stairs&gt; stairs;
+
+	private Teleporter teleporter;
+
+	private transient final DynamicElementContainer&lt;Pedestrian&gt; pedestrians;
+	private transient final DynamicElementContainer&lt;Car&gt; cars;
+	private boolean recomputeCells;
+
+	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid
+	private AttributesAgent attributesPedestrian;
+	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid
+	private AttributesCar attributesCar;
+
+	/** Used to get attributes of all scenario elements. */
+<span class="fc" id="L111">	private Set&lt;List&lt;? extends ScenarioElement&gt;&gt; allScenarioElements = new HashSet&lt;&gt;(); // will be filled in the constructor</span>
+	
+	/** Used to store links to all attributes that are not part of scenario elements. */
+<span class="fc" id="L114">	private Set&lt;Attributes&gt; allOtherAttributes = new HashSet&lt;&gt;(); // will be filled in the constructor</span>
+
+	/** set dynamicElementIds to values bigger than the biggest initial element to ensure unique ids.**/
+	private AtomicInteger dynamicElementIdCounter;
+
+	public Topography(
+			AttributesTopography attributes,
+			AttributesAgent attributesPedestrian,
+<span class="fc" id="L122">			AttributesCar attributesCar) {</span>
+
+<span class="fc" id="L124">		this.attributes = attributes;</span>
+<span class="fc" id="L125">		this.attributesPedestrian = attributesPedestrian;</span>
+<span class="fc" id="L126">		this.attributesCar = attributesCar;</span>
+
+<span class="fc" id="L128">		allOtherAttributes.add(attributes);</span>
+<span class="fc" id="L129">		allOtherAttributes.add(attributesCar);</span>
+<span class="fc" id="L130">		allOtherAttributes.add(attributesPedestrian);</span>
+<span class="fc" id="L131">		removeNullFromSet(allOtherAttributes);</span>
+		// Actually, only attributes, not nulls should be added to this set.
+		// But sometimes null is passed as attributes and added to the set,
+		// although it is bad practice to pass null in the first place
+		// (as constructor argument).
+
+<span class="fc" id="L137">		obstacles = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L138">		stairs = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L139">		sources = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L140">		targets = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L141">		targetChangers = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L142">		absorbingAreas = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L143">		boundaryObstacles = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L144">		measurementAreas = new LinkedList&lt;&gt;();</span>
+
+<span class="fc" id="L146">		allScenarioElements.add(obstacles);</span>
+<span class="fc" id="L147">		allScenarioElements.add(stairs);</span>
+<span class="fc" id="L148">		allScenarioElements.add(sources);</span>
+<span class="fc" id="L149">		allScenarioElements.add(targets);</span>
+<span class="fc" id="L150">		allScenarioElements.add(targetChangers);</span>
+<span class="fc" id="L151">		allScenarioElements.add(boundaryObstacles);</span>
+<span class="fc" id="L152">		allScenarioElements.add(measurementAreas);</span>
+
+<span class="fc" id="L154">		RectangularShape bounds = this.getBounds();</span>
+
+<span class="fc" id="L156">		this.pedestrians = new DynamicElementContainer&lt;&gt;(bounds, CELL_SIZE);</span>
+<span class="fc" id="L157">		this.cars = new DynamicElementContainer&lt;&gt;(bounds, CELL_SIZE);</span>
+<span class="fc" id="L158">		recomputeCells = false;</span>
+
+<span class="fc" id="L160">		this.obstacleDistanceFunction = new IDistanceFunctionCached() {</span>
+			@Override
+			public double apply(@NotNull IPoint point, Object caller) {
+<span class="nc" id="L163">				return -obstacles.stream()</span>
+<span class="nc" id="L164">						.map(Obstacle::getShape)</span>
+<span class="nc" id="L165">						.map(shape -&gt; shape.distance(point))</span>
+<span class="nc" id="L166">						.min(Double::compareTo)</span>
+<span class="nc" id="L167">						.orElse(Double.MAX_VALUE);</span>
+			}
+
+			@Override
+			public Double apply(IPoint point) {
+<span class="nc" id="L172">				return apply(point, null);</span>
+			}
+		};
+
+
+		// some meaningful default value if used before simulation is started.
+		// will be replaced in the preeLoop like the obstacleDistanceFunction
+		//todo[random]: this should be drawn from a meta seed.
+<span class="fc" id="L180">		this.reachablePointProvider = SimpleReachablePointProvider.uniform(</span>
+<span class="fc" id="L181">				new Random(42), getBounds(), obstacleDistanceFunction);</span>
+
+
+<span class="fc" id="L184">		this.dynamicElementIdCounter = new AtomicInteger(1);</span>
+<span class="fc" id="L185">		this.contextId = &quot;&quot;;</span>
+<span class="fc" id="L186">	}</span>
+
+	/** Clean up a set by removing {@code null}. */
+	private void removeNullFromSet(Set&lt;?&gt; aSet) {
+<span class="fc" id="L190">		aSet.remove(null);</span>
+<span class="fc" id="L191">	}</span>
+
+	public Topography() {
+<span class="fc" id="L194">		this(new AttributesTopography(), new AttributesAgent(), new AttributesCar());</span>
+<span class="fc" id="L195">	}</span>
+
+	public Rectangle2D.Double getBounds() {
+<span class="fc" id="L198">		return this.attributes.getBounds();</span>
+	}
+
+	public double getBoundingBoxWidth() {
+<span class="nc" id="L202">		return this.attributes.getBoundingBoxWidth();</span>
+	}
+
+	public Target getTarget(int targetId) {
+<span class="nc bnc" id="L206" title="All 2 branches missed.">		for (Target target : this.targets) {</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">			if (target.getId() == targetId) {</span>
+<span class="nc" id="L208">				return target;</span>
+			}
+<span class="nc" id="L210">		}</span>
+
+<span class="nc" id="L212">		return null;</span>
+	}
+
+	public TargetChanger getTargetChanger(int targetChangerId) {
+<span class="nc bnc" id="L216" title="All 2 branches missed.">		for (TargetChanger targetChanger : this.targetChangers) {</span>
+<span class="nc bnc" id="L217" title="All 2 branches missed.">			if (targetChanger.getId() == targetChangerId) {</span>
+<span class="nc" id="L218">				return targetChanger;</span>
+			}
+<span class="nc" id="L220">		}</span>
+
+<span class="nc" id="L222">		return null;</span>
+	}
+
+	public AbsorbingArea getAbsorbingArea(int targetId) {
+<span class="nc bnc" id="L226" title="All 2 branches missed.">		for (AbsorbingArea absorbingArea : this.absorbingAreas) {</span>
+<span class="nc bnc" id="L227" title="All 2 branches missed.">			if (absorbingArea.getId() == targetId) {</span>
+<span class="nc" id="L228">				return absorbingArea;</span>
+			}
+<span class="nc" id="L230">		}</span>
+
+<span class="nc" id="L232">		return null;</span>
+	}
+
+	public double distanceToObstacle(@NotNull IPoint point) {
+<span class="nc" id="L236">		return -obstacleDistanceFunction.apply(point);</span>
+	}
+
+	public double distanceToObstacle(@NotNull final IPoint point, final Object caller) {
+<span class="nc" id="L240">		return -obstacleDistanceFunction.apply(point, caller);</span>
+	}
+
+	public IDistanceFunction getObstacleDistanceFunction() {
+<span class="nc" id="L244">			return obstacleDistanceFunction;</span>
+	}
+
+	public IReachablePointProvider getReachablePointProvider() {
+<span class="nc" id="L248">		return reachablePointProvider;</span>
+	}
+
+	public void setReachablePointProvider(@NotNull final IReachablePointProvider reachablePointProvider) {
+<span class="nc" id="L252">		this.reachablePointProvider = reachablePointProvider;</span>
+<span class="nc" id="L253">	}</span>
+
+	public void setObstacleDistanceFunction(@NotNull final IDistanceFunctionCached obstacleDistanceFunction) {
+<span class="nc" id="L256">		this.obstacleDistanceFunction = obstacleDistanceFunction;</span>
+<span class="nc" id="L257">	}</span>
+
+	public void setObstacleDistanceFunction(@NotNull final IDistanceFunction obstacleDistanceFunction) {
+<span class="nc" id="L260">		this.obstacleDistanceFunction = new IDistanceFunctionCached() {</span>
+			@Override
+			public double apply(@NotNull IPoint point, Object caller) {
+<span class="nc" id="L263">				return obstacleDistanceFunction.apply(point);</span>
+			}
+
+			@Override
+			public Double apply(IPoint point) {
+<span class="nc" id="L268">				return obstacleDistanceFunction.apply(point);</span>
+			}
+		};
+<span class="nc" id="L271">	}</span>
+
+	public boolean containsTarget(final Predicate&lt;Target&gt; targetPredicate) {
+<span class="nc" id="L274">		return getTargets().stream().anyMatch(targetPredicate);</span>
+	}
+
+	public boolean containsTarget(final Predicate&lt;Target&gt; targetPredicate, final int targetId) {
+<span class="nc bnc" id="L278" title="All 2 branches missed.">		return getTargets().stream().filter(t -&gt; t.getId() == targetId).anyMatch(targetPredicate);</span>
+	}
+
+	public boolean containsTargetChanger(final Predicate&lt;TargetChanger&gt; targetChangerPredicate) {
+<span class="nc" id="L282">		return getTargetChangers().stream().anyMatch(targetChangerPredicate);</span>
+	}
+
+	public boolean containsTargetChanger(final Predicate&lt;TargetChanger&gt; targetChangerPredicate, final int targetChangerId) {
+<span class="nc bnc" id="L286" title="All 2 branches missed.">		return getTargetChangers().stream().filter(t -&gt; t.getId() == targetChangerId).anyMatch(targetChangerPredicate);</span>
+	}
+
+	public boolean containsAbsorbingArea(final Predicate&lt;AbsorbingArea&gt; absorbingAreaPredicate) {
+<span class="nc" id="L290">		return getAbsorbingAreas().stream().anyMatch(absorbingAreaPredicate);</span>
+	}
+
+	public boolean containsAbsorbingArea(final Predicate&lt;AbsorbingArea&gt; absorbingAreaPredicate, final int absorbingAreaId) {
+<span class="nc bnc" id="L294" title="All 2 branches missed.">		return getAbsorbingAreas().stream().filter(t -&gt; t.getId() == absorbingAreaId).anyMatch(absorbingAreaPredicate);</span>
+	}
+
+	/**
+	 * Returns a list containing Targets with the specific id. This list may be empty.
+	 */
+	public List&lt;Target&gt; getTargets(final int targetId) {
+<span class="nc bnc" id="L301" title="All 2 branches missed.">		return getTargets().stream().filter(t -&gt; t.getId() == targetId).collect(Collectors.toList());</span>
+	}
+
+	public Map&lt;Integer, List&lt;VShape&gt;&gt; getTargetShapes() {
+<span class="nc" id="L305">		return getTargets().stream()</span>
+<span class="nc" id="L306">				.collect(Collectors</span>
+<span class="nc" id="L307">						.groupingBy(t -&gt; t.getId(), Collectors</span>
+<span class="nc" id="L308">								.mapping(t -&gt; t.getShape(), Collectors</span>
+<span class="nc" id="L309">										.toList())));</span>
+	}
+
+	public Map&lt;Integer, List&lt;VShape&gt;&gt; getTargetChangerShapes() {
+<span class="nc" id="L313">		return getTargetChangers().stream()</span>
+<span class="nc" id="L314">				.collect(Collectors</span>
+<span class="nc" id="L315">						.groupingBy(t -&gt; t.getId(), Collectors</span>
+<span class="nc" id="L316">								.mapping(t -&gt; t.getShape(), Collectors</span>
+<span class="nc" id="L317">										.toList())));</span>
+	}
+
+	public Map&lt;Integer, List&lt;VShape&gt;&gt; getAbsorbingAreaShapes() {
+<span class="nc" id="L321">		return getAbsorbingAreas().stream()</span>
+<span class="nc" id="L322">				.collect(Collectors</span>
+<span class="nc" id="L323">						.groupingBy(absorbingArea -&gt; absorbingArea.getId(), Collectors</span>
+<span class="nc" id="L324">								.mapping(t -&gt; t.getShape(), Collectors</span>
+<span class="nc" id="L325">										.toList())));</span>
+	}
+
+	@SuppressWarnings(&quot;unchecked&quot;)
+	private &lt;T extends DynamicElement, TAttributes extends AttributesDynamicElement&gt; DynamicElementContainer&lt;T&gt; getContainer(
+			Class&lt;? extends T&gt; elementType) {
+<span class="nc bnc" id="L331" title="All 2 branches missed.">		if (Car.class.isAssignableFrom(elementType)) {</span>
+<span class="nc" id="L332">			return (DynamicElementContainer&lt;T&gt;) cars;</span>
+		}
+<span class="nc bnc" id="L334" title="All 2 branches missed.">		if (Pedestrian.class.isAssignableFrom(elementType)) {</span>
+<span class="nc" id="L335">			return (DynamicElementContainer&lt;T&gt;) pedestrians;</span>
+		}
+		// TODO [priority=medium] [task=refactoring] this is needed for the SimulationDataWriter. Refactor in the process of refactoring the Writer.
+<span class="nc bnc" id="L338" title="All 2 branches missed.">		if (DynamicElement.class.isAssignableFrom(elementType)) {</span>
+
+<span class="nc" id="L340">			DynamicElementContainer result = new DynamicElementContainer&lt;&gt;(this.getBounds(), CELL_SIZE);</span>
+<span class="nc bnc" id="L341" title="All 2 branches missed.">			for (Pedestrian ped : pedestrians.getElements()) {</span>
+<span class="nc" id="L342">				result.addElement(ped);</span>
+<span class="nc" id="L343">			}</span>
+<span class="nc bnc" id="L344" title="All 2 branches missed.">			for (Car car : cars.getElements()) {</span>
+<span class="nc" id="L345">				result.addElement(car);</span>
+<span class="nc" id="L346">			}</span>
+<span class="nc" id="L347">			return result;</span>
+		}
+
+<span class="nc" id="L350">		throw new IllegalArgumentException(&quot;Class &quot; + elementType + &quot; does not have a container.&quot;);</span>
+	}
+
+	private boolean checkDynamicElementIdExist(int id){
+<span class="nc bnc" id="L354" title="All 4 branches missed.">		return pedestrians.idExists(id) || cars.idExists(id);</span>
+	}
+
+	public &lt;T extends DynamicElement&gt; LinkedCellsGrid&lt;T&gt; getSpatialMap(Class&lt;T&gt; elementType) {
+<span class="nc" id="L358">		return getContainer(elementType).getCellsElements();</span>
+	}
+
+	public &lt;T extends DynamicElement&gt; Collection&lt;T&gt; getElements(Class&lt;T&gt; elementType) {
+<span class="nc" id="L362">		return getContainer(elementType).getElements();</span>
+	}
+
+	public &lt;T extends DynamicElement&gt; T getElement(Class&lt;T&gt; elementType, int id) {
+<span class="nc" id="L366">		return getContainer(elementType).getElement(id);</span>
+	}
+
+	@Override
+	public &lt;T extends DynamicElement&gt; void addElement(T element) {
+<span class="nc" id="L371">		((DynamicElementContainer&lt;T&gt;) getContainer(element.getClass())).addElement(element);</span>
+<span class="nc" id="L372">	}</span>
+
+	@Override
+	public &lt;T extends DynamicElement&gt; void removeElement(T element) {
+<span class="nc" id="L376">		((DynamicElementContainer&lt;T&gt;) getContainer(element.getClass())).removeElement(element);</span>
+<span class="nc" id="L377">	}</span>
+
+	@Override
+	public &lt;T extends DynamicElement&gt; void moveElement(T element, final VPoint oldPosition) {
+<span class="nc" id="L381">		((DynamicElementContainer&lt;T&gt;) getContainer(element.getClass())).moveElement(element, oldPosition);</span>
+<span class="nc" id="L382">	}</span>
+
+	/**
+	 * The counter does not represent the total number of pedestrians. If initial pedestrians exist
+	 * @return next free Id for a pedestrian.
+	 */
+	public int getNextDynamicElementId(){
+<span class="nc" id="L389">		int nextId = this.dynamicElementIdCounter.get();</span>
+<span class="nc bnc" id="L390" title="All 4 branches missed.">		assert !checkDynamicElementIdExist(nextId): &quot;Same dynamicElementId issued twice!&quot;;</span>
+<span class="nc" id="L391">		dynamicElementIdCounter.incrementAndGet();</span>
+<span class="nc" id="L392">		return nextId;</span>
+	}
+
+	/**
+	 * This is called for initial pedestrians to set their Ids. If the id equals AttributesAgent.ID_NOT_SET (-1)
+	 * a real id is used. Otherwise the fixedId value is used.
+	 *
+	 * @param fixedId	fixedId Id for a pedestrian. If this id is free use it. If not genrate a new one.
+	 * @return				free Id. May be requestedId if it was free.
+	 */
+	public int getNextDynamicElementId(int fixedId){
+<span class="nc bnc" id="L403" title="All 4 branches missed.">		assert !checkDynamicElementIdExist(fixedId): &quot;Same dynamicElementId issued twice!&quot;;</span>
+<span class="nc" id="L404">		return fixedId;</span>
+	}
+
+	/**
+	 * Initialize dynamicElementIdCounter based on initial pedestrians placed in the topography.
+	 * To prevent duplicated ids later on in the simulation.
+	 */
+	public void initializePedestrianCount() {
+<span class="nc" id="L412">		int maxIdUsed  = pedestrians.getElements().stream().mapToInt(Pedestrian::getId).max().orElse(0);</span>
+<span class="nc" id="L413">		this.dynamicElementIdCounter.set(maxIdUsed + 1);</span>
+<span class="nc" id="L414">		logger.info(String.format(&quot;Set PedestrianIdCount to start value: %d&quot;, this.dynamicElementIdCounter.get()));</span>
+<span class="nc" id="L415">	}</span>
+
+	public boolean isRecomputeCells() {
+<span class="nc" id="L418">		return recomputeCells;</span>
+	}
+
+	public void setRecomputeCells(boolean recomputeCells) {
+<span class="nc" id="L422">		this.recomputeCells = recomputeCells;</span>
+<span class="nc" id="L423">	}</span>
+
+	public List&lt;Source&gt; getSources() {
+<span class="nc" id="L426">		return sources;</span>
+	}
+
+	public List&lt;Target&gt; getTargets() {
+<span class="nc" id="L430">		return targets;</span>
+	}
+
+	public List&lt;TargetChanger&gt; getTargetChangers() {
+<span class="nc" id="L434">		return targetChangers;</span>
+	}
+
+	public List&lt;AbsorbingArea&gt; getAbsorbingAreas() {
+<span class="nc" id="L438">		return absorbingAreas;</span>
+	}
+
+	public List&lt;Obstacle&gt; getObstacles() {
+<span class="nc" id="L442">		return obstacles;</span>
+	}
+
+	public List&lt;VShape&gt; getObstacleShapes() {
+<span class="nc" id="L446">		return obstacles.stream().map(obs -&gt; obs.getShape()).collect(Collectors.toList());</span>
+	}
+
+	public List&lt;Stairs&gt; getStairs() {
+<span class="nc" id="L450">		return stairs;</span>
+	}
+
+	public Teleporter getTeleporter() {
+<span class="nc" id="L454">		return teleporter;</span>
+	}
+
+<span class="nc" id="L457">	public List&lt;MeasurementArea&gt; getMeasurementAreas() {return  measurementAreas; }</span>
+
+	public MeasurementArea getMeasurementArea(int id){
+<span class="nc bnc" id="L460" title="All 2 branches missed.">		return measurementAreas.stream().filter(area -&gt; area.getId() == id).findFirst().orElse(null);</span>
+	}
+
+	public DynamicElementContainer&lt;Pedestrian&gt; getPedestrianDynamicElements() {
+<span class="nc" id="L464">		return pedestrians;</span>
+	}
+
+	public DynamicElementContainer&lt;Car&gt; getCarDynamicElements() {
+<span class="nc" id="L468">		return cars;</span>
+	}
+
+	public void addSource(Source source) {
+<span class="nc" id="L472">		this.sources.add(source);</span>
+<span class="nc" id="L473">	}</span>
+
+	public void addTarget(Target target) {
+<span class="fc" id="L476">		this.targets.add(target);</span>
+<span class="fc" id="L477">	}</span>
+
+<span class="nc" id="L479">	public void addTargetChanger(TargetChanger targetChanger) { this.targetChangers.add(targetChanger); }</span>
+
+	public void addAbsorbingArea(AbsorbingArea absorbingArea) {
+<span class="nc" id="L482">		this.absorbingAreas.add(absorbingArea);</span>
+<span class="nc" id="L483">	}</span>
+
+	public void addObstacle(Obstacle obstacle) {
+<span class="fc" id="L486">		this.obstacles.add(obstacle);</span>
+<span class="fc" id="L487">	}</span>
+
+	public void addMeasurementArea(MeasurementArea measurementArea){
+<span class="nc" id="L490">		this.measurementAreas.add(measurementArea);</span>
+<span class="nc" id="L491">	}</span>
+
+	public void addStairs(Stairs stairs) {
+<span class="nc" id="L494">		this.stairs.add(stairs);</span>
+<span class="nc" id="L495">	}</span>
+
+	public void setTeleporter(Teleporter teleporter) {
+<span class="nc" id="L498">		allScenarioElements.remove(this.teleporter); // remove old teleporter</span>
+
+<span class="nc" id="L500">		this.teleporter = teleporter;</span>
+<span class="nc bnc" id="L501" title="All 2 branches missed.">		if (teleporter != null)</span>
+<span class="nc" id="L502">			allScenarioElements.add(Collections.singletonList(teleporter));</span>
+<span class="nc" id="L503">	}</span>
+
+	public &lt;T extends DynamicElement&gt; void addInitialElement(T element) {
+		@SuppressWarnings(&quot;unchecked&quot;) // getContainer returns a correctly parameterized object
+<span class="nc" id="L507">		final DynamicElementContainer&lt;T&gt; container = (DynamicElementContainer&lt;T&gt;) getContainer(element.getClass());</span>
+<span class="nc" id="L508">		container.addInitialElement(element);</span>
+<span class="nc" id="L509">	}</span>
+
+	public &lt;T extends DynamicElement&gt; List&lt;T&gt; getInitialElements(Class&lt;T&gt; elementType) {
+<span class="nc" id="L512">		return this.getContainer(elementType).getInitialElements();</span>
+	}
+
+	public boolean hasTeleporter() {
+<span class="nc bnc" id="L516" title="All 2 branches missed.">		return teleporter != null;</span>
+	}
+
+	public AttributesTopography getAttributes() {
+<span class="nc" id="L520">		return attributes;</span>
+	}
+
+	public AttributesAgent getAttributesPedestrian() {
+<span class="nc" id="L524">		return attributesPedestrian;</span>
+	}
+
+	public void setAttributesPedestrian(AttributesAgent attributesPedestrian) {
+<span class="nc" id="L528">		this.attributesPedestrian = attributesPedestrian;</span>
+<span class="nc" id="L529">	}</span>
+
+	public AttributesCar getAttributesCar() {
+<span class="nc" id="L532">		return attributesCar;</span>
+	}
+
+	public void setAttributesCar(AttributesCar attributesCar) {
+<span class="nc" id="L536">		this.attributesCar = attributesCar;</span>
+<span class="nc" id="L537">	}</span>
+
+	public &lt;T extends DynamicElement&gt; void addElementRemovedListener(Class&lt;T&gt; elementType,
+			DynamicElementRemoveListener&lt;T&gt; listener) {
+<span class="nc" id="L541">		getContainer(elementType).addElementRemovedListener(listener);</span>
+<span class="nc" id="L542">	}</span>
+
+	public &lt;T extends DynamicElement&gt; void clearListeners(Class&lt;T&gt; elementType) {
+<span class="nc" id="L545">		getContainer(elementType).clearListeners();</span>
+<span class="nc" id="L546">	}</span>
+
+	public &lt;T extends DynamicElement&gt; void addElementAddedListener(Class&lt;T&gt; elementType,
+			DynamicElementAddListener&lt;T&gt; addListener) {
+<span class="nc" id="L550">		getContainer(elementType).addElementAddedListener(addListener);</span>
+<span class="nc" id="L551">	}</span>
+
+	/**
+	 * Adds a given obstacle to the list of obstacles as well as the list of boundary obstacles.
+	 * This way, the boundary can both be treated like normal obstacles, but can also be removed for
+	 * writing the topography to file.
+	 */
+	public void addBoundary(Obstacle obstacle) {
+
+<span class="nc bnc" id="L560" title="All 2 branches missed.">		if (obstacle.getId() == Attributes.ID_NOT_SET){</span>
+<span class="nc" id="L561">			int nextId = obstacles.stream().map(Obstacle::getId).max(Integer::compareTo).orElse(1) + 1;</span>
+<span class="nc" id="L562">			obstacle.setId(nextId);</span>
+		}
+
+<span class="nc" id="L565">		this.addObstacle(obstacle);</span>
+<span class="nc" id="L566">		this.boundaryObstacles.add(obstacle);</span>
+<span class="nc" id="L567">	}</span>
+
+	public List&lt;Obstacle&gt; getBoundaryObstacles() {
+<span class="nc" id="L570">		return new ArrayList&lt;&gt;(boundaryObstacles);</span>
+	}
+
+	public void removeBoundary() {
+<span class="nc bnc" id="L574" title="All 2 branches missed.">		for (Obstacle boundaryObstacle : this.boundaryObstacles) {</span>
+<span class="nc" id="L575">			this.obstacles.remove(boundaryObstacle);</span>
+<span class="nc" id="L576">		}</span>
+<span class="nc" id="L577">		this.boundaryObstacles.clear();</span>
+<span class="nc" id="L578">	}</span>
+
+	/**
+	 * Call this method to reset the topography to the state before a simulation take place.
+	 * After this call all generated boundaries, pedestrians (from source) and all listeners will be
+	 * removed.
+	 */
+	public void reset() {
+<span class="nc" id="L586">		removeBoundary();</span>
+<span class="nc" id="L587">		pedestrians.clear();</span>
+<span class="nc" id="L588">		cars.clear();</span>
+<span class="nc" id="L589">		clearListeners(Pedestrian.class);</span>
+<span class="nc" id="L590">		clearListeners(Car.class);</span>
+<span class="nc" id="L591">	}</span>
+
+	public boolean isBounded() {
+<span class="nc" id="L594">		return this.attributes.isBounded();</span>
+	}
+
+	/**
+	 * Creates a deep copy of the scenario.
+	 * 
+	 * @deprecated This manual implementation is error-prone. Remove this method
+	 *             and use the standard clone instead.
+	 */
+	@Deprecated
+	@Override
+	public Topography clone() {
+<span class="nc" id="L606">		Topography s = new Topography(this.attributes, this.attributesPedestrian, this.attributesCar);</span>
+
+<span class="nc bnc" id="L608" title="All 2 branches missed.">		for (Obstacle obstacle : this.getObstacles()) {</span>
+<span class="nc bnc" id="L609" title="All 2 branches missed.">			if (boundaryObstacles.contains(obstacle))</span>
+<span class="nc" id="L610">				s.addBoundary(obstacle.clone());</span>
+			else
+<span class="nc" id="L612">				s.addObstacle(obstacle.clone());</span>
+<span class="nc" id="L613">		}</span>
+
+<span class="nc bnc" id="L615" title="All 2 branches missed.">		for (MeasurementArea measurementArea : this.getMeasurementAreas()){</span>
+<span class="nc" id="L616">			s.addMeasurementArea(measurementArea);</span>
+<span class="nc" id="L617">		}</span>
+<span class="nc bnc" id="L618" title="All 2 branches missed.">		for (Stairs stairs : getStairs()) {</span>
+<span class="nc" id="L619">			s.addStairs(stairs.clone());</span>
+<span class="nc" id="L620">		}</span>
+<span class="nc bnc" id="L621" title="All 2 branches missed.">		for (Target target : getTargets()) {</span>
+<span class="nc" id="L622">			s.addTarget(target.clone());</span>
+<span class="nc" id="L623">		}</span>
+<span class="nc bnc" id="L624" title="All 2 branches missed.">		for (TargetChanger targetChanger : getTargetChangers()) {</span>
+<span class="nc" id="L625">			s.addTargetChanger(targetChanger.clone());</span>
+<span class="nc" id="L626">		}</span>
+<span class="nc bnc" id="L627" title="All 2 branches missed.">		for (AbsorbingArea absorbingArea: getAbsorbingAreas()) {</span>
+<span class="nc" id="L628">			s.addAbsorbingArea(absorbingArea.clone());</span>
+<span class="nc" id="L629">		}</span>
+<span class="nc bnc" id="L630" title="All 2 branches missed.">		for (Source source : getSources()) {</span>
+<span class="nc" id="L631">			s.addSource(source.clone());</span>
+<span class="nc" id="L632">		}</span>
+<span class="nc bnc" id="L633" title="All 2 branches missed.">		for (Pedestrian pedestrian : getElements(Pedestrian.class)) {</span>
+<span class="nc" id="L634">			s.addElement(pedestrian);</span>
+<span class="nc" id="L635">		}</span>
+<span class="nc bnc" id="L636" title="All 2 branches missed.">		for (Pedestrian ped : getInitialElements(Pedestrian.class)) {</span>
+<span class="nc" id="L637">			s.addInitialElement(ped);</span>
+<span class="nc" id="L638">		}</span>
+<span class="nc bnc" id="L639" title="All 2 branches missed.">		for (Car car : getElements(Car.class)) {</span>
+<span class="nc" id="L640">			s.addElement(car);</span>
+<span class="nc" id="L641">		}</span>
+<span class="nc bnc" id="L642" title="All 2 branches missed.">		for (Car car : getInitialElements(Car.class)) {</span>
+<span class="nc" id="L643">			s.addInitialElement(car);</span>
+<span class="nc" id="L644">		}</span>
+
+<span class="nc bnc" id="L646" title="All 2 branches missed.">		if (hasTeleporter()) {</span>
+<span class="nc" id="L647">			s.setTeleporter(teleporter.clone());</span>
+		}
+
+<span class="nc bnc" id="L650" title="All 2 branches missed.">		for (DynamicElementAddListener&lt;Pedestrian&gt; pedestrianAddListener : this.pedestrians.getElementAddedListener()) {</span>
+<span class="nc" id="L651">			s.addElementAddedListener(Pedestrian.class, pedestrianAddListener);</span>
+<span class="nc" id="L652">		}</span>
+<span class="nc bnc" id="L653" title="All 2 branches missed.">		for (DynamicElementRemoveListener&lt;Pedestrian&gt; pedestrianRemoveListener : this.pedestrians</span>
+<span class="nc" id="L654">				.getElementRemovedListener()) {</span>
+<span class="nc" id="L655">			s.addElementRemovedListener(Pedestrian.class, pedestrianRemoveListener);</span>
+<span class="nc" id="L656">		}</span>
+<span class="nc bnc" id="L657" title="All 2 branches missed.">		for (DynamicElementAddListener&lt;Car&gt; carAddListener : this.cars.getElementAddedListener()) {</span>
+<span class="nc" id="L658">			s.addElementAddedListener(Car.class, carAddListener);</span>
+<span class="nc" id="L659">		}</span>
+<span class="nc bnc" id="L660" title="All 2 branches missed.">		for (DynamicElementRemoveListener&lt;Car&gt; carRemoveListener : this.cars.getElementRemovedListener()) {</span>
+<span class="nc" id="L661">			s.addElementRemovedListener(Car.class, carRemoveListener);</span>
+<span class="nc" id="L662">		}</span>
+
+<span class="nc" id="L664">		return s;</span>
+	}
+
+	public int getNextFreeTargetID() {
+<span class="nc" id="L668">		Collections.sort(this.targets);</span>
+<span class="nc" id="L669">		return targets.getLast().getId() + 1;</span>
+	}
+
+	public int getNearestTarget(VPoint position) {
+<span class="nc" id="L673">		double distance = Double.MAX_VALUE;</span>
+		double tmpDistance;
+<span class="nc" id="L675">		int targetID = -1;</span>
+
+<span class="nc bnc" id="L677" title="All 2 branches missed.">		for (Target target : this.targets) {</span>
+<span class="nc bnc" id="L678" title="All 2 branches missed.">			if (!target.isTargetPedestrian()) {</span>
+<span class="nc" id="L679">				tmpDistance = target.getShape().distance(position);</span>
+<span class="nc bnc" id="L680" title="All 2 branches missed.">				if (tmpDistance &lt; distance) {</span>
+<span class="nc" id="L681">					distance = tmpDistance;</span>
+<span class="nc" id="L682">					targetID = target.getId();</span>
+				}
+			}
+<span class="nc" id="L685">		}</span>
+
+<span class="nc" id="L687">		return targetID;</span>
+	}
+
+	public boolean hasBoundary() {
+<span class="nc bnc" id="L691" title="All 2 branches missed.">		return this.boundaryObstacles.size() &gt; 0;</span>
+	}
+
+	public void sealAllAttributes() {
+		// tried to do this with flatMap -&gt; weird compiler error &quot;cannot infer type arguments ...&quot;
+<span class="nc bnc" id="L696" title="All 2 branches missed.">		for (List&lt;? extends ScenarioElement&gt; list : allScenarioElements) {</span>
+
+			// defensive programming:
+<span class="nc bnc" id="L699" title="All 2 branches missed.">			if (list == null)</span>
+<span class="nc" id="L700">				throw new RuntimeException(&quot;scenario elem list is null&quot;);</span>
+<span class="nc bnc" id="L701" title="All 2 branches missed.">			for (ScenarioElement scenarioElement : list) {</span>
+<span class="nc bnc" id="L702" title="All 2 branches missed.">				if (scenarioElement.getAttributes() == null) {</span>
+<span class="nc" id="L703">					list.remove(scenarioElement);</span>
+<span class="nc" id="L704">					logger.warn(&quot;a scenario element has null as attributes: &quot; + scenarioElement);</span>
+					// TODO this is an error in a different place and should be fixed!
+				}
+<span class="nc" id="L707">			}</span>
+
+<span class="nc" id="L709">			list.forEach(se -&gt; se.getAttributes().seal());</span>
+<span class="nc" id="L710">		}</span>
+<span class="nc" id="L711">		allOtherAttributes.forEach(a -&gt; a.seal());</span>
+<span class="nc" id="L712">	}</span>
+
+	public void generateUniqueIdIfNotSet(){
+<span class="nc" id="L715">		Set&lt;Integer&gt; usedIds = sources.stream().map(Source::getId).collect(Collectors.toSet());</span>
+<span class="nc" id="L716">		usedIds.addAll(targets.stream().map(Target::getId).collect(Collectors.toSet()));</span>
+<span class="nc" id="L717">		usedIds.addAll(targetChangers.stream().map(TargetChanger::getId).collect(Collectors.toSet()));</span>
+<span class="nc" id="L718">		usedIds.addAll(obstacles.stream().map(Obstacle::getId).collect(Collectors.toSet()));</span>
+<span class="nc" id="L719">		usedIds.addAll(stairs.stream().map(Stairs::getId).collect(Collectors.toSet()));</span>
+<span class="nc" id="L720">		usedIds.addAll(measurementAreas.stream().map(MeasurementArea::getId).collect(Collectors.toSet()));</span>
+<span class="nc" id="L721">		usedIds.addAll(absorbingAreas.stream().map(AbsorbingArea::getId).collect(Collectors.toSet()));</span>
+<span class="nc" id="L722">		usedIds.addAll(getInitialElements(Pedestrian.class).stream().map(Agent::getId).collect(Collectors.toSet()));</span>
+
+<span class="nc" id="L724">		sources.stream()</span>
+<span class="nc bnc" id="L725" title="All 2 branches missed.">				.filter(s -&gt; s.getId() == Attributes.ID_NOT_SET)</span>
+<span class="nc" id="L726">				.forEach(s -&gt; s.getAttributes().setId(nextIdNotInSet(usedIds)));</span>
+
+<span class="nc" id="L728">		targets.stream()</span>
+<span class="nc bnc" id="L729" title="All 2 branches missed.">				.filter(s -&gt; s.getId() == Attributes.ID_NOT_SET)</span>
+<span class="nc" id="L730">				.forEach(s -&gt; s.getAttributes().setId(nextIdNotInSet(usedIds)));</span>
+
+<span class="nc" id="L732">		targetChangers.stream()</span>
+<span class="nc bnc" id="L733" title="All 2 branches missed.">				.filter(s -&gt; s.getId() == Attributes.ID_NOT_SET)</span>
+<span class="nc" id="L734">				.forEach(s -&gt; s.getAttributes().setId(nextIdNotInSet(usedIds)));</span>
+
+<span class="nc" id="L736">		obstacles.stream()</span>
+<span class="nc bnc" id="L737" title="All 2 branches missed.">				.filter(s -&gt; s.getId() == Attributes.ID_NOT_SET)</span>
+<span class="nc" id="L738">				.forEach(s -&gt; s.setId(nextIdNotInSet(usedIds)));</span>
+
+<span class="nc" id="L740">		stairs.stream()</span>
+<span class="nc bnc" id="L741" title="All 2 branches missed.">				.filter(s -&gt; s.getId() == Attributes.ID_NOT_SET)</span>
+<span class="nc" id="L742">				.forEach(s -&gt; s.getAttributes().setId(nextIdNotInSet(usedIds)));</span>
+
+<span class="nc" id="L744">		measurementAreas.stream()</span>
+<span class="nc bnc" id="L745" title="All 2 branches missed.">				.filter(s -&gt; s.getId() == Attributes.ID_NOT_SET)</span>
+<span class="nc" id="L746">				.forEach(s -&gt; s.setId(nextIdNotInSet(usedIds)));</span>
+
+<span class="nc" id="L748">		absorbingAreas.stream()</span>
+<span class="nc bnc" id="L749" title="All 2 branches missed.">				.filter(s -&gt; s.getId() == Attributes.ID_NOT_SET)</span>
+<span class="nc" id="L750">				.forEach(s -&gt; s.getAttributes().setId(nextIdNotInSet(usedIds)));</span>
+
+
+<span class="nc" id="L753">		getInitialElements(Pedestrian.class).stream()</span>
+<span class="nc bnc" id="L754" title="All 2 branches missed.">				.filter(s -&gt; s.getId() == Attributes.ID_NOT_SET)</span>
+<span class="nc" id="L755">				.forEach(s -&gt; s.getAttributes().setId(nextIdNotInSet(usedIds)));</span>
+<span class="nc" id="L756">	}</span>
+
+	private int nextIdNotInSet(Set&lt;Integer&gt; usedIDs){
+<span class="nc" id="L759">		int newId = 1;</span>
+<span class="nc bnc" id="L760" title="All 2 branches missed.">		while (usedIDs.contains(newId)){</span>
+<span class="nc" id="L761">			newId++;</span>
+		}
+<span class="nc" id="L763">		usedIDs.add(newId);</span>
+<span class="nc" id="L764">		return newId;</span>
+	}
+
+
+	public ArrayList&lt;ScenarioElement&gt; getAllScenarioElements(){
+<span class="nc" id="L769">		ArrayList&lt;ScenarioElement&gt; all = new ArrayList&lt;&gt;((obstacles.size()</span>
+<span class="nc" id="L770">				+ stairs.size()</span>
+<span class="nc" id="L771">				+ targets.size()</span>
+<span class="nc" id="L772">				+ targetChangers.size()</span>
+<span class="nc" id="L773">				+ sources.size()</span>
+<span class="nc" id="L774">				+ boundaryObstacles.size()</span>
+<span class="nc" id="L775">				+ absorbingAreas.size()));</span>
+
+<span class="nc" id="L777">		all.addAll(obstacles);</span>
+<span class="nc" id="L778">		all.addAll(stairs);</span>
+<span class="nc" id="L779">		all.addAll(targets);</span>
+<span class="nc" id="L780">		all.addAll(targetChangers);</span>
+<span class="nc" id="L781">		all.addAll(sources);</span>
+<span class="nc" id="L782">		all.addAll(boundaryObstacles);</span>
+<span class="nc" id="L783">		all.addAll(measurementAreas);</span>
+<span class="nc" id="L784">		all.addAll(absorbingAreas);</span>
+<span class="nc" id="L785">		return  all;</span>
+
+	}
+
+	public static Collection&lt;Obstacle&gt; createObstacleBoundary(@NotNull final Topography topography) {
+<span class="nc" id="L790">		List&lt;Obstacle&gt; obstacles = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L791">		VPolygon boundary = new VPolygon(topography.getBounds());</span>
+<span class="nc" id="L792">		double width = topography.getBoundingBoxWidth();</span>
+<span class="nc" id="L793">		Collection&lt;VPolygon&gt; boundingBoxObstacleShapes = boundary.borderAsShapes(width, width / 2.0, 0.0001);</span>
+
+<span class="nc bnc" id="L795" title="All 2 branches missed.">		for (VPolygon obstacleShape : boundingBoxObstacleShapes) {</span>
+<span class="nc" id="L796">			AttributesObstacle obstacleAttributes = new AttributesObstacle(</span>
+					-1, obstacleShape);
+<span class="nc" id="L798">			Obstacle obstacle = new Obstacle(obstacleAttributes);</span>
+<span class="nc" id="L799">			obstacles.add(obstacle);</span>
+<span class="nc" id="L800">		}</span>
+
+<span class="nc" id="L802">		return obstacles;</span>
+	}
+
+	public String getContextId() {
+<span class="nc" id="L806">		return contextId;</span>
+	}
+
+	public void setContextId(String contextId) {
+<span class="nc" id="L810">		this.contextId = contextId;</span>
+<span class="nc" id="L811">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

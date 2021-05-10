@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FootStep.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.simulation</a> &gt; <span class="el_source">FootStep.java</span></div><h1>FootStep.java</h1><pre class="source lang-java linenums">package org.vadere.state.simulation;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VRectangle;
+
+/**
+ * A foot step is a simple java bean which represents one pedestrian foot step which is defined by
+ * &lt;ol&gt;
+ *     &lt;li&gt;start time (simulation time in seconds)&lt;/li&gt;
+ *     &lt;li&gt;end time (simulation time in seconds)&lt;/li&gt;
+ *     &lt;li&gt;start point&lt;/li&gt;
+ *     &lt;li&gt;end point&lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * @author Benedikt Zoennchen
+ */
+<span class="pc bpc" id="L21" title="1 of 2 branches missed.">public final class FootStep {</span>
+
+	/*
+	 * These are not final because of Jackson.
+	 */
+	private double startTime;
+	private double endTime;
+	private VPoint start;
+	private VPoint end;
+
+	/**
+	 * Constructor for Jackson.
+	 */
+<span class="fc" id="L34">	public FootStep() {}</span>
+
+	/**
+	 * Default constructor.
+	 *
+	 * @param start     start point of the foot step
+	 * @param end       end point of the foot step
+	 * @param startTime start time of the foot step
+	 * @param endTime   end time of the foot step
+	 */
+<span class="fc" id="L44">	public FootStep(@NotNull final VPoint start, @NotNull final VPoint end, final double startTime, final double endTime) {</span>
+<span class="pc bpc" id="L45" title="2 of 4 branches missed.">        assert startTime &lt;= endTime;</span>
+
+<span class="fc" id="L47">	    this.start = start;</span>
+<span class="fc" id="L48">		this.end = end;</span>
+<span class="fc" id="L49">		this.startTime = startTime;</span>
+<span class="fc" id="L50">		this.endTime = endTime;</span>
+<span class="fc" id="L51">	}</span>
+
+	public double getEndTime() {
+<span class="fc" id="L54">		return endTime;</span>
+	}
+
+	public double getStartTime() {
+<span class="fc" id="L58">		return startTime;</span>
+	}
+
+	public VPoint getEnd() {
+<span class="fc" id="L62">		return end;</span>
+	}
+
+	public VPoint getStart() {
+<span class="fc" id="L66">		return start;</span>
+	}
+
+	public double length() {
+<span class="fc" id="L70">		return start.distance(end);</span>
+	}
+
+	public double duration() {
+<span class="fc" id="L74">		return endTime - startTime;</span>
+	}
+
+	public boolean intersects(@NotNull final VRectangle rectangle) {
+<span class="nc" id="L78">		return GeometryUtils.intersectsRectangleBoundary(rectangle, getStart().x, getStart().y, getEnd().x, getEnd().y);</span>
+	}
+
+	public boolean intersects(@NotNull final VLine line) {
+<span class="nc" id="L82">		VPoint start = getStart();</span>
+<span class="nc" id="L83">		VPoint end = getEnd();</span>
+<span class="nc" id="L84">		return GeometryUtils.intersectLineSegment(new VPoint(line.getP1()), new VPoint(line.getP2()), start, end);</span>
+	}
+
+
+	public Pair&lt;FootStep, FootStep&gt; cut(final double simTimeInSec) {
+<span class="nc bnc" id="L89" title="All 4 branches missed.">		if(simTimeInSec &gt;= endTime || simTimeInSec &lt;= startTime) {</span>
+<span class="nc" id="L90">			throw new IllegalArgumentException(&quot;invalid time.&quot;);</span>
+		}
+
+<span class="nc" id="L93">		VPoint vector = end.subtract(start);</span>
+<span class="nc" id="L94">		double duration = duration();</span>
+<span class="nc" id="L95">		double portion = simTimeInSec - startTime;</span>
+<span class="nc" id="L96">		VPoint portionStep = vector.scalarMultiply(portion / duration);</span>
+
+<span class="nc" id="L98">		VPoint middle = start.add(portionStep);</span>
+
+<span class="nc" id="L100">		FootStep first = new FootStep(start, middle, startTime, simTimeInSec);</span>
+<span class="nc" id="L101">		FootStep second = new FootStep(middle, end, simTimeInSec, endTime);</span>
+<span class="nc" id="L102">		return Pair.of(first, second);</span>
+	}
+
+	public double computeIntersectionTime(@NotNull final VRectangle rectangle) {
+<span class="nc" id="L106">		VPoint start = getStart();</span>
+<span class="nc" id="L107">		VPoint end = getEnd();</span>
+<span class="nc" id="L108">		VPoint intersectionPoint = GeometryUtils.intersectionPoint(rectangle, start.getX(), start.getY(), end.getX(), end.getY()).get();</span>
+<span class="nc" id="L109">		double dStart = intersectionPoint.distance(start);</span>
+<span class="nc" id="L110">		double stepLength = start.distance(end);</span>
+<span class="nc" id="L111">		double duration = getEndTime() - getStartTime();</span>
+<span class="nc" id="L112">		double intersectionTime = getStartTime() + duration * (dStart / stepLength);</span>
+<span class="nc" id="L113">		return intersectionTime;</span>
+	}
+
+	public double computeIntersectionTime(@NotNull final VLine line) {
+<span class="nc" id="L117">		VPoint start = getStart();</span>
+<span class="nc" id="L118">		VPoint end = getEnd();</span>
+<span class="nc" id="L119">		VPoint intersectionPoint = GeometryUtils.intersectionPoint(line.getX1(), line.getY1(), line.getX2(), line.getY2(), start.getX(), start.getY(), end.getX(), end.getY());</span>
+<span class="nc" id="L120">		double dStart = intersectionPoint.distance(start);</span>
+<span class="nc" id="L121">		double stepLength = start.distance(end);</span>
+<span class="nc" id="L122">		double duration = getEndTime() - getStartTime();</span>
+<span class="nc" id="L123">		double intersectionTime = getStartTime() + duration * (dStart / stepLength);</span>
+<span class="nc" id="L124">		return intersectionTime;</span>
+	}
+
+	public static VPoint interpolateFootStep(final double startX, final double startY, final double endX, final double endY, final double startTime, final double endTime, final double time) {
+<span class="nc" id="L128">		return interpolateFootStep(new FootStep(new VPoint(startX, startY), new VPoint(endX, endY), startTime, endTime), time);</span>
+	}
+
+	public static VPoint interpolateFootStep(final VPoint start, final VPoint end, final double startTime, final double endTime, final double time) {
+<span class="nc" id="L132">		return interpolateFootStep(new FootStep(start, end, startTime, endTime), time);</span>
+	}
+
+	public static VPoint interpolateFootStep(final FootStep footStep, final double time){
+<span class="fc" id="L136">		final double startTime = footStep.getStartTime();</span>
+<span class="fc" id="L137">		final double endTime = footStep.getEndTime();</span>
+<span class="fc" id="L138">		final double duration = footStep.duration();</span>
+
+<span class="pc bpc" id="L140" title="1 of 6 branches missed.">		if(startTime &gt; time || endTime &lt; time || startTime &lt; 0 ){</span>
+<span class="fc" id="L141">			throw new IllegalArgumentException(&quot;Requested time &quot; + time + &quot; outside of valid time &quot; +</span>
+					&quot;region (no extrapolation!). Value outside of FootStep &quot; +
+					&quot;[start=&quot; + startTime + &quot;, end=&quot; + endTime + &quot;] time or smaller than zero. &quot; +
+<span class="fc" id="L144">					&quot;\n FootStep=&quot; + footStep.toString());</span>
+		}
+
+		VPoint interpolationResult;
+
+<span class="fc bfc" id="L149" title="All 2 branches covered.">		if(duration &lt; 1E-14){</span>
+			// to avoid problems with division by &quot;very small number&quot;, simply return the start point
+<span class="fc" id="L151">			interpolationResult = footStep.getStart();</span>
+		}else{
+<span class="fc" id="L153">			double linearTime = (time - startTime) / duration;</span>
+
+<span class="fc" id="L155">			VPoint diffPoint = footStep.getEnd().subtract(footStep.getStart());</span>
+
+<span class="fc" id="L157">			diffPoint.x = diffPoint.x * linearTime;</span>
+<span class="fc" id="L158">			diffPoint.y = diffPoint.y * linearTime;</span>
+
+<span class="fc" id="L160">			interpolationResult = footStep.getStart().add(diffPoint);</span>
+		}
+
+<span class="fc" id="L163">		return interpolationResult;</span>
+	}
+
+
+	@Override
+	public String toString() {
+<span class="fc" id="L169">		return &quot;start=&quot; + start + &quot;(t=&quot; + startTime + &quot;)&quot; + &quot;-&gt;&quot; + &quot;end=&quot; + end + &quot;(t=&quot; + endTime + &quot;)&quot;;</span>
+	}
+
+	@Override
+	public FootStep clone(){
+<span class="nc" id="L174">		return new FootStep(this.start.clone(), this.end.clone(), this.startTime, this.endTime);</span>
+	}
+
+	public String[] getValueString(){
+<span class="nc" id="L178">		String[] valueLine = {&quot;&quot;+startTime, &quot;&quot;+endTime, &quot;&quot;+start.x, &quot;&quot;+start.y, &quot;&quot;+end.x, &quot;&quot;+end.y};</span>
+<span class="nc" id="L179">		return valueLine;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

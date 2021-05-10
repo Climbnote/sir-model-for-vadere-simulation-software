@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Teleporter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.scenario</a> &gt; <span class="el_source">Teleporter.java</span></div><h1>Teleporter.java</h1><pre class="source lang-java linenums">package org.vadere.state.scenario;
+
+import org.vadere.util.geometry.shapes.Vector2D;
+import org.vadere.state.attributes.Attributes;
+import org.vadere.state.attributes.scenario.AttributesTeleporter;
+import org.vadere.state.types.ScenarioElementType;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VShape;
+
+public class Teleporter extends ScenarioElement {
+
+	private AttributesTeleporter attributes;
+
+<span class="nc" id="L14">	public Teleporter(AttributesTeleporter attributes) {</span>
+<span class="nc" id="L15">		this.attributes = attributes;</span>
+<span class="nc" id="L16">	}</span>
+
+	public Vector2D getTeleporterShift() {
+<span class="nc" id="L19">		return this.attributes.getTeleporterShift();</span>
+	}
+
+	public VPoint getTeleporterPosition() {
+<span class="nc" id="L23">		return this.attributes.getTeleporterPosition();</span>
+	}
+
+	@Override
+	public VShape getShape() {
+<span class="nc" id="L28">		throw new UnsupportedOperationException(&quot;A teleporter does not have a shape.&quot;);</span>
+	}
+
+	@Override
+	public void setShape(VShape newShape) {
+<span class="nc" id="L33">		throw new UnsupportedOperationException(&quot;A teleporter does not have a shape.&quot;);</span>
+	}
+
+	@Override
+	public int getId() {
+<span class="nc" id="L38">		return -1;</span>
+	}
+
+	@Override
+	public void setId(int id) {
+		// do nothing?
+<span class="nc" id="L44">	}</span>
+
+	@Override
+	public AttributesTeleporter getAttributes() {
+<span class="nc" id="L48">		return attributes;</span>
+	}
+
+	@Override
+	public void setAttributes(Attributes attributes) {
+<span class="nc" id="L53">		this.attributes = (AttributesTeleporter) attributes;</span>
+<span class="nc" id="L54">	}</span>
+
+	@Override
+	public ScenarioElementType getType() {
+<span class="nc" id="L58">		return ScenarioElementType.TELEPORTER;</span>
+	}
+
+	@Override
+	public boolean equals(Object o) {
+<span class="nc bnc" id="L63" title="All 2 branches missed.">		if (this == o)</span>
+<span class="nc" id="L64">			return true;</span>
+<span class="nc bnc" id="L65" title="All 4 branches missed.">		if (o == null || getClass() != o.getClass())</span>
+<span class="nc" id="L66">			return false;</span>
+
+<span class="nc" id="L68">		Teleporter that = (Teleporter) o;</span>
+
+<span class="nc bnc" id="L70" title="All 6 branches missed.">		if (attributes != null ? !attributes.equals(that.attributes) : that.attributes != null)</span>
+<span class="nc" id="L71">			return false;</span>
+
+<span class="nc" id="L73">		return true;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc bnc" id="L78" title="All 2 branches missed.">		return attributes != null ? attributes.hashCode() : 0;</span>
+	}
+
+	@Override
+	public Teleporter clone() {
+<span class="nc" id="L83">		return new Teleporter((AttributesTeleporter) attributes.clone());</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

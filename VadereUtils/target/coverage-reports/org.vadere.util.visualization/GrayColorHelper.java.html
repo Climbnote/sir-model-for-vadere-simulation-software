@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GrayColorHelper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.visualization</a> &gt; <span class="el_source">GrayColorHelper.java</span></div><h1>GrayColorHelper.java</h1><pre class="source lang-java linenums">package org.vadere.util.visualization;
+
+import java.util.List;
+
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+public class GrayColorHelper {
+
+	private final static int LOW = 0;
+	private final static int HIGH = 255;
+	private final static int HALF = (HIGH + 1) / 2;
+	// public final static int MAX_VALUE = 60;
+
+<span class="nc" id="L18">	private final static Map&lt;Integer, Color&gt; map = initNumberToColorMap();</span>
+	private static int factor;
+
+	private int maxValue;
+
+<span class="nc" id="L23">	public GrayColorHelper(final int maxValue) {</span>
+<span class="nc" id="L24">		this.maxValue = maxValue;</span>
+<span class="nc" id="L25">	}</span>
+
+	public Color numberToColor(final double value) {
+<span class="nc bnc" id="L28" title="All 2 branches missed.">		if (value &lt; 0) {</span>
+<span class="nc" id="L29">			return numberToColorPercentage(0);</span>
+<span class="nc bnc" id="L30" title="All 2 branches missed.">		} else if (value &gt; maxValue) {</span>
+<span class="nc" id="L31">			return numberToColorPercentage(1);</span>
+		} else {
+<span class="nc" id="L33">			return numberToColorPercentage(value / maxValue);</span>
+		}
+	}
+
+	public int getMaxValue() {
+<span class="nc" id="L38">		return maxValue;</span>
+	}
+
+	public static Color numberToColorPercentage(final double value) {
+<span class="nc bnc" id="L42" title="All 4 branches missed.">		if (value &lt; 0 || value &gt; 1) {</span>
+<span class="nc" id="L43">			return null;</span>
+		}
+<span class="nc" id="L45">		Double d = value * factor;</span>
+<span class="nc" id="L46">		int index = d.intValue();</span>
+<span class="nc bnc" id="L47" title="All 2 branches missed.">		if (index == factor) {</span>
+<span class="nc" id="L48">			index--;</span>
+		}
+<span class="nc" id="L50">		return map.get(index);</span>
+	}
+
+	private static Map&lt;Integer, Color&gt; initNumberToColorMap() {
+<span class="nc" id="L54">		HashMap&lt;Integer, Color&gt; localMap = new HashMap&lt;Integer, Color&gt;();</span>
+<span class="nc" id="L55">		int r = LOW;</span>
+<span class="nc" id="L56">		int g = LOW;</span>
+<span class="nc" id="L57">		int b = HALF;</span>
+
+		// factor (increment or decrement)
+<span class="nc" id="L60">		int rF = 0;</span>
+<span class="nc" id="L61">		int gF = 0;</span>
+<span class="nc" id="L62">		int bF = 1;</span>
+
+<span class="nc" id="L64">		int count = 0;</span>
+		// 1276 steps
+<span class="nc bnc" id="L66" title="All 2 branches missed.">		for (int i = 0; i &lt; 255; i++) {</span>
+<span class="nc" id="L67">			localMap.put(i, new Color(i, i, i));</span>
+		}
+<span class="nc" id="L69">		initList(localMap);</span>
+<span class="nc" id="L70">		return localMap;</span>
+	}
+
+	/**
+	 * @param localMap
+	 */
+	private static void initList(final HashMap&lt;Integer, Color&gt; localMap) {
+<span class="nc" id="L77">		List&lt;Integer&gt; list = new ArrayList&lt;Integer&gt;(localMap.keySet());</span>
+<span class="nc" id="L78">		Collections.sort(list);</span>
+<span class="nc" id="L79">		Integer min = list.get(0);</span>
+<span class="nc" id="L80">		Integer max = list.get(list.size() - 1);</span>
+<span class="nc" id="L81">		factor = max + 1;</span>
+<span class="nc" id="L82">	}</span>
+
+	/**
+	 * @param value
+	 * @return
+	 */
+	private static int rangeCheck(final int value) {
+<span class="nc bnc" id="L89" title="All 2 branches missed.">		if (value &gt; HIGH) {</span>
+<span class="nc" id="L90">			return HIGH;</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">		} else if (value &lt; LOW) {</span>
+<span class="nc" id="L92">			return LOW;</span>
+		}
+<span class="nc" id="L94">		return value;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

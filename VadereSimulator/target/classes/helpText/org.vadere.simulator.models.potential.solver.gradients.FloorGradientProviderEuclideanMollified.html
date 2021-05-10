@@ -1,0 +1,19 @@
+<h1> FloorGradientProviderEuclideanMollified</h1>
+
+<p>
+Provides a floor gradient. It is computed by the directions to the targets of
+the respective pedestrian, regardless of obstacles (i.e. the direct way). The
+point x with d(x,target)=0 would give problems when calculating the
+direction: x/norm(x-target). The mollified version (Koester et al. 2012) is
+this: x/sqrt((x-target).^2+epsilon^2) with a small epsilon.
+
+</p>
+
+<hr>
+<h2> Field: targetShapes</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: epsilonSquared</h2>
+<p>---</p>
+

@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MeshPolyWriter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.utils.io.poly</a> &gt; <span class="el_source">MeshPolyWriter.java</span></div><h1>MeshPolyWriter.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.utils.io.poly;
+
+import it.unimi.dsi.fastutil.io.FastBufferedOutputStream;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
+/**
+ * The {@link MeshPolyWriter} transforms a {@link IMesh} into a ascii-poly {@link String} and writes into a file.
+ * It is the counterpart to {@link MeshPolyReader}.
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public class MeshPolyWriter&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; {
+
+	private final static String SEPARATOR = &quot; &quot;;
+	private final static int DIMENSION = 2;
+
+<span class="nc" id="L39">	public MeshPolyWriter() {}</span>
+
+	/**
+	 * Transforms a {@link IMesh} into a Poly-{@link String}.
+	 *
+	 * @param mesh the mesh
+	 *
+	 * @return a PSLG-{@link String}
+	 */
+	public String to2DPoly(@NotNull final IMesh&lt;V, E, F&gt; mesh) {
+<span class="nc" id="L49">		return to2DPoly(mesh, 0, null, v -&gt; false);</span>
+	}
+
+	/**
+	 * Transforms a {@link IMesh} into a Poly-{@link String}.
+	 *
+	 * @param mesh              the mesh
+	 * @param nAttributes       number of vertex attributes
+	 * @param attrNameFunc      a function attributeIndex -&gt; attributeName
+	 * @param targetPredicate   mark a specific vertex to be a target vertex
+	 *
+	 * @return a PSLG-{@link String}
+	 */
+	public String to2DPoly(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			int nAttributes,
+			@Nullable final Function&lt;Integer, String&gt; attrNameFunc,
+			@NotNull Predicate&lt;V&gt; targetPredicate) {
+<span class="nc" id="L67">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc" id="L68">		to2DPoly(mesh, nAttributes, attrNameFunc, targetPredicate, new Appender(builder));</span>
+<span class="nc" id="L69">		return builder.toString();</span>
+	}
+
+	/**
+	 * Transforms a {@link IMesh} into a Poly-{@link String} and writes it into the &lt;tt&gt;write&lt;/tt&gt;.
+	 *
+	 * @param mesh              the mesh
+	 * @param nAttributes       number of vertex attributes
+	 * @param attrNameFunc      a function attributeIndex -&gt; attributeName
+	 * @param targetPredicate   mark a specific vertex to be a target vertex
+	 * @param writer            the print writer where the string will be written into.
+	 *
+	 * @return a PSLG-{@link String}
+	 */
+	public void to2DPoly(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			int nAttributes,
+			@Nullable final Function&lt;Integer, String&gt; attrNameFunc,
+			@NotNull Predicate&lt;V&gt; targetPredicate,
+			@NotNull final PrintWriter writer) {
+<span class="nc" id="L89">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc" id="L90">		to2DPoly(mesh, nAttributes, attrNameFunc, targetPredicate, new Appender(writer));</span>
+<span class="nc" id="L91">	}</span>
+
+	private void to2DPoly(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			int nAttributes,
+			@Nullable final Function&lt;Integer, String&gt; attrNameFunc,
+			@NotNull Predicate&lt;V&gt; targetPredicate,
+			@NotNull final Appender appender) {
+<span class="nc" id="L99">		int dimension = 2;</span>
+<span class="nc" id="L100">		int boundaryMarker = 1;</span>
+<span class="nc" id="L101">		int targetMarker = 2;</span>
+<span class="nc" id="L102">		appender.append(&quot;#nVertices dimension boundaryMarker targetMarker nAttributes\n&quot;);</span>
+<span class="nc" id="L103">		appender.append(mesh.getNumberOfVertices() + SEPARATOR + dimension + SEPARATOR + boundaryMarker + SEPARATOR + targetMarker + SEPARATOR + nAttributes + &quot;\n&quot;);</span>
+
+<span class="nc" id="L105">		Map&lt;V, Integer&gt; map = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L106">		int id = 1;</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">		for(V v : mesh.getVertices()) {</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">			int boundary = mesh.isAtBoundary(v) ? 1 : 0;</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">			int target = targetPredicate.test(v) ? targetMarker : 0;</span>
+<span class="nc" id="L110">			map.put(v, id);</span>
+<span class="nc" id="L111">			appender.append(String.format(Locale.US, &quot;%d&quot; + SEPARATOR + &quot;%d&quot; + SEPARATOR + &quot;%d&quot; + SEPARATOR + &quot;%f&quot; + SEPARATOR + &quot;%f&quot;, id, boundary, target, v.getX(), v.getY()));</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">			for (int j = 1; j &lt;= nAttributes; j++) {</span>
+<span class="nc" id="L113">				appender.append(String.format(Locale.US, SEPARATOR + &quot;%f&quot;, mesh.getDoubleData(v, attrNameFunc.apply(j))));</span>
+			}
+<span class="nc" id="L115">			appender.append(&quot;\n&quot;);</span>
+<span class="nc" id="L116">			id++;</span>
+<span class="nc" id="L117">		}</span>
+
+		// 1 boundary
+<span class="nc" id="L120">		appender.append(&quot;# nBorders\n&quot;);</span>
+<span class="nc" id="L121">		appender.append(1+&quot;\n&quot;);</span>
+<span class="nc" id="L122">		appender.append(mesh.getPoints(mesh.getBorder()).size() + &quot;&quot;);</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">		for(V v : mesh.getVertices(mesh.getBorder())) {</span>
+<span class="nc" id="L124">			appender.append(SEPARATOR + map.get(v).toString());</span>
+<span class="nc" id="L125">		}</span>
+<span class="nc" id="L126">		appender.append(&quot;\n&quot;);</span>
+
+<span class="nc" id="L128">		appender.append(&quot;# nTriangels\n&quot;);</span>
+<span class="nc" id="L129">		appender.append(mesh.getNumberOfFaces()+&quot;\n&quot;);</span>
+
+<span class="nc" id="L131">		appender.append(&quot;# nVertices vertexIds\n&quot;);</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		for(F face : mesh.getFaces()) {</span>
+			//builder.append(&quot;1 0\n&quot;);
+<span class="nc" id="L134">			appender.append(mesh.getPoints(face).size() + &quot;&quot;);</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">			for(V v : mesh.getVertices(face)) {</span>
+<span class="nc" id="L136">				appender.append(SEPARATOR + map.get(v));</span>
+<span class="nc" id="L137">			}</span>
+<span class="nc" id="L138">			appender.append(&quot;\n&quot;);</span>
+<span class="nc" id="L139">		}</span>
+<span class="nc" id="L140">		appender.append(&quot;# nHoles\n&quot;);</span>
+<span class="nc" id="L141">		List&lt;F&gt; holes = mesh.getHoles();</span>
+<span class="nc" id="L142">		appender.append(holes.size()+&quot;\n&quot;);</span>
+
+		//
+<span class="nc bnc" id="L145" title="All 2 branches missed.">		for(F hole : holes) {</span>
+<span class="nc" id="L146">			int size = mesh.getPoints(hole).size();</span>
+<span class="nc" id="L147">			appender.append(size + &quot;&quot;);</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">			for(V V : mesh.getVertices(hole)) {</span>
+<span class="nc" id="L149">				appender.append(SEPARATOR + map.get(V));</span>
+<span class="nc" id="L150">			}</span>
+<span class="nc" id="L151">			appender.append(&quot;\n&quot;);</span>
+<span class="nc" id="L152">		}</span>
+<span class="nc" id="L153">		appender.append(&quot;# interior points for each hole\n&quot;);</span>
+<span class="nc" id="L154">		id = 1;</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">		for(F hole : holes) {</span>
+<span class="nc" id="L156">			VPolygon polygon = mesh.toPolygon(hole);</span>
+<span class="nc" id="L157">			VPoint p = GeometryUtils.getInteriorPoint(polygon);</span>
+<span class="nc" id="L158">			appender.append(String.format(Locale.US, &quot;%d&quot; + SEPARATOR +&quot;%f&quot; + SEPARATOR + &quot;%f\n&quot;, id, p.getX(), p.getY()));</span>
+<span class="nc" id="L159">		}</span>
+<span class="nc" id="L160">	}</span>
+
+	public void to2DPoly(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			int nAttributes,
+			@Nullable final Function&lt;Integer, String&gt; attrNameFunc,
+			@NotNull Predicate&lt;V&gt; targetPredicate,
+			@NotNull final OutputStream outputStream) {
+<span class="nc" id="L168">		PrintWriter stream = new PrintWriter(</span>
+				new FastBufferedOutputStream(outputStream));
+<span class="nc" id="L170">	}</span>
+
+	private static class Appender {
+
+		private final StringBuilder builder;
+		private final PrintWriter writer;
+
+<span class="nc" id="L177">		private Appender(@NotNull final StringBuilder builder) {</span>
+<span class="nc" id="L178">			this.builder = builder;</span>
+<span class="nc" id="L179">			this.writer = null;</span>
+<span class="nc" id="L180">		}</span>
+
+<span class="nc" id="L182">		private Appender(@NotNull final PrintWriter writer) {</span>
+<span class="nc" id="L183">			this.writer = writer;</span>
+<span class="nc" id="L184">			this.builder = null;</span>
+<span class="nc" id="L185">		}</span>
+
+		private void append(@NotNull final String txt) {
+<span class="nc bnc" id="L188" title="All 2 branches missed.">			if(writer != null) {</span>
+<span class="nc" id="L189">				writer.append(txt);</span>
+			} else {
+<span class="nc" id="L191">				builder.append(txt);</span>
+			}
+<span class="nc" id="L193">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

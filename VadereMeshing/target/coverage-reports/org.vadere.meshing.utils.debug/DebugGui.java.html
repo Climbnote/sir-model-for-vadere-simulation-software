@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DebugGui.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.utils.debug</a> &gt; <span class="el_source">DebugGui.java</span></div><h1>DebugGui.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.utils.debug;
+
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.shapes.IPoint;
+
+import java.lang.reflect.InvocationTargetException;
+
+import javax.swing.*;
+
+/**
+ * A Debug GUI which allows a step by step visualization of a triangulation algorithm. For creation
+ * a {@link TriCanvas} is needed which is responsible to create the visualization for both java.swing
+ * and, if needed, for tex tikz graphics. Both java.swing and tex/tikz visualizations can be decorated
+ * with additional graphical information. Use the methods addGuiDecorator() and addTexDecorator() of
+ * the {@link TriCanvas} element to add draw primitives for each visualization.
+ *
+ * The {@link DebugGui} can be controlled with menu actions an keyboard bindings.
+ * &lt;ul&gt;
+ * &lt;li&gt;Key: n &quot;Next Step&quot;: continue with the algorithm and if the gui is called again show the new state.&lt;/li&gt;
+ * &lt;li&gt;Key: q &quot;Stop Debugging Gui&quot;: dispose the gui, turn of the {@link DebugGui} and continue the algorithm.&lt;/li&gt;
+ * &lt;li&gt;Key: p &quot;print Tikz output&quot;: create tex tikzi drawing and log to console&lt;/li&gt;
+ * &lt;li&gt;Key: s &quot;Print State Info&quot;: print the State information defined within the {@link TriCanvas} implementation &lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * @param &lt;P&gt; the type of the points (containers)
+ * @param &lt;CE&gt; the type of container of the half-edges
+ * @param &lt;CF&gt; the type of the container of the faces
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public class DebugGui&lt;P extends IPoint, CE, CF, V extends IVertex, E extends IHalfEdge, F extends IFace&gt; {
+
+	private static DebugGui instance;
+	private final Object o;
+
+	//Displayed canvas. This will be set with at each  call to #showAndWait
+	public TriCanvas&lt;P, CE, CF, V, E, F&gt; canvas;
+	private JFrame frame;    //contains canvas
+<span class="nc" id="L42">	private JMenuBar menuBar = new JMenuBar();    // Menu bar with supported actions.</span>
+	private boolean debugOn;
+	private boolean initialized;
+
+<span class="nc" id="L46">	private DebugGui() {</span>
+<span class="nc" id="L47">		o = new Object();</span>
+<span class="nc" id="L48">		debugOn = false;</span>
+<span class="nc" id="L49">	}</span>
+
+	//Statics
+
+	/**
+	 * @return Return Singletone instance of {@link DebugGui}
+	 */
+	public static DebugGui get() {
+<span class="nc bnc" id="L57" title="All 2 branches missed.">		if (instance == null) {</span>
+<span class="nc" id="L58">			instance = new DebugGui();</span>
+		}
+<span class="nc" id="L60">		return instance;</span>
+	}
+
+	/**
+	 * Test if {@link DebugGui} is active.
+	 *
+	 * @return true if {@link DebugGui} will be shown if {@link #showAndWait(TriCanvas)} is called.
+	 */
+	public static boolean isDebugOn() {
+<span class="nc" id="L69">		return get().debugOn;</span>
+	}
+
+	/**
+	 * Activate or Deactivate the {@link DebugGui}
+	 * @param debugOn if true the debugger will be active otherwise it will be inactive.
+	 */
+	public static void setDebugOn(boolean debugOn) {
+<span class="nc" id="L77">		get().debugOn = debugOn;</span>
+<span class="nc" id="L78">	}</span>
+
+
+	/**
+	 * Activate {@link DebugGui}, show canvas and block here and wait for user input.
+	 * This call will also active the {@link DebugGui} no matter what.
+	 *
+	 * @param canvas canvas to show
+	 *
+	 * @param &lt;P&gt; the type of the points (containers)
+	 * @param &lt;CE&gt; the type of container of the half-edges
+	 * @param &lt;CF&gt; the type of the container of the faces
+	 * @param &lt;V&gt; the type of the vertices
+	 * @param &lt;E&gt; the type of the half-edges
+	 * @param &lt;F&gt; the type of the faces
+	 */
+	public static &lt;P extends IPoint, CE, CF, V extends IVertex, E extends IHalfEdge, F extends IFace&gt;
+	void forceShowAndWait(TriCanvas&lt;P, CE, CF, V, E, F&gt; canvas) {
+<span class="nc" id="L96">		setDebugOn(true);</span>
+<span class="nc" id="L97">		showAndWait(canvas);</span>
+<span class="nc" id="L98">	}</span>
+
+	/**
+	 * If activated show canvas and block here and wait for user input.
+	 *
+	 * @param canvas canvas to show
+	 *
+	 * @param &lt;P&gt; the type of the points (containers)
+	 * @param &lt;CE&gt; the type of container of the half-edges
+	 * @param &lt;CF&gt; the type of the container of the faces
+	 * @param &lt;V&gt; the type of the vertices
+	 * @param &lt;E&gt; the type of the half-edges
+	 * @param &lt;F&gt; the type of the faces
+	 */
+	public static &lt;P extends IPoint, CE, CF, V extends IVertex, E extends IHalfEdge, F extends IFace&gt;
+	void showAndWait(TriCanvas&lt;P, CE, CF, V, E, F&gt; canvas) {
+<span class="nc bnc" id="L114" title="All 2 branches missed.">		if (isDebugOn()) {</span>
+<span class="nc" id="L115">			get().updateGui(canvas);</span>
+<span class="nc" id="L116">			get().waitForClick();</span>
+		}
+<span class="nc" id="L118">	}</span>
+
+	// instance
+
+	/**
+	 * Add Menu and shortcut for actions
+	 */
+	private void initComponents() {
+<span class="nc" id="L126">		Runnable runner = () -&gt; {</span>
+<span class="nc" id="L127">			frame = new JFrame();</span>
+<span class="nc" id="L128">			frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);</span>
+
+<span class="nc" id="L130">			JMenu menu = new JMenu(&quot;Edit&quot;);</span>
+
+			// Wake up waiting thread and continue with execution.
+<span class="nc" id="L133">			JMenuItem nextStepItem = new JMenuItem(&quot;Next Step&quot;);</span>
+<span class="nc" id="L134">			menu.add(nextStepItem);</span>
+<span class="nc" id="L135">			nextStepItem.setAccelerator(KeyStroke.getKeyStroke('n'));</span>
+<span class="nc" id="L136">			nextStepItem.addActionListener(e -&gt; {</span>
+<span class="nc" id="L137">				frame.setVisible(false);</span>
+<span class="nc" id="L138">				synchronized (o) {</span>
+<span class="nc" id="L139">					o.notifyAll();</span>
+<span class="nc" id="L140">				}</span>
+<span class="nc" id="L141">			});</span>
+
+			// Stop DebugGui and wake up waiting threads.
+<span class="nc" id="L144">			JMenuItem stopDebugItem = new JMenuItem(&quot;Stop Debugging Gui&quot;);</span>
+<span class="nc" id="L145">			menu.add(stopDebugItem);</span>
+<span class="nc" id="L146">			stopDebugItem.setAccelerator(KeyStroke.getKeyStroke('q'));</span>
+<span class="nc" id="L147">			stopDebugItem.addActionListener(e -&gt; {</span>
+<span class="nc" id="L148">				frame.setVisible(false);</span>
+<span class="nc" id="L149">				get().stopDebugging();</span>
+<span class="nc" id="L150">			});</span>
+
+			// Create Tikz drawing for current state of the mesh
+<span class="nc" id="L153">			JMenuItem printTikzOutputItem = new JMenuItem(&quot;print Tikz output&quot;);</span>
+<span class="nc" id="L154">			menu.add(printTikzOutputItem);</span>
+<span class="nc" id="L155">			printTikzOutputItem.setAccelerator(KeyStroke.getKeyStroke('p'));</span>
+<span class="nc" id="L156">			printTikzOutputItem.addActionListener(e -&gt; {</span>
+<span class="nc" id="L157">				System.out.println(&quot;%%%%%%%%%%%%&quot;);</span>
+<span class="nc" id="L158">				System.out.println(&quot;&quot;);</span>
+<span class="nc" id="L159">				canvas.getTexGraphBuilder().generateGraph();</span>
+<span class="nc" id="L160">				System.out.println(canvas.getTexGraphBuilder().returnString());</span>
+<span class="nc" id="L161">				System.out.println(&quot;&quot;);</span>
+<span class="nc" id="L162">				System.out.println(&quot;%%%%%%%%%%%%&quot;);</span>
+<span class="nc" id="L163">			});</span>
+
+			// Print State information provided via a StringBuilder consumer.
+<span class="nc" id="L166">			JMenuItem printMeshItem = new JMenuItem(&quot;Print State Info&quot;);</span>
+<span class="nc" id="L167">			menu.add(printMeshItem);</span>
+<span class="nc" id="L168">			printMeshItem.setAccelerator(KeyStroke.getKeyStroke('s'));</span>
+<span class="nc" id="L169">			printMeshItem.addActionListener(e -&gt; {</span>
+<span class="nc" id="L170">				StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L171">				canvas.getStateLog().accept(sb);</span>
+<span class="nc" id="L172">				System.out.println(sb.toString());</span>
+<span class="nc" id="L173">			});</span>
+
+<span class="nc" id="L175">			menuBar.add(menu);</span>
+<span class="nc" id="L176">			frame.setJMenuBar(menuBar);</span>
+<span class="nc" id="L177">		};</span>
+
+<span class="nc bnc" id="L179" title="All 2 branches missed.">		if(SwingUtilities.isEventDispatchThread()) {</span>
+<span class="nc" id="L180">			runner.run();</span>
+		}
+		else {
+			try {
+<span class="nc" id="L184">				SwingUtilities.invokeAndWait(runner);</span>
+<span class="nc" id="L185">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L186">				e.printStackTrace();</span>
+<span class="nc" id="L187">			} catch (InvocationTargetException e) {</span>
+<span class="nc" id="L188">				e.printStackTrace();</span>
+<span class="nc" id="L189">			}</span>
+		}
+<span class="nc" id="L191">	}</span>
+
+	/**
+	 * Remove old state from this instance and show the new one.
+	 *
+	 * @param canvas new {@link TriCanvas} implementation used to show current state.
+	 */
+	private void updateGui(TriCanvas canvas) {
+<span class="nc bnc" id="L199" title="All 2 branches missed.">		if(!initialized) {</span>
+<span class="nc" id="L200">			initComponents();</span>
+		}
+
+<span class="nc" id="L203">		this.canvas = canvas;</span>
+
+<span class="nc" id="L205">		Runnable runner = () -&gt; {</span>
+<span class="nc" id="L206">			frame.getContentPane().removeAll();</span>
+<span class="nc" id="L207">			frame.setSize((int) canvas.width, (int) canvas.height);</span>
+<span class="nc" id="L208">			frame.add(canvas);</span>
+<span class="nc" id="L209">			frame.setVisible(true);</span>
+<span class="nc" id="L210">			frame.revalidate();</span>
+<span class="nc" id="L211">			frame.repaint();</span>
+<span class="nc bnc" id="L212" title="All 4 branches missed.">			if (canvas.logOnGuiUpdate() != null &amp;&amp; canvas.logOnGuiUpdate().length() &gt; 0)</span>
+<span class="nc" id="L213">				System.out.println(canvas.logOnGuiUpdate().toString());</span>
+<span class="nc" id="L214">		};</span>
+
+<span class="nc bnc" id="L216" title="All 2 branches missed.">		if(SwingUtilities.isEventDispatchThread()) {</span>
+<span class="nc" id="L217">			runner.run();</span>
+		}
+		else {
+			try {
+<span class="nc" id="L221">				SwingUtilities.invokeAndWait(runner);</span>
+<span class="nc" id="L222">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L223">				e.printStackTrace();</span>
+<span class="nc" id="L224">			} catch (InvocationTargetException e) {</span>
+<span class="nc" id="L225">				e.printStackTrace();</span>
+<span class="nc" id="L226">			}</span>
+		}
+<span class="nc" id="L228">	}</span>
+
+	/**
+	 * Wait for input. A test for isDebugOn is not necessary the method is only called if
+	 * isDebugOn is true.
+	 */
+	private void waitForClick() {
+<span class="nc bnc" id="L235" title="All 2 branches missed.">		if(!initialized) {</span>
+<span class="nc" id="L236">			initComponents();</span>
+		}
+
+<span class="nc" id="L239">		synchronized (o) {</span>
+			try {
+<span class="nc" id="L241">				o.wait();</span>
+<span class="nc" id="L242">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L243">				e.printStackTrace();</span>
+<span class="nc" id="L244">			}</span>
+<span class="nc" id="L245">		}</span>
+<span class="nc" id="L246">	}</span>
+
+	/**
+	 * Deactivate Debugging, dispose frame and notify all waiting threads.
+	 */
+	private void stopDebugging() {
+<span class="nc bnc" id="L252" title="All 2 branches missed.">		if(!initialized) {</span>
+<span class="nc" id="L253">			initComponents();</span>
+		}
+
+<span class="nc" id="L256">		setDebugOn(false);</span>
+<span class="nc" id="L257">		frame.dispose();</span>
+<span class="nc" id="L258">		frame = null;</span>
+<span class="nc" id="L259">		canvas = null;</span>
+<span class="nc" id="L260">		instance = null;</span>
+<span class="nc" id="L261">		System.out.println(&quot;notify&quot;);</span>
+<span class="nc" id="L262">		synchronized (o) {</span>
+<span class="nc" id="L263">			o.notifyAll();</span>
+<span class="nc" id="L264">		}</span>
+<span class="nc" id="L265">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

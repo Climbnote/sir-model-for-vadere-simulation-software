@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesAgentBuilder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.scenario.builder</a> &gt; <span class="el_source">AttributesAgentBuilder.java</span></div><h1>AttributesAgentBuilder.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.scenario.builder;
+
+import org.vadere.state.attributes.Attributes;
+import org.vadere.state.attributes.scenario.AttributesAgent;
+
+public final class AttributesAgentBuilder {
+<span class="nc" id="L7">	private double radius = 0.195;</span>
+<span class="nc" id="L8">	private boolean densityDependentSpeed = false;</span>
+	// from weidmann-1992 page 18, seitz-2016c page 2 (Methods)
+<span class="nc" id="L10">	private double speedDistributionMean = 1.34;</span>
+	// from weidmann-1992 page 18, seitz-2016c page 2 (Methods)
+<span class="nc" id="L12">	private double speedDistributionStandardDeviation = 0.26;</span>
+	// from weidmann-1992 page 18, seitz-2016c page 2 (Methods)
+<span class="nc" id="L14">	private double minimumSpeed = 0.5;</span>
+	// from weidmann-1992 page 18, deviates in seitz-2016c page 2 (Methods): 2.0
+<span class="nc" id="L16">	private double maximumSpeed = 2.2;</span>
+<span class="nc" id="L17">	private double acceleration = 2.0;</span>
+<span class="nc" id="L18">	private int id = Attributes.ID_NOT_SET;</span>
+
+<span class="nc" id="L20">	private AttributesAgentBuilder() {</span>
+<span class="nc" id="L21">	}</span>
+
+	public static AttributesAgentBuilder anAttributesAgent() {
+<span class="nc" id="L24">		return new AttributesAgentBuilder();</span>
+	}
+
+	public AttributesAgentBuilder radius(double radius) {
+<span class="nc" id="L28">		this.radius = radius;</span>
+<span class="nc" id="L29">		return this;</span>
+	}
+
+	public AttributesAgentBuilder densityDependentSpeed(boolean densityDependentSpeed) {
+<span class="nc" id="L33">		this.densityDependentSpeed = densityDependentSpeed;</span>
+<span class="nc" id="L34">		return this;</span>
+	}
+
+	public AttributesAgentBuilder speedDistributionMean(double speedDistributionMean) {
+<span class="nc" id="L38">		this.speedDistributionMean = speedDistributionMean;</span>
+<span class="nc" id="L39">		return this;</span>
+	}
+
+	public AttributesAgentBuilder speedDistributionStandardDeviation(double speedDistributionStandardDeviation) {
+<span class="nc" id="L43">		this.speedDistributionStandardDeviation = speedDistributionStandardDeviation;</span>
+<span class="nc" id="L44">		return this;</span>
+	}
+
+	public AttributesAgentBuilder minimumSpeed(double minimumSpeed) {
+<span class="nc" id="L48">		this.minimumSpeed = minimumSpeed;</span>
+<span class="nc" id="L49">		return this;</span>
+	}
+
+	public AttributesAgentBuilder maximumSpeed(double maximumSpeed) {
+<span class="nc" id="L53">		this.maximumSpeed = maximumSpeed;</span>
+<span class="nc" id="L54">		return this;</span>
+	}
+
+	public AttributesAgentBuilder acceleration(double acceleration) {
+<span class="nc" id="L58">		this.acceleration = acceleration;</span>
+<span class="nc" id="L59">		return this;</span>
+	}
+
+	public AttributesAgentBuilder id(int id) {
+<span class="nc" id="L63">		this.id = id;</span>
+<span class="nc" id="L64">		return this;</span>
+	}
+
+	public AttributesAgent build() {
+<span class="nc" id="L68">		AttributesAgent attributesAgent = new AttributesAgent(id);</span>
+<span class="nc" id="L69">		attributesAgent.setRadius(radius);</span>
+<span class="nc" id="L70">		attributesAgent.setDensityDependentSpeed(densityDependentSpeed);</span>
+<span class="nc" id="L71">		attributesAgent.setSpeedDistributionMean(speedDistributionMean);</span>
+<span class="nc" id="L72">		attributesAgent.setSpeedDistributionStandardDeviation(speedDistributionStandardDeviation);</span>
+<span class="nc" id="L73">		attributesAgent.setMinimumSpeed(minimumSpeed);</span>
+<span class="nc" id="L74">		attributesAgent.setMaximumSpeed(maximumSpeed);</span>
+<span class="nc" id="L75">		attributesAgent.setAcceleration(acceleration);</span>
+<span class="nc" id="L76">		return attributesAgent;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

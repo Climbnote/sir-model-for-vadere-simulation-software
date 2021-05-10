@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DistanceFunctionTarget.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.math</a> &gt; <span class="el_source">DistanceFunctionTarget.java</span></div><h1>DistanceFunctionTarget.java</h1><pre class="source lang-java linenums">package org.vadere.util.math;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.util.data.cellgrid.CellGrid;
+
+import java.util.Collection;
+
+/**
+ * @author Benedikt Zoennchen
+ */
+public class DistanceFunctionTarget implements IDistanceFunction {
+
+	private final CellGrid cellGrid;
+	private final Collection&lt;VShape&gt; targets;
+
+<span class="nc" id="L18">	public DistanceFunctionTarget(@NotNull final CellGrid cellGrid, @NotNull Collection&lt;VShape&gt; targets) {</span>
+<span class="nc" id="L19">		this.cellGrid = cellGrid;</span>
+<span class="nc" id="L20">		this.targets = targets;</span>
+<span class="nc" id="L21">	}</span>
+
+	@Override
+	public Double apply(IPoint point) {
+		/*VPoint dp = new VPoint(cellGrid.getWidth() / (cellGrid.getNumPointsX() - 1) / 2.0,
+				cellGrid.getHeight() / (cellGrid.getNumPointsY() - 1) / 2.0);*/
+<span class="nc" id="L27">		double dist = Double.MAX_VALUE;</span>
+<span class="nc bnc" id="L28" title="All 2 branches missed.">		for (VShape targetShape : targets) {</span>
+			// negative distances are possible when point is inside the target
+<span class="nc" id="L30">			dist = Math.min(dist, targetShape.distance(point));</span>
+<span class="nc" id="L31">		}</span>
+<span class="nc" id="L32">		return -dist;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

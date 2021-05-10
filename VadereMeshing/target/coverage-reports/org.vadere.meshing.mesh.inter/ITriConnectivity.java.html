@@ -1,0 +1,3442 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ITriConnectivity.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.inter</a> &gt; <span class="el_source">ITriConnectivity.java</span></div><h1>ITriConnectivity.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.inter;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.vadere.meshing.mesh.gen.DelaunayHierarchy;
+import org.vadere.meshing.mesh.gen.GenEar;
+import org.vadere.util.data.Node;
+import org.vadere.util.data.NodeLinkedList;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.math.IDistanceFunction;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.PriorityQueue;
+import java.util.Random;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+/**
+ * &lt;p&gt;A tri-connectivity {@link ITriConnectivity} is the connectivity of a mesh of non-intersecting connected triangles including holes.
+ * A hole can be an arbitrary simple polygon. So it is more concrete than a poly-connectivity {@link IPolyConnectivity}.
+ * The mesh {@link IMesh} stores all the date of the base elements (vertices {@link V}, half-edges {@link E}
+ * and faces {@link F}) and offers factory method to create new base elements.
+ * The connectivities, i.e. {@link IPolyConnectivity} and {@link ITriConnectivity} offers all the operations manipulating
+ * the connectivity of the mesh. The connectivity is the relation between vertices and edges which define faces which therefore define the mesh structure.&lt;/p&gt;
+ *
+ * &lt;p&gt;We say a mesh represents a valid triangulation or a triangulation is valid if and only if all triangle-faces are counter-clockwise oriented.&lt;/p&gt;
+ *
+ * &lt;p&gt;We say a mesh represents a feasible triangulation or a triangulation is feasible if and only if all triangle-faces are legal, i.e. all half-edges are legal.
+ * The certificate for an edge to be legal relies on the concrete implementation of the triangulation. E. g. for a strict Delaunay-Triangulation the Delaunay-Criterion
+ * has to be fulfilled.&lt;/p&gt;
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ *
+ * @author Benedikt Zoennchen
+ */
+<span class="pc bpc" id="L52" title="1 of 2 branches missed.">public interface ITriConnectivity&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; extends IPolyConnectivity&lt;V, E, F&gt; {</span>
+
+	/**
+	 * A logger for debug and information reasons.
+	 */
+<span class="fc" id="L57">	Logger log = Logger.getLogger(ITriConnectivity.class);</span>
+
+	/**
+	 * A Random number generator to randomly walk through the trinagulation.
+	 */
+<span class="fc" id="L62">	Random random = new Random();</span>
+
+	/**
+	 * A flag to activate and deactivate the debug mode.
+	 */
+	boolean debug = false;
+
+
+	/**
+	 * &lt;p&gt;This will be called whenever a triangle / face is split into three faces
+	 * and inform all listeners about that event.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param original  the original face
+	 * @param f1        one of the split results
+	 * @param f2        one of the split results
+	 * @param f3        one of the split results
+	 * @param v         the vertex inserted
+	 */
+<span class="nc" id="L82">	default void splitTriangleEvent(@NotNull final F original, @NotNull final F f1, @NotNull final F f2, @NotNull final F f3, @NotNull final V v) {}</span>
+
+	/**
+	 * &lt;p&gt;This will be called whenever a triangle / face is split at a specific edge which
+	 * will split it into tow faces. The method informs all listeners about that event.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param originalEdge  the original edge which is split
+	 * @param original      the original face
+	 * @param f1            one of the split results
+	 * @param f2            one of the split results
+	 * @param v             the vertex inserted
+	 */
+<span class="nc" id="L96">	default void splitEdgeEvent(@NotNull E originalEdge, @NotNull final F original, @NotNull final F f1, @NotNull final F f2, @NotNull final V v) {}</span>
+
+	/**
+	 * &lt;p&gt;This will replace the point of a vertex. If the point has other coordinates than
+	 * the old point of the vertex this will reposition the vertex without any checks, i.e.
+	 * the user has to know what he does and has to make sure that the mesh is valid and feasible
+	 * afterwards and all listeners e.g. the point locators such as the Delaunay-Hierarchy
+	 * {@link DelaunayHierarchy} can handle this
+	 * repositioning!&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity but may change the position of a vertex and therefore requires
+	 * connectivity changes which has to be made manually!&lt;/p&gt;
+	 *
+	 * @param vertex    the vertex
+	 * @param point     the new point of the vertex
+	 */
+	default void replacePoint(@NotNull final V vertex, @NotNull final IPoint point) {
+<span class="nc bnc" id="L113" title="All 4 branches missed.">		assert ringContainsPoint(vertex, point);</span>
+<span class="nc" id="L114">		getMesh().setPoint(vertex, point);</span>
+<span class="nc" id="L115">	}</span>
+
+	/**
+	 * &lt;p&gt;Tests if the point is contained in the 1-Ring of the vertex, i.e. the polygon spanned by the
+	 * neighbour points of the point including itself if the point is at the boundary.&lt;/p&gt;
+	 *
+	 * @param vertex    the vertex
+	 * @param point     the point
+	 * @return true if the point is contained, false otherwise
+	 */
+	default boolean ringContainsPoint(@NotNull final V vertex, @NotNull final IPoint point)  {
+<span class="nc" id="L126">		java.util.List&lt;IPoint&gt; points = getMesh().getPoints(vertex);</span>
+
+<span class="nc bnc" id="L128" title="All 2 branches missed.">		if(getMesh().isAtBoundary(vertex)) {</span>
+<span class="nc" id="L129">			points.add(getMesh().toPoint(vertex));</span>
+		}
+
+<span class="nc" id="L132">		double distance = GeometryUtils.toPolygon(points).distance(point);</span>
+
+<span class="nc bnc" id="L134" title="All 2 branches missed.">		return points.contains(point)</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">				|| GeometryUtils.toPolygon(points).contains(point)</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">				|| GeometryUtils.toPolygon(points).distance(point) &lt;= GeometryUtils.DOUBLE_EPS;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Returns true if the full-edge of this half-edge is the longest edge of its faces.&lt;/p&gt;
+	 *
+	 * @param edge the half-edge
+	 * @return true if the full-edge of this half-edge is the longest edge of its faces
+	 */
+	default boolean isLongestEdge(@NotNull final E edge) {
+
+<span class="nc" id="L147">		E e = edge;</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">		if(getMesh().isBoundary(e)) {</span>
+<span class="nc" id="L149">			e = getMesh().getTwin(e);</span>
+		}
+
+<span class="nc" id="L152">		VLine line = getMesh().toLine(e);</span>
+<span class="nc" id="L153">		double lenSq = line.lengthSq();</span>
+
+<span class="nc" id="L155">		E next = getMesh().getNext(e);</span>
+<span class="nc" id="L156">		E prev = getMesh().getPrev(e);</span>
+
+<span class="nc bnc" id="L158" title="All 4 branches missed.">		if(getMesh().toLine(next).lengthSq() &gt; lenSq || getMesh().toLine(prev).lengthSq() &gt; lenSq) {</span>
+<span class="nc" id="L159">			return false;</span>
+		}
+
+<span class="nc bnc" id="L162" title="All 2 branches missed.">		if(getMesh().isAtBoundary(e)) {</span>
+<span class="nc" id="L163">			return true;</span>
+		}
+		else {
+<span class="nc" id="L166">			e = getMesh().getTwin(e);</span>
+<span class="nc" id="L167">			next = getMesh().getNext(e);</span>
+<span class="nc" id="L168">			prev = getMesh().getPrev(e);</span>
+<span class="nc bnc" id="L169" title="All 4 branches missed.">			return getMesh().toLine(next).lengthSq() &lt; lenSq &amp;&amp; getMesh().toLine(prev).lengthSq() &lt; lenSq;</span>
+		}
+	}
+
+	default E getLongestHalfEdge(@NotNull final F face) {
+<span class="nc bnc" id="L174" title="All 4 branches missed.">		assert !getMesh().isBoundary(face);</span>
+<span class="nc" id="L175">		E edge = getMesh().getEdge(face);</span>
+<span class="nc" id="L176">		E next = getMesh().getNext(edge);</span>
+<span class="nc" id="L177">		E prev = getMesh().getPrev(edge);</span>
+
+<span class="nc" id="L179">		double len = getMesh().toLine(edge).lengthSq();</span>
+<span class="nc" id="L180">		double lenN = getMesh().toLine(next).lengthSq();</span>
+<span class="nc" id="L181">		double lenP = getMesh().toLine(prev).lengthSq();</span>
+
+<span class="nc bnc" id="L183" title="All 2 branches missed.">		if(len &gt;= lenN) {</span>
+<span class="nc bnc" id="L184" title="All 4 branches missed.">			if(len &gt;= lenP || lenP &lt;= lenN) {</span>
+<span class="nc" id="L185">				return edge;</span>
+			} else {
+<span class="nc" id="L187">				return prev;</span>
+			}
+		} else {
+<span class="nc bnc" id="L190" title="All 2 branches missed.">			if(lenN &gt; lenP) {</span>
+<span class="nc" id="L191">				return next;</span>
+			} else {
+<span class="nc" id="L193">				return  prev;</span>
+			}
+		}
+	}
+
+	default boolean isLongestHalfEdge(@NotNull final E edge) {
+<span class="nc" id="L199">		E e = edge;</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">		if(getMesh().isBoundary(e)) {</span>
+<span class="nc" id="L201">			e = getMesh().getTwin(e);</span>
+		}
+
+<span class="nc" id="L204">		E next = getMesh().getNext(e);</span>
+<span class="nc" id="L205">		E prev = getMesh().getPrev(e);</span>
+<span class="nc" id="L206">		VLine line = getMesh().toLine(e);</span>
+<span class="nc" id="L207">		double lenSq = line.lengthSq();</span>
+
+<span class="nc bnc" id="L209" title="All 4 branches missed.">		return getMesh().toLine(next).lengthSq() &lt;= lenSq &amp;&amp; getMesh().toLine(prev).lengthSq() &lt;= lenSq;</span>
+	}
+
+	default boolean isShortestHalfEdge(@NotNull final E edge) {
+<span class="nc" id="L213">		E e = edge;</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">		if(getMesh().isBoundary(e)) {</span>
+<span class="nc" id="L215">			e = getMesh().getTwin(e);</span>
+		}
+
+<span class="nc" id="L218">		E next = getMesh().getNext(e);</span>
+<span class="nc" id="L219">		E prev = getMesh().getPrev(e);</span>
+<span class="nc" id="L220">		VLine line = getMesh().toLine(e);</span>
+<span class="nc" id="L221">		double lenSq = line.lengthSq();</span>
+
+<span class="nc bnc" id="L223" title="All 4 branches missed.">		return getMesh().toLine(next).lengthSq() &gt;= lenSq &amp;&amp; getMesh().toLine(prev).lengthSq() &gt;= lenSq;</span>
+	}
+
+	default Set&lt;V&gt; getVertices(@NotNull final double x, final double y, final F startFace, @NotNull final Predicate&lt;V&gt; predicate) {
+<span class="nc bnc" id="L227" title="All 6 branches missed.">		assert !getMesh().isBoundary(startFace) &amp;&amp; getMesh().toTriangle(startFace).contains(x, y);</span>
+<span class="nc" id="L228">		Set&lt;V&gt; set = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L229">		LinkedList&lt;V&gt; heap = new LinkedList();</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">		for(V v : getMesh().getVertexIt(startFace)) {</span>
+<span class="nc" id="L231">			heap.addLast(v);</span>
+<span class="nc" id="L232">		}</span>
+
+<span class="nc bnc" id="L234" title="All 2 branches missed.">		while (!heap.isEmpty()) {</span>
+<span class="nc" id="L235">			V candidate = heap.poll();</span>
+<span class="nc bnc" id="L236" title="All 4 branches missed.">			if(predicate.test(candidate) &amp;&amp; !set.contains(candidate)) {</span>
+<span class="nc" id="L237">				set.add(candidate);</span>
+<span class="nc bnc" id="L238" title="All 2 branches missed.">				for(V neighbour : getMesh().getAdjacentVertexIt(candidate)) {</span>
+<span class="nc" id="L239">					heap.addLast(neighbour);</span>
+<span class="nc" id="L240">				}</span>
+			}
+<span class="nc" id="L242">		}</span>
+
+<span class="nc" id="L244">		return set;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Inserts a point into the mesh which is contained in a boundary by connecting the boundaryEdge
+	 * to the point in O(1) time. This will create 4 new half-edges, one new vertex and one face.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: The point is contained in the boundary i.e. the point is inside the border or inside a hole.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Changes the connectivity.&lt;/p&gt;
+	 *
+	 * @param point         the point to be inserted
+	 * @param boundaryEdge  the boundary edge
+	 * @param boundary      the boundary of the edge
+	 * @return the created face
+	 */
+	default F insertOutsidePoint(@NotNull final IPoint point, @NotNull final E boundaryEdge, @NotNull final F boundary) {
+<span class="nc bnc" id="L261" title="All 4 branches missed.">		assert getMesh().isBoundary(boundaryEdge) &amp;&amp;</span>
+<span class="nc bnc" id="L262" title="All 2 branches missed.">				getMesh().isBoundary(boundary) &amp;&amp;</span>
+<span class="nc bnc" id="L263" title="All 2 branches missed.">				getMesh().getFace(boundaryEdge).equals(boundary) &amp;&amp;</span>
+<span class="nc bnc" id="L264" title="All 4 branches missed.">				(!getMesh().locate(point.getX(), point.getY()).isPresent() || getMesh().locate(point.getX(), point.getY()).get().equals(boundary));</span>
+
+<span class="nc" id="L266">		V vertex = getMesh().createVertex(point);</span>
+<span class="nc" id="L267">		F face = getMesh().createFace();</span>
+<span class="nc" id="L268">		F borderFace = getMesh().getFace(boundaryEdge);</span>
+
+<span class="nc" id="L270">		E prev = getMesh().getPrev(boundaryEdge);</span>
+<span class="nc" id="L271">		E next = getMesh().getNext(boundaryEdge);</span>
+
+<span class="nc" id="L273">		E e1 = getMesh().createEdge(vertex);</span>
+<span class="nc" id="L274">		getMesh().setFace(e1, face);</span>
+<span class="nc" id="L275">		E e2 = getMesh().createEdge(getMesh().getVertex(prev));</span>
+<span class="nc" id="L276">		getMesh().setFace(e2, face);</span>
+
+<span class="nc" id="L278">		E b1 = getMesh().createEdge(vertex);</span>
+<span class="nc" id="L279">		getMesh().setFace(b1, borderFace);</span>
+<span class="nc" id="L280">		E b2 = getMesh().createEdge(getMesh().getVertex(boundaryEdge));</span>
+<span class="nc" id="L281">		getMesh().setFace(b2, borderFace);</span>
+
+<span class="nc" id="L283">		getMesh().setNext(prev, b1);</span>
+<span class="nc" id="L284">		getMesh().setNext(b1, b2);</span>
+<span class="nc" id="L285">		getMesh().setNext(b2, next);</span>
+
+<span class="nc" id="L287">		getMesh().setNext(boundaryEdge, e1);</span>
+<span class="nc" id="L288">		getMesh().setNext(e1, e2);</span>
+<span class="nc" id="L289">		getMesh().setNext(e2, boundaryEdge);</span>
+
+<span class="nc" id="L291">		getMesh().setTwin(b1, e2);</span>
+<span class="nc" id="L292">		getMesh().setTwin(b2, e1);</span>
+
+<span class="nc" id="L294">		getMesh().setEdge(vertex, e1);</span>
+<span class="nc" id="L295">		getMesh().setEdge(borderFace, b1);</span>
+<span class="nc" id="L296">		getMesh().setEdge(face, e1);</span>
+
+<span class="nc" id="L298">		getMesh().setFace(boundaryEdge, face);</span>
+
+<span class="nc" id="L300">		return face;</span>
+	}
+
+	/**
+	 * &lt;p&gt;This will be called whenever a triangle / face edge is flipped
+	 * and inform all listeners about that event. For each flip two
+	 * triangles are taking part.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param f1 the first triangle / face of the flip operation
+	 * @param f2 the second triangle / face of the flip operation
+	 */
+<span class="nc" id="L313">	default void flipEdgeEvent(@NotNull final F f1, @NotNull final F f2) {}</span>
+
+	/**
+	 * &lt;p&gt;This will be called whenever a new point is inserted into the mesh.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param vertex the vertex which was inserted
+	 */
+<span class="nc" id="L322">	default void insertEvent(@NotNull final E vertex) {};</span>
+
+	/**
+	 * &lt;p&gt;Tests whether an edge is illegal and should be flipped.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param edge  the edge which will be tested
+	 * @param p     the point, i.e. point(next(edge))
+	 * @return true if the edge is illega, false otherwise
+	 */
+	boolean isIllegal(@NotNull final E edge, @NotNull final V p);
+
+	boolean isIllegal(@NotNull final E edge, @NotNull final V p, final double eps);
+
+	/**
+	 * &lt;p&gt;Tests whether an edge is illegal and should be flipped.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param edge  the edge which will be tested
+	 * @return true if the edge is illega, false otherwise
+	 */
+	default boolean isIllegal(@NotNull final E edge) {
+<span class="nc" id="L346">		return isIllegal(edge, getMesh().getVertex(getMesh().getNext(edge)));</span>
+	}
+
+	default boolean isIllegal(@NotNull final E edge, final double eps) {
+<span class="nc" id="L350">		return isIllegal(edge, getMesh().getVertex(getMesh().getNext(edge)), eps);</span>
+	}
+
+	default boolean isDelaunayIllegal(@NotNull final E edge) {
+<span class="nc" id="L354">		return isDelaunayIllegal(edge, getMesh().getVertex(getMesh().getNext(edge)));</span>
+	}
+
+	default boolean isDelaunayIllegal(@NotNull final E edge, @NotNull final V p, final double eps) {
+		//assert mesh.getVertex(mesh.getNext(edge)).equals(p);
+		//V p = mesh.getVertex(mesh.getNext(edge));
+<span class="fc" id="L360">		E t0 = getMesh().getTwin(edge);</span>
+<span class="fc" id="L361">		E t1 = getMesh().getNext(t0);</span>
+<span class="fc" id="L362">		E t2 = getMesh().getNext(t1);</span>
+
+<span class="fc" id="L364">		V x = getMesh().getVertex(t0);</span>
+<span class="fc" id="L365">		V y = getMesh().getVertex(t1);</span>
+<span class="fc" id="L366">		V z = getMesh().getVertex(t2);</span>
+
+		//return Utils.angle3D(x, y, z) + Utils.angle3D(x, p, z) &gt; Math.PI;
+
+		//return Utils.isInCircumscribedCycle(x, y, z, p);
+		//if(Utils.ccw(z,x,y) &gt; 0) {
+<span class="fc" id="L372">		return GeometryUtils.isInsideCircle(z, x, y, p, eps);</span>
+		//}
+		//else {
+		//	return Utils.isInsideCircle(x, z, y, p);
+		//}
+	}
+
+	default boolean isDelaunayIllegal(@NotNull final E edge, @NotNull final V p) {
+<span class="fc" id="L380">		return isDelaunayIllegal(edge, p, 0.0);</span>
+	}
+
+	/**
+	 * &lt;p&gt;Helper method which returns an arbitrary edge of a pair of edges.
+	 * It returns the left if it is not null otherwise the right.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param pair a pair of half-edges
+	 * @return an arbitrary edge of a pair of edges
+	 */
+    default E getAnyEdge(@NotNull final Pair&lt;E, E&gt; pair) {
+<span class="pc bpc" id="L393" title="1 of 2 branches missed.">        if(pair.getLeft() != null) {</span>
+<span class="fc" id="L394">            return pair.getLeft();</span>
+        }
+        else {
+<span class="nc" id="L397">            return pair.getRight();</span>
+        }
+    }
+
+	default Pair&lt;E, E&gt; splitEdge(@NotNull V v, @NotNull E halfEdge, boolean legalize) {
+<span class="fc" id="L402">		IMesh&lt;V, E, F&gt; mesh = getMesh();</span>
+<span class="fc" id="L403">    	mesh.insertVertex(v);</span>
+
+		/*
+		 * Situation: h0 = halfEdge
+		 * h1 -&gt; h2 -&gt; h0
+		 *       f0
+		 * o2 &lt;- o1 &lt;- o0
+		 *       f3
+		 *
+		 * After splitEdge:
+		 * h0 -&gt; h1 -&gt; t0
+		 *       f0
+		 * t1 &lt;- h2 &lt;- e0
+		 *       f1
+		 *
+		 * e1 -&gt; o1 -&gt; t2
+		 *       f2
+		 * o0 &lt;- o2 &lt;- e2
+		 *       f3
+		 */
+
+		//h0,(t0),t1
+		//e2,(o0,
+
+<span class="fc" id="L427">		E h0 = halfEdge;</span>
+<span class="fc" id="L428">		E o0 = mesh.getTwin(h0);</span>
+
+<span class="fc" id="L430">		V v2 = mesh.getVertex(o0);</span>
+<span class="fc" id="L431">		F f0 = mesh.getFace(h0);</span>
+<span class="fc" id="L432">		F f3 = mesh.getFace(o0);</span>
+
+		// faces correct?
+		//mesh.createEdge(v2, mesh.getFace(o0));
+<span class="fc" id="L436">		E e1 = mesh.createEdge(v2, mesh.getFace(o0));</span>
+<span class="fc" id="L437">		E t2 = null;</span>
+<span class="fc" id="L438">		E t1 = mesh.createEdge(v, mesh.getFace(h0));</span>
+
+<span class="fc" id="L440">		mesh.setEdge(v, t1);</span>
+<span class="fc" id="L441">		mesh.setTwin(e1, t1);</span>
+
+		/*
+		 * These two operations are strongly connected.
+		 * Before these operations the vertex of o0 is v2.
+		 * If the edge of v2 is equal to o0, the edge becomes
+		 * invalid after calling mesh.setVertex(o0, v);
+		 */
+<span class="fc" id="L449">		mesh.setVertex(o0, v);</span>
+<span class="pc bpc" id="L450" title="1 of 2 branches missed.">		if(mesh.getEdge(v2).equals(o0)) {</span>
+<span class="nc" id="L451">			mesh.setEdge(v2, e1);</span>
+		}
+
+<span class="fc" id="L454">		F f1 = null;</span>
+<span class="pc bpc" id="L455" title="1 of 2 branches missed.">		if(!mesh.isBoundary(h0)) {</span>
+<span class="fc" id="L456">			f1 = mesh.createFace();</span>
+
+<span class="fc" id="L458">			E h1 = mesh.getNext(h0);</span>
+<span class="fc" id="L459">			E h2 = mesh.getNext(h1);</span>
+
+<span class="fc" id="L461">			V v1 = mesh.getVertex(h1);</span>
+<span class="fc" id="L462">			E e0 = mesh.createEdge(v1, f1);</span>
+<span class="fc" id="L463">			E t0 = mesh.createEdge(v, f0);</span>
+
+<span class="fc" id="L465">			mesh.setTwin(e0, t0);</span>
+
+<span class="fc" id="L467">			mesh.setEdge(f0, h0);</span>
+<span class="fc" id="L468">			mesh.setEdge(f1, h2);</span>
+
+<span class="fc" id="L470">			mesh.setFace(h1, f0);</span>
+<span class="fc" id="L471">			mesh.setFace(t0, f0);</span>
+<span class="fc" id="L472">			mesh.setFace(h0, f0);</span>
+
+<span class="fc" id="L474">			mesh.setFace(h2, f1);</span>
+<span class="fc" id="L475">			mesh.setFace(t1, f1);</span>
+<span class="fc" id="L476">			mesh.setFace(e0, f1);</span>
+
+<span class="fc" id="L478">			mesh.setNext(h0, h1);</span>
+<span class="fc" id="L479">			mesh.setNext(h1, t0);</span>
+<span class="fc" id="L480">			mesh.setNext(t0, h0);</span>
+
+<span class="fc" id="L482">			mesh.setNext(e0, h2);</span>
+<span class="fc" id="L483">			mesh.setNext(h2, t1);</span>
+<span class="fc" id="L484">			mesh.setNext(t1, e0);</span>
+<span class="fc" id="L485">		}</span>
+		else {
+<span class="nc" id="L487">			mesh.setNext(mesh.getPrev(h0), t1);</span>
+<span class="nc" id="L488">			mesh.setNext(t1, h0);</span>
+		}
+
+<span class="fc" id="L491">		F f2 = null;</span>
+<span class="pc bpc" id="L492" title="1 of 2 branches missed.">		if(!mesh.isBoundary(o0)) {</span>
+<span class="fc" id="L493">			E o1 = mesh.getNext(o0);</span>
+<span class="fc" id="L494">			E o2 = mesh.getNext(o1);</span>
+
+<span class="fc" id="L496">			V v3 = mesh.getVertex(o1);</span>
+<span class="fc" id="L497">			f2 = mesh.createFace();</span>
+
+			// face
+<span class="fc" id="L500">			E e2 = mesh.createEdge(v3, mesh.getFace(o0));</span>
+<span class="fc" id="L501">			t2 = mesh.createEdge(v, f2);</span>
+<span class="fc" id="L502">			mesh.setTwin(e2, t2);</span>
+
+<span class="fc" id="L504">			mesh.setEdge(f2, o1);</span>
+<span class="fc" id="L505">			mesh.setEdge(f3, o0);</span>
+
+<span class="fc" id="L507">			mesh.setFace(o1, f2);</span>
+<span class="fc" id="L508">			mesh.setFace(t2, f2);</span>
+<span class="fc" id="L509">			mesh.setFace(e1, f2);</span>
+
+<span class="fc" id="L511">			mesh.setFace(o2, f3);</span>
+<span class="fc" id="L512">			mesh.setFace(o0, f3);</span>
+<span class="fc" id="L513">			mesh.setFace(e2, f3);</span>
+
+<span class="fc" id="L515">			mesh.setNext(e1, o1);</span>
+<span class="fc" id="L516">			mesh.setNext(o1, t2);</span>
+<span class="fc" id="L517">			mesh.setNext(t2, e1);</span>
+
+<span class="fc" id="L519">			mesh.setNext(o0, e2);</span>
+<span class="fc" id="L520">			mesh.setNext(e2, o2);</span>
+<span class="fc" id="L521">			mesh.setNext(o2, o0);</span>
+<span class="fc" id="L522">		}</span>
+		else {
+<span class="nc" id="L524">			mesh.setNext(e1, mesh.getNext(o0));</span>
+<span class="nc" id="L525">			mesh.setNext(o0, e1);</span>
+		}
+
+		// Event after the mesh connectivity is valid!
+<span class="fc" id="L529">		insertEvent(t1);</span>
+<span class="pc bpc" id="L530" title="1 of 2 branches missed.">		if(!mesh.isBoundary(h0)) {</span>
+<span class="fc" id="L531">			splitEdgeEvent(h0, f0, f0, f1, v);</span>
+		}
+
+<span class="pc bpc" id="L534" title="1 of 2 branches missed.">		if(!mesh.isBoundary(o0)) {</span>
+<span class="fc" id="L535">			splitEdgeEvent(o0, f3, f3, f2, v);</span>
+		}
+
+
+<span class="pc bpc" id="L539" title="1 of 2 branches missed.">		if(legalize) {</span>
+<span class="pc bpc" id="L540" title="1 of 2 branches missed.">			if(!mesh.isBoundary(h0)) {</span>
+<span class="fc" id="L541">				E h1 = mesh.getNext(h0);</span>
+<span class="fc" id="L542">				E h2 = mesh.getPrev(t1);</span>
+<span class="fc" id="L543">				legalize(h1, v);</span>
+<span class="fc" id="L544">				legalize(h2, v);</span>
+			}
+
+<span class="pc bpc" id="L547" title="1 of 2 branches missed.">			if(!mesh.isBoundary(o0)) {</span>
+<span class="fc" id="L548">				E o1 = mesh.getNext(e1);</span>
+<span class="fc" id="L549">				E o2 = mesh.getPrev(o0);</span>
+<span class="fc" id="L550">				legalize(o1, v);</span>
+<span class="fc" id="L551">				legalize(o2, v);</span>
+			}
+		}
+
+<span class="fc" id="L555">		return Pair.of(t1, t2);</span>
+	}
+
+	/**
+	 * &lt;p&gt;Splits the half-edge at point p, which means two triangles will be split into four if
+	 * the edge is not a boundary edge otherwise only one triangle will be split into two.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: p is located on the edge!&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param p         the split point
+	 * @param halfEdge  the half-edge which will be split
+	 * @param legalize  if true the split will be legalized i.e. the mesh will be locally changed until it is legal
+	 * @return one (the halfEdge is a boundary edge) or two halfEdges such that the set of faces of these
+     *         edges and their twins are the faces which took part / where modified / added by the split.
+     */
+	default Pair&lt;E, E&gt; splitEdge(@NotNull IPoint p, @NotNull E halfEdge, boolean legalize) {
+<span class="nc" id="L573">        IMesh&lt;V, E, F&gt; mesh = getMesh();</span>
+<span class="nc" id="L574">        V v = mesh.createVertex(p);</span>
+<span class="nc" id="L575">        return splitEdge(v, halfEdge, legalize);</span>
+	}
+
+	default List&lt;E&gt; splitEdgeAndReturn(@NotNull final V v, @NotNull E halfEdge, boolean legalize) {
+<span class="nc" id="L579">		IMesh&lt;V, E, F&gt; mesh = getMesh();</span>
+<span class="nc" id="L580">		mesh.insertVertex(v);</span>
+
+		/*
+		 * Situation: h0 = halfEdge
+		 * h1 -&gt; h2 -&gt; h0
+		 *       f0
+		 * o2 &lt;- o1 &lt;- o0
+		 *       f3
+		 *
+		 * After splitEdge:
+		 * h0 -&gt; h1 -&gt; t0
+		 *       f0
+		 * t1 &lt;- h2 &lt;- e0
+		 *       f1
+		 *
+		 * e1 -&gt; o1 -&gt; t2
+		 *       f2
+		 * o0 &lt;- o2 &lt;- e2
+		 *       f3
+		 */
+
+		//h0,(t0),t1
+		//e2,(o0,
+
+<span class="nc" id="L604">		E h0 = halfEdge;</span>
+<span class="nc" id="L605">		E o0 = mesh.getTwin(h0);</span>
+
+<span class="nc" id="L607">		V v2 = mesh.getVertex(o0);</span>
+<span class="nc" id="L608">		F f0 = mesh.getFace(h0);</span>
+<span class="nc" id="L609">		F f3 = mesh.getFace(o0);</span>
+
+		// faces correct?
+		//mesh.createEdge(v2, mesh.getFace(o0));
+<span class="nc" id="L613">		E e1 = mesh.createEdge(v2, mesh.getFace(o0));</span>
+<span class="nc" id="L614">		E t2 = null;</span>
+<span class="nc" id="L615">		E t1 = mesh.createEdge(v, mesh.getFace(h0));</span>
+<span class="nc" id="L616">		mesh.setEdge(v, t1);</span>
+
+<span class="nc" id="L618">		mesh.setTwin(e1, t1);</span>
+
+		/*
+		 * These two operations are strongly connected.
+		 * Before these operations the vertex of o0 is v2.
+		 * If the edge of v2 is equal to o0, the edge becomes
+		 * invalid after calling mesh.setVertex(o0, v);
+		 */
+<span class="nc" id="L626">		mesh.setVertex(o0, v);</span>
+<span class="nc bnc" id="L627" title="All 2 branches missed.">		if(mesh.getEdge(v2).equals(o0)) {</span>
+<span class="nc" id="L628">			mesh.setEdge(v2, e1);</span>
+		}
+
+<span class="nc bnc" id="L631" title="All 2 branches missed.">		if(!mesh.isBoundary(h0)) {</span>
+<span class="nc" id="L632">			F f1 = mesh.createFace();</span>
+
+<span class="nc" id="L634">			E h1 = mesh.getNext(h0);</span>
+<span class="nc" id="L635">			E h2 = mesh.getNext(h1);</span>
+
+<span class="nc" id="L637">			V v1 = mesh.getVertex(h1);</span>
+<span class="nc" id="L638">			E e0 = mesh.createEdge(v1, f1);</span>
+<span class="nc" id="L639">			E t0 = mesh.createEdge(v, f0);</span>
+
+<span class="nc" id="L641">			mesh.setTwin(e0, t0);</span>
+
+<span class="nc" id="L643">			mesh.setEdge(f0, h0);</span>
+<span class="nc" id="L644">			mesh.setEdge(f1, h2);</span>
+
+<span class="nc" id="L646">			mesh.setFace(h1, f0);</span>
+<span class="nc" id="L647">			mesh.setFace(t0, f0);</span>
+<span class="nc" id="L648">			mesh.setFace(h0, f0);</span>
+
+<span class="nc" id="L650">			mesh.setFace(h2, f1);</span>
+<span class="nc" id="L651">			mesh.setFace(t1, f1);</span>
+<span class="nc" id="L652">			mesh.setFace(e0, f1);</span>
+
+<span class="nc" id="L654">			mesh.setNext(h0, h1);</span>
+<span class="nc" id="L655">			mesh.setNext(h1, t0);</span>
+<span class="nc" id="L656">			mesh.setNext(t0, h0);</span>
+
+<span class="nc" id="L658">			mesh.setNext(e0, h2);</span>
+<span class="nc" id="L659">			mesh.setNext(h2, t1);</span>
+<span class="nc" id="L660">			mesh.setNext(t1, e0);</span>
+
+<span class="nc" id="L662">			splitEdgeEvent(h0, f0, f0, f1, v);</span>
+<span class="nc" id="L663">		}</span>
+		else {
+<span class="nc" id="L665">			mesh.setNext(mesh.getPrev(h0), t1);</span>
+<span class="nc" id="L666">			mesh.setNext(t1, h0);</span>
+		}
+
+<span class="nc bnc" id="L669" title="All 2 branches missed.">		if(!mesh.isBoundary(o0)) {</span>
+<span class="nc" id="L670">			E o1 = mesh.getNext(o0);</span>
+<span class="nc" id="L671">			E o2 = mesh.getNext(o1);</span>
+
+<span class="nc" id="L673">			V v3 = mesh.getVertex(o1);</span>
+<span class="nc" id="L674">			F f2 = mesh.createFace();</span>
+
+			// face
+<span class="nc" id="L677">			E e2 = mesh.createEdge(v3, mesh.getFace(o0));</span>
+<span class="nc" id="L678">			t2 = mesh.createEdge(v, f2);</span>
+<span class="nc" id="L679">			mesh.setTwin(e2, t2);</span>
+
+<span class="nc" id="L681">			mesh.setEdge(f2, o1);</span>
+<span class="nc" id="L682">			mesh.setEdge(f3, o0);</span>
+
+<span class="nc" id="L684">			mesh.setFace(o1, f2);</span>
+<span class="nc" id="L685">			mesh.setFace(t2, f2);</span>
+<span class="nc" id="L686">			mesh.setFace(e1, f2);</span>
+
+<span class="nc" id="L688">			mesh.setFace(o2, f3);</span>
+<span class="nc" id="L689">			mesh.setFace(o0, f3);</span>
+<span class="nc" id="L690">			mesh.setFace(e2, f3);</span>
+
+<span class="nc" id="L692">			mesh.setNext(e1, o1);</span>
+<span class="nc" id="L693">			mesh.setNext(o1, t2);</span>
+<span class="nc" id="L694">			mesh.setNext(t2, e1);</span>
+
+<span class="nc" id="L696">			mesh.setNext(o0, e2);</span>
+<span class="nc" id="L697">			mesh.setNext(e2, o2);</span>
+<span class="nc" id="L698">			mesh.setNext(o2, o0);</span>
+
+<span class="nc" id="L700">			splitEdgeEvent(o0, f3, f3, f2, v);</span>
+<span class="nc" id="L701">		}</span>
+		else {
+<span class="nc" id="L703">			mesh.setNext(e1, mesh.getNext(o0));</span>
+<span class="nc" id="L704">			mesh.setNext(o0, e1);</span>
+		}
+
+<span class="nc" id="L707">		List&lt;E&gt; toLegalize = new ArrayList&lt;&gt;(4);</span>
+
+<span class="nc bnc" id="L709" title="All 2 branches missed.">		if(!mesh.isBoundary(h0)) {</span>
+<span class="nc" id="L710">			E h1 = mesh.getNext(h0);</span>
+<span class="nc" id="L711">			E h2 = mesh.getPrev(t1);</span>
+<span class="nc" id="L712">			toLegalize.add(h1);</span>
+<span class="nc" id="L713">			toLegalize.add(h2);</span>
+		}
+
+<span class="nc bnc" id="L716" title="All 2 branches missed.">		if(!mesh.isBoundary(o0)) {</span>
+<span class="nc" id="L717">			E o1 = mesh.getNext(e1);</span>
+<span class="nc" id="L718">			E o2 = mesh.getPrev(o0);</span>
+<span class="nc" id="L719">			toLegalize.add(o1);</span>
+<span class="nc" id="L720">			toLegalize.add(o2);</span>
+		}
+
+<span class="nc bnc" id="L723" title="All 2 branches missed.">		if(legalize) {</span>
+<span class="nc bnc" id="L724" title="All 2 branches missed.">			if(!mesh.isBoundary(h0)) {</span>
+<span class="nc" id="L725">				E h1 = mesh.getNext(h0);</span>
+<span class="nc" id="L726">				E h2 = mesh.getPrev(t1);</span>
+<span class="nc" id="L727">				legalize(h1, v);</span>
+<span class="nc" id="L728">				legalize(h2, v);</span>
+			}
+
+<span class="nc bnc" id="L731" title="All 2 branches missed.">			if(!mesh.isBoundary(o0)) {</span>
+<span class="nc" id="L732">				E o1 = mesh.getNext(e1);</span>
+<span class="nc" id="L733">				E o2 = mesh.getPrev(o0);</span>
+<span class="nc" id="L734">				legalize(o1, v);</span>
+<span class="nc" id="L735">				legalize(o2, v);</span>
+			}
+		}
+
+<span class="nc" id="L739">		return toLegalize;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Splits the half-edge at point p, which means two triangles will be split into four if
+	 * the edge is not a boundary edge otherwise only one triangle will be split into two.
+	 * Afterwards the mesh is legalized locally, to preserve a feasible triangulation.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: p is located on the edge!&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param p         the split point
+	 * @param halfEdge  the half-edge which will be split
+	 * @return one (the halfEdge is a boundary edge) or two halfEdges such that the set of faces of these
+	 *         edges and their twins are the faces which took part / where modified / added by the split.
+	 */
+	default Pair&lt;E, E&gt; splitEdge(@NotNull final IPoint p, @NotNull final E halfEdge) {
+<span class="nc" id="L757">		return splitEdge(p, halfEdge, true);</span>
+	}
+
+	/**
+	 * &lt;p&gt;Splits the half-edge at the mid point of its full-edge, which means two triangles will be split into four if
+	 * the edge is not a boundary edge otherwise only one triangle will be split into two.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: p is located on the edge!&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param halfEdge  the half-edge which will be split
+	 * @param legalize  if true the split will be legalized i.e. the mesh will be locally changed until it is legal
+	 * @return one (the halfEdge is a boundary edge) or two halfEdges such that the set of faces of these
+	 *         edges and their twins are the faces which took part / where modified / added by the split.
+	 */
+	default Pair&lt;E, E&gt; splitEdge(@NotNull final E halfEdge, final boolean legalize) {
+<span class="nc" id="L774">		return splitEdge(halfEdge, legalize, p -&gt; {});</span>
+	}
+
+	/**
+	 * &lt;p&gt;Splits the half-edge at the mid point of its full-edge, which means two triangles will be split into four if
+	 * the edge is not a boundary edge otherwise only one triangle will be split into two.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: p is located on the edge!&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param halfEdge          the half-edge which will be split
+	 * @param legalize          if true the split will be legalized i.e. the mesh will be locally changed until it is legal
+	 * @return one (the halfEdge is a boundary edge) or two halfEdges such that the set of faces of these
+	 *         edges and their twins are the faces which took part / where modified / added by the split.
+	 *         Both edges ending in the inserted vertex i.e. getVertex(edge) returns the inserted vertex.
+	 */
+	default Pair&lt;E, E&gt; splitEdge(@NotNull final E halfEdge, final boolean legalize, @NotNull final Consumer&lt;V&gt; action) {
+<span class="nc" id="L792">		VPoint midPoint = getMesh().toLine(halfEdge).midPoint();</span>
+<span class="nc" id="L793">		V v = getMesh().createVertex(midPoint.getX(), midPoint.getY());</span>
+<span class="nc" id="L794">		Pair&lt;E, E&gt; result = splitEdge(v, halfEdge, legalize);</span>
+<span class="nc" id="L795">		action.accept(v);</span>
+<span class="nc" id="L796">		return result;</span>
+	}
+
+
+	/*default void flipLock(@NotNull final E edge) {
+
+	}*/
+
+	/**
+	 * &lt;p&gt;A synchronized version of {@link ITriConnectivity#flip(IHalfEdge)}, i.e. the method acquires every
+	 * involved vertex (four vertices) before it flips the edge.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param edge the edge which will be flipped.
+	 */
+	default void flipSync(@NotNull final E edge) {
+<span class="nc" id="L813">		IMesh&lt;V, E, F&gt; mesh = getMesh();</span>
+
+<span class="nc" id="L815">		E a0 = edge;</span>
+<span class="nc" id="L816">		E a1 = mesh.getNext(a0);</span>
+<span class="nc" id="L817">		E a2 = mesh.getNext(a1);</span>
+
+<span class="nc" id="L819">		E b0 = mesh.getTwin(edge);</span>
+<span class="nc" id="L820">		E b1 = mesh.getNext(b0);</span>
+
+<span class="nc" id="L822">		V v1 = mesh.getVertex(a0);</span>
+<span class="nc" id="L823">		V v2 = mesh.getVertex(a1);</span>
+<span class="nc" id="L824">		V v3 = mesh.getVertex(a2);</span>
+<span class="nc" id="L825">		V v4 = mesh.getVertex(b1);</span>
+
+		// TODO: a very first and simple aquire all locks implementation =&gt; improve it
+		while (true) {
+			// lock all 4 involved vertices
+<span class="nc bnc" id="L830" title="All 2 branches missed.">			if (mesh.tryLock(v1)) {</span>
+<span class="nc bnc" id="L831" title="All 2 branches missed.">				if (mesh.tryLock(v2)) {</span>
+<span class="nc bnc" id="L832" title="All 2 branches missed.">					if (mesh.tryLock(v3)) {</span>
+<span class="nc bnc" id="L833" title="All 2 branches missed.">						if (mesh.tryLock(v4)) {</span>
+<span class="nc" id="L834">							break;</span>
+						}
+						else {
+<span class="nc" id="L837">							mesh.unlock(v3);</span>
+<span class="nc" id="L838">							mesh.unlock(v2);</span>
+<span class="nc" id="L839">							mesh.unlock(v1);</span>
+						}
+					}
+					else {
+<span class="nc" id="L843">						mesh.unlock(v2);</span>
+<span class="nc" id="L844">						mesh.unlock(v1);</span>
+					}
+				} else {
+<span class="nc" id="L847">					mesh.unlock(v1);</span>
+				}
+			}
+
+		}
+
+		try {
+			// if everything is locked flip
+<span class="nc" id="L855">			flip(edge);</span>
+		}
+		// unlock all locks
+		finally {
+<span class="nc" id="L859">			mesh.unlock(v4);</span>
+<span class="nc" id="L860">			mesh.unlock(v3);</span>
+<span class="nc" id="L861">			mesh.unlock(v2);</span>
+<span class="nc" id="L862">			mesh.unlock(v1);</span>
+		}
+<span class="nc" id="L864">	}</span>
+
+	/**
+	 * &lt;p&gt;Flips an edge in the triangulation assuming the egdge which will be created is not jet there.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param edge the edge which will be flipped.
+	 */
+	default void flip(@NotNull final E edge) {
+
+<span class="fc" id="L875">		IMesh&lt;V, E, F&gt; mesh = getMesh();</span>
+
+		// 1. gather all the references required
+<span class="fc" id="L878">		E a0 = edge;</span>
+<span class="fc" id="L879">		E a1 = mesh.getNext(a0);</span>
+<span class="fc" id="L880">		E a2 = mesh.getNext(a1);</span>
+
+<span class="fc" id="L882">		E b0 = mesh.getTwin(edge);</span>
+<span class="fc" id="L883">		E b1 = mesh.getNext(b0);</span>
+<span class="fc" id="L884">		E b2 = mesh.getNext(b1);</span>
+
+<span class="fc" id="L886">		F fa = mesh.getFace(a0);</span>
+<span class="fc" id="L887">		F fb = mesh.getFace(b0);</span>
+
+<span class="fc" id="L889">		V va1 = mesh.getVertex(a1);</span>
+<span class="fc" id="L890">		V vb1 = mesh.getVertex(b1);</span>
+
+<span class="fc" id="L892">		V va0 = mesh.getVertex(a0);</span>
+<span class="fc" id="L893">		V vb0 = mesh.getVertex(b0);</span>
+
+<span class="fc bfc" id="L895" title="All 2 branches covered.">		if(mesh.getEdge(fb).equals(b1)) {</span>
+<span class="fc" id="L896">			mesh.setEdge(fb, a1);</span>
+		}
+
+<span class="fc bfc" id="L899" title="All 2 branches covered.">		if(mesh.getEdge(fa).equals(a1)) {</span>
+<span class="fc" id="L900">			mesh.setEdge(fa, b1);</span>
+		}
+
+		// TODO: maybe without if, just do it? its faster?
+<span class="pc bpc" id="L904" title="2 of 4 branches missed.">		assert mesh.getVertex(b2) == va0;</span>
+<span class="pc bpc" id="L905" title="2 of 4 branches missed.">		assert mesh.getVertex(a2) == vb0;</span>
+
+<span class="fc bfc" id="L907" title="All 2 branches covered.">		if(mesh.getEdge(va0).equals(a0)) {</span>
+<span class="fc" id="L908">			mesh.setEdge(va0, b2);</span>
+		}
+
+<span class="fc bfc" id="L911" title="All 2 branches covered.">		if(mesh.getEdge(vb0).equals(b0)) {</span>
+<span class="fc" id="L912">			mesh.setEdge(vb0, a2);</span>
+		}
+
+<span class="fc" id="L915">		mesh.setVertex(a0, va1);</span>
+<span class="fc" id="L916">		mesh.setVertex(b0, vb1);</span>
+
+<span class="fc" id="L918">		mesh.setNext(a0, a2);</span>
+<span class="fc" id="L919">		mesh.setNext(a2, b1);</span>
+<span class="fc" id="L920">		mesh.setNext(b1, a0);</span>
+
+<span class="fc" id="L922">		mesh.setNext(b0, b2);</span>
+<span class="fc" id="L923">		mesh.setNext(b2, a1);</span>
+<span class="fc" id="L924">		mesh.setNext(a1, b0);</span>
+
+<span class="fc" id="L926">		mesh.setFace(a1, fb);</span>
+<span class="fc" id="L927">		mesh.setFace(b1, fa);</span>
+
+<span class="fc" id="L929">		flipEdgeEvent(fa, fb);</span>
+<span class="fc" id="L930">	}</span>
+
+	/**
+	 * &lt;p&gt;Tests if the face is counter-clockwise oriented in O(1) time. If a triangulation is valid
+	 * all triangle-faces are counter-clockwise oriented.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: The face is a triangle!&lt;/p&gt;
+	 *
+	 * @param triangleFace the face representing a triangle
+	 * @return true if the face (triangle) is counter-clockwise oriented, false otherwise
+	 */
+	default boolean isCCW(@NotNull final F triangleFace) {
+<span class="nc bnc" id="L942" title="All 4 branches missed.">		assert getMesh().getEdges(triangleFace).size() == 3;</span>
+
+<span class="nc" id="L944">		E edge = getMesh().getEdge(triangleFace);</span>
+<span class="nc" id="L945">		IPoint p1 = getMesh().getPoint(edge);</span>
+<span class="nc" id="L946">		IPoint p2 = getMesh().getPoint(getMesh().getNext(edge));</span>
+<span class="nc" id="L947">		IPoint p3 = getMesh().getPoint(getMesh().getPrev(edge));</span>
+
+<span class="nc" id="L949">		return GeometryUtils.isCCW(p1.getX(), p1.getY(), p2.getX(), p2.getY(), p3.getX(), p3.getY());</span>
+	}
+
+	/**
+	 * Inserts a new point into the mesh / triangulation by preserving a feasible triangulation. There are different possible
+	 * outcomes:
+	 * &lt;ol&gt;
+	 *     &lt;li&gt;the face will be split by an edge-split {@link ITriConnectivity#splitEdge(IPoint, IHalfEdge)}&lt;/li&gt;
+	 *     &lt;li&gt;the face will be split by an face-split {@link ITriConnectivity#splitTriangle(IFace, IPoint)}&lt;/li&gt;
+	 *     &lt;li&gt;the point is very close to some point of the face {@link ITriConnectivity#isClose(double, double, IFace, double)}
+	 *     and therefore it will not be inserted at all.&lt;/li&gt;
+	 * &lt;/ol&gt;
+	 * This requires amortized O(1) time.
+	 *
+	 * &lt;p&gt;Assumption:  the face contains the point or the point lines on an edge of the face
+	 *              and the face is part of the mesh.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param p     the point which will be inserted
+	 * @param face  the face which contains the point.
+	 * @return one of the new created half-edges
+	 */
+	E insert(@NotNull final IPoint p, @NotNull final F face);
+
+	default E splitTriangle(@NotNull final F face, final boolean legalize) {
+<span class="nc" id="L975">		VPoint circumcenter = getMesh().toTriangle(face).getCircumcenter();</span>
+<span class="nc" id="L976">		return splitTriangle(face, getMesh().createPoint(circumcenter.getX(), circumcenter.getY()), legalize);</span>
+	}
+
+	//TODO test it
+	default void removeBoundaryVertex(@NotNull final V vertex) {
+<span class="nc bnc" id="L981" title="All 4 branches missed.">		assert getMesh().isAtBoundary(vertex);</span>
+<span class="nc" id="L982">		F boundary = getMesh().getFace(vertex);</span>
+<span class="nc" id="L983">		E boundaryEdge = getMesh().getBoundaryEdge(vertex).get();</span>
+<span class="nc" id="L984">		E next = getMesh().getNext(boundaryEdge);</span>
+<span class="nc" id="L985">		E nnext = getMesh().getNext(next);</span>
+
+<span class="nc" id="L987">		List&lt;E&gt; ringEdges = getMesh()</span>
+<span class="nc" id="L988">				.streamEdges(vertex)</span>
+<span class="nc" id="L989">				.map(edge -&gt; getMesh().getPrev(edge))</span>
+<span class="nc" id="L990">				.collect(Collectors.toList());</span>
+
+<span class="nc bnc" id="L992" title="All 2 branches missed.">		for(int i = 0; i &lt; ringEdges.size()-1; i++) {</span>
+<span class="nc" id="L993">			E edge = ringEdges.get(i);</span>
+<span class="nc" id="L994">			V v = getMesh().getVertex(edge);</span>
+<span class="nc" id="L995">			getMesh().setNext(edge, ringEdges.get(i+1));</span>
+<span class="nc" id="L996">			getMesh().setFace(edge, boundary);</span>
+			// adjust since the edge is now a boundary edge!
+<span class="nc" id="L998">			getMesh().setEdge(v, edge);</span>
+		}
+
+<span class="nc" id="L1001">		getMesh().setNext(ringEdges.get(ringEdges.size()-1), nnext);</span>
+<span class="nc" id="L1002">	}</span>
+
+	/**
+	 * Removes a non-boundary vertex from the triangulation by removing the point and re-triangulating the hole
+	 * using the algorithm described in: On Deletion in Delaunay Triangulations.
+	 *
+	 * Assumption: the vertex is not at a boundary
+	 *
+	 * @param vertex the vertex which will be removed
+	 */
+	default void removeNonBoundaryVertex(@NotNull final V vertex) {
+<span class="pc bpc" id="L1013" title="2 of 4 branches missed.">		assert !getMesh().isAtBoundary(vertex);</span>
+
+		// (1) remove the vertex
+		// get ringEdges in ccw order!
+<span class="fc" id="L1017">		List&lt;E&gt; ringEdges = getMesh()</span>
+<span class="fc" id="L1018">				.streamEdges(vertex)</span>
+<span class="fc" id="L1019">				.map(edge -&gt; getMesh().getPrev(edge)).collect(Collectors.toList());</span>
+
+<span class="fc" id="L1021">		F face = getMesh().getFace(ringEdges.get(ringEdges.size()-1));</span>
+
+<span class="fc bfc" id="L1023" title="All 2 branches covered.">		for(int i = 0; i &lt; ringEdges.size(); i++) {</span>
+<span class="fc" id="L1024">			E edge = ringEdges.get(i);</span>
+<span class="fc" id="L1025">			E next = getMesh().getNext(edge);</span>
+<span class="fc" id="L1026">			E nextTwin = getMesh().getTwin(next);</span>
+<span class="fc" id="L1027">			F f = getMesh().getFace(edge);</span>
+
+<span class="fc" id="L1029">			getMesh().destroyEdge(next);</span>
+<span class="fc" id="L1030">			getMesh().destroyEdge(nextTwin);</span>
+<span class="fc bfc" id="L1031" title="All 2 branches covered.">			if(i != ringEdges.size() -1) {</span>
+<span class="fc" id="L1032">				getMesh().destroyFace(f);</span>
+			}
+		}
+
+<span class="fc bfc" id="L1036" title="All 2 branches covered.">		for(int i = 0; i &lt; ringEdges.size(); i++) {</span>
+<span class="fc" id="L1037">			E edge = ringEdges.get(i);</span>
+<span class="fc" id="L1038">			getMesh().setNext(edge, ringEdges.get((i+1) % ringEdges.size()));</span>
+<span class="fc" id="L1039">			getMesh().setFace(edge, face);</span>
+
+<span class="fc" id="L1041">			E vEdge = getMesh().getEdge(getMesh().getVertex(edge));</span>
+<span class="fc bfc" id="L1042" title="All 2 branches covered.">			if(getMesh().isDestroyed(vEdge)/* || !getMesh().isAtBoundary(vEdge)*/) {</span>
+<span class="fc" id="L1043">				getMesh().setEdge(getMesh().getVertex(edge), edge);</span>
+			}
+		}
+
+<span class="fc" id="L1047">		getMesh().setEdge(face, ringEdges.get(ringEdges.size()-1));</span>
+<span class="fc" id="L1048">		getMesh().setFace(ringEdges.get(ringEdges.size()-1), face);</span>
+<span class="fc" id="L1049">		getMesh().destroyVertex(vertex);</span>
+
+<span class="fc" id="L1051">		NodeLinkedList&lt;GenEar&lt;V, E, F&gt;&gt; list = new NodeLinkedList&lt;&gt;();</span>
+<span class="fc" id="L1052">		GenEar.EarNodeComparator&lt;V, E, F&gt; comparator = new GenEar.EarNodeComparator&lt;&gt;();</span>
+<span class="fc" id="L1053">		PriorityQueue&lt;Node&lt;GenEar&lt;V, E, F&gt;&gt;&gt; heap = new PriorityQueue&lt;&gt;(comparator);</span>
+
+<span class="pc bpc" id="L1055" title="2 of 4 branches missed.">		assert getMesh().isValid();</span>
+		// (2) re-triangulate
+<span class="fc bfc" id="L1057" title="All 2 branches covered.">		for(int i = 0; i &lt; ringEdges.size(); i++) {</span>
+<span class="fc" id="L1058">			E e1 = ringEdges.get(i % ringEdges.size());</span>
+<span class="fc" id="L1059">			E e2 = ringEdges.get((i+1) % ringEdges.size());</span>
+<span class="fc" id="L1060">			E e3 = ringEdges.get((i+2) % ringEdges.size());</span>
+
+<span class="fc" id="L1062">			GenEar&lt;V, E, F&gt; ear = new GenEar&lt;&gt;(e1, e2, e3, power(e1, e2, e3, vertex));</span>
+<span class="fc" id="L1063">			Node&lt;GenEar&lt;V, E, F&gt;&gt; earNode = list.add(ear);</span>
+<span class="fc" id="L1064">			heap.add(earNode);</span>
+
+		}
+
+<span class="fc bfc" id="L1068" title="All 2 branches covered.">		while (heap.size() &gt; 3) {</span>
+<span class="fc" id="L1069">			Node&lt;GenEar&lt;V, E, F&gt;&gt; earNode = heap.poll();</span>
+<span class="fc" id="L1070">			GenEar&lt;V, E, F&gt; ear = earNode.getElement();</span>
+
+			// create triangle ear and link it to its two or three existing neighbors
+<span class="fc" id="L1073">			E e1 = ear.getEdges().get(0);</span>
+<span class="fc" id="L1074">			E e2 = ear.getEdges().get(1);</span>
+<span class="fc" id="L1075">			E e3 = ear.getEdges().get(2);</span>
+<span class="fc" id="L1076">			E next = getMesh().getNext(e3);</span>
+
+<span class="fc" id="L1078">			E e = getMesh().createEdge(getMesh().getVertex(e1));</span>
+<span class="fc" id="L1079">			E t = getMesh().createEdge(getMesh().getVertex(e3));</span>
+<span class="fc" id="L1080">			F f = getMesh().createFace();</span>
+<span class="fc" id="L1081">			F tf = getMesh().getFace(e1);</span>
+
+<span class="fc" id="L1083">			getMesh().setEdge(f, e);</span>
+<span class="fc" id="L1084">			getMesh().setTwin(e, t);</span>
+<span class="fc" id="L1085">			getMesh().setNext(e, e2);</span>
+<span class="fc" id="L1086">			getMesh().setNext(e3, e);</span>
+
+<span class="fc" id="L1088">			getMesh().setFace(e, f);</span>
+<span class="fc" id="L1089">			getMesh().setFace(e2, f);</span>
+<span class="fc" id="L1090">			getMesh().setFace(e3, f);</span>
+
+<span class="fc" id="L1092">			getMesh().setNext(t, next);</span>
+<span class="fc" id="L1093">			getMesh().setNext(e1, t);</span>
+<span class="fc" id="L1094">			getMesh().setFace(t, tf);</span>
+<span class="fc" id="L1095">			getMesh().setEdge(tf, t);</span>
+			// end
+
+<span class="fc bfc" id="L1098" title="All 2 branches covered.">			if(heap.size() &gt; 3) {</span>
+<span class="fc" id="L1099">				Node&lt;GenEar&lt;V, E, F&gt;&gt; prevEarNode = earNode.getPrev();</span>
+<span class="fc" id="L1100">				Node&lt;GenEar&lt;V, E, F&gt;&gt; nextEarNode = earNode.getNext();</span>
+
+<span class="fc bfc" id="L1102" title="All 2 branches covered.">				if(prevEarNode == null) {</span>
+<span class="fc" id="L1103">					prevEarNode = list.getTail();</span>
+				}
+
+<span class="pc bpc" id="L1106" title="1 of 2 branches missed.">				if(nextEarNode == null) {</span>
+<span class="nc" id="L1107">					nextEarNode = list.getHead();</span>
+				}
+
+<span class="fc" id="L1110">				Node&lt;GenEar&lt;V, E, F&gt;&gt; nnextEarNode = nextEarNode.getNext();</span>
+<span class="pc bpc" id="L1111" title="1 of 2 branches missed.">				if(nnextEarNode == null) {</span>
+<span class="nc" id="L1112">					nnextEarNode = list.getHead();</span>
+				}
+
+
+<span class="fc" id="L1116">				heap.remove(earNode);</span>
+<span class="fc" id="L1117">				heap.remove(prevEarNode);</span>
+<span class="fc" id="L1118">				heap.remove(nextEarNode);</span>
+<span class="fc" id="L1119">				heap.remove(nnextEarNode);</span>
+
+<span class="fc" id="L1121">				prevEarNode.getElement().setLast(t);</span>
+
+<span class="fc" id="L1123">				nextEarNode.getElement().setFirst(e1);</span>
+<span class="fc" id="L1124">				nextEarNode.getElement().setMiddle(t);</span>
+<span class="fc" id="L1125">				nnextEarNode.getElement().setFirst(t);</span>
+<span class="fc" id="L1126">				earNode.remove();</span>
+
+<span class="fc" id="L1128">				GenEar&lt;V, E, F&gt; prevEar = prevEarNode.getElement();</span>
+<span class="fc" id="L1129">				GenEar&lt;V, E, F&gt; nextEar = nextEarNode.getElement();</span>
+<span class="fc" id="L1130">				GenEar&lt;V, E, F&gt; nnextEar = nnextEarNode.getElement();</span>
+<span class="fc" id="L1131">				prevEar.setPower(power(prevEar.getEdges().get(0), prevEar.getEdges().get(1), prevEar.getEdges().get(2), vertex));</span>
+<span class="fc" id="L1132">				nextEar.setPower(power(nextEar.getEdges().get(0), nextEar.getEdges().get(1), nextEar.getEdges().get(2), vertex));</span>
+<span class="fc" id="L1133">				nnextEar.setPower(power(nnextEar.getEdges().get(0), nnextEar.getEdges().get(1), nnextEar.getEdges().get(2), vertex));</span>
+<span class="fc" id="L1134">				heap.add(prevEarNode);</span>
+<span class="fc" id="L1135">				heap.add(nextEarNode);</span>
+<span class="fc" id="L1136">				heap.add(nnextEarNode);</span>
+			}
+<span class="fc" id="L1138">		}</span>
+<span class="fc" id="L1139">	}</span>
+
+	/**
+	 * Removes a vertex from the triangulation by removing the point and re-triangulating the hole
+	 * using the algorithm described in: On Deletion in Delaunay Triangulations.
+	 *
+	 * @param vertex the vertex which will be removed
+	 */
+	default void remove(@NotNull final V vertex) {
+<span class="pc bpc" id="L1148" title="1 of 2 branches missed.">		if(getMesh().isAtBoundary(vertex)) {</span>
+<span class="nc" id="L1149">			removeBoundaryVertex(vertex);</span>
+		} else {
+<span class="fc" id="L1151">			removeNonBoundaryVertex(vertex);</span>
+		}
+<span class="fc" id="L1153">	}</span>
+
+	private double power(@NotNull final E e1, @NotNull final E e2, @NotNull final E e3, @NotNull final IPoint p) {
+<span class="fc" id="L1156">		IPoint point = getMesh().getPoint(e1);</span>
+<span class="fc bfc" id="L1157" title="All 2 branches covered.">		if(!isLeftOf(point.getX(), point.getY(), e3)) {</span>
+<span class="fc" id="L1158">			return Double.MAX_VALUE;</span>
+		}
+
+<span class="fc" id="L1161">		VPoint p1 = getMesh().toPoint(getMesh().getPoint(e1));</span>
+<span class="fc" id="L1162">		VPoint p2 = getMesh().toPoint(getMesh().getPoint(e2));</span>
+<span class="fc" id="L1163">		VPoint p3 = getMesh().toPoint(getMesh().getPoint(e3));</span>
+<span class="fc" id="L1164">		VTriangle triangle = new VTriangle(p1, p2, p3);</span>
+<span class="fc" id="L1165">		VPoint x = triangle.getCircumcenter();</span>
+<span class="fc" id="L1166">		double r = triangle.getCircumscribedRadius();</span>
+<span class="fc" id="L1167">		double xpSq = x.distanceSq(p);</span>
+<span class="fc" id="L1168">		double power = (xpSq - r*r);</span>
+<span class="fc" id="L1169">		return -power;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Splits the triangle xyz into three new triangles xyp, yzp and zxp. This requires amortized O(1) time.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: p is inside the face.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param face      the triangle face we split
+	 * @param point     the point which splits the triangle
+	 * @param legalize  if true the triangulation will be legalized locally at the split to preserve a feasible triangulation
+	 *
+	 * @return an half-edge which has point as its end-point
+	 */
+	default E splitTriangle(@NotNull F face, @NotNull final IPoint point, boolean legalize) {
+<span class="fc" id="L1186">		V p = getMesh().createVertex(point);</span>
+<span class="fc" id="L1187">		return splitTriangle(face, p, legalize);</span>
+	}
+
+	default E splitTriangle(@NotNull F face, @NotNull final V p, boolean legalize) {
+		//assert isTriangle(face) &amp;&amp; locate(point).get().equals(face);
+
+<span class="fc" id="L1193">		getMesh().insertVertex(p);</span>
+<span class="fc" id="L1194">		IMesh&lt;V, E, F&gt; mesh = getMesh();</span>
+
+<span class="fc" id="L1196">		F xyp = mesh.createFace();</span>
+<span class="fc" id="L1197">		F yzp = mesh.createFace();</span>
+
+		//F zxp = mesh.createFace();
+<span class="fc" id="L1200">		F zxp = face;</span>
+
+<span class="fc" id="L1202">		E zx = mesh.getEdge(face);</span>
+<span class="fc" id="L1203">		E xy = mesh.getNext(zx);</span>
+<span class="fc" id="L1204">		E yz = mesh.getNext(xy);</span>
+
+<span class="fc" id="L1206">		V x = mesh.getVertex(zx);</span>
+<span class="fc" id="L1207">		V y = mesh.getVertex(xy);</span>
+<span class="fc" id="L1208">		V z = mesh.getVertex(yz);</span>
+
+<span class="fc" id="L1210">		E yp = mesh.createEdge(p, xyp);</span>
+<span class="fc" id="L1211">		mesh.setEdge(p, yp);</span>
+
+<span class="fc" id="L1213">		E py = mesh.createEdge(y, yzp);</span>
+<span class="fc" id="L1214">		mesh.setTwin(yp, py);</span>
+
+<span class="fc" id="L1216">		E xp =  mesh.createEdge(p, zxp);</span>
+<span class="fc" id="L1217">		E px =  mesh.createEdge(x, xyp);</span>
+<span class="fc" id="L1218">		mesh.setTwin(xp, px);</span>
+
+<span class="fc" id="L1220">		E zp = mesh.createEdge(p, yzp);</span>
+<span class="fc" id="L1221">		E pz = mesh.createEdge(z, zxp);</span>
+<span class="fc" id="L1222">		mesh.setTwin(zp, pz);</span>
+
+<span class="fc" id="L1224">		mesh.setNext(zx, xp);</span>
+<span class="fc" id="L1225">		mesh.setNext(xp, pz);</span>
+<span class="fc" id="L1226">		mesh.setNext(pz, zx);</span>
+
+<span class="fc" id="L1228">		mesh.setNext(xy, yp);</span>
+<span class="fc" id="L1229">		mesh.setNext(yp, px);</span>
+<span class="fc" id="L1230">		mesh.setNext(px, xy);</span>
+
+<span class="fc" id="L1232">		mesh.setNext(yz, zp);</span>
+<span class="fc" id="L1233">		mesh.setNext(zp, py);</span>
+<span class="fc" id="L1234">		mesh.setNext(py, yz);</span>
+
+<span class="fc" id="L1236">		mesh.setEdge(xyp, yp);</span>
+<span class="fc" id="L1237">		mesh.setEdge(yzp, py);</span>
+<span class="fc" id="L1238">		mesh.setEdge(zxp, xp);</span>
+
+<span class="fc" id="L1240">		mesh.setFace(xy, xyp);</span>
+<span class="fc" id="L1241">		mesh.setFace(zx, zxp);</span>
+<span class="fc" id="L1242">		mesh.setFace(yz, yzp);</span>
+
+
+		// we reuse the face for efficiency
+		//mesh.destroyFace(face);
+
+<span class="fc" id="L1248">		splitTriangleEvent(face, xyp, yzp, zxp, p);</span>
+
+<span class="fc bfc" id="L1250" title="All 2 branches covered.">		if(legalize) {</span>
+<span class="fc" id="L1251">			legalize(zx, p);</span>
+<span class="fc" id="L1252">			legalize(xy, p);</span>
+<span class="fc" id="L1253">			legalize(yz, p);</span>
+		}
+
+<span class="fc" id="L1256">		return xp;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Splits the triangle xyz into three new triangles xyp, yzp and zxp and legalizes all possibly illegal edges locally,
+	 * which preserves a legal triangulation. This requires amortized O(1) time.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: p is contained in the face.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param face      the triangle face we split
+	 *
+	 * @param p         the point which splits the triangle
+	 * @return a list of all newly created face.
+	 */
+	default E splitTriangle(@NotNull final F face, @NotNull final IPoint p) {
+<span class="nc" id="L1273">		return splitTriangle(face, p, true);</span>
+	}
+
+	default V collapseEdge(@NotNull final E edge, final boolean deleteIsolatededVertex) {
+<span class="nc" id="L1277">		IMesh&lt;V, E, F&gt; mesh = getMesh();</span>
+<span class="nc" id="L1278">		E twin = mesh.getTwin(edge);</span>
+
+		// before changing connectivity change vertices.
+<span class="nc" id="L1281">		V replacedVertex = getMesh().getVertex(twin);</span>
+<span class="nc" id="L1282">		V survivedVertex = getMesh().getVertex(edge);</span>
+
+<span class="nc bnc" id="L1284" title="All 2 branches missed.">		for(E e : getMesh().getEdgeIt(replacedVertex)) {</span>
+<span class="nc" id="L1285">			getMesh().setVertex(e, survivedVertex);</span>
+<span class="nc" id="L1286">		}</span>
+
+<span class="nc bnc" id="L1288" title="All 2 branches missed.">		if(getMesh().getEdge(survivedVertex).equals(edge)) {</span>
+<span class="nc" id="L1289">			getMesh().setEdge(survivedVertex, getMesh().getTwin(getMesh().getNext(edge)));</span>
+		}
+
+<span class="nc" id="L1292">		F fa = mesh.getFace(edge);</span>
+<span class="nc" id="L1293">		F fb = mesh.getFace(twin);</span>
+
+<span class="nc" id="L1295">		F f4 = getMesh().getTwinFace(getMesh().getPrev(edge));</span>
+<span class="nc" id="L1296">		F f5 = getMesh().getTwinFace(getMesh().getNext(twin));</span>
+
+<span class="nc" id="L1298">		boolean isF4Boundary = getMesh().isBoundary(f4);</span>
+<span class="nc" id="L1299">		boolean isF5Boundary = getMesh().isBoundary(f5);</span>
+
+		// survives
+<span class="nc" id="L1302">		E aNext = mesh.getNext(edge);</span>
+<span class="nc" id="L1303">		E bNext = mesh.getNext(twin);</span>
+<span class="nc" id="L1304">		E aPrev = mesh.getPrev(edge);</span>
+		// survives
+<span class="nc" id="L1306">		E bPrev = mesh.getPrev(twin);</span>
+
+<span class="nc bnc" id="L1308" title="All 2 branches missed.">		if(!getMesh().isBoundary(edge)) {</span>
+<span class="nc" id="L1309">			E aPrevTwin = mesh.getTwin(aPrev);</span>
+<span class="nc" id="L1310">			E aPrevTwinPrev = mesh.getPrev(aPrevTwin);</span>
+<span class="nc" id="L1311">			E aPrevTwinNext = mesh.getNext(aPrevTwin);</span>
+<span class="nc" id="L1312">			E next = getMesh().getNext(edge);</span>
+<span class="nc" id="L1313">			V nextVertex = getMesh().getVertex(next);</span>
+
+<span class="nc bnc" id="L1315" title="All 2 branches missed.">			if(getMesh().getEdge(nextVertex).equals(aPrevTwin)) {</span>
+<span class="nc" id="L1316">				getMesh().setEdge(nextVertex, next);</span>
+			}
+
+			// adjust pointers
+<span class="nc" id="L1320">			getMesh().setNext(aNext, aPrevTwinNext);</span>
+<span class="nc" id="L1321">			getMesh().setPrev(aNext, aPrevTwinPrev);</span>
+<span class="nc" id="L1322">			getMesh().setFace(aNext, f4);</span>
+<span class="nc" id="L1323">			getMesh().setEdge(f4, aNext);</span>
+
+			// destroy the rest
+<span class="nc" id="L1326">			getMesh().destroyFace(fa);</span>
+<span class="nc" id="L1327">			getMesh().destroyEdge(aPrev);</span>
+<span class="nc" id="L1328">			getMesh().destroyEdge(aPrevTwin);</span>
+<span class="nc" id="L1329">		} else {</span>
+<span class="nc" id="L1330">			getMesh().setNext(getMesh().getPrev(edge), getMesh().getNext(edge));</span>
+		}
+
+<span class="nc bnc" id="L1333" title="All 2 branches missed.">		if(!getMesh().isBoundary(twin)) {</span>
+<span class="nc" id="L1334">			E bNextTwin = mesh.getTwin(bNext);</span>
+<span class="nc" id="L1335">			E bNextTwinNext = mesh.getNext(bNextTwin);</span>
+<span class="nc" id="L1336">			E bNextTwinPrev = mesh.getPrev(bNextTwin);</span>
+<span class="nc" id="L1337">			E prevTwin = getMesh().getTwin(mesh.getPrev(twin));</span>
+<span class="nc" id="L1338">			V nextVertex = getMesh().getVertex(prevTwin);</span>
+
+<span class="nc bnc" id="L1340" title="All 2 branches missed.">			if(getMesh().getEdge(nextVertex).equals(bNext)) {</span>
+<span class="nc" id="L1341">				getMesh().setEdge(nextVertex, prevTwin);</span>
+			}
+
+			// adjust pointers
+<span class="nc" id="L1345">			getMesh().setNext(bPrev, bNextTwinNext);</span>
+<span class="nc" id="L1346">			getMesh().setPrev(bPrev, bNextTwinPrev);</span>
+<span class="nc" id="L1347">			getMesh().setFace(bPrev, f5);</span>
+<span class="nc" id="L1348">			getMesh().setEdge(f5, bPrev);</span>
+
+			// destroy the rest
+<span class="nc" id="L1351">			getMesh().destroyFace(fb);</span>
+<span class="nc" id="L1352">			getMesh().destroyEdge(bNext);</span>
+<span class="nc" id="L1353">			getMesh().destroyEdge(bNextTwin);</span>
+<span class="nc" id="L1354">		} else {</span>
+<span class="nc" id="L1355">			getMesh().setNext(getMesh().getPrev(twin), getMesh().getNext(twin));</span>
+		}
+
+		// destroy the rest
+<span class="nc" id="L1359">		getMesh().destroyEdge(edge);</span>
+<span class="nc" id="L1360">		getMesh().destroyEdge(twin);</span>
+
+<span class="nc bnc" id="L1362" title="All 2 branches missed.">		if(deleteIsolatededVertex) {</span>
+<span class="nc" id="L1363">			getMesh().destroyVertex(replacedVertex);</span>
+		} else {
+<span class="nc" id="L1365">			getMesh().setEdge(replacedVertex, null);</span>
+		}
+
+<span class="nc" id="L1368">		adjustVertex(survivedVertex);</span>
+<span class="nc bnc" id="L1369" title="All 4 branches missed.">		assert getMesh().isValid();</span>
+
+<span class="nc" id="L1371">		return survivedVertex;</span>
+	}
+
+	/**
+	 * &lt;p&gt;This method collapses a three degree vertex which is at the boundary by removing the
+	 * one edge (a simple link) which is not a boundary edge and by merging the two other boundary edges,
+	 * i.e. two triangles will become one and the vertex will be deleted. This requires O(1) time
+	 * since we assume a triangulation.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: vertex is a three degree vertex, the edge ends in vertex, the edge is a non-boundary edge,
+	 * the two other half-edges ending in the vertex are boundary edges&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param vertex                    the vertex where the edge ends
+	 * @param deleteIsolatededVertex    if true the vertex will be removed from the mesh data structure.
+	 */
+	default void collapse3DVertex(@NotNull final V vertex, final boolean deleteIsolatededVertex) {
+<span class="pc bpc" id="L1389" title="2 of 4 branches missed.">		assert getMesh().degree(vertex) == 3;</span>
+<span class="fc bfc" id="L1390" title="All 2 branches covered.">		Optional&lt;E&gt; toDeleteEdge = getMesh().streamEdges(vertex).filter(e -&gt; !getMesh().isAtBoundary(e)).findAny();</span>
+
+<span class="pc bpc" id="L1392" title="2 of 4 branches missed.">		assert toDeleteEdge.isPresent();</span>
+
+<span class="pc bpc" id="L1394" title="1 of 2 branches missed.">		if(toDeleteEdge.isPresent()) {</span>
+<span class="fc" id="L1395">			E edge = toDeleteEdge.get();</span>
+<span class="pc bpc" id="L1396" title="2 of 4 branches missed.">			assert getMesh().streamEdges(vertex).filter(e -&gt; getMesh().isAtBoundary(e)).count() == 2;</span>
+
+<span class="fc" id="L1398">			E halfEdge = edge;</span>
+<span class="pc bpc" id="L1399" title="1 of 2 branches missed.">			if(!getMesh().getVertex(halfEdge).equals(vertex)) {</span>
+<span class="nc" id="L1400">				halfEdge = getMesh().getTwin(halfEdge);</span>
+			}
+
+<span class="pc bpc" id="L1403" title="1 of 2 branches missed.">			if(!getMesh().getVertex(halfEdge).equals(vertex)) {</span>
+<span class="nc" id="L1404">				throw new IllegalArgumentException(halfEdge + &quot; does not end in &quot; + vertex + &quot;.&quot;);</span>
+			}
+
+<span class="fc" id="L1407">			removeSimpleLink(edge);</span>
+<span class="fc" id="L1408">			remove2DVertex(vertex, deleteIsolatededVertex);</span>
+<span class="fc" id="L1409">		}</span>
+		else {
+<span class="nc" id="L1411">			log.warn(&quot;Did not found any non-boundary half-edge. Something went wrong!&quot;);</span>
+		}
+<span class="fc" id="L1413">	}</span>
+
+	/**
+	 * &lt;p&gt;This method collapses a four degree vertex which is not at the boundary&lt;/p&gt;
+	 *
+	 * @param vertex
+	 * @param deleteIsolatededVertex
+	 */
+	default void collapse4DVertex(@NotNull final V vertex, final boolean deleteIsolatededVertex) {
+<span class="nc bnc" id="L1422" title="All 4 branches missed.">		assert getMesh().degree(vertex) == 4;</span>
+
+<span class="nc" id="L1424">		E edge = getMesh().getEdge(vertex);</span>
+<span class="nc" id="L1425">		E opp = getMesh().getNext(getMesh().getTwin(getMesh().getNext(edge)));</span>
+
+<span class="nc" id="L1427">		F f1 = removeSimpleLink(edge);</span>
+<span class="nc" id="L1428">		F f2 = removeSimpleLink(opp);</span>
+<span class="nc" id="L1429">		remove2DVertex(vertex, deleteIsolatededVertex);</span>
+<span class="nc" id="L1430">	}</span>
+
+	/**
+	 * &lt;p&gt;Removes a two degree vertex by removing its two collapsing its two neighbouring edges which
+	 * will remove two half-edges which is one full-edge in O(1)&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: the veterx is of degree equals two.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param vertex                    the 2-degree vertex which will be removed
+	 * @param deleteIsolatededVertex    if true the vertex will be removed from the mesh data structure
+	 */
+	default E remove2DVertex(@NotNull final V vertex, final boolean deleteIsolatededVertex) {
+<span class="pc bpc" id="L1444" title="2 of 4 branches missed.">		assert getMesh().degree(vertex) == 2;</span>
+
+<span class="fc" id="L1446">		E survivor = getMesh().getEdge(vertex);</span>
+<span class="fc" id="L1447">		E next = getMesh().getNext(survivor);</span>
+
+<span class="fc" id="L1449">		E twin = getMesh().getTwin(survivor);</span>
+<span class="fc" id="L1450">		E twinPrev = getMesh().getPrev(twin);</span>
+<span class="fc" id="L1451">		getMesh().setNext(survivor, getMesh().getNext(next));</span>
+<span class="fc" id="L1452">		getMesh().setPrev(twin, getMesh().getPrev(twinPrev));</span>
+
+<span class="pc bpc" id="L1454" title="1 of 2 branches missed.">		if(getMesh().getEdge(getMesh().getFace(survivor)).equals(next)) {</span>
+<span class="nc" id="L1455">			getMesh().setEdge(getMesh().getFace(survivor), survivor);</span>
+		}
+
+<span class="pc bpc" id="L1458" title="1 of 2 branches missed.">		if(getMesh().getEdge(getMesh().getFace(twin)).equals(twinPrev)) {</span>
+<span class="nc" id="L1459">			getMesh().setEdge(getMesh().getFace(twin), twin);</span>
+		}
+
+<span class="fc" id="L1462">		getMesh().setVertex(survivor, getMesh().getVertex(next));</span>
+
+<span class="pc bpc" id="L1464" title="1 of 2 branches missed.">		if(getMesh().getEdge(getMesh().getVertex(next)).equals(next)) {</span>
+<span class="nc" id="L1465">			getMesh().setEdge(getMesh().getVertex(next), survivor);</span>
+		}
+
+<span class="fc" id="L1468">		getMesh().destroyEdge(twinPrev);</span>
+<span class="fc" id="L1469">		getMesh().destroyEdge(next);</span>
+
+<span class="pc bpc" id="L1471" title="1 of 2 branches missed.">		if(deleteIsolatededVertex) {</span>
+<span class="fc" id="L1472">			getMesh().destroyVertex(vertex);</span>
+		}
+
+<span class="fc" id="L1475">		return survivor;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Creates a new face by connecting two boundary vertices v1, v3 of a boundary path v1 to v2 to v3 such that
+	 * v1 to v2 to v3 becomes a new face. This requires O(1) time.&lt;/p&gt;
+	 *
+	 * Assumption:
+	 * &lt;ul&gt;
+	 *     &lt;li&gt;there is an counter clockwise angle3D smaller than 180 (PI) at v2 of the triangle (v1,v2,v3)&lt;/li&gt;
+	 *     &lt;li&gt;the boundaryEdge is a boundary edge&lt;/li&gt;
+	 * &lt;/ul&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param boundaryEdge an edge of the boundary (i.e. part of the border or a hole).
+	 */
+	default F createFaceAtBoundary(@NotNull final E boundaryEdge) {
+<span class="nc bnc" id="L1493" title="All 4 branches missed.">		assert getMesh().isBoundary(boundaryEdge);</span>
+
+<span class="nc" id="L1495">		F boundary = getMesh().getFace(boundaryEdge);</span>
+<span class="nc" id="L1496">		E next = getMesh().getNext(boundaryEdge);</span>
+<span class="nc" id="L1497">		E prev = getMesh().getPrev(boundaryEdge);</span>
+
+		// can we form a triangle
+<span class="nc bnc" id="L1500" title="All 4 branches missed.">		assert GeometryUtils.isCCW(getMesh().toPoint(prev), getMesh().toPoint(boundaryEdge), getMesh().toPoint(next));</span>
+
+<span class="nc" id="L1502">		E nnext = getMesh().getNext(next);</span>
+
+<span class="nc" id="L1504">		E newEdge = getMesh().createEdge(getMesh().getVertex(next));</span>
+<span class="nc" id="L1505">		E newTwin = getMesh().createEdge(getMesh().getVertex(prev));</span>
+<span class="nc" id="L1506">		F newFace = getMesh().createFace();</span>
+
+<span class="nc" id="L1508">		getMesh().setFace(newEdge, boundary);</span>
+<span class="nc" id="L1509">		getMesh().setNext(newEdge, nnext);</span>
+<span class="nc" id="L1510">		getMesh().setPrev(newEdge, prev);</span>
+<span class="nc" id="L1511">		getMesh().setTwin(newEdge, newTwin);</span>
+
+<span class="nc" id="L1513">		getMesh().setFace(newTwin, newFace);</span>
+<span class="nc" id="L1514">		getMesh().setNext(newTwin, boundaryEdge);</span>
+<span class="nc" id="L1515">		getMesh().setPrev(newTwin, next);</span>
+<span class="nc" id="L1516">		getMesh().setTwin(newTwin, newEdge);</span>
+
+<span class="nc" id="L1518">		getMesh().setEdge(newFace, newTwin);</span>
+
+		//getMesh().setPrev(nnext, newEdge);
+
+		//getMesh().setNext(next, newTwin);
+		//getMesh().setFace(newEdge, newFace);
+
+		//getMesh().setPrev(boundaryEdge, newTwin);
+<span class="nc" id="L1526">		getMesh().setFace(boundaryEdge, newFace);</span>
+<span class="nc" id="L1527">		getMesh().setFace(next, newFace);</span>
+
+		//getMesh().setNext(prev, newEdge);
+
+<span class="nc bnc" id="L1531" title="All 4 branches missed.">		if(getMesh().getEdge(boundary).equals(boundaryEdge) || getMesh().getEdge(boundary).equals(next)) {</span>
+<span class="nc" id="L1532">			getMesh().setEdge(boundary, newEdge);</span>
+		}
+
+		// to find the boundary edge as quick as possible
+<span class="nc" id="L1536">		getMesh().setEdge(getMesh().getVertex(next), newEdge);</span>
+
+<span class="nc bnc" id="L1538" title="All 4 branches missed.">		assert getMesh().getVertices(newFace).size() == 3;</span>
+<span class="nc" id="L1539">		return newFace;</span>
+	}
+
+	/*default void collapse3DAtBoundary(@NotNull final V vertex, final boolean removeIsolatedVertex) {
+		assert getMesh().degree(vertex) == 3;
+		List&lt;E&gt; edges = getMesh().getEdges(vertex);
+
+		if(edges.stream().filter(e -&gt; getMesh().isAtBoundary(e)).count() != 2) {
+			System.out.println(edges.stream().filter(e -&gt; getMesh().isAtBoundary(e)).count());
+		}
+		assert edges.stream().filter(e -&gt; getMesh().isAtBoundary(e)).count() == 2;
+
+		F boundary = getMesh().streamFaces(vertex).filter(f -&gt; getMesh().isBoundary(f)).findAny().get();
+
+		E e1;
+		E e2;
+		E e3;
+		if(!getMesh().isAtBoundary(edges.get(0))) {
+			e1 = getMesh().isBoundary(edges.get(1)) ? edges.get(1) : edges.get(2);
+			e2 = getMesh().isBoundary(edges.get(1)) ? edges.get(2) : edges.get(1);
+			e3 = edges.get(0);
+		}
+		else if(!getMesh().isAtBoundary(edges.get(1))) {
+			e1 = getMesh().isBoundary(edges.get(0)) ? edges.get(0) : edges.get(2);
+			e2 = getMesh().isBoundary(edges.get(0)) ? edges.get(2) : edges.get(0);
+			e3 = edges.get(1);
+		}
+		else if(!getMesh().isAtBoundary(edges.get(2))) {
+			e1 = getMesh().isBoundary(edges.get(0)) ? edges.get(0) : edges.get(1);
+			e2 = getMesh().isBoundary(edges.get(0)) ? edges.get(1) : edges.get(0);
+			e3 = edges.get(1);
+		}
+		else {
+			throw new IllegalArgumentException(&quot;the degree of &quot; + vertex + &quot; is &gt; 3 and/or is is not at the boundary.&quot;);
+		}
+		E twinE3 = getMesh().getTwin(e3);
+		E twinE2 = getMesh().getTwin(e2);
+
+		// 1. adjust faces
+		getMesh().setFace(getMesh().getPrev(e2), getMesh().getFace(e3));
+
+		// if
+		getMesh().setEdge(getMesh().getFace(e3), getMesh().getPrev(e3));
+
+		// if
+		getMesh().setEdge(boundary, e1);
+
+		getMesh().destroyFace(getMesh().getFace(getMesh().getTwin(e3)));
+
+		// 2. adjust vertex relation
+		getMesh().setVertex(e1, getMesh().getVertex(getMesh().getNext(e1)));
+
+
+		// 3. adjust connectivity
+		getMesh().setNext(e1, getMesh().getNext(getMesh().getTwin(e2)));
+		getMesh().setPrev(getMesh().getNext(getMesh().getTwin(e2)), e1);
+
+		getMesh().setPrev(getMesh().getTwin(e1), getMesh().getPrev(e2));
+		getMesh().setNext(getMesh().getPrev(e2), getMesh().getTwin(e1));
+
+		getMesh().setNext(getMesh().getPrev(e3), getMesh().getNext(getMesh().getTwin(e3)));
+		getMesh().setPrev(getMesh().getNext(getMesh().getTwin(e3)), getMesh().getPrev(e3));
+
+		// if
+		getMesh().setVertex(e1, getMesh().getVertex(twinE2));
+		getMesh().setEdge(getMesh().getVertex(twinE2), e1);
+
+		getMesh().destroyFace(getMesh().getFace(e2));
+		getMesh().destroyEdge(e3);
+		getMesh().destroyEdge(twinE3);
+		getMesh().destroyEdge(e2);
+		getMesh().destroyEdge(twinE2);
+
+		if(removeIsolatedVertex) {
+			getMesh().destroyVertex(vertex);
+		}
+	}*/
+
+	/**
+	 * &lt;p&gt;Legalizes recursively an edge xy of a triangle xyz if it is illegal / not feasible by flipping it.
+	 * This requires amortized O(1) time.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param edge  an edge zx of a triangle xyz
+	 * @param p     point(next(edge))
+	 * @param depth the depth of the recursion
+	 */
+	default void legalizeRecursively(@NotNull final E edge, @NotNull final V p, int depth) {
+<span class="nc bnc" id="L1628" title="All 2 branches missed.">		if(isIllegal(edge, p)) {</span>
+<span class="nc bnc" id="L1629" title="All 4 branches missed.">			assert isFlipOkAssertion(edge);</span>
+<span class="nc bnc" id="L1630" title="All 4 branches missed.">			assert getMesh().getVertex(getMesh().getNext(edge)).equals(p);</span>
+
+<span class="nc" id="L1632">			F f1 = getMesh().getFace(edge);</span>
+<span class="nc" id="L1633">			F f2 = getMesh().getTwinFace(edge);</span>
+
+<span class="nc" id="L1635">			flip(edge);</span>
+
+<span class="nc" id="L1637">			V vertex = getMesh().getVertex(edge);</span>
+
+<span class="nc bnc" id="L1639" title="All 2 branches missed.">			if(vertex.equals(p)) {</span>
+<span class="nc" id="L1640">				E e1 = getMesh().getPrev(edge);</span>
+<span class="nc" id="L1641">				E e2 = getMesh().getNext(getMesh().getTwin(edge));</span>
+
+
+<span class="nc" id="L1644">				legalizeRecursively(e1, p, depth+1);</span>
+<span class="nc" id="L1645">				legalizeRecursively(e2, p, depth+1);</span>
+<span class="nc" id="L1646">			}</span>
+			else {
+<span class="nc" id="L1648">				E e1 = getMesh().getNext(edge);</span>
+<span class="nc" id="L1649">				E e2 = getMesh().getPrev(getMesh().getTwin(edge));</span>
+<span class="nc" id="L1650">				legalizeRecursively(e1, p, depth+1);</span>
+<span class="nc" id="L1651">				legalizeRecursively(e2, p, depth+1);</span>
+			}
+
+
+		}
+<span class="nc" id="L1656">	}</span>
+
+	/**
+	 * &lt;p&gt;Legalizes an edge xy of a triangle xyz if it is illegal / not feasible by flipping it.
+	 * This requires amortized O(1) time.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param edge  an edge zx of a triangle xyz
+	 * @param p     point(next(edge))
+	 */
+	default void legalizeNonRecursive(@NotNull final E edge, @NotNull final V p) {
+<span class="nc" id="L1668">		int flips = 0;</span>
+<span class="nc" id="L1669">		int its = 0;</span>
+		//if(isIllegal(edge, p)) {
+
+		// this should be the same afterwards
+		//E halfEdge = getMesh().getNext(edge);
+
+<span class="nc" id="L1675">		IMesh&lt;V, E, F&gt; mesh = getMesh();</span>
+<span class="nc" id="L1676">		E startEdge = mesh.getPrev(edge);</span>
+<span class="nc" id="L1677">		E endEdge = mesh.getTwin(getMesh().getPrev(startEdge));</span>
+<span class="nc" id="L1678">		E currentEdge = mesh.getPrev(edge);</span>
+
+		// flipp
+		//c.prev.twin
+
+<span class="nc bnc" id="L1683" title="All 2 branches missed.">		while(currentEdge != endEdge) {</span>
+<span class="nc bnc" id="L1684" title="All 2 branches missed.">			while (isIllegal(mesh.getNext(currentEdge), p)) {</span>
+<span class="nc" id="L1685">				flip(mesh.getNext(currentEdge));</span>
+<span class="nc" id="L1686">				flips++;</span>
+<span class="nc" id="L1687">				its++;</span>
+			}
+<span class="nc" id="L1689">			its++;</span>
+
+<span class="nc" id="L1691">			currentEdge = mesh.getTwin(mesh.getPrev(currentEdge));</span>
+		}
+
+		//log.info(&quot;#flips = &quot; + flips);
+		//log.info(&quot;#its = &quot; + its);
+		//}
+<span class="nc" id="L1697">	}</span>
+
+	/**
+	 * &lt;p&gt;Legalizes an edge xy of a triangle xyz if it is illegal / not feasible by flipping it.
+	 * This requires amortized O(1) time.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 * @param edge  an edge zx of a triangle xyz
+	 * @param p     point(next(edge))
+	 */
+	default void legalize(@NotNull  final E edge, @NotNull final V p) {
+<span class="fc" id="L1709">		legalizeNonRecursive(edge, p);</span>
+<span class="fc" id="L1710">	}</span>
+
+	default void legalize(@NotNull  final E edge) {
+<span class="fc" id="L1713">		legalizeNonRecursive(edge, getMesh().getVertex(getMesh().getNext(edge)));</span>
+<span class="fc" id="L1714">	}</span>
+
+	/**
+	 * This method is a plausibility assertion-test. It tests if
+	 * &lt;ol&gt;
+	 *  &lt;li&gt;the edge is not a boundary edge&lt;/li&gt;
+	 *  &lt;li&gt;the vertex of the next of its twin is not equal to any vertex of the neighbouring edges of its next.&lt;/li&gt;
+	 * &lt;/ol&gt;
+	 * This method requires O(d) time where d is the degree of the involved vertices and should only be used for assertions.
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param halfEdge the half-edge that might be flipped
+	 * @return true if the plausibility assertion-test is true.
+	 */
+	default boolean isFlipOkAssertion(@NotNull final E halfEdge) {
+<span class="nc bnc" id="L1730" title="All 2 branches missed.">		if(getMesh().isBoundary(halfEdge)) {</span>
+<span class="nc" id="L1731">			return false;</span>
+		}
+		else {
+<span class="nc" id="L1734">			E xy = halfEdge;</span>
+<span class="nc" id="L1735">			E yx = getMesh().getTwin(halfEdge);</span>
+
+<span class="nc bnc" id="L1737" title="All 2 branches missed.">			if(getMesh().getVertex(getMesh().getNext(xy)).equals(getMesh().getVertex(getMesh().getNext(yx)))) {</span>
+<span class="nc" id="L1738">				return false;</span>
+			}
+
+<span class="nc" id="L1741">			V vertex = getMesh().getVertex(getMesh().getNext(yx));</span>
+<span class="nc bnc" id="L1742" title="All 2 branches missed.">			for(E neigbhour : getMesh().getIncidentEdgesIt(getMesh().getNext(xy))) {</span>
+
+<span class="nc bnc" id="L1744" title="All 2 branches missed.">				if(getMesh().getVertex(neigbhour).equals(vertex)) {</span>
+<span class="nc" id="L1745">					return false;</span>
+				}
+<span class="nc" id="L1747">			}</span>
+		}
+<span class="nc" id="L1749">		return true;</span>
+	}
+
+	default Optional&lt;F&gt; locate(final double x, final double y) {
+		Optional&lt;F&gt; optFace;
+<span class="fc bfc" id="L1754" title="All 2 branches covered.">		if(getMesh().getNumberOfFaces() &gt; 1) {</span>
+<span class="fc" id="L1755">			optFace = locateMarch(x, y, getMesh().getFace());</span>
+		}
+<span class="pc bpc" id="L1757" title="1 of 2 branches missed.">		else if(getMesh().getNumberOfFaces() == 1) {</span>
+<span class="fc" id="L1758">			optFace = Optional.of(getMesh().getFace());</span>
+		}
+		else {
+<span class="nc" id="L1761">			optFace = Optional.empty();</span>
+		}
+
+<span class="fc" id="L1764">		return optFace;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Searches and returns the face containing the point (x,y) in O(n),
+	 * where n is the number of faces of the mesh by starting at a specific face.
+	 * The search uses a robust straight walk such that it can walk through holes, i.e.
+	 * polygons. If this face is close to (x, y) the search will be fast.&lt;/p&gt;
+	 *
+	 * Assumption: the start-face is contained in the mesh structure.
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param x         x-coordinate of the location point
+	 * @param y         y-coordinate of the location point
+	 * @param startFace the face at which the search starts
+	 * @return the face containing the point or empty() if there is none
+	 */
+	default Optional&lt;F&gt; locateMarch(final double x, final double y, @NotNull final F startFace) {
+		// there is no face.
+<span class="pc bpc" id="L1784" title="1 of 2 branches missed.">		if(getDimension() &lt;= 0 ){</span>
+<span class="nc" id="L1785">			return Optional.empty();</span>
+		}
+
+<span class="pc bpc" id="L1788" title="1 of 2 branches missed.">		if(getDimension() == 1) {</span>
+<span class="nc" id="L1789">			return marchLocate1D(x, y, startFace);</span>
+		}
+		else {
+<span class="fc" id="L1792">			return Optional.of(straightWalk2D(x, y, startFace));</span>
+		}
+	}
+
+	/**
+	 * &lt;p&gt;Searches and returns (optional) the face containing the point (x,y) in O(n),
+	 * where n is the number of faces of the mesh by starting at a specific face.
+	 * The search uses a robust straight walk such that it can walk through holes, i.e.
+	 * polygons. If this face is close to (x, y) the search will be fast.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param point     the point (x, y)
+	 * @param startFace the face at which the search starts
+	 * @return the face containing the point or empty() if there is none
+	 */
+	default Optional&lt;F&gt; locateMarch(@NotNull final IPoint point, F startFace) {
+<span class="nc" id="L1809">		return locateMarch(point.getX(), point.getY(), startFace);</span>
+	}
+
+	/**
+	 * &lt;p&gt;Straight walk in the 1D-case, i.e. the mesh consists only one interior-face.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param x         the x-coordinate of the point
+	 * @param y         the y-coordinate of the point
+	 * @param startFace the startFace face of the search
+	 * @return (optional) the face containing the point or empty() if there is none
+	 */
+	default Optional&lt;F&gt; marchLocate1D(final double x, final double y, @NotNull final F startFace) {
+<span class="nc bnc" id="L1823" title="All 2 branches missed.">		if(contains(x, y, startFace)) {</span>
+<span class="nc" id="L1824">			return Optional.of(startFace);</span>
+		}
+		else {
+<span class="nc" id="L1827">			return Optional.empty();</span>
+		}
+	}
+
+	// TODO: still required?
+	default E walkThroughHole(@NotNull final VPoint q, @NotNull final VPoint p, @NotNull final E enteringEdge) {
+<span class="nc bnc" id="L1833" title="All 4 branches missed.">		assert GeometryUtils.intersectLine(q, p, getMesh().getPoint(enteringEdge), getMesh().getPoint(getMesh().getPrev(enteringEdge)));</span>
+<span class="nc" id="L1834">		E next = getMesh().getNext(enteringEdge);</span>
+
+<span class="nc bnc" id="L1836" title="All 2 branches missed.">		while (enteringEdge != next) {</span>
+<span class="nc" id="L1837">			VPoint p1 = getMesh().toPoint(getMesh().getVertex(enteringEdge));</span>
+<span class="nc" id="L1838">			VPoint p2 = getMesh().toPoint(getMesh().getVertex(getMesh().getPrev(enteringEdge)));</span>
+<span class="nc bnc" id="L1839" title="All 2 branches missed.">			if(GeometryUtils.intersectLine(q, p, p1, p2)) {</span>
+<span class="nc" id="L1840">				return next;</span>
+			}
+
+<span class="nc" id="L1843">			next = getMesh().getNext(next);</span>
+<span class="nc" id="L1844">		}</span>
+
+<span class="nc" id="L1846">		throw new IllegalArgumentException(&quot;no second intersection edge fount&quot;);</span>
+	}
+
+	// TODO: still required?
+	default Optional&lt;E&gt; findIntersectionEdge(final double x1, final double y1, final V startVertex) {
+<span class="nc" id="L1851">		VPoint q = getMesh().toPoint(startVertex);</span>
+<span class="nc" id="L1852">		VPoint p = new VPoint(x1, y1);</span>
+
+<span class="nc" id="L1854">		E edge = getMesh().getEdge(startVertex);</span>
+<span class="nc" id="L1855">		E candidate = getMesh().getPrev(edge);</span>
+<span class="nc" id="L1856">		E next = getMesh().getTwin(getMesh().getNext(edge));</span>
+
+		do {
+<span class="nc bnc" id="L1859" title="All 2 branches missed.">			candidate = getMesh().isBoundary(candidate) ? getMesh().getTwin(candidate) : candidate;</span>
+<span class="nc bnc" id="L1860" title="All 4 branches missed.">			if(isRightOf(x1, y1, candidate) &amp;&amp; intersects(q, p, candidate)) {</span>
+<span class="nc" id="L1861">				return Optional.of(candidate);</span>
+			}
+
+<span class="nc" id="L1864">			candidate = getMesh().getPrev(next);</span>
+<span class="nc" id="L1865">			next = getMesh().getTwin(getMesh().getNext(next));</span>
+<span class="nc bnc" id="L1866" title="All 2 branches missed.">		} while (edge != next);</span>
+
+<span class="nc" id="L1868">		return Optional.empty();</span>
+	}
+
+	/**
+	 * &lt;p&gt;Marching to the face which contains the point defined by (x1, y1) starting inside the startFace.
+	 * This algorithm also works if there are convex polygon (holes) inside the triangulation.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: (x1, y1) is contained in some face.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param x1        the x-coordinate of the ending point
+	 * @param y1        the y-coordinate of the ending point
+	 * @param startFace the face where the march start containing (x1,y1).
+	 * @return returns the face containing (x1, y1)
+	 */
+	default F straightWalk2D(final double x1, final double y1, @NotNull final F startFace) {
+<span class="fc bfc" id="L1885" title="All 2 branches covered.">		return straightWalk2D(x1, y1, startFace, e -&gt; !isRightOf(x1, y1, e));</span>
+	}
+
+	/**
+	 * &lt;p&gt;Marches to the face which contains the point defined by (x1, y1) starting inside the &lt;tt&gt;startFace&lt;/tt&gt;.
+	 * Furthermore this method will gather all visited edges and requires O(n) time. However, if the face is close
+	 * the amount of time required is small. This algorithm also works if there are convex polygon (holes)
+	 * inside the triangulation.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: (x1, y1) is contained in some face.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param x1        the x-coordinate of the point at which the march will start
+	 * @param y1        the y-coordinate of the point at which the march will start
+	 * @param startFace the face where the march start containing (x1,y1).
+	 * @return returns all visited edges in a first visited first in ordered queue, i.e. &lt;tt&gt;LinkedList&lt;/tt&gt;.
+	 */
+	default LinkedList&lt;E&gt; straightGatherWalk2D(final double x1, final double y1, @NotNull final F startFace) {
+<span class="nc bnc" id="L1904" title="All 2 branches missed.">    	return straightGatherWalk2D(x1, y1, startFace, e -&gt; !isRightOf(x1, y1, e));</span>
+	}
+
+    default LinkedList&lt;E&gt; getIntersectingEdges(@NotNull final V vStart, @NotNull final V vEnd) {
+<span class="nc" id="L1908">		VPoint q = getMesh().toPoint(vStart);</span>
+<span class="nc" id="L1909">		VPoint p = getMesh().toPoint(vEnd);</span>
+<span class="nc" id="L1910">	    E firstEdge = null;</span>
+
+<span class="nc" id="L1912">	    LinkedList&lt;E&gt; visitedEdges = new LinkedList&lt;&gt;();</span>
+<span class="nc bnc" id="L1913" title="All 2 branches missed.">	    for(E e : getMesh().getEdgeIt(vStart)) {</span>
+<span class="nc" id="L1914">	    	E prev = getMesh().getPrev(e);</span>
+<span class="nc bnc" id="L1915" title="All 2 branches missed.">		    if(intersectsDirectional(q, p, prev)) {</span>
+<span class="nc" id="L1916">			    firstEdge = getMesh().getTwin(prev);</span>
+<span class="nc" id="L1917">			    visitedEdges.addLast(firstEdge);</span>
+		    }
+<span class="nc" id="L1919">	    }</span>
+
+<span class="nc" id="L1921">	    Optional&lt;E&gt; optEdge = Optional.ofNullable(firstEdge);</span>
+
+	    // TODO: duplicated code
+<span class="nc bnc" id="L1924" title="All 2 branches missed.">	    while(optEdge.isPresent()) {</span>
+<span class="nc" id="L1925">		    E inEdge = optEdge.get();</span>
+<span class="nc bnc" id="L1926" title="All 2 branches missed.">		    optEdge = straightWalkNext(inEdge, q, p, e -&gt; !isRightOf(vEnd.getX(), vEnd.getY(), e), visitedEdges);</span>
+<span class="nc bnc" id="L1927" title="All 2 branches missed.">		    if(optEdge.isPresent()) {</span>
+<span class="nc" id="L1928">			    inEdge = optEdge.get();</span>
+<span class="nc" id="L1929">			    visitedEdges.addLast(inEdge);</span>
+
+<span class="nc bnc" id="L1931" title="All 2 branches missed.">			    if(getMesh().isBorder(inEdge)) {</span>
+<span class="nc" id="L1932">				    break;</span>
+			    }
+<span class="nc bnc" id="L1934" title="All 2 branches missed.">			    else if(getMesh().isHole(inEdge)) {</span>
+<span class="nc" id="L1935">			    	throw new IllegalArgumentException(&quot;reach a hole!&quot;);</span>
+			    }
+		    }
+<span class="nc" id="L1938">	    }</span>
+
+<span class="nc" id="L1940">	    return visitedEdges;</span>
+    }
+
+	/**
+	 * Marches from the midpoint of a face i.e. &lt;tt&gt;startFace&lt;/tt&gt; in the direction (&lt;tt&gt;direction&lt;/tt&gt;) until
+	 * the stop-condition (&lt;tt&gt;stopCondition&lt;/tt&gt;) is fulfilled. This requires O(n) worst case time, where n
+	 * is the number of faces of the mesh.
+	 *
+	 * &lt;p&gt;Assumption: The stopCondition will be fulfilled at some point.&lt;/p&gt;
+	 *
+	 * @param face                      the face at which the march / search starts
+	 * @param direction                 the direction in which the march will go
+	 * @param additionalStopCondition   the stop condition at which the march will stop
+	 * @return all visited faces in a first visited first in ordered queue, i.e. &lt;tt&gt;LinkedList&lt;/tt&gt;.
+	 */
+	default LinkedList&lt;E&gt; straightWalk2DGatherDirectional(@NotNull final F face, @NotNull final VPoint direction, @NotNull final Predicate&lt;E&gt; additionalStopCondition) {
+<span class="nc" id="L1956">		VPoint q = getMesh().toMidpoint(face);</span>
+<span class="nc bnc" id="L1957" title="All 4 branches missed.">		assert getMesh().toTriangle(face).contains(q);</span>
+
+<span class="nc" id="L1959">		Predicate&lt;E&gt; defaultStopCondion = e -&gt; isRightOf(q.x, q.y, e);</span>
+<span class="nc" id="L1960">		LinkedList&lt;E&gt; visitedFaces = straightGatherWalk2DDirectional(q, direction, face, defaultStopCondion.or(additionalStopCondition));</span>
+
+<span class="nc" id="L1962">		return visitedFaces;</span>
+	}
+
+	default F straightWalk2D(final double x1, final double y1, @NotNull final F startFace, @NotNull final Predicate&lt;E&gt; stopCondition) {
+<span class="fc" id="L1966">		return getMesh().getFace(straightGatherWalk2D(x1, y1, startFace, stopCondition).peekLast());</span>
+	}
+
+	/**
+	 * &lt;p&gt;Marches / walks along the line defined by q and p from q to p starting inside the startFace.
+	 * Furthermore this method will gather all visited faces and requires O(n) time. However, if the face is close
+	 * the amount of time required is small. This algorithm also works if there are convex polygon (holes)
+	 * inside the triangulation. A stop condition like (e to !isRightOf(x1, y1, e)) stops the walk if (x1, y1),
+	 * will stop the walk if the point p = (x1, y1) is contained in the face.&lt;/p&gt;
+	 *
+	 * Assumption:asd
+	 * &lt;ol&gt;
+	 *     &lt;li&gt;q is contained in the start face&lt;/li&gt;
+	 *     &lt;li&gt;the stop condition will be fulfilled at some point&lt;/li&gt;
+	 * &lt;/ol&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param x1            the x-coordinate of the point at which the march will start
+	 * @param y1            the y-coordinate of the point at which the march will start
+	 * @param startFace     the face where the march start containing (x1,y1).
+	 * @param stopCondition the stopCondition at which the march will stop.
+	 * @return all visited faces in a first visited first in ordered queue, i.e. &lt;tt&gt;LinkedList&lt;/tt&gt;.
+	 */
+    default LinkedList&lt;E&gt; straightGatherWalk2D(final double x1, final double y1, @NotNull final F startFace, @NotNull final Predicate&lt;E&gt; stopCondition) {
+<span class="pc bpc" id="L1991" title="2 of 4 branches missed.">        assert !getMesh().isBorder(startFace);</span>
+
+        // initialize
+<span class="fc" id="L1994">        F face = startFace;</span>
+        // for convex polygons we could also use: VPoint q = getMesh().toPolygon(startFace).getPolygonCentroid();
+<span class="fc" id="L1996">        VPoint q = getMesh().getTriangleMidPoint(startFace); // walk from q to p</span>
+<span class="fc" id="L1997">        VPoint p = new VPoint(x1, y1);</span>
+
+        /*LinkedList&lt;E&gt; walkResult = straightGatherWalk2D(q, p, face, stopCondition);
+	    List&lt;F&gt; faces = walkResult.stream().map(e -&gt; getMesh().getFace(e)).collect(Collectors.toList());
+
+		Runnable run = () -&gt; {
+	        Predicate&lt;F&gt; alertPredicate = f -&gt;{
+		        return faces.contains(f);
+	        };
+
+	        var meshPanel = new MeshPanel(getMesh(), alertPredicate, 800, 800);
+	        meshPanel.display(&quot;Random walk&quot;);
+        };
+
+        new Thread(run).start();
+
+        int count = 0;
+
+	    while (count &lt; 10) {
+		    count++;
+	    	try {
+			    Thread.sleep(1000);
+		    } catch (InterruptedException e) {
+			    e.printStackTrace();
+		    }
+	    }*/
+
+<span class="fc" id="L2024">        return straightGatherWalk2D(q, p, face, stopCondition);</span>
+    }
+
+	/**
+	 * &lt;p&gt;Connects each (current) two consecutive border edge if they form an acute angle3D
+	 * which smoothes the border of the mesh overall. This requires O(n) time, where n
+	 * is the number of border edges.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 */
+	default void smoothBorder() {
+<span class="nc bnc" id="L2036" title="All 2 branches missed.">		for(E edge : getMesh().getEdges(getMesh().getBorder())) {</span>
+<span class="nc bnc" id="L2037" title="All 2 branches missed.">			if(getMesh().isBorder(edge)) {</span>
+
+<span class="nc" id="L2039">				VPoint p = getMesh().toPoint(edge);</span>
+<span class="nc" id="L2040">				VPoint q = getMesh().toPoint(getMesh().getNext(edge));</span>
+<span class="nc" id="L2041">				VPoint r = getMesh().toPoint(getMesh().getPrev(edge));</span>
+
+<span class="nc bnc" id="L2043" title="All 2 branches missed.">				if(GeometryUtils.isCCW(r, p, q)) {</span>
+<span class="nc" id="L2044">					double angle = GeometryUtils.angle(r, p, q);</span>
+<span class="nc bnc" id="L2045" title="All 2 branches missed.">					if(angle &lt; 0.5*Math.PI) {</span>
+<span class="nc" id="L2046">						createFaceAtBoundary(edge);</span>
+					}
+				}
+			}
+<span class="nc" id="L2050">		}</span>
+<span class="nc" id="L2051">	}</span>
+
+	default void smoothHoles(@NotNull final IDistanceFunction distanceFunction, Predicate&lt;V&gt; isBoundary) {
+<span class="nc bnc" id="L2054" title="All 2 branches missed.">		for(F hole : getMesh().getHoles()) {</span>
+<span class="nc bnc" id="L2055" title="All 2 branches missed.">			for(E edge : getMesh().getEdges(hole)) {</span>
+
+				/*
+				 * to avoid duplicated smoothing
+				 */
+<span class="nc bnc" id="L2060" title="All 2 branches missed.">				if(getMesh().getFace(edge).equals(hole)) {</span>
+<span class="nc" id="L2061">					V vp = getMesh().getVertex(edge);</span>
+<span class="nc bnc" id="L2062" title="All 2 branches missed.">					if(!isBoundary.test(vp)) {</span>
+<span class="nc" id="L2063">						VPoint r = getMesh().toPoint(getMesh().getPrev(edge));</span>
+<span class="nc" id="L2064">						VPoint p = getMesh().toPoint(edge);</span>
+<span class="nc" id="L2065">						VPoint q = getMesh().toPoint(getMesh().getNext(edge));</span>
+<span class="nc" id="L2066">						VPoint midPoint = new VLine(r, q).midPoint();</span>
+
+<span class="nc bnc" id="L2068" title="All 4 branches missed.">						if((distanceFunction.apply(p) + distanceFunction.apply(midPoint) &lt; 0) &amp;&amp; GeometryUtils.isCCW(r, p, q)) {</span>
+<span class="nc" id="L2069">							double angle = GeometryUtils.angle(r, p, q);</span>
+<span class="nc bnc" id="L2070" title="All 2 branches missed.">							if(angle &lt; 0.5*Math.PI) {</span>
+<span class="nc" id="L2071">								createFaceAtBoundary(edge);</span>
+							}
+						}
+					}
+				}
+<span class="nc" id="L2076">			}</span>
+<span class="nc" id="L2077">		}</span>
+<span class="nc" id="L2078">	}</span>
+
+	/**
+	 * &lt;p&gt;Connects each (current) two consecutive border edge if they form an acute angle3D
+	 * which smoothes the border of the mesh overall. This requires O(n) time, where n
+	 * is the number of border edges.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Mesh changing method.&lt;/p&gt;
+	 *
+	 */
+	default void smoothHoles(@NotNull final IDistanceFunction distanceFunction) {
+<span class="nc" id="L2089">		smoothBorder(distanceFunction, v -&gt; false);</span>
+<span class="nc" id="L2090">	}</span>
+
+	default void smoothBoundary(@NotNull final IDistanceFunction distanceFunction, @NotNull final Predicate&lt;V&gt; predicate) {
+<span class="nc" id="L2093">		smoothBorder(distanceFunction, predicate);</span>
+<span class="nc" id="L2094">		smoothHoles(distanceFunction, predicate);</span>
+<span class="nc" id="L2095">	}</span>
+
+	default void smoothBoundary(@NotNull final IDistanceFunction distanceFunction) {
+<span class="nc" id="L2098">		smoothBorder(distanceFunction);</span>
+<span class="nc" id="L2099">		smoothHoles(distanceFunction);</span>
+<span class="nc" id="L2100">	}</span>
+
+	default void smoothBoundary() {
+<span class="nc" id="L2103">		smoothBorder(null);</span>
+<span class="nc" id="L2104">		smoothHoles(null);</span>
+<span class="nc" id="L2105">	}</span>
+
+	default void collapseBoundaryFaces(@NotNull final Predicate&lt;F&gt; collapsePredicate, @NotNull final Predicate&lt;E&gt; edgeCollapsePredicate, @NotNull final Consumer&lt;V&gt; action) {
+<span class="nc" id="L2108">		collapseBorderFaces(collapsePredicate, edgeCollapsePredicate, action);</span>
+<span class="nc" id="L2109">		collapseHoleFaces(collapsePredicate, edgeCollapsePredicate, action);</span>
+<span class="nc" id="L2110">	}</span>
+
+	default void collapseHoleFaces(@NotNull final Predicate&lt;F&gt; collapsePredicate, @NotNull final Predicate&lt;E&gt; edgeCollapsePredicate, @NotNull final Consumer&lt;V&gt; action) {
+<span class="nc bnc" id="L2113" title="All 2 branches missed.">		for(F hole : getMesh().getHoles()) {</span>
+<span class="nc bnc" id="L2114" title="All 2 branches missed.">			for(E edge : getMesh().getEdges(hole)) {</span>
+<span class="nc" id="L2115">				E twin = getMesh().getTwin(edge);</span>
+<span class="nc" id="L2116">				F face = getMesh().getFace(twin);</span>
+
+<span class="nc bnc" id="L2118" title="All 4 branches missed.">				assert !getMesh().isBoundary(face);</span>
+
+				/*
+				 * to avoid duplicated smoothing
+				 */
+<span class="nc bnc" id="L2123" title="All 2 branches missed.">				if(getMesh().getFace(edge).equals(hole) &amp;&amp;</span>
+<span class="nc bnc" id="L2124" title="All 4 branches missed.">						!getMesh().isAtBoundary(getMesh().getNext(twin)) &amp;&amp; !getMesh().isAtBoundary(getMesh().getPrev(twin)) &amp;&amp;</span>
+<span class="nc bnc" id="L2125" title="All 2 branches missed.">						collapsePredicate.test(face)) {</span>
+
+<span class="nc" id="L2127">					V vr = getMesh().getVertex(getMesh().getPrev(edge));</span>
+<span class="nc" id="L2128">					V vp = getMesh().getVertex(getMesh().getNext(twin));</span>
+<span class="nc" id="L2129">					V vq = getMesh().getVertex(edge);</span>
+
+
+<span class="nc bnc" id="L2132" title="All 2 branches missed.">					if(edgeCollapsePredicate.test(getMesh().getNext(twin))) {</span>
+<span class="nc" id="L2133">						VPoint r = getMesh().toPoint(vr);</span>
+<span class="nc" id="L2134">						VPoint q = getMesh().toPoint(vq);</span>
+
+<span class="nc" id="L2136">						VPoint midPoint = new VLine(r, q).midPoint();</span>
+<span class="nc" id="L2137">						removeFaceAtBoundary(face, hole,true);</span>
+<span class="nc" id="L2138">						getMesh().setPoint(vp, midPoint);</span>
+<span class="nc" id="L2139">						action.accept(vp);</span>
+					}
+				}
+<span class="nc" id="L2142">			}</span>
+<span class="nc" id="L2143">		}</span>
+<span class="nc" id="L2144">	}</span>
+
+	default void collapseBorderFaces(@NotNull final Predicate&lt;F&gt; collapsePredicate, @NotNull final Predicate&lt;E&gt; edgeCollapsePredicate, @NotNull final Consumer&lt;V&gt; action) {
+<span class="nc bnc" id="L2147" title="All 2 branches missed.">		for(E edge : getMesh().getEdges(getMesh().getBorder())) {</span>
+<span class="nc" id="L2148">			E twin = getMesh().getTwin(edge);</span>
+<span class="nc" id="L2149">			F face = getMesh().getFace(twin);</span>
+
+<span class="nc bnc" id="L2151" title="All 4 branches missed.">			assert !getMesh().isBoundary(face);</span>
+
+			/*
+			 * to avoid duplicated smoothing
+			 */
+<span class="nc bnc" id="L2156" title="All 2 branches missed.">			if(getMesh().getFace(edge).equals(getMesh().getBorder()) &amp;&amp;</span>
+<span class="nc bnc" id="L2157" title="All 4 branches missed.">					!getMesh().isAtBoundary(getMesh().getNext(twin)) &amp;&amp; !getMesh().isAtBoundary(getMesh().getPrev(twin)) &amp;&amp;</span>
+<span class="nc bnc" id="L2158" title="All 2 branches missed.">					collapsePredicate.test(face)) {</span>
+
+<span class="nc" id="L2160">				V vr = getMesh().getVertex(getMesh().getPrev(edge));</span>
+<span class="nc" id="L2161">				V vp = getMesh().getVertex(getMesh().getNext(twin));</span>
+<span class="nc" id="L2162">				V vq = getMesh().getVertex(edge);</span>
+
+
+<span class="nc bnc" id="L2165" title="All 2 branches missed.">				if(edgeCollapsePredicate.test(getMesh().getNext(twin))) {</span>
+<span class="nc" id="L2166">					VPoint r = getMesh().toPoint(vr);</span>
+<span class="nc" id="L2167">					VPoint q = getMesh().toPoint(vq);</span>
+
+<span class="nc" id="L2169">					VPoint midPoint = new VLine(r, q).midPoint();</span>
+<span class="nc" id="L2170">					removeFaceAtBoundary(face, getMesh().getBorder(), true);</span>
+<span class="nc" id="L2171">					getMesh().setPoint(vp, midPoint);</span>
+<span class="nc" id="L2172">					action.accept(vp);</span>
+				}
+			}
+<span class="nc" id="L2175">		}</span>
+<span class="nc" id="L2176">	}</span>
+
+	default boolean isLargeAngle(@NotNull final E edge, double minAngle) {
+<span class="nc bnc" id="L2179" title="All 4 branches missed.">		assert !getMesh().isBoundary(getMesh().getFace(edge));</span>
+<span class="nc" id="L2180">		V vp = getMesh().getVertex(edge);</span>
+<span class="nc" id="L2181">		V vq = getMesh().getVertex(getMesh().getNext(edge));</span>
+<span class="nc" id="L2182">		V vr = getMesh().getVertex(getMesh().getPrev(edge));</span>
+
+<span class="nc" id="L2184">		VPoint r = getMesh().toPoint(vr);</span>
+<span class="nc" id="L2185">		VPoint p = getMesh().toPoint(vp);</span>
+<span class="nc" id="L2186">		VPoint q = getMesh().toPoint(vq);</span>
+
+<span class="nc bnc" id="L2188" title="All 2 branches missed.">		if(GeometryUtils.isCCW(r, p, q)) {</span>
+<span class="nc" id="L2189">			double angle = GeometryUtils.angle(r, p, q);</span>
+<span class="nc bnc" id="L2190" title="All 2 branches missed.">			return angle &gt; minAngle;</span>
+		}
+
+<span class="nc" id="L2193">		return false;</span>
+	}
+
+	default void smoothBorder(@Nullable final IDistanceFunction distanceFunction, @NotNull final Predicate&lt;V&gt; isBoundary) {
+<span class="nc bnc" id="L2197" title="All 2 branches missed.">		for(E edge : getMesh().getEdges(getMesh().getBorder())) {</span>
+
+			/*
+			 * to avoid duplicated smoothing
+			 */
+<span class="nc bnc" id="L2202" title="All 2 branches missed.">			if(getMesh().getFace(edge).equals(getMesh().getBorder())) {</span>
+<span class="nc" id="L2203">				V vr = getMesh().getVertex(getMesh().getPrev(edge));</span>
+<span class="nc" id="L2204">				V vp = getMesh().getVertex(edge);</span>
+<span class="nc" id="L2205">				V vq = getMesh().getVertex(getMesh().getNext(edge));</span>
+
+<span class="nc bnc" id="L2207" title="All 2 branches missed.">				if(!isBoundary.test(vp)) {</span>
+<span class="nc" id="L2208">					VPoint r = getMesh().toPoint(vr);</span>
+<span class="nc" id="L2209">					VPoint p = getMesh().toPoint(vp);</span>
+<span class="nc" id="L2210">					VPoint q = getMesh().toPoint(vq);</span>
+
+
+<span class="nc" id="L2213">					VPoint midPoint = new VLine(r, q).midPoint();</span>
+<span class="nc bnc" id="L2214" title="All 4 branches missed.">					if(distanceFunction != null &amp;&amp; (distanceFunction.apply(p) + distanceFunction.apply(midPoint) &lt; 0)) {</span>
+<span class="nc bnc" id="L2215" title="All 2 branches missed.">						if(GeometryUtils.isCCW(r, p, q)) {</span>
+<span class="nc" id="L2216">							double angle = GeometryUtils.angle(r, p, q);</span>
+<span class="nc bnc" id="L2217" title="All 2 branches missed.">							if(angle &lt; 0.5*Math.PI) {</span>
+								//System.out.println(triangle);
+<span class="nc" id="L2219">								F newFace = createFaceAtBoundary(edge);</span>
+							}
+						}
+					}
+				}
+			}
+<span class="nc" id="L2225">		}</span>
+<span class="nc" id="L2226">	}</span>
+
+	default void smoothBorder(@NotNull final IDistanceFunction distanceFunction) {
+<span class="nc bnc" id="L2229" title="All 2 branches missed.">		for(E edge : getMesh().getEdges(getMesh().getBorder())) {</span>
+
+			/*
+			 * to avoid duplicated smoothing
+			 */
+<span class="nc bnc" id="L2234" title="All 2 branches missed.">			if(getMesh().getFace(edge).equals(getMesh().getBorder())) {</span>
+<span class="nc" id="L2235">				VPoint r = getMesh().toPoint(getMesh().getPrev(edge));</span>
+<span class="nc" id="L2236">				VPoint p = getMesh().toPoint(edge);</span>
+<span class="nc" id="L2237">				VPoint q = getMesh().toPoint(getMesh().getNext(edge));</span>
+
+
+<span class="nc" id="L2240">				VPoint midPoint = new VLine(r, q).midPoint();</span>
+
+<span class="nc" id="L2242">				VTriangle triangle = new VTriangle(r,p,q);</span>
+<span class="nc bnc" id="L2243" title="All 4 branches missed.">				if((distanceFunction.apply(p) + distanceFunction.apply(midPoint) &lt; 0) &amp;&amp; GeometryUtils.isCCW(r, p, q)) {</span>
+<span class="nc" id="L2244">					double angle = GeometryUtils.angle(r, p, q);</span>
+<span class="nc bnc" id="L2245" title="All 2 branches missed.">					if(angle &lt; 0.5*Math.PI) {</span>
+						//System.out.println(triangle);
+<span class="nc" id="L2247">						F newFace = createFaceAtBoundary(edge);</span>
+					}
+				}
+			}
+<span class="nc" id="L2251">		}</span>
+<span class="nc" id="L2252">	}</span>
+
+    /**
+     * &lt;p&gt;Walks along the line defined by q and p. The walking direction should be controlled by the stopCondition e.g.
+     * (e to !isRightOf(x1, y1, e)) stops the walk if (x1, y1) is on the left side of each edge which is the case if the
+     * point is inside the reached face. The walk starts at the startFace and continues in the direction of line defined
+     * by q and p using the any edge which does not fulfill the stopCondition.&lt;/p&gt;
+     *
+     * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+     *
+     * @param q             start of the oriented-line
+     * @param p             end of the oriented-line
+     * @param startFace     at this face the walk starts
+     * @param stopCondition fulfilling the stopCondition will stop the walk
+     * @return the face containing p
+     */
+	default F straightWalk2D(final VPoint q, final VPoint p, final F startFace, final Predicate&lt;E&gt; stopCondition) {
+<span class="nc" id="L2269">        return getMesh().getFace(straightGatherWalk2D(q, p, startFace, stopCondition).peekLast());</span>
+	}
+
+	/**
+	 * &lt;p&gt;This method is called whenever the special case appear during a 2D-walk which is the following:
+	 * There is at least one point v of the face which lies on the line (q,p) and p is not contained in the face.&lt;/p&gt;
+	 *
+	 * In this case we go around all the neighbouring faces of v searching for an intersection edge which is not equals to in-edge.
+	 * It might be the case that the line (q,p) goes through two points of a neighbouring face. Therefore, we test first for
+	 * intersection of (p1,p3) where p1,p2,p3 are consecutive points of the ring around the v. If (q,p) intersects (p1,p3) it has to
+	 * intersect (p1,p2) or (p2,p3), otherwise (q,p) goes through p2. If so the method returns (p1,p2) or (p2,p3). This is more expensive
+	 * than the general case i.e. O(d) where d is the degree of v. However this should not happen often in a general triangulation and
+	 * can only occur more often in very degenerated triangulations.
+	 *
+	 * @param inEdge    the edge at which we enter the face i.e. this edge intersects (q,p)
+	 * @param q         the first point of the directed line (q,p)
+	 * @param p         the second point of the directed line (q,p)
+	 * @return the next in-edge intersecting (q,p) which is unequal to &lt;tt&gt;inEdge&lt;/tt&gt; for the special case
+	 */
+	default E straightWalkSpecialCase(@NotNull final E inEdge,
+	                                  @NotNull final VPoint q,
+	                                  @NotNull final VPoint p) {
+
+		/**
+		 * (1) get the vertex v which intersects with (q,p)
+		 */
+<span class="nc" id="L2295">		V vertex = getSpecialVertex(inEdge, q, p);</span>
+<span class="nc" id="L2296">		E nextOutEdge = null;</span>
+<span class="nc bnc" id="L2297" title="All 2 branches missed.">		for(E e : getMesh().getEdgeIt(vertex)) {</span>
+<span class="nc" id="L2298">			E prev = getMesh().getPrev(e);          // v1 -&gt; v3</span>
+<span class="nc" id="L2299">			E next = getMesh().getNext(e);          // vertex -&gt; v1</span>
+<span class="nc" id="L2300">			E twin = getMesh().getTwin(e);          // vertex -&gt; v3</span>
+<span class="nc" id="L2301">			E twinNext = getMesh().getNext(twin);   // v3 -&gt; v2</span>
+
+<span class="nc" id="L2303">			V v1 = getMesh().getVertex(next);</span>
+<span class="nc" id="L2304">			V v2 = getMesh().getVertex(twinNext);</span>
+<span class="nc" id="L2305">			V v3 = getMesh().getVertex(twin);</span>
+
+<span class="nc bnc" id="L2307" title="All 2 branches missed.">			if(contains(p.getX(), p.getY(), v2, vertex, v3)) {</span>
+<span class="nc" id="L2308">				nextOutEdge = twinNext;</span>
+			}
+
+<span class="nc bnc" id="L2311" title="All 2 branches missed.">			if(contains(p.getX(), p.getY(), vertex, v1, v3)) {</span>
+<span class="nc" id="L2312">				nextOutEdge = prev;</span>
+			}
+
+<span class="nc bnc" id="L2315" title="All 6 branches missed.">			if(nextOutEdge == null &amp;&amp; GeometryUtils.isRightOf(v1.getX(), v1.getY(), v2.getX(), v2.getY(), p.getX(), p.getY()) &amp;&amp; intersects(q, p, v1, v2)) {</span>
+<span class="nc bnc" id="L2316" title="All 4 branches missed.">				if(!inEdge.equals(prev) &amp;&amp; intersects(q, p, prev)) {</span>
+<span class="nc" id="L2317">					nextOutEdge = prev;</span>
+				}
+<span class="nc bnc" id="L2319" title="All 4 branches missed.">				else if(!inEdge.equals(twinNext) &amp;&amp; intersects(q, p, twinNext)) {</span>
+<span class="nc" id="L2320">					nextOutEdge = twinNext;</span>
+				}
+				else {
+<span class="nc" id="L2323">					nextOutEdge = prev;</span>
+				}
+			}
+
+<span class="nc bnc" id="L2327" title="All 2 branches missed.">			if(nextOutEdge != null) {</span>
+<span class="nc" id="L2328">				break;</span>
+			}
+<span class="nc" id="L2330">		}</span>
+
+<span class="nc bnc" id="L2332" title="All 2 branches missed.">		if(nextOutEdge == null) {</span>
+<span class="nc" id="L2333">			throw new IllegalArgumentException(&quot;this should never happen!&quot;);</span>
+		}
+
+<span class="nc" id="L2336">		return nextOutEdge;</span>
+	}
+
+	/**
+	 * Returns the vertex of the face of the &lt;tt&gt;inEdge&lt;/tt&gt; which is closest to the line segment
+	 * (q, p).
+	 *
+	 * @param inEdge
+	 * @param q
+	 * @param p
+	 * @return
+	 */
+	default V getSpecialVertex(@NotNull final E inEdge,
+	                           @NotNull final VPoint q,
+	                           @NotNull final VPoint p) {
+
+<span class="nc bnc" id="L2352" title="All 2 branches missed.">		for(V v : getMesh().getVertexIt(getMesh().getFace(inEdge))) {</span>
+<span class="nc bnc" id="L2353" title="All 2 branches missed.">			if(GeometryUtils.distanceToLineSegment(q, p, v) &lt; GeometryUtils.DOUBLE_EPS) {</span>
+<span class="nc" id="L2354">				return v;</span>
+			}
+<span class="nc" id="L2356">		}</span>
+
+<span class="nc" id="L2358">		throw new IllegalArgumentException(&quot;no intersection point found &quot; + q + &quot; -&gt; &quot; + p);</span>
+	}
+
+	//Ray casting
+	/**
+	 * This method returns the edge of a face (defined by its half-edge inEdge) which
+	 * 1) intersects the line (q,p) and
+	 * 2) its intersection point is the closest one with respect to p
+	 *
+	 * This is computational expensive because one iterates over all edges of the face (potentially a hole or the border).
+	 * But it is a robust method to walk through a non-convex hole or border!
+	 *
+	 * @param inEdge
+	 * @param q
+	 * @param p
+	 * @param stopCondition
+	 * @param visitedEdges
+	 * @return
+	 */
+	default E rayCastingPolygon(@NotNull final E inEdge,
+	                            @NotNull final VPoint q,
+	                            @NotNull final VPoint p,
+	                            @NotNull final Predicate&lt;E&gt; stopCondition) {
+
+<span class="fc" id="L2382">		E outEdge = null;</span>
+<span class="fc" id="L2383">		E outIfInside = null;</span>
+<span class="fc" id="L2384">		F face = getMesh().getFace(inEdge);</span>
+
+		// TODO: this seems to be expensive
+<span class="fc" id="L2387">		int count = 0;</span>
+<span class="fc" id="L2388">		double distance = Double.MAX_VALUE;</span>
+<span class="fc bfc" id="L2389" title="All 2 branches covered.">		for(E e : getMesh().getEdgeIt(inEdge)) {</span>
+<span class="fc bfc" id="L2390" title="All 2 branches covered.">			if(intersectsDirectional(p, q, e)) {</span>
+<span class="fc" id="L2391">				count++;</span>
+				//if((!stopCondition.test(e) &amp;&amp; !getMesh().isBorder(face)) || (stopCondition.test(e) &amp;&amp; getMesh().isBorder(face))) {
+<span class="fc" id="L2393">				V v1 = getMesh().getVertex(e);</span>
+<span class="fc" id="L2394">				V v2 = getMesh().getTwinVertex(e);</span>
+<span class="fc" id="L2395">				VPoint iPoint = GeometryUtils.intersectionPoint(q.getX(), q.getY(), p.getX(), p.getY(), v1.getX(), v1.getY(), v2.getX(), v2.getY());</span>
+<span class="fc" id="L2396">				double dist = p.distance(iPoint);</span>
+<span class="fc bfc" id="L2397" title="All 2 branches covered.">				if(dist &lt; distance) {</span>
+<span class="fc" id="L2398">					outEdge = e;</span>
+<span class="fc" id="L2399">					distance = dist;</span>
+				}
+				//} else {
+				//	outIfInside = e;
+				//}
+			}
+<span class="fc" id="L2405">		}</span>
+
+<span class="fc bfc" id="L2407" title="All 2 branches covered.">		boolean isInside = count % 2 == 1;</span>
+
+<span class="fc bfc" id="L2409" title="All 8 branches covered.">		return (isInside &amp;&amp; !getMesh().isBorder(face) || !isInside &amp;&amp; getMesh().isBorder(face)) ? null : outEdge;</span>
+	}
+
+	default E walkAroundBoundaryStraight(@NotNull final E inEdge,
+	                            @NotNull final VPoint q,
+	                            @NotNull final VPoint p,
+	                            @NotNull final Predicate&lt;E&gt; stopCondition) {
+<span class="fc" id="L2416">		E outEdge = null;</span>
+<span class="fc" id="L2417">		E outIfInside = null;</span>
+<span class="fc" id="L2418">		F face = getMesh().getFace(inEdge);</span>
+
+<span class="fc" id="L2420">		V v1 = getMesh().getVertex(inEdge);</span>
+<span class="fc" id="L2421">		V v2 = getMesh().getTwinVertex(inEdge);</span>
+
+<span class="fc" id="L2423">		double angle = GeometryUtils.angle2D(p.x-q.x, p.y-q.y,</span>
+<span class="fc" id="L2424">				getMesh().getX(v1) - getMesh().getX(v2), getMesh().getY(v1) - getMesh().getY(v2));</span>
+
+<span class="fc bfc" id="L2426" title="All 2 branches covered.">		boolean walkForward = angle &lt;= Math.PI * 0.5;</span>
+
+<span class="fc bfc" id="L2428" title="All 2 branches covered.">		Iterable&lt;E&gt; iterable = walkForward ? getMesh().getEdgeIt(inEdge) : getMesh().getEdgeItReverse(inEdge);</span>
+<span class="fc bfc" id="L2429" title="All 2 branches covered.">		for(E e : iterable) {</span>
+<span class="fc bfc" id="L2430" title="All 4 branches covered.">			if(!e.equals(inEdge) &amp;&amp; intersectsDirectional(p, q, e)) {</span>
+<span class="fc" id="L2431">				outEdge = e;</span>
+<span class="fc" id="L2432">				break;</span>
+			}
+<span class="fc" id="L2434">		}</span>
+
+<span class="fc bfc" id="L2436" title="All 2 branches covered.">		if(outEdge == null) {</span>
+<span class="fc" id="L2437">			return outEdge;</span>
+		}
+
+<span class="pc bpc" id="L2440" title="1 of 4 branches missed.">		if(getMesh().isBoundary(face) &amp;&amp; isLeftOf(p.getX(), p.getY(), outEdge)) {</span>
+<span class="fc" id="L2441">			return rayCastingPolygon(inEdge, q, p, stopCondition);</span>
+		} else {
+<span class="fc" id="L2443">			return outEdge;</span>
+		}
+	}
+
+	/**
+	 * Walks one step i.e. from a face to immediate / neighbouring next face along the line defined by q and p
+	 * from q to p. This is done be walking from an in-edge through the face to the out-edge. Both the in-edge and
+	 * the out-edge intersects the line (q,p). Furthermore this method will gather the visited edges by placing them
+	 * into the list of visited edges. There are different cases with special cases which make the code complicated:
+	 * &lt;ol&gt;
+	 *     &lt;li&gt;general case (1):    the line (q,p) intersects two half-edges.
+	 *                              In this case the algorithm walks across the correct line by the definition of the direction (i.e. towards p)&lt;/li&gt;
+	 *     &lt;li&gt;special case (2.1):  the line (q,p) goes through a point of the face of the in-edge and therefore the is no out-line intersecting (q,p)
+	 *                              but the face contains p. In this case the walk is finished.&lt;/li&gt;
+	 *     &lt;li&gt;special case (2.2):  the line (q,p) goes through a point v of the face of the in-edge and therefore the is no out-line intersecting (q,p)
+	 * 	                            but the face does not contain p. In this case we go around all the neighbouring faces of v searching for an intersection
+	 * 	                            edge which is not equals to in-edge see {@see ITriangulation#straightWalkSpecialCase}. This is more expensive than the general case i.e. O(d) where d is the degree of v.
+	 * 	                            However this should not happen often in a general triangulation and can only accure more often in very degenerated triangulations.&lt;/li&gt;
+	 * &lt;/ol&gt;
+	 *
+	 * &lt;p&gt;Assumption: inEdge intersects (q,p) and it is not the next out-edge and the stop-condition makes sense.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param q             start point of the march / walk
+	 * @param p             end point of the march / walk
+	 * @param inEdge        start face of the walk
+	 * @param stopCondition stop condition of the walk, i.e. the walk stops if the condition is no longer fulfilled
+	 * @param visitedEdges  a list which will be filled with the visited faces in order in which they are visited (first visited = first in)
+	 * @return all visited edges in a first visited first in ordered queue, i.e. {@link LinkedList}.
+	 */
+	default Optional&lt;E&gt; straightWalkNext(
+			@NotNull final E inEdge,
+			@NotNull final VPoint q,
+			@NotNull final VPoint p,
+			@NotNull final Predicate&lt;E&gt; stopCondition,
+			@Nullable final LinkedList&lt;E&gt; visitedEdges) {
+<span class="fc" id="L2480">		E outEdge = null;</span>
+<span class="fc" id="L2481">		F face = getMesh().getFace(inEdge);</span>
+
+		/**
+		 * Special case: the face is a hole or the border!
+		 */
+<span class="fc bfc" id="L2486" title="All 2 branches covered.">		if(getMesh().isBoundary(face)) {</span>
+			//return Optional.empty();
+
+<span class="fc" id="L2489">			V v1 = getMesh().getVertex(inEdge);</span>
+<span class="fc" id="L2490">			V v2 = getMesh().getTwinVertex(inEdge);</span>
+<span class="fc" id="L2491">			VPoint iPoint1 = GeometryUtils.intersectionPoint(q.getX(), q.getY(), p.getX(), p.getY(), v1.getX(), v1.getY(), v2.getX(), v2.getY());</span>
+
+<span class="fc" id="L2493">			outEdge = walkAroundBoundaryStraight(inEdge, q, p, stopCondition);</span>
+			//outEdge = rayCastingPolygon(inEdge, q, p, stopCondition);
+			// the point outside
+<span class="fc bfc" id="L2496" title="All 2 branches covered.">			if(outEdge == null) {</span>
+<span class="fc" id="L2497">				return Optional.empty();</span>
+			}
+
+<span class="fc" id="L2500">			v1 = getMesh().getVertex(outEdge);</span>
+<span class="fc" id="L2501">			v2 = getMesh().getTwinVertex(outEdge);</span>
+<span class="fc" id="L2502">			VPoint iPoint2 = GeometryUtils.intersectionPoint(q.getX(), q.getY(), p.getX(), p.getY(), v1.getX(), v1.getY(), v2.getX(), v2.getY());</span>
+
+			// we did no progress towards p =&gt; walking around does not work cause the boundary is not convex, therefore we use the expensive method
+<span class="fc bfc" id="L2505" title="All 2 branches covered.">			if(iPoint1.distanceSq(p) &lt;= iPoint2.distanceSq(p)) {</span>
+				// TODO this is too expensive!
+<span class="fc" id="L2507">				outEdge = rayCastingPolygon(inEdge, q, p, stopCondition);</span>
+			}
+
+			// the point outside
+<span class="fc bfc" id="L2511" title="All 2 branches covered.">			if(outEdge == null) {</span>
+<span class="fc" id="L2512">				return Optional.empty();</span>
+			} else {
+<span class="fc" id="L2514">				return Optional.of(getMesh().getTwin(outEdge));</span>
+			}
+		} else {
+			/**
+			 * Get the half-edges e which intersects (q, p).
+			 */
+<span class="fc bfc" id="L2520" title="All 2 branches covered.">			for(E e : getMesh().getEdgeIt(getMesh().getNext(inEdge))) {</span>
+<span class="fc bfc" id="L2521" title="All 4 branches covered.">				if(!e.equals(inEdge) &amp;&amp; intersects(q, p, e)) {</span>
+<span class="fc" id="L2522">					outEdge = e;</span>
+<span class="fc" id="L2523">					break;</span>
+				}
+<span class="fc" id="L2525">			}</span>
+		}
+
+		/**
+		 * General case (1): The line defined by (q,p) intersects 2 edges of the convex polygon.
+		 */
+<span class="fc bfc" id="L2531" title="All 2 branches covered.">		if(outEdge != null) {</span>
+			//log.debug(&quot;straight walk: general case&quot;);
+<span class="fc" id="L2533">			boolean stop = stopCondition.test(outEdge);</span>
+<span class="fc bfc" id="L2534" title="All 2 branches covered.">			if(!stopCondition.test(outEdge)) {</span>
+<span class="fc" id="L2535">				return Optional.of(getMesh().getTwin(outEdge));</span>
+			}
+			else {
+<span class="fc" id="L2538">				return Optional.empty();</span>
+			}
+		}
+		/**
+		 * Special case (2): There is one or two points of the polygon which are collinear with the line defined by (q,p).
+		 */
+		else {
+			/**
+			 * Good case (2.1) There are two collinear points but the face contains p =&gt; p lies on an edge of the face.
+			 */
+<span class="pc bpc" id="L2548" title="3 of 4 branches missed.">			if(contains(p.getX(), p.getY(), face) || getMesh().isCloseTo(face, p.getX(), p.getY())) {</span>
+<span class="fc" id="L2549">				log.debug(&quot;no intersection line but contained or very close.&quot;);</span>
+<span class="fc" id="L2550">				return Optional.empty();</span>
+			}
+			/**
+			 * Bad case (2.2): This which should not happen in general: q, the exit point v and p are collinear, therefore there is no exit intersection line!
+			 * We continue the search with the face which centroid is closest to p! v has to be the closest p as well.
+			 */
+			else {
+<span class="nc" id="L2557">				log.debug(&quot;straight walk: no exit edge found due to collinear exit point.&quot;);</span>
+
+				/**
+				 * Get the face with the centroid closest to p and which was not visited already.
+				 */
+<span class="nc" id="L2562">				E nextOutEdge = straightWalkSpecialCase(inEdge, q, p);</span>
+<span class="nc bnc" id="L2563" title="All 2 branches missed.">				if(!stopCondition.test(nextOutEdge)) {</span>
+<span class="nc" id="L2564">					return Optional.of(getMesh().getTwin(nextOutEdge));</span>
+				}
+				else {
+<span class="nc bnc" id="L2567" title="All 2 branches missed.">					if(visitedEdges != null) {</span>
+<span class="nc" id="L2568">						visitedEdges.add(nextOutEdge);</span>
+					}
+<span class="nc" id="L2570">					return Optional.empty();</span>
+				}
+
+				/*if(!closestFace.isPresent()) {
+					SimpleTriCanvas canvas = SimpleTriCanvas.simpleCanvas(getMesh());
+					getMesh().streamFaces(v).forEach(f -&gt; canvas.getColorFunctions().overwriteFillColor(f, Color.MAGENTA));
+					DebugGui.setDebugOn(true);
+					if(DebugGui.isDebugOn()) {
+						canvas.addGuiDecorator(graphics -&gt; {
+							Graphics2D graphics2D = (Graphics2D)graphics;
+							graphics2D.setColor(Color.GREEN);
+							graphics2D.setStroke(new BasicStroke(0.05f));
+							graphics2D.draw(new VLine(q, p));
+							log.info(&quot;p: &quot; + p);
+							graphics2D.fill(new VCircle(q, 0.05f));
+						});
+						DebugGui.showAndWait(canvas);
+					}
+				}*/
+
+				/*graphics2D.setStroke(new BasicStroke(0.05f));
+		    logger.info(&quot;p: &quot; + p);
+		    graphics2D.draw(new VLine(p, p.add(direction1.scalarMultiply(10))));
+		    graphics2D.setColor(Color.BLUE);
+		    graphics2D.draw(new VLine(p, p.add(direction2.scalarMultiply(10))));*/
+
+				//assert closestFace.isPresent() : visitedFaces.size();
+				//return Optional.of(getMesh().getTwin(outEdge));
+			}
+
+		}
+	}
+
+	/**
+	 * &lt;p&gt;Marches / walks along the line defined by q and p from q to p starting inside the startFace.
+	 * Furthermore this method will gather all visited edges and requires O(n) time. However, if the face is close
+	 * the amount of time required is small. This algorithm also works if there are convex polygon (holes)
+	 * inside the triangulation. A stop condition like (e to !isRightOf(x1, y1, e)) stops the walk if (x1, y1),
+	 * will stop the walk if the point p = (x1, y1) is contained in the face.
+	 * The method goes from one face to the next by calling {@link ITriConnectivity#straightWalkNext(E, VPoint, VPoint, Predicate, LinkedList)}
+	 * but adds the resulting edge to the list of visited edges and adds some logging to debug the walks / marches.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: q is contained in the start face.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param q             start point of the march / walk
+	 * @param p             end point of the march / walk
+	 * @param startFace     start face of the walk
+	 * @param stopCondition stop condition of the walk, i.e. the walk stops if the condition is no longer fulfilled
+	 * @return all visited edges in a first visited first in ordered queue, i.e. &lt;tt&gt;LinkedList&lt;/tt&gt;.
+	 */
+	default LinkedList&lt;E&gt; straightGatherWalk2D(final VPoint q, final VPoint p, final F startFace, final Predicate&lt;E&gt; stopCondition) {
+<span class="fc" id="L2623">		return straightGatherWalk2D(q, p, startFace, stopCondition, false, false);</span>
+	}
+
+	/**
+	 * &lt;p&gt;Marches / walks from q (which is contained in &lt;tt&gt;startFace&lt;/tt&gt;) in direction &lt;tt&gt;direction&lt;/tt&gt;.
+	 * Furthermore this method will gather all visited edges and requires O(n) time where n is the number of
+	 * visited edges and can be as large as the number of triangles. However, if the face is close
+	 * the amount of time required is small. This algorithm also works if there are convex polygon (holes)
+	 * inside the triangulation. A stop condition like (e to !isRightOf(p.x, p.y, e)) stops the walk if
+	 * the point p = (x, y) is contained in the face. The method goes from one face to the next by calling
+	 * {@link ITriConnectivity#straightWalkNext(E, VPoint, VPoint, Predicate, LinkedList)}.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: q is contained in the start face.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param q             start point of the march / walk
+	 * @param direction     direction of the walk
+	 * @param startFace     start face of the walk
+	 * @param stopCondition stop condition of the walk, i.e. the walk stops if the condition is no longer fulfilled
+	 * @return all visited edges in a first visited first in ordered queue, i.e. &lt;tt&gt;LinkedList&lt;/tt&gt;.
+	 */
+	default LinkedList&lt;E&gt; straightGatherWalk2DDirectional(final VPoint q, final VPoint direction, final F startFace, final Predicate&lt;E&gt; stopCondition) {
+<span class="nc" id="L2646">		return straightGatherWalk2D(q, direction, startFace, stopCondition, true, false);</span>
+	}
+
+	/**
+	 * &lt;p&gt;Marches / walks along the line defined by q and p from q to p starting inside the startFace, i.e. q has to be
+	 * contained in the &lt;tt&gt;startFace&lt;/tt&gt;. Furthermore, this method will gather all visited edges and requires O(n) time
+	 * where n is the number of visited edges which can be as large as the number of triangles. However, if the face is close
+	 * the amount of time required is small. This algorithm also works if there are convex polygon (holes)
+	 * inside the triangulation. A stop condition like (e to !isRightOf(p.x, p.y, e)) stops the walk if the point p = (x, y)
+	 * is contained in the face. The method goes from one face to the next by calling
+	 * {@link ITriConnectivity#straightWalkNext(E, VPoint, VPoint, Predicate, LinkedList)}.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: q is contained in the start face.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param q             start point of the march / walk
+	 * @param pDirection    the point we are walking to or the direction towards we are walking to which is decided by &lt;tt&gt;directional&lt;/tt&gt;
+	 * @param startFace     start face of the walk
+	 * @param stopCondition stop condition of the walk, i.e. the walk stops if the condition is no longer fulfilled
+	 * @param directional   if true we walk in the direction of &lt;tt&gt;pDirection&lt;/tt&gt; otherwise we walk to the face containing &lt;tt&gt;pDirection&lt;/tt&gt;
+	 * @param gather
+	 * @return all visited edges in a first visited first in ordered queue, i.e. &lt;tt&gt;LinkedList&lt;/tt&gt;.
+	 */
+	default LinkedList&lt;E&gt; straightGatherWalk2D(
+			@NotNull final VPoint q,
+			@NotNull final VPoint pDirection,
+			@NotNull final F startFace,
+			@NotNull final Predicate&lt;E&gt; stopCondition,
+			final boolean directional,
+			final boolean gather) {
+<span class="fc" id="L2677">		LinkedList&lt;E&gt; visitedEdges = new LinkedList&lt;&gt;();</span>
+
+<span class="pc bpc" id="L2679" title="2 of 4 branches missed.">		assert contains(q.getX(), q.getY(), startFace);</span>
+
+		/**
+		 * (1) find the initial in-edge.
+		 */
+<span class="fc" id="L2684">		E inEdge = null;</span>
+
+		/**
+		 * Find the half-edge which intersects the line-segment (q, q+pDirection) but not the half-line (q, q+pDirection).
+		 * This will be the first in-edge and the other half-edge intersecting (q, q+pDirection) will be the out-edge.
+		 */
+		VPoint p;
+<span class="pc bpc" id="L2691" title="1 of 2 branches missed.">		if(directional) {</span>
+<span class="nc" id="L2692">			p = q.add(pDirection);</span>
+<span class="nc bnc" id="L2693" title="All 2 branches missed.">			for(E e : getMesh().getEdgeIt(startFace)) {</span>
+				// line intersection
+
+<span class="nc bnc" id="L2696" title="All 4 branches missed.">				if(intersects(q, p, e) &amp;&amp; !intersectsDirectional(q, p, e)) {</span>
+<span class="nc" id="L2697">					inEdge = e;</span>
+<span class="nc" id="L2698">					break;</span>
+				}
+<span class="nc" id="L2700">			}</span>
+
+			/**
+			 * this might happen if the line intersects a point, in this case both neighbouring edges are feasible
+			 */
+<span class="nc bnc" id="L2705" title="All 2 branches missed.">			if(inEdge == null) {</span>
+<span class="nc bnc" id="L2706" title="All 2 branches missed.">				inEdge = getMesh().streamEdges(startFace).filter(e -&gt; !intersectsDirectional(q, p, e)).findAny().get();</span>
+			}
+
+		}
+		/**
+		 * Find the half-edge which intersects the line-segment (q, pDirection) and has pDirection on its left side.
+		 * This will be the first in-edge and the other half-edge intersecting (q, q+pDirection) will be the out-edge.
+		 */
+		else {
+<span class="fc" id="L2715">			p = pDirection;</span>
+			// if this is true we are already done
+<span class="fc bfc" id="L2717" title="All 2 branches covered.">			if(contains(pDirection.getX(), pDirection.getY(), startFace)) {</span>
+<span class="pc bpc" id="L2718" title="1 of 2 branches missed.">				if(!gather) {</span>
+<span class="fc" id="L2719">					visitedEdges.clear();</span>
+				}
+<span class="fc" id="L2721">				visitedEdges.add(getMesh().getEdge(startFace));</span>
+<span class="fc" id="L2722">				return visitedEdges;</span>
+			}
+			// find the entering edge
+<span class="fc bfc" id="L2725" title="All 2 branches covered.">			for(E e : getMesh().getEdgeIt(startFace)) {</span>
+				// line intersection
+<span class="fc bfc" id="L2727" title="All 4 branches covered.">				if(intersects(q, pDirection, e) &amp;&amp; isLeftOfRobust(p.getX(), p.getY(), e)) {</span>
+<span class="fc" id="L2728">					inEdge = e;</span>
+<span class="fc" id="L2729">					break;</span>
+				}
+<span class="fc" id="L2731">			}</span>
+
+			/**
+			 * this might happen if the line intersects a point, in this case both neighbouring edges are feasible
+			 */
+<span class="fc bfc" id="L2736" title="All 2 branches covered.">			if(inEdge == null) {</span>
+<span class="fc" id="L2737">				Optional&lt;E&gt; optEdge = getMesh().streamEdges(startFace).filter(e -&gt; isLeftOf(p.getX(), p.getY(), e)).findAny();</span>
+<span class="fc" id="L2738">				inEdge = optEdge.get();</span>
+			}
+		}
+
+<span class="pc bpc" id="L2742" title="1 of 2 branches missed.">		if(inEdge == null) {</span>
+<span class="nc" id="L2743">			throw new IllegalArgumentException(&quot;did not find any edge.&quot;);</span>
+		}
+
+<span class="pc bpc" id="L2746" title="1 of 2 branches missed.">		if(!gather) {</span>
+<span class="fc" id="L2747">			visitedEdges.clear();</span>
+		}
+<span class="fc" id="L2749">		visitedEdges.addLast(inEdge);</span>
+
+
+		Optional&lt;E&gt; optEdge;
+
+		/**
+		 * (2) find all other in-edges.
+		 */
+		do {
+
+			/*if(visitedEdges.size() &gt; 400) {
+				System.out.println(&quot;startFace: &quot; + startFace);
+				System.out.println(pDirection);
+				System.out.println(getMesh().toTriangle(startFace).midPoint());
+
+			    List&lt;F&gt; faces = visitedEdges.stream().map(e -&gt; getMesh().getFace(e)).collect(Collectors.toList());
+
+				Runnable run = () -&gt; {
+			        Predicate&lt;F&gt; alertPredicate = f -&gt;{
+				        return faces.contains(f);
+			        };
+
+			        var meshPanel = new MeshPanel(getMesh(), alertPredicate, 1500, 1500);
+			        meshPanel.display(&quot;Random walk&quot;);
+		        };
+
+		        new Thread(run).start();
+
+		        int count = 0;
+
+			    while (count &lt; 10000) {
+				    count++;
+			        try {
+					    Thread.sleep(1000);
+				    } catch (InterruptedException e) {
+					    e.printStackTrace();
+				    }
+			    }
+			}*/
+
+        	/*if (DebugGui.isDebugOn() &amp;&amp; getMesh().getFacesWithHoles().size() &gt;= 5) {
+		        DebugGui.showAndWait(WalkCanvas.getDefault(
+				        getMesh(),
+				        q,
+				        p,
+				        startFace,
+				        startEdge,
+				        visitedFaces));
+	        }*/
+
+
+
+//			log.debug(getMesh().toPath(face));
+			// TODO: this might be slow
+<span class="pc bpc" id="L2803" title="1 of 2 branches missed.">			if(directional) {</span>
+<span class="nc" id="L2804">				optEdge = straightWalkNext(inEdge, q, p, stopCondition, visitedEdges);</span>
+			}
+			else {
+<span class="fc" id="L2807">				optEdge = straightWalkNext(inEdge, q, p, stopCondition, visitedEdges);</span>
+			}
+
+
+<span class="fc bfc" id="L2811" title="All 2 branches covered.">			if(!optEdge.isPresent()) {</span>
+				//log.info(&quot;expensive fix&quot;);
+				//optFace = straightWalkNext(face, q, p, stopCondition);
+			}
+			else {
+				//log.info(&quot;fast&quot;);
+			}
+
+<span class="fc bfc" id="L2819" title="All 2 branches covered.">			if(optEdge.isPresent()) {</span>
+<span class="fc" id="L2820">				inEdge = optEdge.get();</span>
+<span class="pc bpc" id="L2821" title="1 of 2 branches missed.">				if(!gather) {</span>
+<span class="fc" id="L2822">					visitedEdges.clear();</span>
+				}
+<span class="fc" id="L2824">				visitedEdges.addLast(inEdge);</span>
+
+				// special case (1): hitting the border i.e. outer boundary
+				// special case (2): hitting a hole
+<span class="fc bfc" id="L2828" title="All 2 branches covered.">				if(getMesh().isBorder(inEdge)) {</span>
+					//log.debug(&quot;walked towards the border!&quot;);
+					// return the border
+					// log.debug(getMesh().toPath(face));
+					//break;
+				}
+<span class="fc bfc" id="L2834" title="All 2 branches covered.">				else if(getMesh().isHole(inEdge)) {</span>
+					//log.debug(&quot;walked towards a hole!&quot;);
+					// just go on with the normal straight walk which works for CONVEX polygons!
+				}
+			}
+<span class="fc bfc" id="L2839" title="All 2 branches covered.">		} while (optEdge.isPresent());</span>
+
+		/*if (!contains(p.getX(), p.getY(), getMesh().getFace(visitedEdges.peekLast()))) {
+			java.util.List&lt;F&gt; visitedFaces = visitedEdges.stream().map(e -&gt; getMesh().getFace(e)).collect(Collectors.toList());
+			Function&lt;F, Color&gt; colorFunction = f -&gt; visitedFaces.contains(f) ? Color.GREEN : Color.WHITE;
+			System.out.println(TexGraphGenerator.toTikz(getMesh(), colorFunction, 1.0f, new VLine(q, pDirection)));
+
+		}*/
+
+		//log.debug(&quot;visited faces for location: &quot; + visitedEdges.size());
+<span class="fc" id="L2849">		return visitedEdges;</span>
+    }
+
+	/**
+	 * &lt;p&gt;Marches / walks to the face which contains the point defined by (x1, y1) starting the walk
+	 * inside the start face (&lt;tt&gt;startFace&lt;/tt&gt;). The algorithm is an implementation of the
+	 * Probabilistic / Random walk which is faster in practice, see Walking in a Triangulation by devillers-2001.
+	 * This algorithm does NOT works if there are convex polygon (holes) inside the triangulation.&lt;/p&gt;
+	 *
+	 * Assumption:
+	 * &lt;ol&gt;
+	 *     &lt;li&gt;(x1, y1) is contained in some face / triangle&lt;/li&gt;
+	 *     &lt;li&gt;the mesh / triangulation does not contain holes&lt;/li&gt;
+	 * &lt;/ol&gt;
+	 *
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param x1        the x-coordinate of the ending point
+	 * @param y1        the y-coordinate of the ending point
+	 * @param startFace the face where the march start containing (x1,y1).
+	 * @return the face containing the point (x1, y1)
+	 */
+	default F marchRandom2D(final double x1, final double y1, @NotNull final F startFace) {
+<span class="nc bnc" id="L2873" title="All 4 branches missed.">		assert getMesh().getHoles().size() == 0;</span>
+
+<span class="nc" id="L2875">		boolean first = true;</span>
+<span class="nc" id="L2876">		F face = startFace;</span>
+<span class="nc" id="L2877">		F prevFace = null;</span>
+<span class="nc" id="L2878">		int count = 0;</span>
+
+		while (true) {
+
+<span class="nc bnc" id="L2882" title="All 2 branches missed.">			if(getMesh().isBoundary(face)) {</span>
+<span class="nc bnc" id="L2883" title="All 2 branches missed.">				if(contains(x1, y1, face)) {</span>
+<span class="nc" id="L2884">					return face;</span>
+				}
+				else {
+<span class="nc" id="L2887">					throw new IllegalArgumentException(&quot;marchRandom2D can not walk through holes.&quot;);</span>
+				}
+			}
+
+<span class="nc" id="L2891">			count++;</span>
+<span class="nc" id="L2892">			boolean goLeft = random.nextBoolean();</span>
+			//boolean goLeft = true;
+
+<span class="nc" id="L2895">			E e1 = getMesh().getEdge(face);</span>
+<span class="nc" id="L2896">			E e2 = getMesh().getNext(e1);</span>
+<span class="nc" id="L2897">			E e3 = getMesh().getNext(e2);</span>
+
+<span class="nc" id="L2899">			V v1 = getMesh().getVertex(e1);</span>
+<span class="nc" id="L2900">			V v2 = getMesh().getVertex(e2);</span>
+<span class="nc" id="L2901">			V v3 = getMesh().getVertex(e3);</span>
+
+			// loop unrolling for efficiency!
+<span class="nc bnc" id="L2904" title="All 2 branches missed.">			if(first) {</span>
+<span class="nc" id="L2905">				first = false;</span>
+<span class="nc" id="L2906">				prevFace = face;</span>
+
+<span class="nc bnc" id="L2908" title="All 2 branches missed.">				if (GeometryUtils.isRightOf(v3, v1, x1, y1)) {</span>
+<span class="nc" id="L2909">					face = getMesh().getTwinFace(e1);</span>
+<span class="nc" id="L2910">					continue;</span>
+				}
+
+<span class="nc bnc" id="L2913" title="All 2 branches missed.">				if (GeometryUtils.isRightOf(v1, v2, x1, y1)) {</span>
+<span class="nc" id="L2914">					face = getMesh().getTwinFace(e2);</span>
+<span class="nc" id="L2915">					continue;</span>
+				}
+
+<span class="nc bnc" id="L2918" title="All 2 branches missed.">				if (GeometryUtils.isRightOf(v2, v3, x1, y1)) {</span>
+<span class="nc" id="L2919">					face = getMesh().getTwinFace(e3);</span>
+<span class="nc" id="L2920">					continue;</span>
+				}
+<span class="nc bnc" id="L2922" title="All 2 branches missed.">			} else if(goLeft) {</span>
+<span class="nc bnc" id="L2923" title="All 2 branches missed.">				if(prevFace == getMesh().getTwinFace(e1)) {</span>
+<span class="nc" id="L2924">					prevFace = face;</span>
+
+<span class="nc bnc" id="L2926" title="All 2 branches missed.">					if (GeometryUtils.isRightOf(v2, v3, x1, y1)) {</span>
+<span class="nc" id="L2927">						face = getMesh().getTwinFace(e3);</span>
+<span class="nc" id="L2928">						continue;</span>
+					}
+
+<span class="nc bnc" id="L2931" title="All 2 branches missed.">					if(GeometryUtils.isRightOf(v1, v2, x1, y1)) {</span>
+<span class="nc" id="L2932">						face = getMesh().getTwinFace(e2);</span>
+<span class="nc" id="L2933">						continue;</span>
+					}
+
+				}
+<span class="nc bnc" id="L2937" title="All 2 branches missed.">				else if(prevFace == getMesh().getTwinFace(e2)) {</span>
+<span class="nc" id="L2938">					prevFace = face;</span>
+
+<span class="nc bnc" id="L2940" title="All 2 branches missed.">					if (GeometryUtils.isRightOf(v3, v1, x1, y1)) {</span>
+<span class="nc" id="L2941">						face = getMesh().getTwinFace(e1);</span>
+<span class="nc" id="L2942">						continue;</span>
+					}
+
+<span class="nc bnc" id="L2945" title="All 2 branches missed.">					if (GeometryUtils.isRightOf(v2, v3, x1, y1)) {</span>
+<span class="nc" id="L2946">						face = getMesh().getTwinFace(e3);</span>
+<span class="nc" id="L2947">						continue;</span>
+					}
+
+				}
+				else {
+<span class="nc" id="L2952">					prevFace = face;</span>
+
+<span class="nc bnc" id="L2954" title="All 2 branches missed.">					if(GeometryUtils.isRightOf(v1, v2, x1, y1)) {</span>
+<span class="nc" id="L2955">						face = getMesh().getTwinFace(e2);</span>
+<span class="nc" id="L2956">						continue;</span>
+					}
+
+<span class="nc bnc" id="L2959" title="All 2 branches missed.">					if (GeometryUtils.isRightOf(v3, v1, x1, y1)) {</span>
+<span class="nc" id="L2960">						face = getMesh().getTwinFace(e1);</span>
+<span class="nc" id="L2961">						continue;</span>
+					}
+
+				}
+			}
+			else {
+<span class="nc bnc" id="L2967" title="All 2 branches missed.">				if(prevFace == getMesh().getTwinFace(e1)) {</span>
+<span class="nc" id="L2968">					prevFace = face;</span>
+
+<span class="nc bnc" id="L2970" title="All 2 branches missed.">					if(GeometryUtils.isRightOf(v1, v2, x1, y1)) {</span>
+<span class="nc" id="L2971">						face = getMesh().getTwinFace(e2);</span>
+<span class="nc" id="L2972">						continue;</span>
+					}
+
+<span class="nc bnc" id="L2975" title="All 2 branches missed.">					if (GeometryUtils.isRightOf(v2, v3, x1, y1)) {</span>
+<span class="nc" id="L2976">						face = getMesh().getTwinFace(e3);</span>
+<span class="nc" id="L2977">						continue;</span>
+					}
+
+				}
+<span class="nc bnc" id="L2981" title="All 2 branches missed.">				else if(prevFace == getMesh().getTwinFace(e2)) {</span>
+<span class="nc" id="L2982">					prevFace = face;</span>
+
+<span class="nc bnc" id="L2984" title="All 2 branches missed.">					if (GeometryUtils.isRightOf(v2, v3, x1, y1)) {</span>
+<span class="nc" id="L2985">						face = getMesh().getTwinFace(e3);</span>
+<span class="nc" id="L2986">						continue;</span>
+					}
+
+<span class="nc bnc" id="L2989" title="All 2 branches missed.">					if (GeometryUtils.isRightOf(v3, v1, x1, y1)) {</span>
+<span class="nc" id="L2990">						face = getMesh().getTwinFace(e1);</span>
+<span class="nc" id="L2991">						continue;</span>
+					}
+
+				}
+				else {
+<span class="nc" id="L2996">					prevFace = face;</span>
+
+<span class="nc bnc" id="L2998" title="All 2 branches missed.">					if (GeometryUtils.isRightOf(v3, v1, x1, y1)) {</span>
+<span class="nc" id="L2999">						face = getMesh().getTwinFace(e1);</span>
+<span class="nc" id="L3000">						continue;</span>
+					}
+
+<span class="nc bnc" id="L3003" title="All 2 branches missed.">					if(GeometryUtils.isRightOf(v1, v2, x1, y1)) {</span>
+<span class="nc" id="L3004">						face = getMesh().getTwinFace(e2);</span>
+<span class="nc" id="L3005">						continue;</span>
+					}
+
+				}
+			}
+			//log.info(&quot;#traversed triangles = &quot; + count);
+<span class="nc" id="L3011">			return face;</span>
+		}
+	}
+
+	default boolean contains(final double x, final double y, @NotNull final F face) {
+<span class="pc bpc" id="L3016" title="1 of 2 branches missed.">		if(!getMesh().isBoundary(face)) {</span>
+			//return getMesh().toImmutableTriangle(face).contains(x, y);
+<span class="fc" id="L3018">			E e1 = getMesh().getEdge(face);</span>
+<span class="fc" id="L3019">			V v1 = getMesh().getVertex(e1);</span>
+<span class="fc" id="L3020">			V v3 = getMesh().getTwinVertex(e1);</span>
+<span class="fc" id="L3021">			V v2 = getMesh().getVertex(getMesh().getNext(e1));</span>
+
+<span class="fc" id="L3023">			double x1 = getMesh().getX(v1);</span>
+<span class="fc" id="L3024">			double y1 = getMesh().getY(v1);</span>
+<span class="fc" id="L3025">			double x2 = getMesh().getX(v2);</span>
+<span class="fc" id="L3026">			double y2 = getMesh().getY(v2);</span>
+<span class="fc" id="L3027">			double x3 = getMesh().getX(v3);</span>
+<span class="fc" id="L3028">			double y3 = getMesh().getY(v3);</span>
+
+<span class="fc bfc" id="L3030" title="All 2 branches covered.">			return !GeometryUtils.isRightOf(x1, y1, x2, y2, x, y) &amp;&amp;</span>
+<span class="fc bfc" id="L3031" title="All 2 branches covered.">					!GeometryUtils.isRightOf(x2, y2, x3, y3, x, y) &amp;&amp;</span>
+<span class="fc bfc" id="L3032" title="All 2 branches covered.">					!GeometryUtils.isRightOf(x3, y3, x1, y1, x, y);</span>
+		} else {
+<span class="nc" id="L3034">			return IPolyConnectivity.super.contains(x, y, face);</span>
+		}
+	}
+
+
+	/*default V locateNearestNeighbour(double x1, double y1, F face) {
+		assert isInsideCircumscribedCycle(face, x1, y1);
+
+		V nn = getMesh().getNearestPoint(face, x1, y1);
+		E edge = getMesh().getEdge(face);
+
+
+		nn = lookUpNearestNeighbour(x1, y1, nn, getMesh().getTwin(edge));
+		nn = lookUpNearestNeighbour(x1, y1, nn, getMesh().getTwin(getMesh().getNext(edge)));
+		nn = lookUpNearestNeighbour(x1, y1, nn, getMesh().getTwin(getMesh().getNext(edge)));
+
+		return nn;
+	}
+
+	default V locateNearestNeighbour(P point, F startFace) {
+		return locateNearestNeighbour(point.getX(), point.getY(), startFace);
+	}
+
+	default V locateNearestNeighbour(P point) {
+		return locateNearestNeighbour(point.getX(), point.getY(), getMesh().getFace());
+	}
+
+	default V locateNearestNeighbour(double x1, double y1) {
+		return locateNearestNeighbour(x1, y1, getMesh().getFace());
+	}
+
+	default V lookUpNearestNeighbour(double x1, double y1, V nn, E edge) {
+		F face = getMesh().getFace(edge);
+
+		if(isInsideCircumscribedCycle(face, x1, y1)) {
+			V v = getMesh().getVertex(edge);
+
+			if(v.distance(x1, y1) &lt; nn.distance(x1, y1)) {
+				nn = v;
+			}
+
+			nn = lookUpNearestNeighbour(x1, y1, nn, getMesh().getTwin(getMesh().getNext(edge)));
+			nn = lookUpNearestNeighbour(x1, y1, nn, getMesh().getTwin(getMesh().getPrev(edge)));
+		}
+
+		return nn;
+	}*/
+
+	/**
+	 * &lt;p&gt;Tests if the point p = (x1, y1) is inside the circumscribed cycle defined by the triangle of the face.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param face  the face
+	 * @param x1    x-coordinate of the point
+	 * @param y1    y-coordinate of the point
+	 * @return true if the point p = (x1, y1) is inside the circumscribed cycle defined by the triangle of the face, false otherwise.
+	 */
+	default boolean isInsideCircumscribedCycle(@NotNull final F face, final double x1, final double y1) {
+<span class="nc" id="L3093">		E e1 = getMesh().getEdge(face);</span>
+<span class="nc" id="L3094">		E e2 = getMesh().getNext(e1);</span>
+<span class="nc" id="L3095">		E e3 = getMesh().getNext(e2);</span>
+
+<span class="nc" id="L3097">		V v1 = getMesh().getVertex(e1);</span>
+<span class="nc" id="L3098">		V v2 = getMesh().getVertex(e2);</span>
+<span class="nc" id="L3099">		V v3 = getMesh().getVertex(e3);</span>
+
+<span class="nc" id="L3101">		return GeometryUtils.isInsideCircle(v1, v2, v3, x1, y1);</span>
+	}
+
+	/*default boolean contains(F face, double x, double y) {
+		if(isCloseTo(face, x, y)) {
+			return true;
+		}
+
+		// in this case the face might be a polygon
+		if(getMesh().isBoundary(face)) {
+			return getMesh().toPolygon(face).contains(x, y);
+		}
+		else {
+			E h1 = getMesh().getEdge(face);
+			E h2 = getMesh().getNext(h1);
+			E h3 = getMesh().getNext(h2);
+			return Utils.triangleContains(getMesh().getPoint(h1), getMesh().getPoint(h2), getMesh().getPoint(h3), new VPoint(x, y));
+		}
+	}*/
+
+	//Optional&lt;F&gt; marchLocate2DLFC(double x, double y, F startFace);
+
+
+	/*default V getMaxDistanceVertex(F face, double x, double y) {
+		List&lt;V&gt; vertices = getMesh().getVertices(face);
+
+		//assert vertices.size() == 3;
+
+		V result = vertices.get(0);
+		result = result.distance(x, y) &lt; vertices.get(1).distance(x, y) ? vertices.get(1) : result;
+		result = result.distance(x, y) &lt; vertices.get(2).distance(x, y) ? vertices.get(2) : result;
+		return result;
+	}*/
+
+	/*default V getMinDistanceVertex(F face, double x, double y) {
+		List&lt;V&gt; vertices = getMesh().getVertices(face);
+
+		//assert vertices.size() == 3;
+
+		V result = vertices.get(0);
+		result = result.distance(x, y) &gt; vertices.get(1).distance(x, y) ? vertices.get(1) : result;
+		result = result.distance(x, y) &gt; vertices.get(2).distance(x, y) ? vertices.get(2) : result;
+		return result;
+	}*/
+
+	/**
+	 * &lt;p&gt;Returns the dimension of the triConnectivity.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @return the dimension of the triConnectivity
+	 */
+	default int getDimension() {
+<span class="fc" id="L3154">		return getMesh().getNumberOfVertices() - 2;</span>
+	}
+
+	/**
+	 * Returns the closest half-edge (with respect to (x,y)) of a face containing (x,y) if there is any face that contains p, otherwise empty().
+	 * Three cases are possible:
+	 * &lt;ol&gt;
+	 *     &lt;li&gt;p is in the interior of the face&lt;/li&gt;
+	 *     &lt;li&gt;p lies on the edge which will be returned&lt;/li&gt;
+	 *     &lt;li&gt;p is a vertex of the mesh&lt;/li&gt;
+	 * &lt;/ol&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param x x-coordinate of the point p
+	 * @param y y-coordinate of the point p
+	 * @return the closest half-edge of a face containing p = (x,y) if there is any face that contains p, otherwise empty().
+	 */
+	default Optional&lt;E&gt; getClosestEdge(final double x, final double y) {
+<span class="nc" id="L3173">		Optional&lt;F&gt; optFace = locate(x, y);</span>
+
+<span class="nc bnc" id="L3175" title="All 2 branches missed.">		if(optFace.isPresent()) {</span>
+<span class="nc" id="L3176">			return Optional.of(getMesh().closestEdge(optFace.get(), x, y));</span>
+		}
+		else {
+<span class="nc" id="L3179">			return Optional.empty();</span>
+		}
+	}
+
+	/**
+	 * Returns the closest half-edge (with respect to (x,y)) of a face containing (x,y) if there is any face that contains p, otherwise empty().
+	 * Three cases are possible:
+	 * &lt;ol&gt;
+	 *     &lt;li&gt;p is in the interior of the face&lt;/li&gt;
+	 *     &lt;li&gt;p lies on the edge which will be returned&lt;/li&gt;
+	 *     &lt;li&gt;p is a vertex of the mesh&lt;/li&gt;
+	 * &lt;/ol&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param x         x-coordinate of the point p
+	 * @param y         y-coordinate of the point p
+	 * @param startFace the face from which the walk / march / search will start
+	 * @return the closest half-edge of a face containing p = (x,y) if there is any face that contains p, otherwise empty().
+	 */
+	default Optional&lt;E&gt; getClosestEdge(final double x, final double y, final F startFace) {
+<span class="nc" id="L3200">		Optional&lt;F&gt; optFace = locateMarch(x, y, startFace);</span>
+
+<span class="nc bnc" id="L3202" title="All 2 branches missed.">		if(optFace.isPresent()) {</span>
+<span class="nc" id="L3203">			return Optional.of(getMesh().closestEdge(optFace.get(), x, y));</span>
+		}
+		else {
+<span class="nc" id="L3206">			return Optional.empty();</span>
+		}
+	}
+
+	/**
+	 * Returns the closest vertex (with respect to (x,y)) of a face containing (x,y) if there is any face that contains p, otherwise empty().
+	 * Three cases are possible:
+	 * &lt;ol&gt;
+	 *     &lt;li&gt;p is in the interior of the face&lt;/li&gt;
+	 *     &lt;li&gt;p lies on the edge which will be returned&lt;/li&gt;
+	 *     &lt;li&gt;p is a vertex of the mesh&lt;/li&gt;
+	 * &lt;/ol&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param x         x-coordinate of the point p
+	 * @param y         y-coordinate of the point p
+	 * @return the closest half-edge of a face containing p = (x,y) if there is any face that contains p, otherwise empty().
+	 */
+	default Optional&lt;V&gt; getClosestVertex(final double x, final double y) {
+<span class="nc" id="L3226">		Optional&lt;F&gt; optFace = locate(x, y);</span>
+
+<span class="nc bnc" id="L3228" title="All 2 branches missed.">		if(optFace.isPresent()) {</span>
+<span class="nc" id="L3229">			return Optional.of(getMesh().closestVertex(optFace.get(), x, y));</span>
+		}
+		else {
+<span class="nc" id="L3232">			return Optional.empty();</span>
+		}
+	}
+
+
+	/**
+	 * Returns the closest vertex (with respect to (x,y)) of a face containing (x,y) if there is any face that contains p, otherwise empty().
+	 * Three cases are possible:
+	 * &lt;ol&gt;
+	 *     &lt;li&gt;p is in the interior of the face&lt;/li&gt;
+	 *     &lt;li&gt;p lies on the edge which will be returned&lt;/li&gt;
+	 *     &lt;li&gt;p is a vertex of the mesh&lt;/li&gt;
+	 * &lt;/ol&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param x         x-coordinate of the point p
+	 * @param y         y-coordinate of the point p
+	 * @param startFace the face from which the walk / march / search will start
+	 * @return the closest half-edge of a face containing p = (x,y) if there is any face that contains p, otherwise empty().
+	 */
+	default Optional&lt;V&gt; getClosestVertex(final double x, final double y, final F startFace) {
+<span class="nc" id="L3254">		Optional&lt;F&gt; optFace = locateMarch(x, y, startFace);</span>
+
+<span class="nc bnc" id="L3256" title="All 2 branches missed.">		if(optFace.isPresent()) {</span>
+<span class="nc" id="L3257">			return Optional.of(getMesh().closestVertex(optFace.get(), x, y));</span>
+		}
+		else {
+<span class="nc" id="L3260">			return Optional.empty();</span>
+		}
+	}
+
+	/**
+	 * &lt;p&gt;Returns true if and only if the mesh of this ITriConnectivity is a valid Triangulation.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @return true if this the mesh of this ITriConnectivity is a valid Triangulation, false otherwise
+	 */
+	default boolean isValid() {
+<span class="fc" id="L3272">		Predicate&lt;F&gt; orientationPredicate = f -&gt; {</span>
+<span class="fc" id="L3273">			E edge = getMesh().getEdge(f);</span>
+<span class="fc" id="L3274">			IPoint p1 = getMesh().getPoint(getMesh().getPrev(edge));</span>
+<span class="fc" id="L3275">			IPoint p2 = getMesh().getPoint(edge);</span>
+<span class="fc" id="L3276">			IPoint p3 = getMesh().getPoint(getMesh().getNext(edge));</span>
+<span class="fc" id="L3277">			boolean valid = GeometryUtils.isLeftOf(p1, p2, p3);</span>
+<span class="pc bpc" id="L3278" title="1 of 2 branches missed.">			if (!valid) {</span>
+<span class="nc" id="L3279">				log.info(p1 + &quot;, &quot; + p2 + &quot;, &quot; + p3);</span>
+			}
+<span class="fc" id="L3281">			return valid;</span>
+		};
+
+		//log.debug(getMesh().streamFaces().filter(f -&gt; !getMesh().isDestroyed(f)).filter(f -&gt; !getMesh().isBoundary(f)).filter(e -&gt; !orientationPredicate.test(e)).count() + &quot; invalid triangles&quot;);
+<span class="pc bpc" id="L3285" title="1 of 2 branches missed.">		return getMesh().streamFaces().filter(f -&gt; !getMesh().isDestroyed(f)).allMatch(orientationPredicate);</span>
+	}
+
+	/**
+	 * &lt;p&gt;Returns true if and only if the face is a valid triangle.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param face the face which will be tested
+	 *
+	 * @return true if this the mesh of the face is a valid triangle, false otherwise
+	 */
+	default boolean isValid(@NotNull final F face) {
+<span class="nc" id="L3298">		Predicate&lt;F&gt; orientationPredicate = f -&gt; {</span>
+<span class="nc" id="L3299">			E edge = getMesh().getEdge(f);</span>
+<span class="nc" id="L3300">			IPoint p1 = getMesh().getPoint(getMesh().getPrev(edge));</span>
+<span class="nc" id="L3301">			IPoint p2 = getMesh().getPoint(edge);</span>
+<span class="nc" id="L3302">			IPoint p3 = getMesh().getPoint(getMesh().getNext(edge));</span>
+<span class="nc" id="L3303">			return GeometryUtils.isLeftOf(p1, p2, p3);</span>
+		};
+
+<span class="nc bnc" id="L3306" title="All 4 branches missed.">		return !getMesh().isBoundary(face) &amp;&amp; orientationPredicate.test(face);</span>
+	}
+
+	default IPoint[] getPoints(@NotNull final E edge) {
+<span class="nc" id="L3310">		final IPoint[] points = new IPoint[3];</span>
+<span class="nc" id="L3311">		points[0] = getMesh().getPoint(edge);</span>
+<span class="nc" id="L3312">		points[1] = getMesh().getPoint(getMesh().getNext(edge));</span>
+<span class="nc" id="L3313">		points[2] = getMesh().getPoint(getMesh().getPrev(edge));</span>
+<span class="nc" id="L3314">		return points;</span>
+	}
+
+	default IPoint[] getPoints(F face) {
+<span class="nc" id="L3318">		return getPoints(getMesh().getEdge(face));</span>
+	}
+
+	default void getTriPoints(@NotNull final F face, double[] x, double[] y, double[] z, @NotNull final IVertexContainerDouble&lt;V, E, F&gt; distances){
+<span class="nc bnc" id="L3322" title="All 8 branches missed.">		assert x.length == y.length &amp;&amp; y.length == z.length &amp;&amp; x.length == 3;</span>
+
+<span class="nc" id="L3324">		E edge = getMesh().getEdge(face);</span>
+<span class="nc" id="L3325">		V v = getMesh().getVertex(edge);</span>
+<span class="nc" id="L3326">		x[0] = getMesh().getX(v);</span>
+<span class="nc" id="L3327">		y[0] = getMesh().getY(v);</span>
+<span class="nc" id="L3328">		z[0] = distances.getValue(v);</span>
+
+<span class="nc" id="L3330">		v = getMesh().getVertex(getMesh().getNext(edge));</span>
+<span class="nc" id="L3331">		x[1] = getMesh().getX(v);</span>
+<span class="nc" id="L3332">		y[1] = getMesh().getY(v);</span>
+<span class="nc" id="L3333">		z[1] = distances.getValue(v);</span>
+
+<span class="nc" id="L3335">		v = getMesh().getVertex(getMesh().getPrev(edge));</span>
+<span class="nc" id="L3336">		x[2] = getMesh().getX(v);</span>
+<span class="nc" id="L3337">		y[2] = getMesh().getY(v);</span>
+<span class="nc" id="L3338">		z[2] = distances.getValue(v);</span>
+<span class="nc" id="L3339">	}</span>
+
+	default void getTriPoints(@NotNull final F face, double[] x, double[] y, double[] z, @NotNull final String name){
+<span class="nc bnc" id="L3342" title="All 8 branches missed.">		assert x.length == y.length &amp;&amp; y.length == z.length &amp;&amp; x.length == 3;</span>
+
+<span class="nc" id="L3344">		E edge = getMesh().getEdge(face);</span>
+<span class="nc" id="L3345">		V v = getMesh().getVertex(edge);</span>
+<span class="nc" id="L3346">		x[0] = getMesh().getX(v);</span>
+<span class="nc" id="L3347">		y[0] = getMesh().getY(v);</span>
+<span class="nc" id="L3348">		z[0] = getMesh().getDoubleData(v, name);</span>
+
+<span class="nc" id="L3350">		v = getMesh().getVertex(getMesh().getNext(edge));</span>
+<span class="nc" id="L3351">		x[1] = getMesh().getX(v);</span>
+<span class="nc" id="L3352">		y[1] = getMesh().getY(v);</span>
+<span class="nc" id="L3353">		z[1] = getMesh().getDoubleData(v, name);</span>
+
+<span class="nc" id="L3355">		v = getMesh().getVertex(getMesh().getPrev(edge));</span>
+<span class="nc" id="L3356">		x[2] = getMesh().getX(v);</span>
+<span class="nc" id="L3357">		y[2] = getMesh().getY(v);</span>
+<span class="nc" id="L3358">		z[2] = getMesh().getDoubleData(v, name);</span>
+<span class="nc" id="L3359">	}</span>
+
+	default void getTriPoints(@NotNull final F face, double[] x, double[] y, double[] z, Function&lt;V, Double&gt; func){
+<span class="nc bnc" id="L3362" title="All 8 branches missed.">		assert x.length == y.length &amp;&amp; y.length == z.length &amp;&amp; x.length == 3;</span>
+
+<span class="nc" id="L3364">		E edge = getMesh().getEdge(face);</span>
+<span class="nc" id="L3365">		V v = getMesh().getVertex(edge);</span>
+<span class="nc" id="L3366">		x[0] = getMesh().getX(v);</span>
+<span class="nc" id="L3367">		y[0] = getMesh().getY(v);</span>
+<span class="nc" id="L3368">		z[0] = func.apply(v);</span>
+
+<span class="nc" id="L3370">		v = getMesh().getVertex(getMesh().getNext(edge));</span>
+<span class="nc" id="L3371">		x[1] = getMesh().getX(v);</span>
+<span class="nc" id="L3372">		y[1] = getMesh().getY(v);</span>
+<span class="nc" id="L3373">		z[1] = func.apply(v);</span>
+
+<span class="nc" id="L3375">		v = getMesh().getVertex(getMesh().getPrev(edge));</span>
+<span class="nc" id="L3376">		x[2] = getMesh().getX(v);</span>
+<span class="nc" id="L3377">		y[2] = getMesh().getY(v);</span>
+<span class="nc" id="L3378">		z[2] = func.apply(v);</span>
+<span class="nc" id="L3379">	}</span>
+
+	/**
+	 * Returns the quality of a face / triangle.
+	 *
+	 * @param face the face which has to be a valid triangle
+	 * @return the quality of a face / triangle
+	 */
+	default double faceToQuality(final F face) {
+<span class="nc bnc" id="L3388" title="All 4 branches missed.">		assert getMesh().getEdges(face).size() == 3;</span>
+<span class="nc" id="L3389">		E edge = getMesh().getEdge(face);</span>
+<span class="nc" id="L3390">		IPoint p1 = getMesh().getVertex(edge);</span>
+<span class="nc" id="L3391">		IPoint p2 = getMesh().getVertex(getMesh().getNext(edge));</span>
+<span class="nc" id="L3392">		IPoint p3 = getMesh().getVertex(getMesh().getPrev(edge));</span>
+
+<span class="nc" id="L3394">		double quality = GeometryUtils.qualityInCircleOutCircle(p1, p2, p3);</span>
+<span class="nc" id="L3395">		return GeometryUtils.qualityInCircleOutCircle(p1, p2, p3);</span>
+	}
+
+	default double faceToLongestEdgeQuality(final F face) {
+<span class="nc" id="L3399">		E edge = getMesh().getEdge(face);</span>
+<span class="nc" id="L3400">		IPoint p1 = getMesh().getVertex(edge);</span>
+<span class="nc" id="L3401">		IPoint p2 = getMesh().getVertex(getMesh().getNext(edge));</span>
+<span class="nc" id="L3402">		IPoint p3 = getMesh().getVertex(getMesh().getPrev(edge));</span>
+<span class="nc" id="L3403">		return GeometryUtils.qualityLongestEdgeInCircle(p1, p2, p3);</span>
+	}
+
+	default void getVirtualSupport(@NotNull final V v, @NotNull final E edge, @NotNull final List&lt;Pair&lt;V, V&gt;&gt; virtualSupport) {
+		//assert isNonAcute(getMesh().getVertex(edge), getMesh().getVertex(getMesh().getNext(edge)), getMesh().getVertex(getMesh().getPrev(edge)));
+
+<span class="nc bnc" id="L3409" title="All 2 branches missed.">		if(getMesh().isAtBoundary(edge)) {</span>
+<span class="nc" id="L3410">			return;</span>
+		}
+
+<span class="nc" id="L3413">		E prev = getMesh().getPrev(edge);</span>
+<span class="nc" id="L3414">		E twin = getMesh().getTwin(edge);</span>
+
+<span class="nc" id="L3416">		V v1 = getMesh().getVertex(prev);</span>
+<span class="nc" id="L3417">		V v2 = getMesh().getVertex(edge);</span>
+<span class="nc" id="L3418">		V u = getMesh().getVertex(getMesh().getNext(twin));</span>
+
+<span class="nc bnc" id="L3420" title="All 2 branches missed.">		if(!isNonAcute(u, v, v1)) {</span>
+<span class="nc" id="L3421">			virtualSupport.add(Pair.of(v1, u));</span>
+		} else {
+<span class="nc" id="L3423">			getVirtualSupport(v, getMesh().getNext(twin), virtualSupport);</span>
+		}
+
+<span class="nc bnc" id="L3426" title="All 2 branches missed.">		if(!isNonAcute(v2, v, u)) {</span>
+<span class="nc" id="L3427">			virtualSupport.add(Pair.of(v2, u));</span>
+		} else {
+<span class="nc" id="L3429">			getVirtualSupport(v, getMesh().getPrev(twin), virtualSupport);</span>
+		}
+
+<span class="nc" id="L3432">	}</span>
+
+	default boolean isNonAcute(V v1, V v2, V v3) {
+<span class="nc" id="L3435">		double angle1 = GeometryUtils.angle(v1, v2, v3);</span>
+
+		// non-acute triangle
+<span class="nc" id="L3438">		double rightAngle = Math.PI/2;</span>
+<span class="nc bnc" id="L3439" title="All 2 branches missed.">		return angle1 &gt; rightAngle + GeometryUtils.DOUBLE_EPS;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

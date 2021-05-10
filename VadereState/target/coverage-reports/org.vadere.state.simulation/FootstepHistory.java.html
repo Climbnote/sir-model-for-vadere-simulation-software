@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FootstepHistory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.simulation</a> &gt; <span class="el_source">FootstepHistory.java</span></div><h1>FootstepHistory.java</h1><pre class="source lang-java linenums">package org.vadere.state.simulation;
+
+import org.jetbrains.annotations.Nullable;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.Vector2D;
+
+import java.util.ArrayList;
+import java.util.stream.Collectors;
+
+/**
+ * Store the last foot steps of an agent to calculate the agent's average speed during simulation.
+ */
+<span class="pc bpc" id="L13" title="1 of 2 branches missed.">public class FootstepHistory {</span>
+
+    // Variables
+    private int capacity;
+    private ArrayList&lt;FootStep&gt; footSteps;
+
+    // Constructors
+    public FootstepHistory() {
+<span class="nc" id="L21">        this(10);</span>
+<span class="nc" id="L22">    }</span>
+<span class="fc" id="L23">    public FootstepHistory(int capacity) {</span>
+<span class="fc" id="L24">        this.capacity = capacity;</span>
+<span class="fc" id="L25">        this.footSteps = new ArrayList&lt;&gt;(capacity);</span>
+<span class="fc" id="L26">    }</span>
+
+    // Getters
+<span class="fc" id="L29">    public int getCapacity() { return capacity; }</span>
+<span class="fc" id="L30">    public ArrayList&lt;FootStep&gt; getFootSteps() { return footSteps; }</span>
+<span class="nc" id="L31">    public int size() { return footSteps.size(); }</span>
+
+    // Methods
+    public boolean add(FootStep footStep) {
+<span class="fc bfc" id="L35" title="All 2 branches covered.">        if (footSteps.size() &gt;= capacity) {</span>
+<span class="fc" id="L36">            footSteps.remove(0);</span>
+        }
+
+<span class="fc" id="L39">        boolean successful = footSteps.add(footStep);</span>
+
+<span class="fc" id="L41">        return successful;</span>
+    }
+
+	public void removeLast() {
+<span class="pc bpc" id="L45" title="2 of 4 branches missed.">		assert !footSteps.isEmpty();</span>
+<span class="fc" id="L46">		footSteps.remove(footSteps.size()-1);</span>
+<span class="fc" id="L47">	}</span>
+
+    public double getAverageSpeedInMeterPerSecond() {
+<span class="fc" id="L50">        double speed = Double.NaN;</span>
+
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        if (footSteps.size() &gt; 0) {</span>
+            // Speed is length divided by time.
+<span class="fc" id="L54">            double distance =  footSteps.stream().mapToDouble(footStep -&gt; footStep.length()).sum();</span>
+            // This approach works also if &quot;footSteps.size() == 1&quot;
+<span class="fc" id="L56">            double time = getYoungestFootStep().getEndTime() - getOldestFootStep().getStartTime();</span>
+
+<span class="fc" id="L58">            speed = distance / time;</span>
+        }
+
+<span class="fc" id="L61">        return speed;</span>
+    }
+
+    public FootStep getOldestFootStep() {
+<span class="fc" id="L65">        FootStep oldestFootStep = null;</span>
+
+<span class="fc bfc" id="L67" title="All 2 branches covered.">        if (footSteps.size() &gt; 0) {</span>
+<span class="fc" id="L68">            oldestFootStep = footSteps.get(0);</span>
+        }
+
+<span class="fc" id="L71">        return oldestFootStep;</span>
+    }
+
+    /**
+     *  Heading based on  TraCI angle
+     *  * - measured in degree
+     *  * - 0 is headed north
+     *  * - clockwise orientation (i.e. 90 heads east, 180 heads south, etc.)
+     *  * - range from 0 to 360.
+     *
+     * @return Heading angle based on last FootStep.
+     */
+    public double getNorthBoundHeadingAngleDeg(){
+<span class="fc" id="L84">        return getNorthBoundHeadingAngle(1, true);</span>
+    }
+
+    public double getNorthBoundHeadingAngleRad(){
+<span class="nc" id="L88">        return getNorthBoundHeadingAngle(1, false);</span>
+    }
+
+    public double getNorthBoundHeadingAngle(int histLength, boolean degree){
+<span class="fc bfc" id="L92" title="All 2 branches covered.">        if (footSteps.size() &lt; histLength)</span>
+<span class="fc" id="L93">            return 0.0; // not enough data. Return North heading.</span>
+
+<span class="fc" id="L95">        VPoint currentLocation = footSteps.get(footSteps.size() -1).getEnd();</span>
+<span class="fc" id="L96">        VPoint pastLocation = footSteps.get(footSteps.size() - histLength).getStart();</span>
+<span class="fc" id="L97">        Vector2D heading = new Vector2D(currentLocation.x - pastLocation.x, currentLocation.y - pastLocation.y);</span>
+<span class="fc bfc" id="L98" title="All 2 branches covered.">        if (Math.abs(heading.getLength() -0.0) &lt; 0.0001){</span>
+            //Footstep to small
+<span class="fc" id="L100">            return 0.0; // assume North heading</span>
+        }
+
+        // TraCI Angle defined as Clockwise with North as 0 deg.
+        // clockwise: | 2PI - angle |
+        // 0 at North: + PI
+        // mod 2PI for [0, 2PI]
+<span class="fc" id="L107">        double angel = (Math.abs(2*Math.PI - heading.angleToZero()) + 0.5*Math.PI) % (2* Math.PI); // angle with y-axis</span>
+
+<span class="pc bpc" id="L109" title="1 of 2 branches missed.">        if (degree)</span>
+<span class="fc" id="L110">            return  angel*(180/Math.PI);</span>
+<span class="nc" id="L111">        return angel;</span>
+    }
+
+    @Nullable
+    public FootStep getYoungestFootStep() {
+<span class="fc" id="L116">        FootStep youngestFootStep = null;</span>
+
+<span class="fc bfc" id="L118" title="All 2 branches covered.">        if (footSteps.size() &gt; 0) {</span>
+<span class="fc" id="L119">            youngestFootStep = footSteps.get(footSteps.size() - 1);</span>
+        }
+
+<span class="fc" id="L122">        return youngestFootStep;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L127">        String footStepPrefix = String.format(&quot;Last Footseps (%d): &quot;, footSteps.size());</span>
+
+<span class="nc" id="L129">        String footStepString = footSteps.stream().map(footStep -&gt; footStep.toString()).collect(Collectors.joining(&quot; -&gt; &quot;));</span>
+
+<span class="nc" id="L131">        return footStepPrefix + footStepString;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

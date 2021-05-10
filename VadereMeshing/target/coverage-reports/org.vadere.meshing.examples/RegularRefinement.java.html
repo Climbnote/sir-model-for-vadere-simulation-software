@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RegularRefinement.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.examples</a> &gt; <span class="el_source">RegularRefinement.java</span></div><h1>RegularRefinement.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.examples;
+
+import org.vadere.meshing.mesh.gen.AFace;
+import org.vadere.meshing.mesh.gen.AHalfEdge;
+import org.vadere.meshing.mesh.gen.AVertex;
+import org.vadere.meshing.mesh.gen.MeshPanel;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PVertex;
+import org.vadere.meshing.mesh.impl.PMeshPanel;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.impl.PEikMesh;
+import org.vadere.meshing.mesh.triangulation.triangulator.gen.GenRegularRefinement;
+import org.vadere.meshing.mesh.triangulation.triangulator.gen.GenRivaraRefinement;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.ADelaunayTriangulator;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.PDelaunayTriangulator;
+import org.vadere.util.geometry.shapes.VPoint;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+<span class="nc" id="L29">public class RegularRefinement {</span>
+	public static void main(String... args) throws InterruptedException, IOException {
+		// (1) generate a random delaunay triangulation to work with
+<span class="nc" id="L32">		Random random = new Random(10);</span>
+<span class="nc" id="L33">		int width = 10;</span>
+<span class="nc" id="L34">		int height = 10;</span>
+<span class="nc" id="L35">		int numberOfPoints = 100;</span>
+<span class="nc" id="L36">		Supplier&lt;VPoint&gt; supply = () -&gt; new VPoint(random.nextDouble()*width, random.nextDouble()*height);</span>
+<span class="nc" id="L37">		Stream&lt;VPoint&gt; randomPoints = Stream.generate(supply);</span>
+<span class="nc" id="L38">		List&lt;VPoint&gt; points = randomPoints.limit(numberOfPoints).collect(Collectors.toList());</span>
+
+		// (2) compute the Delaunay triangulation
+<span class="nc" id="L41">		var dt = new PDelaunayTriangulator(points);</span>
+<span class="nc" id="L42">		var triangulation = dt.generate();</span>
+
+<span class="nc" id="L44">		var meshImprover = new PEikMesh(</span>
+<span class="nc" id="L45">				p -&gt; 2.0,</span>
+<span class="nc" id="L46">				dt.getTriangulation()</span>
+		);
+
+		// display the mesh
+<span class="nc" id="L50">		MeshPanel meshPanel = new MeshPanel&lt;&gt;(meshImprover.getMesh(), 500, 500);</span>
+<span class="nc" id="L51">		meshPanel.display();</span>
+<span class="nc bnc" id="L52" title="All 2 branches missed.">		while (!meshImprover.isFinished()) {</span>
+<span class="nc" id="L53">			meshImprover.improve();</span>
+<span class="nc" id="L54">			Thread.sleep(10);</span>
+<span class="nc" id="L55">			System.out.println(&quot;quality = &quot; + meshImprover.getQuality());</span>
+<span class="nc" id="L56">			System.out.println(&quot;boundary edges = &quot; + meshImprover.getMesh().getBoundaryEdges().size());</span>
+<span class="nc" id="L57">			meshPanel.repaint();</span>
+		}
+
+<span class="nc" id="L60">		meshImprover.finish();</span>
+<span class="nc" id="L61">		meshPanel = new PMeshPanel(triangulation.getMesh(), 800, 800);</span>
+<span class="nc" id="L62">		meshPanel.display(&quot;Random Delaunay triangulation&quot;);</span>
+		//meshPanel.repaint();
+
+
+<span class="nc" id="L66">		VPoint p = new VPoint(5,5);</span>
+<span class="nc" id="L67">		double radius = 2.0;</span>
+
+<span class="nc" id="L69">		GenRegularRefinement&lt;PVertex, PHalfEdge, PFace&gt; refinement = new GenRegularRefinement&lt;&gt;(</span>
+				triangulation,
+				//e -&gt; triangulation.getMesh().toLine(e).length() &gt; 0.5 &amp;&amp; triangulation.getMesh().toTriangle(triangulation.getMesh().getFace(e)).midPoint().distance(p) &lt;= radius,
+				3);
+
+<span class="nc" id="L74">		Predicate&lt;PHalfEdge&gt; edgeSplitPredicate = e -&gt;</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">				!triangulation.getMesh().isBoundary(e) &amp;&amp;</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">						triangulation.getMesh().toTriangle(triangulation.getMesh().getFace(e)).midPoint().distance(p) &lt; 3.0 &amp;&amp;</span>
+<span class="nc bnc" id="L77" title="All 4 branches missed.">						(!refinement.isGreen(e) || triangulation.getMesh().toLine(e).length() &gt; 0.5);</span>
+
+		//refinement.setEdgeRefinementPredicate(edgeSplitPredicate);
+<span class="nc" id="L80">		synchronized (triangulation.getMesh()) {</span>
+<span class="nc" id="L81">			refinement.refine();</span>
+<span class="nc" id="L82">		}</span>
+
+<span class="nc" id="L84">		meshPanel.repaint();</span>
+
+		/*Thread.sleep(2000);
+		VPoint q = new VPoint(3,3);
+		Predicate&lt;PVertex&gt; coarsePredicate = v -&gt; q.distance(v) &gt; 3.0;
+		refinement.setCoarsePredicate(coarsePredicate);
+		refinement.coarse();
+
+
+		Thread.sleep(2000);
+
+		edgeSplitPredicate = e -&gt;
+				!triangulation.getMesh().isBoundary(e) &amp;&amp;
+						triangulation.getMesh().toTriangle(triangulation.getMesh().getFace(e)).midPoint().distance(q) &lt; 3.0 &amp;&amp;
+						(!refinement.isGreen(e) || triangulation.getMesh().toLine(e).length() &gt; 0.5);
+		refinement.setEdgeRefinementPredicate(edgeSplitPredicate);
+		refinement.refine();*/
+<span class="nc" id="L101">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

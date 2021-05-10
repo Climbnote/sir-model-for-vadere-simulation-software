@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VadereConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.config</a> &gt; <span class="el_source">VadereConfig.java</span></div><h1>VadereConfig.java</h1><pre class="source lang-java linenums">package org.vadere.util.config;
+
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.FileBasedConfiguration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
+import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.builder.fluent.PropertiesBuilderParameters;
+import org.apache.commons.configuration2.convert.DefaultListDelimiterHandler;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.vadere.util.logging.Logger;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+
+/**
+ * A {@link VadereConfig} reads its options from a text file in &quot;properties&quot; style. I.e., simple
+ * key-value pairs where keys can contain dots but no section dividers are allowed (for more details
+ * see https://commons.apache.org/proper/commons-configuration/userguide/howto_properties.html#Properties_files).
+ * {@link VadereConfig} uses the Apache Commons Configuration library to read such property files.
+ *
+ * A Vadere config file looks like this:
+ *
+ * &lt;pre&gt;
+ * # PostVis
+ * PostVis.SVGWidth=1024
+ * PostVis.SVGHeight=768
+ * &lt;/pre&gt;
+ *
+ * This config object is used like this:
+ *
+ * &lt;pre&gt;int svgWidth = VadereConfig.getConfig().getInt(&quot;PostVis.SVGWidth&quot;);&lt;/pre&gt;
+ */
+public class VadereConfig {
+
+	// Static Variables
+<span class="nc" id="L44">	private static final Logger LOGGER = Logger.getLogger(VadereConfig.class);</span>
+
+	// If changing any of the following values, remember to also change it in the CI configuration
+<span class="nc" id="L47">	private static final String DEFAULT_HOME_DIR = System.getProperty(&quot;user.home&quot;);</span>
+	private static final String DEFAULT_CONFIG_DIR = &quot;.config&quot;;
+
+	// Both variables must not be &quot;final&quot; so that we are able
+	// to inject another config file from CLI argument &quot;--config-file myconfig.conf&quot;
+	// via static method &quot;setConfigPath()&quot;.
+<span class="nc" id="L53">	private static String CONFIG_FILENAME = &quot;vadere.conf&quot;;</span>
+<span class="nc" id="L54">	private static Path CONFIG_PATH = Path.of(DEFAULT_HOME_DIR, DEFAULT_CONFIG_DIR, CONFIG_FILENAME);</span>
+
+	private static VadereConfig SINGLETON_INSTANCE;
+
+	// Variables
+	private FileBasedConfiguration vadereConfig;
+
+	// Constructors
+<span class="nc" id="L62">	private VadereConfig() {</span>
+
+<span class="nc" id="L64">		createDefaultConfigIfNonExisting();</span>
+
+<span class="nc" id="L66">		LOGGER.info(String.format(&quot;Use config file from path %s&quot;, CONFIG_PATH));</span>
+
+		// If Vadere was started like &quot;vadere-console.jar --config-file here.txt&quot;, search in current working directory.
+<span class="nc bnc" id="L69" title="All 2 branches missed.">		String basePath = (CONFIG_PATH.getParent() == null) ? System.getProperty(&quot;user.dir&quot;) : CONFIG_PATH.getParent().toString();</span>
+
+<span class="nc" id="L71">		PropertiesBuilderParameters propertiesParams = new Parameters()</span>
+<span class="nc" id="L72">				.properties()</span>
+<span class="nc" id="L73">				.setFileName(CONFIG_FILENAME)</span>
+<span class="nc" id="L74">				.setBasePath(basePath)</span>
+<span class="nc" id="L75">				.setListDelimiterHandler(new DefaultListDelimiterHandler(',')</span>
+				);
+
+<span class="nc" id="L78">		FileBasedConfigurationBuilder&lt;FileBasedConfiguration&gt; builder =</span>
+				new FileBasedConfigurationBuilder&lt;FileBasedConfiguration&gt;(PropertiesConfiguration.class)
+<span class="nc" id="L80">						.configure(propertiesParams);</span>
+<span class="nc" id="L81">		builder.setAutoSave(true);</span>
+
+		try {
+<span class="nc" id="L84">			vadereConfig = builder.getConfiguration();</span>
+<span class="nc" id="L85">		} catch (ConfigurationException ex) {</span>
+<span class="nc" id="L86">			LOGGER.error(String.format(&quot;Error while reading config file \&quot;%s\&quot;: %s&quot;, CONFIG_PATH.toString(), ex.getMessage()));</span>
+<span class="nc" id="L87">			LOGGER.info(&quot;Create and use default config&quot;);</span>
+<span class="nc" id="L88">		}</span>
+
+<span class="nc" id="L90">		compareAndChangeDefaultKeysInExistingFile();</span>
+
+/*  // TODO: see also issue #258 -- the problem is that this function sorts the file, but it gets reverted by the (auto-) save functionality of the builder object
+        try{
+            sortFileLinesAlphabetically(builder.getFileHandler().getFile());
+        }catch (IOException ioex){
+            LOGGER.error(String.format(&quot;Error while reading config file \&quot;%s\&quot;: %s&quot;, CONFIG_PATH.toString(),
+                    ioex.getMessage()));
+        }
+*/
+
+		try {
+<span class="nc" id="L102">			builder.save();</span>
+<span class="nc" id="L103">		} catch (ConfigurationException ex) {</span>
+<span class="nc" id="L104">			LOGGER.error(String.format(&quot;Error while saving config file \&quot;%s\&quot;: %s&quot;, CONFIG_PATH.toString(),</span>
+<span class="nc" id="L105">					ex.getMessage()));</span>
+<span class="nc" id="L106">		}</span>
+
+<span class="nc" id="L108">	}</span>
+
+
+/*  // TODO: see also issue #258 -- the problem is that this function sorts the file, but it gets reverted by the (auto-) save functionality of the builder object
+    private void sortFileLinesAlphabetically(File file) throws IOException {
+        FileReader fileReader = new FileReader(file);
+
+        BufferedReader bufferedReader = new BufferedReader(fileReader);
+        String inputLine;
+        List&lt;String&gt; lineList = new ArrayList&lt;&gt;();
+        while ((inputLine = bufferedReader.readLine()) != null) {
+            if(!inputLine.isBlank()) {
+                lineList.add(inputLine);
+            }
+        }
+
+        fileReader.close();
+        bufferedReader.close();
+
+        Collections.sort(lineList);
+
+        FileWriter fileWriter = new FileWriter(file);
+        PrintWriter out = new PrintWriter(fileWriter);
+        for (String outputLine : lineList) {
+            out.println(outputLine);
+        }
+
+        out.flush();
+        out.close();
+        fileWriter.close();
+    }*/
+
+	private void createDefaultConfigIfNonExisting() {
+		try { // Ensure that config directory exists.
+<span class="nc" id="L142">			Files.createDirectories(Path.of(DEFAULT_HOME_DIR, DEFAULT_CONFIG_DIR));</span>
+<span class="nc" id="L143">		} catch (IOException ex) {</span>
+<span class="nc" id="L144">			LOGGER.error(String.format(&quot;Cannot create directory: %s&quot;, Path.of(DEFAULT_HOME_DIR, DEFAULT_CONFIG_DIR)));</span>
+<span class="nc" id="L145">		}</span>
+
+<span class="nc bnc" id="L147" title="All 2 branches missed.">		if (Files.exists(CONFIG_PATH) == false) {</span>
+<span class="nc" id="L148">			Map&lt;String, String&gt; defaultConfig = getDefaultConfig();</span>
+
+			try {
+<span class="nc" id="L151">				LOGGER.info(String.format(&quot;Writing default config file: %s&quot;, CONFIG_PATH));</span>
+
+<span class="nc" id="L153">				Files.write(</span>
+						CONFIG_PATH,
+						defaultConfig
+<span class="nc" id="L156">								.entrySet()</span>
+<span class="nc" id="L157">								.stream()</span>
+<span class="nc" id="L158">								.map(entry -&gt; entry.getKey() + &quot; = &quot; + entry.getValue())</span>
+<span class="nc" id="L159">								.sorted(String::compareTo)</span>
+<span class="nc" id="L160">								.collect(Collectors.toList()));</span>
+<span class="nc" id="L161">			} catch (IOException e) {</span>
+<span class="nc" id="L162">				LOGGER.error(String.format(&quot;Error while writing default config file \&quot;%s\&quot;: %s&quot;, CONFIG_PATH, e.getMessage()));</span>
+<span class="nc" id="L163">			}</span>
+		}
+<span class="nc" id="L165">	}</span>
+
+	private void compareAndChangeDefaultKeysInExistingFile() {
+		// Function that removes and adds Key-Value pairs locally when keys are inserted or removed in Vadere.conf.
+		// For both actions a info is written on the console.
+
+		// The keys of the default config have to match the keys from the existing file!
+<span class="nc" id="L172">		Map&lt;String, String&gt; defaultConfig = getDefaultConfig();</span>
+
+		// First case: if key is missing in existing file then add it but added in to the defaultConfig
+		//   -- usually happens when a new configuration key was introduced
+<span class="nc bnc" id="L176" title="All 2 branches missed.">		for (String key : defaultConfig.keySet()) {</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">			if (!vadereConfig.containsKey(key)) {</span>
+<span class="nc" id="L178">				String defaultValue = defaultConfig.get(key);</span>
+
+<span class="nc" id="L180">				vadereConfig.addProperty(key, defaultValue);</span>
+<span class="nc" id="L181">				LOGGER.info(String.format(&quot;Added key \&quot;%s = %s\&quot; to file %s because the configuration key-value pair &quot; +</span>
+						&quot;was not present in the file.&quot;, key, defaultValue, CONFIG_PATH));
+			}
+<span class="nc" id="L184">		}</span>
+
+		// Second case: if key was removed from defaultConfig, then it is also removed from the current file
+		//   -- usually happens when a configuration key was removed
+<span class="nc bnc" id="L188" title="All 2 branches missed.">		for (Iterator&lt;String&gt; iter = vadereConfig.getKeys(); iter.hasNext(); ) {</span>
+<span class="nc" id="L189">			String key = iter.next();</span>
+<span class="nc bnc" id="L190" title="All 2 branches missed.">			if (!defaultConfig.containsKey(key)) {</span>
+<span class="nc" id="L191">				iter.remove();</span>
+<span class="nc" id="L192">				LOGGER.info(String.format(&quot;Removed key \&quot;%s\&quot; in file %s because there is no corresponding key entry &quot; +</span>
+						&quot;in the \&quot;defaultConfig\&quot; in source file VadereConfig.java&quot;, key, CONFIG_PATH));
+			}
+<span class="nc" id="L195">		}</span>
+
+<span class="nc" id="L197">	}</span>
+
+	// Static setters
+
+	/**
+	 * With this setter one can inject a different config file instead of using
+	 * &quot;~/.config/vadere.conf&quot;.
+	 *
+	 * @param configPath Path to config file.
+	 */
+	public static void setConfigPath(String configPath) {
+<span class="nc" id="L208">		CONFIG_PATH = Path.of(configPath);</span>
+<span class="nc" id="L209">		CONFIG_FILENAME = CONFIG_PATH.getFileName().toString();</span>
+<span class="nc" id="L210">	}</span>
+
+	// Static getters
+
+	/**
+	 * Use Apache Common Configuration API on the returned object to retrieve Vadere's config
+	 * options.
+	 *
+	 * See https://commons.apache.org/proper/commons-configuration/userguide/howto_properties.html#Properties_files
+	 *
+	 * @return A Configuration object from Apache Common Configuration library.
+	 */
+	public static Configuration getConfig() {
+<span class="nc bnc" id="L223" title="All 2 branches missed.">		if (SINGLETON_INSTANCE == null) {</span>
+<span class="nc" id="L224">			SINGLETON_INSTANCE = new VadereConfig();</span>
+		}
+<span class="nc" id="L226">		return SINGLETON_INSTANCE.vadereConfig;</span>
+	}
+
+	// Methods
+
+	private static Map&lt;String, String&gt; getDefaultConfig() {
+		//NOTE: Remember to also add the new configuration in existing vadere.conf file.
+
+<span class="nc" id="L234">		final Map&lt;String, String&gt; defaultConfig = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L236">		String defaultSearchDirectory = System.getProperty(&quot;user.home&quot;);</span>
+
+<span class="nc" id="L238">		defaultConfig.put(&quot;Density.measurementScale&quot;, &quot;10.0&quot;);</span>
+<span class="nc" id="L239">		defaultConfig.put(&quot;Density.measurementRadius&quot;, &quot;15&quot;);</span>
+<span class="nc" id="L240">		defaultConfig.put(&quot;Density.standardDeviation&quot;, &quot;0.5&quot;);</span>
+<span class="nc" id="L241">		defaultConfig.put(&quot;Gui.showNodes&quot;, &quot;false&quot;);</span>
+<span class="nc" id="L242">		defaultConfig.put(&quot;Gui.node.radius&quot;, &quot;0.3&quot;);</span>
+<span class="nc" id="L243">		defaultConfig.put(&quot;Gui.dataProcessingViewMode&quot;, &quot;gui&quot;);</span>
+<span class="nc" id="L244">		defaultConfig.put(&quot;Gui.toolbar.size&quot;, &quot;40&quot;);</span>
+<span class="nc" id="L245">		defaultConfig.put(&quot;Gui.lastSavePoint&quot;, defaultSearchDirectory);</span>
+<span class="nc" id="L246">		defaultConfig.put(&quot;History.lastUsedProject&quot;, &quot;&quot;);</span>
+<span class="nc" id="L247">		defaultConfig.put(&quot;History.recentProjects&quot;, &quot;&quot;);</span>
+<span class="nc" id="L248">		defaultConfig.put(&quot;Messages.language&quot;, Locale.ENGLISH.getLanguage());</span>
+<span class="nc" id="L249">		defaultConfig.put(&quot;Pedestrian.radius&quot;, &quot;0.195&quot;);</span>
+<span class="nc" id="L250">		defaultConfig.put(&quot;PostVis.SVGWidth&quot;, &quot;1024&quot;);</span>
+<span class="nc" id="L251">		defaultConfig.put(&quot;PostVis.SVGHeight&quot;, &quot;768&quot;);</span>
+<span class="nc" id="L252">		defaultConfig.put(&quot;PostVis.maxNumberOfSaveDirectories&quot;, &quot;5&quot;);</span>
+<span class="nc" id="L253">		defaultConfig.put(&quot;PostVis.maxFramePerSecond&quot;, &quot;40&quot;);</span>
+<span class="nc" id="L254">		defaultConfig.put(&quot;PostVis.framesPerSecond&quot;, &quot;20&quot;);</span>
+<span class="nc" id="L255">		defaultConfig.put(&quot;PostVis.timeResolution&quot;, &quot;0.4&quot;);</span>
+<span class="nc" id="L256">		defaultConfig.put(&quot;PostVis.cellWidth&quot;, &quot;1.0&quot;);</span>
+<span class="nc" id="L257">		defaultConfig.put(&quot;PostVis.minCellWidth&quot;, &quot;0.01&quot;);</span>
+<span class="nc" id="L258">		defaultConfig.put(&quot;PostVis.maxCellWidth&quot;, &quot;10.0&quot;);</span>
+<span class="nc" id="L259">		defaultConfig.put(&quot;PostVis.enableJsonInformationPanel&quot;, &quot;true&quot;);</span>
+<span class="nc" id="L260">		defaultConfig.put(&quot;ProjectView.icon.height.value&quot;, &quot;35&quot;);</span>
+<span class="nc" id="L261">		defaultConfig.put(&quot;ProjectView.icon.width.value&quot;, &quot;35&quot;);</span>
+<span class="nc" id="L262">		defaultConfig.put(&quot;ProjectView.cellWidth&quot;, &quot;1.0&quot;);</span>
+<span class="nc" id="L263">		defaultConfig.put(&quot;ProjectView.minCellWidth&quot;, &quot;0.01&quot;);</span>
+<span class="nc" id="L264">		defaultConfig.put(&quot;ProjectView.maxCellWidth&quot;, &quot;10.0&quot;);</span>
+<span class="nc" id="L265">		defaultConfig.put(&quot;ProjectView.defaultDirectory&quot;, defaultSearchDirectory);</span>
+<span class="nc" id="L266">		defaultConfig.put(&quot;ProjectView.defaultDirectoryAttributes&quot;, defaultSearchDirectory);</span>
+<span class="nc" id="L267">		defaultConfig.put(&quot;ProjectView.defaultDirectoryScenarios&quot;, defaultSearchDirectory);</span>
+<span class="nc" id="L268">		defaultConfig.put(&quot;ProjectView.defaultDirectoryOutputProcessors&quot;, defaultSearchDirectory);</span>
+<span class="nc" id="L269">		defaultConfig.put(&quot;Project.simulationResult.show&quot;, &quot;true&quot;);</span>
+<span class="nc" id="L270">		defaultConfig.put(&quot;Project.ScenarioChecker.active&quot;, &quot;false&quot;);</span>
+<span class="nc" id="L271">		defaultConfig.put(&quot;SettingsDialog.dataFormat&quot;, &quot;yyyy_MM_dd_HH_mm_ss&quot;);</span>
+<span class="nc" id="L272">		defaultConfig.put(&quot;SettingsDialog.outputDirectory.path&quot;, &quot;.&quot;);</span>
+<span class="nc" id="L273">		defaultConfig.put(&quot;SettingsDialog.snapshotDirectory.path&quot;, &quot;.&quot;);</span>
+<span class="nc" id="L274">		defaultConfig.put(&quot;SettingsDialog.showLogo&quot;, &quot;false&quot;);</span>
+<span class="nc" id="L275">		defaultConfig.put(&quot;Testing.stepCircleOptimization.compareBruteForceSolution&quot;, &quot;false&quot;);</span>
+<span class="nc" id="L276">		defaultConfig.put(&quot;TopographyCreator.dotRadius&quot;, &quot;0.5&quot;);</span>
+<span class="nc" id="L277">		defaultConfig.put(&quot;Vadere.cache.useGlobalCacheBaseDir&quot;, &quot;false&quot;);</span>
+<span class="nc" id="L278">		defaultConfig.put(&quot;Vadere.cache.globalCacheBaseDir&quot;, defaultSearchDirectory + &quot;/.cache/vadere&quot;);</span>
+
+<span class="nc" id="L280">		return defaultConfig;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

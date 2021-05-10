@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ElementSizeFunction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.examples</a> &gt; <span class="el_source">ElementSizeFunction.java</span></div><h1>ElementSizeFunction.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.examples;
+
+import org.vadere.meshing.mesh.gen.MeshRenderer;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.impl.PMeshPanel;
+import org.vadere.meshing.mesh.impl.PSLG;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.EdgeLengthFunctionApprox;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.impl.PEikMesh;
+import org.vadere.meshing.utils.color.Colors;
+import org.vadere.meshing.utils.io.poly.PSLGGenerator;
+import org.vadere.meshing.utils.io.tex.TexGraphGenerator;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.util.math.IDistanceFunction;
+
+import java.awt.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.function.Function;
+
+<span class="nc" id="L20">public class ElementSizeFunction {</span>
+
+	public static void main(String ... args) throws IOException {
+<span class="nc" id="L23">		String fileName = &quot;/poly/kaiserslautern.poly&quot;;</span>
+<span class="nc" id="L24">		final InputStream inputStream = ElementSizeFunction.class.getResourceAsStream(&quot;/poly/kaiserslautern.poly&quot;);</span>
+
+<span class="nc" id="L26">		System.out.println(String.format(&quot;Meshing %s...&quot;, fileName));</span>
+
+<span class="nc" id="L28">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L29">		System.out.println(&quot;minX = &quot; + pslg.getAllPoints().stream().mapToDouble(p -&gt; p.getX()).min().getAsDouble());</span>
+<span class="nc" id="L30">		System.out.println(&quot;minY = &quot; + pslg.getAllPoints().stream().mapToDouble(p -&gt; p.getY()).min().getAsDouble());</span>
+<span class="nc" id="L31">		System.out.println(&quot;maxX = &quot; + pslg.getAllPoints().stream().mapToDouble(p -&gt; p.getX()).max().getAsDouble());</span>
+<span class="nc" id="L32">		System.out.println(&quot;maxY = &quot; + pslg.getAllPoints().stream().mapToDouble(p -&gt; p.getY()).max().getAsDouble());</span>
+<span class="nc" id="L33">		EdgeLengthFunctionApprox edgeLengthFunctionApprox = new EdgeLengthFunctionApprox(pslg);</span>
+<span class="nc" id="L34">		edgeLengthFunctionApprox.smooth(0.4);</span>
+<span class="nc" id="L35">		edgeLengthFunctionApprox.printPython();</span>
+
+<span class="nc" id="L37">		Function&lt;PFace, Color&gt; colorFunction = f -&gt; {</span>
+<span class="nc" id="L38">			VTriangle triangle = edgeLengthFunctionApprox.getMesh().toTriangle(f);</span>
+<span class="nc bnc" id="L39" title="All 4 branches missed.">			if(pslg.getHoles().stream().anyMatch(hole -&gt; hole.contains(triangle.midPoint())) || !pslg.getSegmentBound().contains(triangle.midPoint())) {</span>
+<span class="nc" id="L40">				return Color.WHITE;</span>
+			} else {
+<span class="nc" id="L42">				return Colors.YELLOW;</span>
+			}
+		};
+
+<span class="nc" id="L46">		System.out.println(TexGraphGenerator.toTikz(edgeLengthFunctionApprox.getMesh(), colorFunction, e -&gt; Color.BLACK, v -&gt; Color.BLACK, 1.0f, true));</span>
+<span class="nc" id="L47">		System.out.println(edgeLengthFunctionApprox.getMesh().getNumberOfVertices());</span>
+
+<span class="nc" id="L49">		double h0 = 1.0;</span>
+<span class="nc" id="L50">		var meshImprover = new PEikMesh(</span>
+<span class="nc" id="L51">				IDistanceFunction.create(pslg.getSegmentBound(), pslg.getHoles()),</span>
+<span class="nc" id="L52">				p -&gt; edgeLengthFunctionApprox.apply(p),</span>
+				h0,
+<span class="nc" id="L54">				pslg.getBoundingBox(),</span>
+<span class="nc" id="L55">				pslg.getAllPolygons()</span>
+		);
+
+<span class="nc" id="L58">		var meshRenderer = new MeshRenderer&lt;&gt;(meshImprover.getMesh(), f -&gt; false, f -&gt; Color.WHITE, e -&gt; Color.GRAY, v -&gt; Color.BLACK);</span>
+<span class="nc" id="L59">		var meshPanel = new PMeshPanel(meshRenderer, 1000, 800);</span>
+<span class="nc" id="L60">		meshPanel.display(&quot;Combined distance functions &quot; + h0);</span>
+<span class="nc" id="L61">		meshImprover.improve();</span>
+<span class="nc" id="L62">		int i = 1;</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">		while (!meshImprover.isFinished()) {</span>
+<span class="nc" id="L64">			synchronized (meshImprover.getMesh()) {</span>
+<span class="nc" id="L65">				meshImprover.improve();</span>
+<span class="nc" id="L66">			}</span>
+			//Thread.sleep(500);
+<span class="nc" id="L68">			meshPanel.repaint();</span>
+<span class="nc" id="L69">			System.out.println(i + &quot;:&quot; + meshImprover.getQuality());</span>
+<span class="nc" id="L70">			i++;</span>
+		}
+
+<span class="nc" id="L73">		System.out.println(TexGraphGenerator.toTikz(meshImprover.getMesh(), colorFunction, e -&gt; Color.BLACK, v -&gt; Color.BLACK, 1.0f, true));</span>
+<span class="nc" id="L74">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

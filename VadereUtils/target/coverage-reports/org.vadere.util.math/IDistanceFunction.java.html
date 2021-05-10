@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IDistanceFunction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.math</a> &gt; <span class="el_source">IDistanceFunction.java</span></div><h1>IDistanceFunction.java</h1><pre class="source lang-java linenums">package org.vadere.util.math;
+
+
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.function.Function;
+
+
+/**
+ * @author Benedikt Zoennchen
+ *
+ * A signed distance function d.
+ * d(x) greater than 0 if x is outside
+ * d(x) smaller or equals 0 if x is inside
+ */
+<span class="nc bnc" id="L22" title="All 2 branches missed.">@FunctionalInterface</span>
+public interface IDistanceFunction extends Function&lt;IPoint, Double&gt; {
+
+	static IDistanceFunction createRing(final double xCenter, final double yCenter, final double innerRadius, final double outerRadius) {
+<span class="nc" id="L26">		final double x1 = (outerRadius + innerRadius) / 2.0;</span>
+<span class="nc" id="L27">		final double x2 = (outerRadius - innerRadius) / 2.0;</span>
+<span class="nc" id="L28">		return p -&gt; {</span>
+<span class="nc" id="L29">			double dx = p.getX() - xCenter;</span>
+<span class="nc" id="L30">			double dy = p.getY() - yCenter;</span>
+<span class="nc" id="L31">			double len = Math.sqrt(dx * dx + dy * dy);</span>
+<span class="nc" id="L32">			return Math.abs(len - x1) - x2;</span>
+		};
+	}
+
+	static IDistanceFunction createDisc(final double xCenter, final double yCenter, final double radius) {
+<span class="nc" id="L37">		return p -&gt; {</span>
+<span class="nc" id="L38">			double dx = p.getX() - xCenter;</span>
+<span class="nc" id="L39">			double dy = p.getY() - yCenter;</span>
+<span class="nc" id="L40">			return Math.sqrt(dx * dx + dy * dy) - radius;</span>
+		};
+	}
+
+	static IDistanceFunction createToTargets(final Collection&lt;? extends VShape&gt; targets) {
+<span class="nc bnc" id="L45" title="All 4 branches missed.">		assert !targets.isEmpty();</span>
+<span class="nc" id="L46">		return p -&gt; {</span>
+<span class="nc" id="L47">			double min = Double.POSITIVE_INFINITY;</span>
+<span class="nc bnc" id="L48" title="All 2 branches missed.">			for (VShape shape : targets) {</span>
+<span class="nc" id="L49">				double dist = shape.distance(p);</span>
+<span class="nc bnc" id="L50" title="All 2 branches missed.">				if(dist &lt; min) {</span>
+<span class="nc" id="L51">					min = dist;</span>
+				}
+<span class="nc" id="L53">			}</span>
+<span class="nc" id="L54">			return min;</span>
+		};
+	}
+
+	static IDistanceFunction createToTargetPoints(final Collection&lt;? extends IPoint&gt; targetPoints) {
+<span class="nc bnc" id="L59" title="All 4 branches missed.">		assert !targetPoints.isEmpty();</span>
+<span class="nc" id="L60">		return p -&gt; {</span>
+<span class="nc" id="L61">			double min = Double.POSITIVE_INFINITY;</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">			for (IPoint targetPoint : targetPoints) {</span>
+<span class="nc" id="L63">				double dist = targetPoint.distance(p);</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">				if(dist &lt; min) {</span>
+<span class="nc" id="L65">					min = dist;</span>
+				}
+<span class="nc" id="L67">			}</span>
+<span class="nc" id="L68">			return min;</span>
+		};
+	}
+
+	static IDistanceFunction create(final VRectangle regionBoundingBox, final Collection&lt;? extends VShape&gt; obstacles) {
+<span class="nc" id="L73">		return new DistanceFunction(regionBoundingBox, obstacles);</span>
+	}
+
+	static IDistanceFunction create(final VRectangle regionBoundingBox, final Collection&lt;? extends VShape&gt; obstacles, final Collection&lt;? extends VShape&gt; targets) {
+<span class="nc" id="L77">		return new DistanceFunction(regionBoundingBox, obstacles, targets);</span>
+	}
+
+	static IDistanceFunction create(final VPolygon regionBoundingBox, final Collection&lt;? extends VShape&gt; obstacles, final Collection&lt;? extends VShape&gt; targets) {
+<span class="nc" id="L81">		return new DistanceFunction(regionBoundingBox, obstacles, targets);</span>
+	}
+
+	static IDistanceFunction create(final VPolygon regionBoundingBox, final Collection&lt;? extends VShape&gt; obstacles) {
+<span class="nc" id="L85">		return new DistanceFunction(regionBoundingBox, obstacles);</span>
+	}
+
+	static IDistanceFunction create(final VRectangle regionBoundingBox, final VShape ... shapes) {
+<span class="nc" id="L89">		List&lt;VShape&gt; shapeList = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">		for(VShape shape : shapes) {</span>
+<span class="nc" id="L91">			shapeList.add(shape);</span>
+		}
+<span class="nc" id="L93">		return new DistanceFunction(regionBoundingBox, shapeList);</span>
+	}
+
+	static IDistanceFunction create(final VPolygon regionBoundingBox, final VShape ... shapes) {
+<span class="nc" id="L97">		List&lt;VShape&gt; shapeList = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">		for(VShape shape : shapes) {</span>
+<span class="nc" id="L99">			shapeList.add(shape);</span>
+		}
+<span class="nc" id="L101">		return new DistanceFunction(regionBoundingBox, shapeList);</span>
+	}
+
+	static IDistanceFunction union(final IDistanceFunction dist1, final IDistanceFunction dist2) {
+<span class="nc" id="L105">		return p -&gt; Math.min(dist1.apply(p), dist2.apply(p));</span>
+	}
+
+	static IDistanceFunction intersect(final IDistanceFunction dist1, final IDistanceFunction dist2) {
+<span class="nc" id="L109">		return p -&gt; Math.max(dist1.apply(p), dist2.apply(p));</span>
+	}
+
+	static IDistanceFunction substract(final IDistanceFunction dist1, final IDistanceFunction dist2) {
+<span class="nc" id="L113">		return p -&gt; Math.max(dist1.apply(p), -dist2.apply(p));</span>
+	}
+
+	default double doDDiff(double d1, double d2)
+	{
+<span class="nc" id="L118">		return Math.max(d1, -d2);</span>
+	}
+
+	default double doDUnion(double d1, double d2) {
+<span class="nc" id="L122">		return Math.min(d1, d2);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

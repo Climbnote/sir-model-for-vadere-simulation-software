@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CLUtils.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.opencl</a> &gt; <span class="el_source">CLUtils.java</span></div><h1>CLUtils.java</h1><pre class="source lang-java linenums">package org.vadere.util.opencl;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.vadere.util.logging.Logger;
+import org.jetbrains.annotations.NotNull;
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
+import org.vadere.util.opencl.examples.InfoUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import static org.lwjgl.opencl.CL10.CL_DEVICE_TYPE_ALL;
+import static org.lwjgl.opencl.CL10.CL_KERNEL_LOCAL_MEM_SIZE;
+import static org.lwjgl.opencl.CL10.CL_KERNEL_WORK_GROUP_SIZE;
+import static org.lwjgl.opencl.CL10.clGetDeviceIDs;
+import static org.lwjgl.opencl.CL10.clGetKernelWorkGroupInfo;
+import static org.lwjgl.opencl.CL10.clGetPlatformIDs;
+import static org.lwjgl.system.MemoryStack.stackPush;
+
+/**
+ * Utility-class without a state. This class offers method to interact with OpenCL e.g. memory management methods.
+ *
+ * @author Benedikt Zoennchen
+ */
+<span class="pc bpc" id="L40" title="1 of 2 branches missed.">public class CLUtils {</span>
+
+<span class="fc" id="L42">	private static Logger log = Logger.getLogger(CLUtils.class);</span>
+
+	/**
+	 * Returns true if there is some platform and some device supporting OpenCL.
+	 *
+	 * @return true if there is some platform and device supporting OpenCL, false otherwise
+	 */
+	public static boolean isOpenCLSupported() {
+<span class="fc" id="L50">		return isOpenCLSupported(CL_DEVICE_TYPE_ALL);</span>
+	}
+
+	/**
+	 * Returns true if there is some platform and some device of the specified device type supporting OpenCL.
+	 *
+	 * @return true if there is some platform and device  of the specified device type supporting OpenCL, false otherwise
+	 */
+	public static boolean isOpenCLSupported(final int deviceType) {
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">		return !getSupportedPlatforms(deviceType).isEmpty();</span>
+	}
+
+	/**
+	 * Returns a list of device addresses pointing to the OpenCL platform which support
+	 * OpenCL. This list is empty if there is no OpenCL support.
+	 *
+	 * @param deviceType the specific device type which should be supported by the platform.
+	 *                   if it is CL_DEVICE_TYPE_ALL the device can be any device.
+	 * @return a list of device addresses pointing to the OpenCL platform which support OpenCL and the specified device type
+	 */
+	public static List&lt;Long&gt; getSupportedPlatforms(final int deviceType) {
+<span class="fc" id="L71">		List&lt;Long&gt; supportedPlatforms = new ArrayList&lt;&gt;(2);</span>
+<span class="fc" id="L72">		try (MemoryStack stack = stackPush()) {</span>
+<span class="fc" id="L73">			IntBuffer pi = stack.mallocInt(1);</span>
+<span class="fc" id="L74">			InfoUtils.checkCLError(clGetPlatformIDs(null, pi));</span>
+<span class="pc bpc" id="L75" title="1 of 2 branches missed.">			if (pi.get(0) != 0) {</span>
+<span class="fc" id="L76">				PointerBuffer platforms = stack.mallocPointer(pi.get(0));</span>
+<span class="fc" id="L77">				InfoUtils.checkCLError(clGetPlatformIDs(platforms, (IntBuffer)null));</span>
+
+<span class="fc" id="L79">				IntBuffer errcode_ret = stack.callocInt(1);</span>
+
+<span class="fc bfc" id="L81" title="All 2 branches covered.">				for (int p = 0; p &lt; platforms.capacity(); p++) {</span>
+<span class="fc" id="L82">					long platform = platforms.get(p);</span>
+<span class="fc" id="L83">					InfoUtils.checkCLError(clGetDeviceIDs(platform, deviceType, null, pi));</span>
+
+<span class="fc" id="L85">					PointerBuffer devices = stack.mallocPointer(pi.get(0));</span>
+<span class="fc" id="L86">					InfoUtils.checkCLError(clGetDeviceIDs(platform, deviceType, devices, (IntBuffer)null));</span>
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">					if(devices.capacity() &gt; 0) {</span>
+<span class="fc" id="L88">						supportedPlatforms.add(platform);</span>
+					}
+				}
+			}
+
+<span class="nc" id="L93">		} catch(Throwable e) {</span>
+<span class="nc" id="L94">			log.warn(&quot;No OpenCL support: &quot; + e.getMessage());</span>
+<span class="fc" id="L95">		}</span>
+<span class="fc" id="L96">		return supportedPlatforms;</span>
+
+	}
+
+	/**
+	 * Returns a pair of addresses. The left one is the platform address and the second one the device address
+	 * which supports OpenCL.
+	 *
+	 * @param deviceType the specific device type, if it is CL_DEVICE_TYPE_ALL the device can be any device
+	 *
+	 * @return a pair of addresses (platform address, device address)
+	 */
+	public static Optional&lt;Pair&lt;Long, Long&gt;&gt; getFirstSupportedPlatformAndDevice(final int deviceType) {
+
+<span class="fc" id="L110">		try (MemoryStack stack = stackPush()) {</span>
+<span class="fc" id="L111">			IntBuffer pi = stack.mallocInt(1);</span>
+<span class="fc" id="L112">			InfoUtils.checkCLError(clGetPlatformIDs(null, pi));</span>
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">			if (pi.get(0) == 0) {</span>
+<span class="nc" id="L114">				return Optional.empty();</span>
+			}
+
+<span class="fc" id="L117">			PointerBuffer platforms = stack.mallocPointer(pi.get(0));</span>
+<span class="fc" id="L118">			InfoUtils.checkCLError(clGetPlatformIDs(platforms, (IntBuffer)null));</span>
+
+<span class="pc bpc" id="L120" title="1 of 2 branches missed.">			for (int p = 0; p &lt; platforms.capacity(); p++) {</span>
+<span class="fc" id="L121">				long platform = platforms.get(p);</span>
+
+<span class="pc bpc" id="L123" title="1 of 2 branches missed.">				if(InfoUtils.checkCLSuccess(clGetDeviceIDs(platform, deviceType, null, pi))) {</span>
+<span class="fc" id="L124">					PointerBuffer devices = stack.mallocPointer(pi.get(0));</span>
+
+<span class="pc bpc" id="L126" title="1 of 2 branches missed.">					if(InfoUtils.checkCLSuccess(clGetDeviceIDs(platform, deviceType, devices, (IntBuffer)null))) {</span>
+
+<span class="pc bpc" id="L128" title="1 of 2 branches missed.">						if(devices.capacity() &gt; 0) {</span>
+<span class="fc" id="L129">							return Optional.of(Pair.of(platform, devices.get(0)));</span>
+						}
+					}
+				}
+			}
+<span class="pc bpc" id="L134" title="3 of 4 branches missed.">		} catch(Throwable e) {</span>
+<span class="nc" id="L135">			log.warn(&quot;No OpenCL device found: &quot; + e.getMessage());</span>
+<span class="nc" id="L136">		}</span>
+
+<span class="nc" id="L138">		return Optional.empty();</span>
+	}
+
+    /**
+     * Reads the specified resource and returns the raw data as a ByteBuffer.
+     *
+     * @param resource   the resource to read
+     * @param bufferSize the initial buffer size
+     * @return the resource data
+     * @throws IOException if an IO error occurs
+     */
+    public static ByteBuffer ioResourceToByteBuffer(final String resource, int bufferSize) throws IOException {
+        ByteBuffer buffer;
+
+<span class="fc" id="L152">        Path path = Paths.get(resource);</span>
+<span class="pc bpc" id="L153" title="1 of 2 branches missed.">        if (Files.isReadable(path)) {</span>
+<span class="nc" id="L154">            try (SeekableByteChannel fc = Files.newByteChannel(path)) {</span>
+<span class="nc" id="L155">                buffer = MemoryUtil.memCalloc((int)fc.size() + 1);</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">                while (fc.read(buffer) != -1) {}</span>
+            }
+        } else {
+            try (
+<span class="fc" id="L160">                    InputStream source = CLUtils.class.getClassLoader().getResourceAsStream(resource);</span>
+<span class="fc" id="L161">                    ReadableByteChannel rbc = Channels.newChannel(source)</span>
+            ) {
+
+<span class="fc" id="L164">                buffer = MemoryUtil.memCalloc(bufferSize);</span>
+
+                while (true) {
+<span class="fc" id="L167">                    int bytes = rbc.read(buffer);</span>
+<span class="fc bfc" id="L168" title="All 2 branches covered.">                    if (bytes == -1) {</span>
+<span class="fc" id="L169">                        break;</span>
+                    }
+<span class="fc bfc" id="L171" title="All 2 branches covered.">                    if (buffer.remaining() == 0) {</span>
+<span class="fc" id="L172">                        buffer = resizeBuffer(buffer, buffer.capacity() * 2);</span>
+                    }
+<span class="fc" id="L174">                }</span>
+            }
+        }
+
+<span class="fc" id="L178">        buffer.flip();</span>
+<span class="fc" id="L179">        return buffer;</span>
+    }
+
+    public static IntBuffer toIntBuffer(@NotNull final int[] array) {
+<span class="fc" id="L183">    	IntBuffer intBuffer = MemoryUtil.memAllocInt(array.length);</span>
+<span class="fc" id="L184">    	return toIntBuffer(array, intBuffer);</span>
+    }
+
+	public static IntBuffer toIntBuffer(@NotNull final int[] array, @NotNull final IntBuffer intBuffer) {
+<span class="fc bfc" id="L188" title="All 2 branches covered.">		for(int i = 0; i &lt; array.length; i++) {</span>
+<span class="fc" id="L189">			intBuffer.put(i, array[i]);</span>
+		}
+<span class="fc" id="L191">		return intBuffer;</span>
+	}
+
+    public static FloatBuffer toFloatBuffer(@NotNull final float[] floats) {
+<span class="fc" id="L195">        FloatBuffer floatBuffer = MemoryUtil.memAllocFloat(floats.length);</span>
+<span class="fc" id="L196">        return toFloatBuffer(floats, floatBuffer);</span>
+    }
+
+    public static FloatBuffer toFloatBuffer(@NotNull final float[] floats, @NotNull final FloatBuffer floatBuffer) {
+<span class="fc bfc" id="L200" title="All 2 branches covered.">        for(int i = 0; i &lt; floats.length; i++) {</span>
+<span class="fc" id="L201">            floatBuffer.put(i, floats[i]);</span>
+        }
+<span class="fc" id="L203">        return floatBuffer;</span>
+    }
+
+	public static int[] toIntArray(@NotNull final IntBuffer intBuffer, final int size) {
+<span class="fc" id="L207">		int[] result = new int[size];</span>
+<span class="fc bfc" id="L208" title="All 2 branches covered.">		for(int i = 0; i &lt; size; i++) {</span>
+<span class="fc" id="L209">			result[i] = intBuffer.get(i);</span>
+		}
+<span class="fc" id="L211">		return result;</span>
+	}
+
+
+	public static float[] toFloatArray(@NotNull final FloatBuffer floatBuffer, final int size) {
+<span class="fc" id="L216">	    float[] result = new float[size];</span>
+<span class="fc bfc" id="L217" title="All 2 branches covered.">	    for(int i = 0; i &lt; size; i++) {</span>
+<span class="fc" id="L218">	        result[i] = floatBuffer.get(i);</span>
+        }
+<span class="fc" id="L220">        return result;</span>
+    }
+
+    private static ByteBuffer resizeBuffer(@NotNull final ByteBuffer buffer, int newCapacity) {
+<span class="fc" id="L224">        ByteBuffer newBuffer = MemoryUtil.memCalloc(newCapacity);</span>
+<span class="fc" id="L225">        buffer.flip();</span>
+<span class="fc" id="L226">        newBuffer.put(buffer);</span>
+<span class="fc" id="L227">	    MemoryUtil.memFree(buffer);</span>
+<span class="fc" id="L228">        return newBuffer;</span>
+    }
+
+	/**
+	 * Returns an integer n such that n = &lt;tt&gt;base&lt;/tt&gt;^k, where k &gt; 0 is the smallest integer such that
+	 * n &gt;= &lt;tt&gt;value&lt;/tt&gt;.
+	 *
+	 * @param value the value
+	 * @param base  the base
+	 *
+	 * @return an integer n such that n = 2 * &lt;tt&gt;multiple&lt;/tt&gt;^k
+	 */
+	public static long power(long value, long base) {
+<span class="pc bpc" id="L241" title="3 of 6 branches missed.">		assert value &gt; 0 &amp;&amp; base &gt; 0;</span>
+
+<span class="fc" id="L243">		long result = base;</span>
+<span class="fc bfc" id="L244" title="All 2 branches covered.">		while (result &lt; value) {</span>
+<span class="fc" id="L245">			result *= base;</span>
+		}
+<span class="fc" id="L247">		return result;</span>
+	}
+
+	/**
+	 * Returns an long n such that n = &lt;tt&gt;base&lt;/tt&gt; * k, where k &gt; 0 is the smallest long such that
+	 * n &gt;= &lt;tt&gt;value&lt;/tt&gt;.
+	 *
+	 * @param value the value
+	 * @param base  the multiple
+	 *
+	 * @return an integer n such that n = 2 * &lt;tt&gt;multiple&lt;/tt&gt;^k
+	 */
+	public static long multiple(long value, long base) {
+<span class="nc" id="L260">		long result = base;</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">		while (result &lt; value) {</span>
+<span class="nc" id="L262">			result += base;</span>
+		}
+<span class="nc" id="L264">		return result;</span>
+	}
+
+	/**
+	 * Computes the the factor radix which is 1 for all long of the form 2^k.
+	 *
+	 * @param L
+	 * @return
+	 */
+	public static long factorRadix2(long L){
+<span class="pc bpc" id="L274" title="1 of 2 branches missed.">		if(L==0){</span>
+<span class="nc" id="L275">			return 0;</span>
+		}else{
+<span class="fc bfc" id="L277" title="All 2 branches covered.">			for(int log2L = 0; (L &amp; 1) == 0; L &gt;&gt;= 1, log2L++);</span>
+<span class="fc" id="L278">			return L;</span>
+		}
+	}
+
+	public static long getMaxWorkGroupSizeForKernel(long clDevice, long clKernel, long workItemMem, long max_work_group_size, long max_local_memory_size) throws OpenCLException {
+<span class="nc" id="L283">		try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L284">			LongBuffer pp = stack.mallocLong(1);</span>
+<span class="nc" id="L285">			CLInfo.checkCLError(clGetKernelWorkGroupInfo(clKernel, clDevice, CL_KERNEL_LOCAL_MEM_SIZE , pp, null));</span>
+
+			/*long kernelLocalMemory = pp.get(0);
+			logger.debug(&quot;CL_KERNEL_LOCAL_MEM_SIZE = (&quot; + clKernel + &quot;) = &quot; + kernelLocalMemory);
+			logger.debug(&quot;memory for each  = &quot; + (workItemMem + kernelLocalMemory));
+
+			long maxWorkGroupSizeForLocalMemory = (workItemMem + kernelLocalMemory) == 0 ? 0 : (max_local_memory_size / (workItemMem + kernelLocalMemory));*/
+<span class="nc bnc" id="L292" title="All 2 branches missed.">			long maxWorkGroupSizeForLocalMemory = workItemMem == 0 ? max_work_group_size : (max_local_memory_size / (workItemMem));</span>
+<span class="nc" id="L293">			PointerBuffer ppp = stack.mallocPointer(1);</span>
+<span class="nc" id="L294">			CLInfo.checkCLError(clGetKernelWorkGroupInfo(clKernel, clDevice, CL_KERNEL_WORK_GROUP_SIZE , ppp, null));</span>
+
+<span class="nc" id="L296">			long maxWorkGroupSizeForPrivateMemory = ppp.get(0);</span>
+<span class="nc" id="L297">			log.debug(&quot;CL_KERNEL_WORK_GROUP_SIZE (&quot; + clKernel + &quot;) = &quot; + maxWorkGroupSizeForPrivateMemory);</span>
+			//return Math.min(max_work_group_size, Math.min(maxWorkGroupSizeForLocalMemory, maxWorkGroupSizeForPrivateMemory));
+<span class="nc" id="L299">			return Math.min(max_work_group_size, Math.min(maxWorkGroupSizeForLocalMemory, maxWorkGroupSizeForPrivateMemory));</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

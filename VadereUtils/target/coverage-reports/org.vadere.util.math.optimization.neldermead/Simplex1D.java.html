@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Simplex1D.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.math.optimization.neldermead</a> &gt; <span class="el_source">Simplex1D.java</span></div><h1>Simplex1D.java</h1><pre class="source lang-java linenums">package org.vadere.util.math.optimization.neldermead;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VCircle;
+import org.vadere.util.geometry.shapes.VPoint;
+
+import java.util.function.Function;
+
+/**
+ * @author Benedikt Zoennchen
+ */
+public class Simplex1D {
+
+	/**
+	 * (sorted) two points of the simplex i.e. the defined line.
+	 */
+	private double[] rads;
+
+	/**
+	 * (sorted) three values of the simplex i.e. the function values at the points.
+	 * The first value is the best, the second the second best and the third is the worst value.
+	 */
+	private double[] values;
+
+	/**
+	 * parameters of the Nelder-Mead method.
+	 */
+<span class="nc" id="L29">	private double shrinkFactor = 0.5;</span>
+<span class="nc" id="L30">	private double projectionFactor = 1;</span>
+<span class="nc" id="L31">	private double expansionFactor = 2;</span>
+<span class="nc" id="L32">	private double contractionFactor = 0.5;</span>
+
+	/**
+	 * true if and only if this simplex minimizes the function.
+	 */
+	private boolean minimize;
+
+	/**
+	 * the evaluation function which is optimized.
+	 */
+	private final Function&lt;IPoint,Double&gt; eval;
+
+	/**
+	 * true, if points or values changes without recomputing the square mean or the area.
+	 */
+	private boolean changed;
+
+	/**
+	 * the current variance of the values of the simplex
+	 */
+	private double variance;
+
+	/**
+	 * the current distance of the two points defining the simplex.
+	 */
+	private double distance;
+
+	/**
+	 * see See https://e-maxx.ru/bookz/files/numerical_recipes.pdf page 506
+	 */
+	private static final double TINY = 1.0E-10;
+
+	/**
+	 * the step circle.
+	 */
+	private final VCircle circle;
+
+	/**
+	 * values outside of the step circle should give eval.apply() == invalidValue
+	 */
+	private final double invalidValue;
+
+	public Simplex1D(@NotNull final Function&lt;IPoint,Double&gt; eval, @NotNull final double rad1, final double rad2, @NotNull final VCircle circle) {
+<span class="nc" id="L75">		this(eval, rad1, rad2, circle, true, NelderMead2D.MAX_VAL);</span>
+<span class="nc" id="L76">	}</span>
+
+<span class="nc" id="L78">	public Simplex1D(@NotNull final Function&lt;IPoint,Double&gt; eval, double rad1, double rad2, @NotNull final VCircle circle, final boolean minimize, double invalidValue) {</span>
+<span class="nc" id="L79">		this.rads = new double[]{rad1, rad2};</span>
+<span class="nc" id="L80">		this.values = new double[2];</span>
+<span class="nc" id="L81">		this.eval = eval;</span>
+<span class="nc" id="L82">		this.minimize = minimize;</span>
+<span class="nc" id="L83">		this.changed = true;</span>
+<span class="nc" id="L84">		this.circle = circle;</span>
+<span class="nc" id="L85">		this.invalidValue = invalidValue;</span>
+<span class="nc" id="L86">		refresh();</span>
+<span class="nc" id="L87">		sort();</span>
+<span class="nc" id="L88">	}</span>
+
+	/**
+	 * performs one Nelder-Mead iteration.
+	 */
+	public void update() {
+<span class="nc" id="L94">		changed = true;</span>
+<span class="nc" id="L95">		var x = rads[0];</span>
+<span class="nc" id="L96">		var xr = x + projectionFactor * (x - rads[1]);</span>
+<span class="nc" id="L97">		var fr = eval(xr);</span>
+
+<span class="nc bnc" id="L99" title="All 4 branches missed.">		if(isBetter(fr, values[1]) &amp;&amp; isWorse(fr, values[0])) {</span>
+<span class="nc" id="L100">			rads[1] = xr;</span>
+<span class="nc" id="L101">			values[1] = fr;</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">		} else if(isBetter(fr, values[0])) {</span>
+<span class="nc" id="L103">			var xe = x + expansionFactor * (xr - x);</span>
+<span class="nc" id="L104">			var fe = eval(xe);</span>
+<span class="nc" id="L105">			var xoc = x + contractionFactor * (xr - x);</span>
+<span class="nc" id="L106">			var foc = eval(xoc);</span>
+<span class="nc bnc" id="L107" title="All 4 branches missed.">			if(isBetter(fe, fr) &amp;&amp; isBetter(fe, foc)) {</span>
+<span class="nc" id="L108">				rads[1] = xe;</span>
+<span class="nc" id="L109">				values[1] = fe;</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">			} else if(isBetter(foc, fr)) {</span>
+<span class="nc" id="L111">				rads[1] = xoc;</span>
+<span class="nc" id="L112">				values[1] = foc;</span>
+			} else {
+<span class="nc" id="L114">				rads[1] = xr;</span>
+<span class="nc" id="L115">				values[1] = fr;</span>
+			}
+<span class="nc" id="L117">		}  else {</span>
+<span class="nc" id="L118">			var xic = x - contractionFactor * (rads[1] -x);</span>
+<span class="nc" id="L119">			var fic = eval(xic);</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">			if(isBetter(fic, fr)) {</span>
+<span class="nc" id="L121">				rads[1] = xic;</span>
+<span class="nc" id="L122">				values[1] = fic;</span>
+			} else {
+<span class="nc" id="L124">				shrink();</span>
+			}
+		}
+<span class="nc" id="L127">		sort();</span>
+<span class="nc" id="L128">	}</span>
+
+	private double eval(final double rad) {
+		/*if(rad &lt; 0 || rad &gt; 2*Math.PI) {
+			return minimize ? 10000 : -10000;
+		}*/
+<span class="nc" id="L134">		return eval.apply(toPoint(rad));</span>
+	}
+
+	private VPoint toPoint(final double rad) {
+<span class="nc" id="L138">		return new VPoint(Math.cos(rad) * circle.getRadius(), Math.sin(rad) * circle.getRadius()).add(circle.getCenter());</span>
+	}
+
+	/**
+	 * See https://e-maxx.ru/bookz/files/numerical_recipes.pdf page 503
+	 */
+	public void restart(double delta) {
+<span class="nc" id="L145">		rads[1] = rads[0] + delta;</span>
+<span class="nc" id="L146">		values[1] = eval(rads[1]);</span>
+<span class="nc" id="L147">		sort();</span>
+<span class="nc" id="L148">	}</span>
+
+	/**
+	 * Returns true if the simplex runs into an invalid area i.e. 1 value reach the max.
+	 *
+	 * @return true if the simplex runs into an invalid area i.e. 1 value reach the max.
+	 */
+	public boolean isInvalid() {
+<span class="nc bnc" id="L156" title="All 2 branches missed.">		return values[0] &gt;= invalidValue;</span>
+	}
+
+	/**
+	 * True if the geometrically size of the simplex and the variance of values is below the &lt;tt&gt;threshold&lt;/tt&gt;.
+	 * Or the globally best point has been found.
+	 *
+	 * @param threshold the threshold
+	 * @return true if this simplex has converged, false otherwise
+	 */
+	public boolean hasConverged(final double threshold) {
+<span class="nc bnc" id="L167" title="All 2 branches missed.">		if(changed) {</span>
+<span class="nc" id="L168">			variance = variance();</span>
+<span class="nc" id="L169">			distance = getDistance();</span>
+<span class="nc" id="L170">			changed = false;</span>
+		}
+<span class="nc bnc" id="L172" title="All 4 branches missed.">		return variance &lt; threshold &amp;&amp; distance &lt; threshold;</span>
+		//return getTol() &lt; threashold;
+	}
+
+	/**
+	 * Returns the best value of the current simplex.
+	 *
+	 * @return the best value of the current simplex
+	 */
+	public double getValue() {
+<span class="nc" id="L182">		return values[0];</span>
+	}
+
+	/**
+	 * Returns the argument of the best simplex value (in rad).
+	 *
+	 * @return the argument of the best simplex value
+	 */
+	public VPoint getArg() {
+<span class="nc" id="L191">		return toPoint(rads[0]);</span>
+	}
+
+	/**
+	 * Returns the mean of values of the simplex.
+	 *
+	 * @return the mean of values of the simplex
+	 */
+	private double mean() {
+<span class="nc" id="L200">		return (values[0] + values[1]) / 2.0;</span>
+	}
+
+	/**
+	 * Computes and returns the geometrically size of the simplex.
+	 *
+	 * @return the area of the simplex
+	 */
+	private double getDistance() {
+<span class="nc" id="L209">		double d1 = (rads[0] % (2*Math.PI));</span>
+<span class="nc" id="L210">		double d2 = (rads[1] % (2*Math.PI));</span>
+<span class="nc" id="L211">		return Math.abs(d1 - d2);</span>
+	}
+
+	/**
+	 * See https://e-maxx.ru/bookz/files/numerical_recipes.pdf page 506
+	 * @return
+	 */
+	private double getTol() {
+<span class="nc" id="L219">		return 2.0*Math.abs(values[1] - values[0]) / (Math.abs(values[1]) + Math.abs(values[0]) + TINY);</span>
+	}
+
+	/**
+	 * Returns the variance of the values of the simplex.
+	 *
+	 * @return the variance of the values of the simplex
+	 */
+	private double variance() {
+<span class="nc" id="L228">		double mean = mean();</span>
+<span class="nc" id="L229">		double v1 = values[0] - mean;</span>
+<span class="nc" id="L230">		double v2 = values[1] - mean;</span>
+
+<span class="nc" id="L232">		return (v1*v1 + v2*v2) / 2;</span>
+	}
+
+	/**
+	 * Returns true if and only if d1 is worse than d2
+	 *
+	 * @param d1
+	 * @param d2
+	 * @return true if and only if d1 is worse than d2
+	 */
+	private boolean isWorse(final double d1, final double d2) {
+<span class="nc bnc" id="L243" title="All 2 branches missed.">		if(minimize) {</span>
+<span class="nc bnc" id="L244" title="All 2 branches missed.">			return d1 &gt; d2;</span>
+		} else {
+<span class="nc bnc" id="L246" title="All 2 branches missed.">			return d1 &lt; d2;</span>
+		}
+	}
+
+	/**
+	 * Returns true if and only if d1 is better than d2, i.e. for minimization: d1 &lt; d2
+	 *
+	 * @param d1
+	 * @param d2
+	 * @return true if and only if d1 is better than d2
+	 */
+	private boolean isBetter(final double d1, final double d2) {
+<span class="nc bnc" id="L258" title="All 2 branches missed.">		if(minimize) {</span>
+<span class="nc bnc" id="L259" title="All 2 branches missed.">			return d1 &lt; d2;</span>
+		}
+		else {
+<span class="nc bnc" id="L262" title="All 2 branches missed.">			return d1 &gt; d2;</span>
+		}
+	}
+
+	/**
+	 * shrinks the simplex geometrically.
+	 */
+	private void shrink() {
+<span class="nc bnc" id="L270" title="All 2 branches missed.">		for(var i = 1; i &lt; 2; i++) {</span>
+<span class="nc" id="L271">			rads[i] = rads[0] + shrinkFactor * (rads[i] - rads[0]);</span>
+<span class="nc" id="L272">			values[i] = eval(rads[i]);</span>
+		}
+<span class="nc" id="L274">	}</span>
+
+	/**
+	 * computes and sets all values by evaluating the evaluation function for each point.
+	 */
+	private void refresh() {
+<span class="nc bnc" id="L280" title="All 2 branches missed.">		for(var i = 0; i &lt; 2; i++) {</span>
+<span class="nc" id="L281">			values[i] = eval(rads[i]);</span>
+		}
+<span class="nc" id="L283">		changed = true;</span>
+<span class="nc" id="L284">	}</span>
+
+	/**
+	 * sorts values and points such that value[0] &lt;= value[1] &lt;= value[2].
+	 */
+	private void sort() {
+		// bubble sort
+<span class="nc bnc" id="L291" title="All 2 branches missed.">		if(isWorse(values[0], values[1])) {</span>
+<span class="nc" id="L292">			swap(0,1);</span>
+		}
+<span class="nc" id="L294">	}</span>
+
+	/**
+	 * swaps values and point array at positions i and j.
+	 *
+	 * @param i first swap position
+	 * @param j second swap position
+	 */
+	private void swap(final int i, final int j) {
+<span class="nc" id="L303">		var s = rads[i];</span>
+<span class="nc" id="L304">		var v = values[i];</span>
+<span class="nc" id="L305">		rads[i] = rads[j];</span>
+<span class="nc" id="L306">		values[i] = values[j];</span>
+<span class="nc" id="L307">		rads[j] = s;</span>
+<span class="nc" id="L308">		values[j] = v;</span>
+<span class="nc" id="L309">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

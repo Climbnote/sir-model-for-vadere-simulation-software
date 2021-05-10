@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BundleManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.lang</a> &gt; <span class="el_source">BundleManager.java</span></div><h1>BundleManager.java</h1><pre class="source lang-java linenums">package org.vadere.util.lang;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.config.VadereConfig;
+
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+
+import javax.swing.*;
+
+/**
+ * Manage all {@link java.util.ResourceBundle}s present in the application.
+ * Each module must use this Manager to allow easy inheritance of language keys.
+ * If the application language is changed this manager will propagate the new Locale
+ * to each Bundel.
+ */
+public class BundleManager {
+<span class="nc" id="L19">	private static final Locale defaultLocale = new Locale(&quot;en&quot;);</span>
+	//good performance threadsafe Singletone. Sync block will only be used once
+	private static BundleManager instance;
+	public static BundleManager instance(){
+<span class="nc bnc" id="L23" title="All 2 branches missed.">		if(instance ==  null){</span>
+<span class="nc" id="L24">			synchronized (BundleManager.class){</span>
+<span class="nc bnc" id="L25" title="All 2 branches missed.">				if(instance == null){</span>
+<span class="nc" id="L26">					instance = new BundleManager();</span>
+				}
+<span class="nc" id="L28">			}</span>
+		}
+<span class="nc" id="L30">		return instance;</span>
+	}
+
+
+	private HashMap&lt;String, ModuleResourceBundle&gt; bundleMap;
+	private Locale currentLocale;
+
+
+	public Locale getCurrentLocale(){
+<span class="nc" id="L39">		return (Locale)currentLocale.clone();</span>
+	}
+
+	public boolean languageIsGerman(){
+<span class="nc" id="L43">		return currentLocale.getLanguage().equals(Locale.GERMAN.getLanguage());</span>
+	}
+
+	public String getString(String baseName, String key){
+<span class="nc" id="L47">		ModuleResourceBundle b = bundleMap.getOrDefault(baseName, loadBundle(baseName));</span>
+<span class="nc bnc" id="L48" title="All 2 branches missed.">		return b != null ? b.getString(key) : &quot;!&quot; +baseName + &quot; Bundle Not Found!&quot;;</span>
+	}
+
+	public void setLanguage(Locale locale){
+<span class="nc" id="L52">		currentLocale = locale;</span>
+<span class="nc" id="L53">		Locale.setDefault(locale);</span>
+<span class="nc" id="L54">		reloadBundles();</span>
+<span class="nc" id="L55">	}</span>
+
+	public void setLanguage(Class&lt;?&gt; clazz){
+<span class="nc" id="L58">		String language = VadereConfig.getConfig().getString(&quot;Messages.language&quot;, null);</span>
+<span class="nc" id="L59">		Locale locale = defaultLocale;</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">		if (language != null) {</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">			switch (language) {</span>
+				case &quot;de&quot;:
+<span class="nc" id="L63">					locale = new Locale(&quot;de&quot;, &quot;DE&quot;);</span>
+<span class="nc" id="L64">					break;</span>
+				case &quot;en&quot;:
+				default:
+<span class="nc" id="L67">					locale = defaultLocale;</span>
+			}
+		}
+<span class="nc" id="L70">		setLanguage(locale);</span>
+<span class="nc" id="L71">	}</span>
+
+<span class="nc" id="L73">	private BundleManager(){</span>
+<span class="nc" id="L74">		bundleMap = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L75">		currentLocale = defaultLocale;</span>
+<span class="nc" id="L76">	}</span>
+
+	private void reloadBundles(){
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		for (Object o : bundleMap.entrySet()) {</span>
+<span class="nc" id="L80">			Map.Entry pair = (Map.Entry) o;</span>
+<span class="nc" id="L81">			String key = (String) pair.getKey();</span>
+<span class="nc" id="L82">			bundleMap.put(key, new ModuleResourceBundle(key, currentLocale));</span>
+<span class="nc" id="L83">		}</span>
+<span class="nc" id="L84">	}</span>
+
+	private ModuleResourceBundle loadBundle(@NotNull String baseName){
+<span class="nc bnc" id="L87" title="All 2 branches missed.">		if (bundleMap.containsKey(baseName)){</span>
+<span class="nc" id="L88">			return bundleMap.get(baseName);</span>
+		} else {
+<span class="nc" id="L90">			ModuleResourceBundle bundle = new ModuleResourceBundle(baseName, currentLocale);</span>
+<span class="nc" id="L91">			bundleMap.put(baseName, bundle);</span>
+<span class="nc" id="L92">			return bundle;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

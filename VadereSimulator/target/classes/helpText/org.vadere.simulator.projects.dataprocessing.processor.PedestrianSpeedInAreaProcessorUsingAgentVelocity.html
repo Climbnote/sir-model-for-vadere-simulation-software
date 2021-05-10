@@ -1,0 +1,49 @@
+<h1> PedestrianSpeedInAreaProcessorUsingAgentVelocity</h1>
+
+<p>
+Log for each pedestrian the speed within a measurement area.
+
+<pre>
++--------------------------------------------------+
+|                                                  |
+|        M1-------------+  M2-------------+        |
+| +-+    |              |  |              |    +-+ |
+| |S|    |      P1      |  |      P2      |    |T| |
+| +-+    |              |  |              |    +-+ |
+|        +--------------+  +--------------+        |
+|                                                  |
++--------------------------------------------------+
+
+- S: source
+- T: target
+- Pi: pedestrian i
+- Mj: measurement j
+</pre>
+
+Note: If two measurement areas M1 and M2 are disjoint
+and a pedestrian P1 is located within M1, M2 should
+log a speed of -1 for P1.
+
+<pre>
+| timeStep | pedId | ... | M1  | M2  |
+|----------|-------|-----|-----|-----|
+|1         | 1     |     | 0.5 | -1  |
+|1         | 2     |     | -1  | 0.6 |
+</pre>
+
+Watch out: This processor uses the <a href='/helpText/org.vadere.simulator.projects.dataprocessing.processor.PedestrianVelocityDefaultProcessor.html' class='class_link'>PedestrianVelocityDefaultProcessor</a> internally instead of the
+<a href='/helpText/org.vadere.simulator.projects.dataprocessing.processor.PedestrianTrajectoryProcessor.html' class='class_link'>PedestrianTrajectoryProcessor</a> which is used by <a href='/helpText/rel_/PedestrianSpeedInAreaProcessorUsingAgentTrajectory.html' class='class_link'>PedestrianSpeedInAreaProcessorUsingAgentTrajectory</a>.
+</p>
+
+<hr>
+<h2> Field: ERROR_PED_NOT_IN_MEASUREMENT_AREA</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: measurementArea</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: pedestrianVelocityDefaultProcessor</h2>
+<p>---</p>
+

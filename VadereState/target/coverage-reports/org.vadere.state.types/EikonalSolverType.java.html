@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EikonalSolverType.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.types</a> &gt; <span class="el_source">EikonalSolverType.java</span></div><h1>EikonalSolverType.java</h1><pre class="source lang-java linenums">package org.vadere.state.types;
+
+<span class="fc" id="L3">public enum EikonalSolverType {</span>
+
+	/**
+	 * solvers on a regular grid
+	 */
+<span class="fc" id="L8">	FAST_MARCHING,</span>
+<span class="fc" id="L9">	HIGH_ACCURACY_FAST_MARCHING,</span>
+<span class="fc" id="L10">	FAST_MARCHING_ADAPTIVE,</span>
+<span class="fc" id="L11">	HIGH_ACCURACY_FAST_MARCHING_ADAPTIVE,</span>
+<span class="fc" id="L12">	HIGH_ACCURACY_FAST_MARCHING_DYNAMIC,</span>
+<span class="fc" id="L13">	HIGH_ACCURACY_FAST_MARCHING_DENSITY,</span>
+<span class="fc" id="L14">	FAST_ITERATIVE_METHOD,</span>
+<span class="fc" id="L15">	INFORMED_FAST_ITERATIVE_METHOD,</span>
+<span class="fc" id="L16">	FAST_SWEEPING_METHOD,</span>
+
+	/**
+	 * Solvers on an triangle mesh
+	 */
+<span class="fc" id="L21">	FAST_MARCHING_TRI,</span>
+<span class="fc" id="L22">	FAST_ITERATIVE_METHOD_TRI_LOCK_FREE,</span>
+<span class="fc" id="L23">	FAST_ITERATIVE_METHOD_TRI,</span>
+<span class="fc" id="L24">	INFORMED_FAST_ITERATIVE_METHOD_TRI,</span>
+<span class="fc" id="L25">	INFORMED_FAST_ITERATIVE_METHOD_TRI_LOCK_FREE,</span>
+
+	/**
+	 * No solver at all
+	 */
+<span class="fc" id="L30">	NONE;</span>
+
+	public boolean isHighAccuracy() {
+<span class="nc bnc" id="L33" title="All 8 branches missed.">		return  this == HIGH_ACCURACY_FAST_MARCHING ||</span>
+				this == HIGH_ACCURACY_FAST_MARCHING_ADAPTIVE ||
+				this == HIGH_ACCURACY_FAST_MARCHING_DENSITY ||
+				this == HIGH_ACCURACY_FAST_MARCHING_DYNAMIC;
+	}
+
+	public boolean isUsingCellGrid() {
+<span class="nc bnc" id="L40" title="All 18 branches missed.">		return  this == FAST_MARCHING ||</span>
+				this == HIGH_ACCURACY_FAST_MARCHING ||
+				this == FAST_MARCHING_ADAPTIVE ||
+				this == HIGH_ACCURACY_FAST_MARCHING_ADAPTIVE ||
+				this == HIGH_ACCURACY_FAST_MARCHING_DYNAMIC ||
+				this == HIGH_ACCURACY_FAST_MARCHING_DENSITY ||
+				this == FAST_ITERATIVE_METHOD ||
+				this == INFORMED_FAST_ITERATIVE_METHOD ||
+				this == FAST_SWEEPING_METHOD;
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

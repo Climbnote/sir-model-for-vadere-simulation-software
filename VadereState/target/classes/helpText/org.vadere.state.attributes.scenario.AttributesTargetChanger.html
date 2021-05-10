@@ -1,0 +1,63 @@
+<h1> AttributesTargetChanger</h1>
+
+<p>
+Attributes of "TargetChanger" object, used by "TargetChangerController" during simulation.
+</p>
+
+<hr>
+<h2> Field: probabilityToChangeTarget</h2>
+<p>
+Change target of a given pedestrian only with a certain probability between
+0 and 1.
+</p>
+
+<hr>
+<h2> Field: id</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: reachDistance</h2>
+<p>
+Within this distance, pedestrians have reached this area.
+</p>
+
+<hr>
+<h2> Field: shape</h2>
+<p>
+Shape and position.
+</p>
+
+<hr>
+<h2> Field: changeAlgorithmType</h2>
+<p>
+Select TargetChangerAlgorithm <a href='/helpText/org.vadere.state.scenario.TargetChangerAlgorithmType.html' class='class_link'>TargetChangerAlgorithmType</a>:
+<ul>
+<li><b>FOLLOW_PERSON:</b> Interpret first item of <span class='local_link'>nextTarget</span> as pedestrian id and
+use this pedestrian as the new target. In case of groups follow the leader. Fallback
+behaviour if neither works: Set target list of pedestrian to <span class='local_link'>nextTarget</span>.
+Only first element of <span class='local_link'>probabilityToChangeTarget</span> will be used.</li>
+<li><b>SELECT_LIST:</b> Set the complete list of <span class='local_link'>nextTarget</span> as the new target list
+of pedestrian. <span class='local_link'>probabilityToChangeTarget</span> must have 1 element only.</li>
+<li><b>SELECT_ELEMENT:</b> Select *one* element of <span class='local_link'>nextTarget</span> as the new target of
+the pedestrian.
+If <span class='local_link'>probabilityToChangeTarget</span> is empty one element of <span class='local_link'>nextTarget</span>
+will be selected with a uniform distribution. If the length of <span class='local_link'>probabilityToChangeTarget</span>
+matches with <span class='local_link'>nextTarget</span> use the relative select element based on relative probability
+given by <span class='local_link'>probabilityToChangeTarget</span>. nextTarget = [1, 2, 3]
+E.g. If @probabilitiesToChangeTarget = [ 10, 20, 10 ] then the new target list will be
+[1] in 25% of the cases, [2] in 50% and [3] in 25%.</li>
+<li><b>SORTED_SUB_LIST:</b> The length of <span class='local_link'>nextTarget</span> and @link #probabilityToChangeTarget} must
+match. For each element in <span class='local_link'>nextTarget</span> a bernoulli sample is drawn based on the given
+parameters in <span class='local_link'>probabilityToChangeTarget</span> with the same index. If the draw is successful
+add the element to the new target list and repeat for all elements in <span class='local_link'>nextTarget</span></li>
+</ul>
+</p>
+
+<hr>
+<h2> Field: nextTarget</h2>
+<p>
+If "nextTargetIsPedestrian == true", then randomly select a pedestrian which
+is heading to the given target as new target. Otherwise, use the given target
+id as "normal" target id.
+</p>
+

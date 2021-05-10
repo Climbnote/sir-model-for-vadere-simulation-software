@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesStrategyModel.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes</a> &gt; <span class="el_source">AttributesStrategyModel.java</span></div><h1>AttributesStrategyModel.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes;
+
+import java.util.LinkedList;
+import java.util.Objects;
+
+public class AttributesStrategyModel extends Attributes {
+
+    /**
+     * Store the members of this class under this key in the JSON file.
+     */
+    public static final String JSON_KEY = &quot;attributesStrategy&quot;;
+
+    private boolean useStrategyModel;
+    private String strategyModel;
+<span class="nc" id="L15">    private LinkedList&lt;String&gt; arguments = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L16">    private LinkedList&lt;Integer&gt; requiredDataProcessorIds = new LinkedList&lt;&gt;();</span>
+
+
+    // Constructors
+<span class="nc" id="L20">    public AttributesStrategyModel(){</span>
+<span class="nc" id="L21">        this.useStrategyModel = false;</span>
+<span class="nc" id="L22">        this.strategyModel = null;</span>
+<span class="nc" id="L23">        this.arguments = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L24">        this.requiredDataProcessorIds = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L25">    }</span>
+
+<span class="nc" id="L27">    public AttributesStrategyModel(boolean useStrategyModel, String strategyModel, LinkedList&lt;String&gt; arguments, LinkedList&lt;Integer&gt; requiredDataProcessorIds) {</span>
+<span class="nc" id="L28">        this.useStrategyModel = useStrategyModel;</span>
+<span class="nc" id="L29">        this.strategyModel = strategyModel;</span>
+<span class="nc" id="L30">        this.arguments = arguments;</span>
+<span class="nc" id="L31">        this.requiredDataProcessorIds = requiredDataProcessorIds;</span>
+<span class="nc" id="L32">    }</span>
+
+    // getter and setters
+    public String getStrategyModel() {
+<span class="nc" id="L36">        return strategyModel;</span>
+    }
+
+    public void setStrategyModel(String strategyModel) {
+<span class="nc" id="L40">        this.strategyModel = strategyModel;</span>
+<span class="nc" id="L41">    }</span>
+
+    public boolean isUseStrategyModel() {
+<span class="nc" id="L44">        return useStrategyModel;</span>
+    }
+
+    public void setUseStrategyModel(boolean useStrategyModel) {
+<span class="nc" id="L48">        this.useStrategyModel = useStrategyModel;</span>
+<span class="nc" id="L49">    }</span>
+
+    public LinkedList&lt;String&gt; getArguments() {
+<span class="nc" id="L52">        return arguments;</span>
+    }
+
+    public void setArguments(LinkedList&lt;String&gt; arguments) {
+<span class="nc" id="L56">        this.arguments = arguments;</span>
+<span class="nc" id="L57">    }</span>
+
+    public LinkedList&lt;Integer&gt; getRequiredDataProcessorIds() {
+<span class="nc" id="L60">        return requiredDataProcessorIds;</span>
+    }
+
+    public void setRequiredDataProcessorIds(LinkedList&lt;Integer&gt; requiredDataProcessorIds) {
+<span class="nc" id="L64">        this.requiredDataProcessorIds = requiredDataProcessorIds;</span>
+<span class="nc" id="L65">    }</span>
+}
+
+
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

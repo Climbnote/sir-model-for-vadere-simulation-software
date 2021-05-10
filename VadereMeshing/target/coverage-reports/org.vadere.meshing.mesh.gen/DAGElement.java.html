@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DAGElement.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">DAGElement.java</span></div><h1>DAGElement.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+import org.apache.commons.lang3.tuple.Triple;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VTriangle;
+
+import java.util.List;
+
+public class DAGElement&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; {
+	private F face;
+	private Triple&lt;IPoint, IPoint, IPoint&gt; vertices;
+	private VTriangle triangle;
+
+<span class="nc" id="L18">	public DAGElement(final F face, List&lt;IPoint&gt; points) {</span>
+<span class="nc" id="L19">		IPoint p1 = points.get(0);</span>
+<span class="nc" id="L20">		IPoint p2 = points.get(1);</span>
+<span class="nc" id="L21">		IPoint p3 = points.get(2);</span>
+
+<span class="nc" id="L23">		this.face = face;</span>
+<span class="nc" id="L24">		this.vertices = Triple.of(p1, p2, p3);</span>
+<span class="nc" id="L25">		this.triangle = new VTriangle(new VPoint(p1), new VPoint(p2), new VPoint(p3));</span>
+<span class="nc" id="L26">	}</span>
+
+<span class="fc" id="L28">	public DAGElement(final F face, final Triple&lt;IPoint, IPoint, IPoint&gt; vertices) {</span>
+<span class="fc" id="L29">		this.face = face;</span>
+<span class="fc" id="L30">		this.vertices = vertices;</span>
+<span class="fc" id="L31">		VPoint p1 = new VPoint(vertices.getLeft());</span>
+<span class="fc" id="L32">		VPoint p2 = new VPoint(vertices.getMiddle());</span>
+<span class="fc" id="L33">		VPoint p3 = new VPoint(vertices.getRight());</span>
+<span class="fc" id="L34">		this.triangle = new VTriangle(p1, p2, p3);</span>
+<span class="fc" id="L35">	}</span>
+
+	public F getFace() {
+<span class="fc" id="L38">		return face;</span>
+	}
+
+	public VTriangle getTriangle() {
+<span class="fc" id="L42">		return triangle;</span>
+	}
+
+	public Triple&lt;IPoint, IPoint, IPoint&gt; getVertices() {
+<span class="nc" id="L46">		return vertices;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L51">		return triangle.toString();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

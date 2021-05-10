@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: org.vadere.simulator.models.potential.solver.TestFFMNonUniformTriangulation
+-------------------------------------------------------------------------------
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 4, Time elapsed: 0.351 s - in org.vadere.simulator.models.potential.solver.TestFFMNonUniformTriangulation

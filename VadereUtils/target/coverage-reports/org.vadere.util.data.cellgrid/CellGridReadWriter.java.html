@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CellGridReadWriter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.data.cellgrid</a> &gt; <span class="el_source">CellGridReadWriter.java</span></div><h1>CellGridReadWriter.java</h1><pre class="source lang-java linenums">package org.vadere.util.data.cellgrid;
+
+import it.unimi.dsi.fastutil.io.FastBufferedInputStream;
+import it.unimi.dsi.fastutil.io.FastBufferedOutputStream;
+
+import org.vadere.util.io.IDataReader;
+import org.vadere.util.io.IDataWriter;
+import org.vadere.util.logging.Logger;
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintWriter;
+
+import tech.tablesaw.api.Row;
+import tech.tablesaw.api.Table;
+
+<span class="pc bpc" id="L23" title="1 of 2 branches missed.">public class CellGridReadWriter implements IDataWriter, IDataReader&lt;CellGrid&gt; {</span>
+
+<span class="fc" id="L25">	private static Logger logger = Logger.getLogger(CellGridReadWriter.class);</span>
+
+	private CellGrid cellGrid;
+
+	public static IDataWriter write(CellGrid cellGrid){
+<span class="fc" id="L30">		return new CellGridReadWriter(cellGrid);</span>
+	}
+
+	public static IDataReader&lt;CellGrid&gt; read(CellGrid cellGrid){
+<span class="fc" id="L34">		return new CellGridReadWriter(cellGrid);</span>
+	}
+
+	public static IDataReader&lt;CellGrid&gt; read(double width, double height, double resolution, double xMin, double yMin){
+<span class="nc" id="L38">		return new CellGridReadWriter(new CellGrid(width, height, resolution, new CellState(), xMin, yMin));</span>
+	}
+
+<span class="fc" id="L41">	private CellGridReadWriter(CellGrid cellGrid) {</span>
+<span class="fc" id="L42">		this.cellGrid = cellGrid;</span>
+<span class="fc" id="L43">	}</span>
+
+
+	@Override
+	public CellGrid fromTextFile(File file) throws IOException {
+<span class="fc" id="L48">		return readCsv(Table.read().csv(file));</span>
+	}
+
+	@Override
+	public CellGrid fromTextFile(InputStream inputStream) throws IOException {
+<span class="nc" id="L53">		return readCsv(Table.read().csv(inputStream));</span>
+	}
+
+	private CellGrid readCsv(Table table) {
+		int xDim;
+		int yDim;
+		try {
+<span class="fc" id="L60">			xDim = (int) table.intColumn(&quot;x&quot;).max() + 1;</span>
+<span class="fc" id="L61">			yDim = (int) table.intColumn(&quot;y&quot;).max() + 1;</span>
+<span class="nc" id="L62">		} catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L63">			throw new IllegalArgumentException(&quot;Cannot read from txt file. Expected column 'x' or 'y' does not exist&quot;, e);</span>
+<span class="fc" id="L64">		}</span>
+
+<span class="pc bpc" id="L66" title="2 of 4 branches missed.">		assert xDim == cellGrid.getNumPointsX();</span>
+<span class="pc bpc" id="L67" title="2 of 4 branches missed.">		assert yDim == cellGrid.getNumPointsY();</span>
+<span class="fc" id="L68">		CellState[][] values = cellGrid.values;</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">		for (Row r : table){</span>
+<span class="fc" id="L70">			values[r.getInt(&quot;x&quot;)][r.getInt(&quot;y&quot;)].potential = r.getDouble(&quot;value&quot;);</span>
+<span class="fc" id="L71">			values[r.getInt(&quot;x&quot;)][r.getInt(&quot;y&quot;)].tag =</span>
+<span class="fc" id="L72">					PathFindingTag.valueOf(r.getString(&quot;tag&quot;));</span>
+<span class="fc" id="L73">		}</span>
+
+<span class="fc" id="L75">		return cellGrid;</span>
+	}
+
+
+
+	@Override
+	public void toTextFile(File file) throws IOException {
+<span class="fc" id="L82">		file.getAbsoluteFile().getParentFile().mkdirs();</span>
+<span class="fc" id="L83">		CellState[][] values = cellGrid.values;</span>
+
+<span class="fc" id="L85">		PrintWriter stream = new PrintWriter(</span>
+				new FastBufferedOutputStream(new FileOutputStream(file)));
+<span class="fc" id="L87">		stream.write(&quot;x,y,value,tag\n&quot;);</span>
+<span class="fc bfc" id="L88" title="All 2 branches covered.">		for (int row = 0; row &lt; cellGrid.getNumPointsY(); row++) {</span>
+<span class="fc bfc" id="L89" title="All 2 branches covered.">			for (int col = 0; col &lt; cellGrid.getNumPointsX(); col++) {</span>
+<span class="fc" id="L90">				stream.write(Integer.toString(col));</span>
+<span class="fc" id="L91">				stream.write(&quot;,&quot;);</span>
+<span class="fc" id="L92">				stream.write(Integer.toString(row));</span>
+<span class="fc" id="L93">				stream.write(&quot;,&quot;);</span>
+<span class="fc" id="L94">				stream.write(values[col][row].potential.toString());</span>
+<span class="fc" id="L95">				stream.write(&quot;,&quot;);</span>
+<span class="fc" id="L96">				stream.write(values[col][row].tag.name());</span>
+<span class="fc" id="L97">				stream.write(&quot;\n&quot;);</span>
+			}
+		}
+<span class="fc" id="L100">		stream.flush();</span>
+<span class="fc" id="L101">	}</span>
+
+	@Override
+	public CellGrid fromBinary(File file) throws IOException {
+<span class="fc" id="L105">		DataInputStream stream = new DataInputStream(</span>
+				new FastBufferedInputStream(new FileInputStream(file))
+		);
+<span class="fc" id="L108">		return fromBinary(stream);</span>
+	}
+
+	@Override
+	public CellGrid fromBinary(DataInputStream stream) throws IOException {
+		int xDim;
+		int yDim;
+		int columns;
+		try{
+<span class="fc" id="L117">			xDim = stream.readInt();</span>
+<span class="fc" id="L118">			yDim = stream.readInt();</span>
+<span class="fc" id="L119">			columns = stream.readInt();</span>
+<span class="nc" id="L120">		} catch (EOFException eof){</span>
+<span class="nc" id="L121">			throw new IllegalArgumentException(&quot;Stream ended to soon.&quot;);</span>
+<span class="fc" id="L122">		}</span>
+
+<span class="pc bpc" id="L124" title="2 of 4 branches missed.">		assert xDim == cellGrid.getNumPointsX();</span>
+<span class="pc bpc" id="L125" title="2 of 4 branches missed.">		assert yDim == cellGrid.getNumPointsY();</span>
+<span class="fc" id="L126">		CellState[][] values = cellGrid.values;</span>
+
+<span class="fc" id="L128">		int lines = 0;</span>
+<span class="fc" id="L129">		int maxLines = xDim * yDim;</span>
+<span class="fc bfc" id="L130" title="All 2 branches covered.">		while (lines &lt; maxLines){</span>
+
+			try {
+<span class="fc" id="L133">				int col = stream.readInt();</span>
+<span class="fc" id="L134">				int row = stream.readInt();</span>
+<span class="fc" id="L135">				double val = stream.readDouble();</span>
+<span class="fc" id="L136">				PathFindingTag tag = PathFindingTag.valueOf(stream.readInt());</span>
+<span class="fc" id="L137">				values[col][row].potential = val;</span>
+<span class="fc" id="L138">				values[col][row].tag = tag;</span>
+<span class="fc" id="L139">				lines++;</span>
+<span class="nc" id="L140">			} catch (EOFException eof){</span>
+<span class="nc" id="L141">				throw new IllegalArgumentException(&quot;Stream ended to soon. Expected &quot; +</span>
+						maxLines + &quot;liens but only received &quot; + lines + &quot; lines.&quot;);
+<span class="fc" id="L143">			}</span>
+		}
+<span class="fc" id="L145">		return cellGrid;</span>
+	}
+
+	@Override
+	public void toBinary(File file) throws IOException {
+<span class="fc" id="L150">		file.getAbsoluteFile().getParentFile().mkdirs();</span>
+<span class="fc" id="L151">		CellState[][] values = cellGrid.values;</span>
+
+<span class="fc" id="L153">		DataOutputStream stream = new DataOutputStream(</span>
+				new FastBufferedOutputStream(new FileOutputStream(file))
+		);
+
+<span class="fc" id="L157">		stream.writeInt(cellGrid.getNumPointsX());</span>
+<span class="fc" id="L158">		stream.writeInt(cellGrid.getNumPointsY());</span>
+<span class="fc" id="L159">		stream.writeInt(4); // number of columns for dataframe</span>
+<span class="fc bfc" id="L160" title="All 2 branches covered.">		for (int row = 0; row &lt; cellGrid.getNumPointsY(); row++) {</span>
+<span class="fc bfc" id="L161" title="All 2 branches covered.">			for (int col = 0; col &lt; cellGrid.getNumPointsX(); col++) {</span>
+<span class="fc" id="L162">				stream.writeInt(col);</span>
+<span class="fc" id="L163">				stream.writeInt(row);</span>
+<span class="fc" id="L164">				stream.writeDouble(values[col][row].potential);</span>
+<span class="fc" id="L165">				stream.writeInt(values[col][row].tag.ordinal());</span>
+			}
+		}
+<span class="fc" id="L168">		stream.flush();</span>
+<span class="fc" id="L169">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

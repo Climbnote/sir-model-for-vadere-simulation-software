@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesTestOptimizationMetricProcessor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.processor</a> &gt; <span class="el_source">AttributesTestOptimizationMetricProcessor.java</span></div><h1>AttributesTestOptimizationMetricProcessor.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.processor;
+
+import org.jetbrains.annotations.NotNull;
+
+/**
+ *
+ */
+<span class="nc" id="L8">public class AttributesTestOptimizationMetricProcessor extends AttributesTestProcessor {</span>
+
+    private int optimizationMetricProcessorId;
+    private int testEvacuationProcessorId;
+
+    /** Following have to be fulfilled (i.e. the mean has to be below this. If the mean increases the value, the
+     * processor will fail. */
+    private double maxMeanPointDistance;
+    private double maxMeanDifferenceFuncValue;
+
+    /** These are just for information and reference -- there is a print out the console that compares these
+     *  the statistics.
+     */
+
+    private double infoMinPointDistanceL2;
+    private double infoMaxPointDistanceL2;
+
+    private double infoMinFuncDifference;
+    private double infoMaxFuncDifference;
+
+    private double infoStddevPointDistance;
+    private double infoStddevDifferenceFuncValue;
+
+    public int getOptimizationMetricProcessorId() {
+<span class="nc" id="L32">        return optimizationMetricProcessorId;</span>
+    }
+
+    public int getTestEvacuationProcessorId() {
+<span class="nc" id="L36">        return testEvacuationProcessorId;</span>
+    }
+
+    public double getMaxMeanPointDistance() {
+<span class="nc" id="L40">        return maxMeanPointDistance;</span>
+    }
+
+    public double getMaxMeanDifferenceFuncValue() {
+<span class="nc" id="L44">        return maxMeanDifferenceFuncValue;</span>
+    }
+
+    public double getInfoMinPointDistanceL2() {
+<span class="nc" id="L48">        return infoMinPointDistanceL2;</span>
+    }
+
+    public double getInfoMaxPointDistanceL2() {
+<span class="nc" id="L52">        return infoMaxPointDistanceL2;</span>
+    }
+
+    public double getInfoStddevPointDistance() {
+<span class="nc" id="L56">        return infoStddevPointDistance;</span>
+    }
+
+    public double getInfoStddevDifferenceFuncValue() {
+<span class="nc" id="L60">        return infoStddevDifferenceFuncValue;</span>
+    }
+
+    public double getInfoMaxFuncDifference() {
+<span class="nc" id="L64">        return infoMaxFuncDifference;</span>
+    }
+
+    public double getInfoMinFuncDifference() {
+<span class="nc" id="L68">        return infoMinFuncDifference;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

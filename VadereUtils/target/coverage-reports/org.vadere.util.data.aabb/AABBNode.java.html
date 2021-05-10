@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AABBNode.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.data.aabb</a> &gt; <span class="el_source">AABBNode.java</span></div><h1>AABBNode.java</h1><pre class="source lang-java linenums">package org.vadere.util.data.aabb;
+
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+
+public class AABBNode&lt;D&gt; {
+	private AABBNode parent;
+	private VRectangle aabb;
+
+	private AABBNode left;
+	private AABBNode right;
+
+	private D data;
+
+	int height;
+
+	public boolean isLeaf() {
+<span class="nc bnc" id="L18" title="All 4 branches missed.">		return left == null &amp;&amp; right == null;</span>
+	}
+
+	public VRectangle getAabb() {
+<span class="nc" id="L22">		return aabb;</span>
+	}
+
+<span class="nc" id="L25">	public AABBNode() {</span>
+
+<span class="nc" id="L27">	}</span>
+
+	public int getHeight() {
+<span class="nc" id="L30">		return height;</span>
+	}
+
+	public void setAabb(VRectangle aabb) {
+<span class="nc" id="L34">		this.aabb = aabb;</span>
+<span class="nc" id="L35">	}</span>
+
+	public void setHeight(int height) {
+<span class="nc" id="L38">		this.height = height;</span>
+<span class="nc" id="L39">	}</span>
+
+	public void setParent(AABBNode parent) {
+<span class="nc" id="L42">		this.parent = parent;</span>
+<span class="nc" id="L43">	}</span>
+
+	public void setLeft(AABBNode left) {
+<span class="nc" id="L46">		this.left = left;</span>
+<span class="nc" id="L47">	}</span>
+
+	public void setRight(AABBNode right) {
+<span class="nc" id="L50">		this.right = right;</span>
+<span class="nc" id="L51">	}</span>
+
+	public void setData(D data) {
+<span class="nc" id="L54">		this.data = data;</span>
+<span class="nc" id="L55">	}</span>
+
+	public AABBNode getParent() {
+<span class="nc" id="L58">		return parent;</span>
+	}
+
+	public AABBNode getLeft() {
+<span class="nc" id="L62">		return left;</span>
+	}
+
+	public AABBNode getRight() {
+<span class="nc" id="L66">		return right;</span>
+	}
+
+	public D getData() {
+<span class="nc" id="L70">		return data;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

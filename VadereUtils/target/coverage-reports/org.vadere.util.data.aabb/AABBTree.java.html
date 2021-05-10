@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AABBTree.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.data.aabb</a> &gt; <span class="el_source">AABBTree.java</span></div><h1>AABBTree.java</h1><pre class="source lang-java linenums">package org.vadere.util.data.aabb;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.geometry.shapes.VRectangle;
+
+import java.util.LinkedList;
+
+/**
+ * Not jet finished!
+ *
+ * @author Benedikt Zoennchen
+ * @param &lt;D&gt;
+ */
+<span class="nc" id="L14">public class AABBTree&lt;D&gt; {</span>
+
+	private AABBNode&lt;D&gt; root;
+<span class="nc" id="L17">	private int capacity = 16;</span>
+<span class="nc" id="L18">	private int nElements = 0;</span>
+
+
+	public LinkedList&lt;AABBNode&lt;D&gt;&gt; query(@NotNull final VRectangle aabb) {
+<span class="nc" id="L22">		LinkedList&lt;AABBNode&lt;D&gt;&gt; intersections = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L23">		LinkedList&lt;AABBNode&lt;D&gt;&gt; toProcess = new LinkedList&lt;&gt;();</span>
+
+<span class="nc" id="L25">		toProcess.add(root);</span>
+
+<span class="nc bnc" id="L27" title="All 2 branches missed.">		while (!toProcess.isEmpty()) {</span>
+<span class="nc" id="L28">			AABBNode&lt;D&gt; node = toProcess.poll();</span>
+
+<span class="nc bnc" id="L30" title="All 2 branches missed.">			if(intersects(node.getAabb(), aabb)) {</span>
+<span class="nc bnc" id="L31" title="All 2 branches missed.">				if(node.isLeaf()) {</span>
+<span class="nc" id="L32">					intersections.add(node);</span>
+				}
+				else {
+<span class="nc" id="L35">					toProcess.add(node.getLeft());</span>
+<span class="nc" id="L36">					toProcess.add(node.getRight());</span>
+				}
+			}
+<span class="nc" id="L39">		}</span>
+
+<span class="nc" id="L41">		return intersections;</span>
+	}
+
+	public void insert(@NotNull final AABBNode&lt;D&gt; node) {
+<span class="nc bnc" id="L45" title="All 2 branches missed.">		if(root == null) {</span>
+<span class="nc" id="L46">			root = node;</span>
+		}
+		else {
+			// find the heuristicly best sibling
+<span class="nc" id="L50">			AABBNode&lt;D&gt; currentNode = root;</span>
+<span class="nc bnc" id="L51" title="All 2 branches missed.">			while (!currentNode.isLeaf()) {</span>
+<span class="nc" id="L52">				AABBNode&lt;D&gt; left = currentNode.getLeft();</span>
+<span class="nc" id="L53">				AABBNode&lt;D&gt; right = currentNode.getRight();</span>
+<span class="nc" id="L54">				double area = cost(currentNode.getAabb());</span>
+
+<span class="nc" id="L56">				double combinedArea = cost(combine(currentNode.getAabb(), node.getAabb()));</span>
+<span class="nc" id="L57">				double cominbedCost = 2 * combinedArea;</span>
+
+				// min cost further down
+<span class="nc" id="L60">				double inheritanceCost = 2 * (combinedArea - area);</span>
+
+				double leftCost;
+<span class="nc bnc" id="L63" title="All 2 branches missed.">				if(left.isLeaf()) {</span>
+<span class="nc" id="L64">					leftCost = cost(combine(node.getAabb(), left.getAabb())) + inheritanceCost;</span>
+				} else {
+<span class="nc" id="L66">					double newArea = cost(combine(node.getAabb(), left.getAabb()));</span>
+<span class="nc" id="L67">					double oldArea = cost(left.getAabb());</span>
+<span class="nc" id="L68">					leftCost = (newArea - oldArea) + inheritanceCost;</span>
+				}
+
+				double rightCost;
+<span class="nc bnc" id="L72" title="All 2 branches missed.">				if(left.isLeaf()) {</span>
+<span class="nc" id="L73">					rightCost = cost(combine(node.getAabb(), right.getAabb())) + inheritanceCost;</span>
+				} else {
+<span class="nc" id="L75">					double newArea = cost(combine(node.getAabb(), right.getAabb()));</span>
+<span class="nc" id="L76">					double oldArea = cost(right.getAabb());</span>
+<span class="nc" id="L77">					rightCost = (newArea - oldArea) + inheritanceCost;</span>
+				}
+
+<span class="nc bnc" id="L80" title="All 4 branches missed.">				if(combinedArea &lt; leftCost &amp;&amp; combinedArea &lt; rightCost) {</span>
+<span class="nc" id="L81">					break;</span>
+				}
+
+<span class="nc bnc" id="L84" title="All 2 branches missed.">				if(leftCost &lt; rightCost) {</span>
+<span class="nc" id="L85">					currentNode = left;</span>
+				}
+				else {
+<span class="nc" id="L88">					currentNode = right;</span>
+				}
+<span class="nc" id="L90">			}</span>
+
+<span class="nc" id="L92">			AABBNode&lt;D&gt; oldParent = currentNode.getParent();</span>
+<span class="nc" id="L93">			AABBNode&lt;D&gt; newParent = new AABBNode&lt;&gt;();</span>
+<span class="nc" id="L94">			newParent.setParent(oldParent);</span>
+<span class="nc" id="L95">			newParent.setAabb(combine(node.getAabb(), currentNode.getAabb()));</span>
+<span class="nc" id="L96">			newParent.setHeight(currentNode.getHeight() + 1);</span>
+
+			// old parent is not the root
+<span class="nc bnc" id="L99" title="All 2 branches missed.">			if(oldParent != null) {</span>
+
+			}
+
+		}
+<span class="nc" id="L104">	}</span>
+
+	private boolean intersects(@NotNull final VRectangle rect1, @NotNull final VRectangle rect2) {
+<span class="nc" id="L107">		return rect1.intersects(rect2.getX(), rect2.getY(), rect2.getWidth(), rect2.getHeight());</span>
+	}
+
+	private VRectangle combine(@NotNull final VRectangle rect1, @NotNull final VRectangle rect2) {
+<span class="nc" id="L111">		double xmin = Math.min(rect1.getMinX(), rect2.getMinX());</span>
+<span class="nc" id="L112">		double ymin = Math.min(rect1.getMinY(), rect2.getMinY());</span>
+<span class="nc" id="L113">		double xmax = Math.max(rect1.getMaxX(), rect2.getMaxX());</span>
+<span class="nc" id="L114">		double ymax = Math.max(rect1.getMaxY(), rect2.getMaxY());</span>
+<span class="nc" id="L115">		return new VRectangle(xmin, ymin, xmax - xmin, ymax-ymin);</span>
+	}
+
+	private double cost(@NotNull VRectangle rectangle) {
+<span class="nc" id="L119">		return rectangle.getArea();</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

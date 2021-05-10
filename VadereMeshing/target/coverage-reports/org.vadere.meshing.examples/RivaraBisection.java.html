@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RivaraBisection.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.examples</a> &gt; <span class="el_source">RivaraBisection.java</span></div><h1>RivaraBisection.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.examples;
+
+import org.vadere.meshing.mesh.gen.AFace;
+import org.vadere.meshing.mesh.gen.AHalfEdge;
+import org.vadere.meshing.mesh.gen.AVertex;
+import org.vadere.meshing.mesh.gen.MeshPanel;
+import org.vadere.meshing.mesh.triangulation.triangulator.gen.GenRivaraRefinement;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.ADelaunayTriangulator;
+import org.vadere.util.geometry.shapes.VPoint;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Random;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+<span class="nc" id="L18">public class RivaraBisection {</span>
+	public static void main(String... args) throws InterruptedException, IOException {
+		// (1) generate a random delaunay triangulation to work with
+<span class="nc" id="L21">		Random random = new Random(0);</span>
+<span class="nc" id="L22">		int width = 10;</span>
+<span class="nc" id="L23">		int height = 10;</span>
+<span class="nc" id="L24">		int numberOfPoints = 100;</span>
+<span class="nc" id="L25">		Supplier&lt;VPoint&gt; supply = () -&gt; new VPoint(random.nextDouble()*width, random.nextDouble()*height);</span>
+<span class="nc" id="L26">		Stream&lt;VPoint&gt; randomPoints = Stream.generate(supply);</span>
+<span class="nc" id="L27">		List&lt;VPoint&gt; points = randomPoints.limit(numberOfPoints).collect(Collectors.toList());</span>
+
+		// (2) compute the Delaunay triangulation
+<span class="nc" id="L30">		var delaunayTriangulator = new ADelaunayTriangulator(points);</span>
+<span class="nc" id="L31">		var triangulation = delaunayTriangulator.generate();</span>
+
+<span class="nc bnc" id="L33" title="All 2 branches missed.">		GenRivaraRefinement&lt;AVertex, AHalfEdge, AFace&gt; refinement = new GenRivaraRefinement&lt;&gt;(triangulation, e -&gt; triangulation.getMesh().toLine(e).length() &gt; 0.3);</span>
+<span class="nc" id="L34">		MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; panel = new MeshPanel&lt;&gt;(triangulation.getMesh(), 500, 500);</span>
+<span class="nc" id="L35">		panel.display();</span>
+
+<span class="nc bnc" id="L37" title="All 2 branches missed.">		while (!refinement.isFinished()) {</span>
+<span class="nc" id="L38">			synchronized (triangulation.getMesh()) {</span>
+<span class="nc" id="L39">				refinement.refine();</span>
+<span class="nc" id="L40">			}</span>
+<span class="nc" id="L41">			panel.repaint();</span>
+<span class="nc" id="L42">			Thread.sleep(500);</span>
+		}
+<span class="nc" id="L44">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

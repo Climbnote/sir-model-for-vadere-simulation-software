@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BackgroundMeshExamples.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.examples</a> &gt; <span class="el_source">BackgroundMeshExamples.java</span></div><h1>BackgroundMeshExamples.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.examples;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.gen.PMesh;
+import org.vadere.meshing.mesh.impl.PSLG;
+import org.vadere.meshing.mesh.triangulation.DistanceFunctionApproxBF;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.EdgeLengthFunctionApprox;
+import org.vadere.meshing.utils.io.poly.PSLGGenerator;
+import org.vadere.meshing.utils.io.tex.TexGraphGenerator;
+import org.vadere.util.math.IDistanceFunction;
+
+import java.awt.*;
+import java.io.IOException;
+import java.io.InputStream;
+
+<span class="nc" id="L16">public class BackgroundMeshExamples {</span>
+
+<span class="nc" id="L18">	private static final Color lightBlue = new Color(0.8584083044982699f, 0.9134486735870818f, 0.9645674740484429f);</span>
+
+	public static void main(String ... args) throws IOException, InterruptedException {
+<span class="nc" id="L21">		localFeatureSize(&quot;/poly/kaiserslautern_1.poly&quot;);</span>
+		//localFeatureSize(&quot;/poly/kaiserslautern_large.poly&quot;);
+		//localFeatureSize(&quot;/poly/room.poly&quot;);
+		//localFeatureSize(&quot;/poly/corner.poly&quot;);
+		//localFeatureSize(&quot;/poly/narrowCorridor.poly&quot;);
+		//localFeatureSize(&quot;/poly/bridge.poly&quot;);
+		//distance(&quot;/poly/mf_small_very_simple.poly&quot;);
+		//distance(&quot;/poly/mf_small_very_simple.poly&quot;);
+		//distance(&quot;/poly/mf_small_very_simple.poly&quot;);
+<span class="nc" id="L30">	}</span>
+
+	public static void localFeatureSize(@NotNull final String fileName) throws IOException {
+<span class="nc" id="L33">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(fileName);</span>
+<span class="nc" id="L34">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+
+
+<span class="nc" id="L37">		EdgeLengthFunctionApprox edgeLengthFunctionApprox = new EdgeLengthFunctionApprox(pslg);</span>
+<span class="nc" id="L38">		edgeLengthFunctionApprox.smooth(0.2);</span>
+<span class="nc" id="L39">		edgeLengthFunctionApprox.printPython();</span>
+<span class="nc" id="L40">		System.out.println(TexGraphGenerator.toTikz(edgeLengthFunctionApprox.getMesh(), f-&gt; lightBlue, 1.0f));</span>
+<span class="nc" id="L41">	}</span>
+
+	public static void distance(@NotNull final String fileName) throws IOException {
+<span class="nc" id="L44">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(fileName);</span>
+<span class="nc" id="L45">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L46">		DistanceFunctionApproxBF distFunctionApprox = new DistanceFunctionApproxBF(pslg, IDistanceFunction.create(pslg.getSegmentBound(), pslg.getHoles()),() -&gt; new PMesh());</span>
+<span class="nc" id="L47">		distFunctionApprox.printPython();</span>
+<span class="nc" id="L48">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

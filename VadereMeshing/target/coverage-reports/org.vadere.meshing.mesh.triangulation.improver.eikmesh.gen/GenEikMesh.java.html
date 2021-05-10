@@ -1,0 +1,1835 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GenEikMesh.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.improver.eikmesh.gen</a> &gt; <span class="el_source">GenEikMesh.java</span></div><h1>GenEikMesh.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.improver.eikmesh.gen;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.IllegalMeshException;
+import org.vadere.meshing.mesh.inter.IEdgeContainerBoolean;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IMeshSupplier;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.inter.IVertexContainerBoolean;
+import org.vadere.meshing.mesh.inter.IVertexContainerDouble;
+import org.vadere.meshing.mesh.iterators.EdgeIterator;
+import org.vadere.meshing.mesh.iterators.EdgeIteratorReverse;
+import org.vadere.meshing.mesh.triangulation.improver.IMeshImprover;
+import org.vadere.meshing.mesh.triangulation.improver.distmesh.Parameters;
+import org.vadere.meshing.mesh.triangulation.triangulator.gen.GenRivaraRefinement;
+import org.vadere.meshing.mesh.triangulation.triangulator.gen.GenVoronoiSegmentInsertion;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.IRefiner;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.ITriangulator;
+import org.vadere.meshing.mesh.triangulation.triangulator.gen.GenUniformRefinementTriangulatorSFC;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.math.IDistanceFunction;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.util.math.DistanceFunction;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * @author Benedikt Zoennchen
+ */
+<span class="nc bnc" id="L53" title="All 2 branches missed.">public class GenEikMesh&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements IMeshImprover&lt;V, E, F&gt;, ITriangulator&lt;V, E, F&gt; {</span>
+
+	private IRefiner&lt;V, E, F&gt; refiner;
+	private IIncrementalTriangulation&lt;V, E, F&gt; triangulation;
+
+	private IDistanceFunction distanceFunc;
+	private IEdgeLengthFunction edgeLengthFunc;
+	private VRectangle bound;
+	private Collection&lt;? extends IPoint&gt; fixPoints;
+	private double scalingFactor;
+	private double deps;
+	private static final int MAX_STEPS = Parameters.MAX_NUMBER_OF_STEPS;
+	private int nSteps;
+	private double initialEdgeLen;
+	private double maxMovement;
+	private double quality;
+<span class="nc" id="L69">	private double dQuality = Double.POSITIVE_INFINITY;</span>
+
+	// Persson-Strang smothing function
+<span class="nc" id="L72">	private Function&lt;Double, Double&gt; f = d -&gt; Math.max(1-d, 0);</span>
+
+	// Bosson-Heckbert smoothing function
+	//private Function&lt;Double, Double&gt; f = d -&gt; 0.5 * (1-Math.pow(d, 4)) * Math.exp(-Math.pow(d, 4));
+
+<span class="nc" id="L77">	private boolean initialized = false;</span>
+<span class="nc" id="L78">	private boolean runParallel = false;</span>
+<span class="nc" id="L79">	private boolean profiling = false;</span>
+<span class="nc" id="L80">	private double minDeltaTravelDistance = 0.0;</span>
+<span class="nc" id="L81">	private double delta = Parameters.DELTAT;</span>
+	private Collection&lt;? extends VShape&gt; shapes;
+	private Map&lt;V, VLine&gt; pointToSlidingLine;
+	private boolean nonEmptyBaseMode;
+<span class="nc" id="L85">	private int nStepQualityTest = 10;</span>
+	private boolean useSlidingLines;
+
+	//TODO: local connectifity changes?
+	/*private Set&lt;V&gt; frozenVertices;
+	private Set&lt;F&gt; frozenFaces;
+	private LinkedList&lt;F&gt; poorFaces;*/
+
+	// different options
+
+	// spilts long boundary edges
+<span class="nc" id="L96">	private boolean allowEdgeSplits = true;</span>
+
+	// edge collapse of shortest edges of poor non-boundary triangles
+<span class="nc" id="L99">	private boolean allowEdgeCollapse = false;</span>
+
+	// removes short bounary edges
+<span class="nc" id="L102">	private boolean allowVertexCollapse = true;</span>
+
+	// removes low quality boundary faces
+<span class="nc" id="L105">	private boolean allowFaceCollapse = false;</span>
+
+	// TODO: removes low quality boundary faces which is similar to allowFaceCollapse
+<span class="nc" id="L108">	private boolean removeLowBoundaryTriangles = false;</span>
+<span class="nc" id="L109">	private boolean removeOutsideTriangles = false;</span>
+<span class="nc" id="L110">	private boolean useVirtualEdges = true;</span>
+
+	// if no PSLG set this to be true
+	private boolean smoothBorder;
+
+	// counter acts long boundary edges
+<span class="nc" id="L116">	private boolean freezeVertices = false;</span>
+	//private boolean splitFaces = true;
+	//private boolean useFixPoints = false;
+
+	// only for logging
+<span class="nc" id="L121">	private static final Logger log = Logger.getLogger(GenEikMesh.class);</span>
+
+	static {
+		//log.setDebug();
+<span class="nc" id="L125">	}</span>
+
+
+	// properties saved for different mesh elements i.e. vertices, edges and faces
+	private static final String propFixPoint = &quot;fixPoint&quot;;
+	private static final String propConstrained = &quot;constrained&quot;;
+	private static final String propVelocityX = &quot;velocityX&quot;;
+	private static final String propVelocityY = &quot;velocityY&quot;;
+	private static final String propAbsVelocity = &quot;absVelocity&quot;;
+
+	private final IVertexContainerBoolean&lt;V, E, F&gt; fixpointC;
+	private final IEdgeContainerBoolean&lt;V, E, F&gt; constraintC;
+	private final IVertexContainerDouble&lt;V, E, F&gt; velocityXC;
+	private final IVertexContainerDouble&lt;V, E, F&gt; velocityYC;
+	private final IVertexContainerDouble&lt;V, E, F&gt; absVelocityC;
+
+	/**
+	 * Constructor to use EikMesh on an existing {@link org.vadere.meshing.mesh.inter.ITriangulation}, that is
+	 * EikMesh uses this triangulation as a bases. It will refineSimplex2D the triangulation by using a longest edge
+	 * split strategy {@link GenRivaraRefinement} to generate desired edge length determined by
+	 * len(p) = &lt;tt&gt;edgeLengthFunc(p)&lt;/tt&gt; if &lt;tt&gt;refine&lt;/tt&gt; is set to &lt;tt&gt;true&lt;/tt&gt;. Since there is no {@link IDistanceFunction} function
+	 * the geometry i.e. the boundary and holes are defined by the given triangulation itself. Therefore, the algorithm does
+	 * not project points but uses slide points only.
+	 *
+	 * Assumption:
+	 * &lt;ol&gt;
+	 *     &lt;ul&gt;&lt;tt&gt;edgeLengthFunc&lt;/tt&gt; should be something like &lt;tt&gt;edgeLengthFunc&lt;/tt&gt;(p) = minEdgeLen + f(p) and should be &gt;= minEdgeLen everywhere!&lt;/ul&gt;
+	 *     &lt;ul&gt;&lt;tt&gt;triangulation&lt;/tt&gt; should be a valid triangulation&lt;/ul&gt;
+	 * &lt;/ol&gt;
+	 *
+	 *
+	 * @param edgeLengthFunc    the desired edge length function
+	 * @param triangulation     a valid triangulation
+	 * @param refine            determines whether the given triangulation will be refined or it will not.
+	 */
+	public GenEikMesh(
+			@NotNull final IEdgeLengthFunction edgeLengthFunc,
+			@NotNull final IIncrementalTriangulation&lt;V, E, F&gt; triangulation,
+<span class="nc" id="L163">			final boolean refine) {</span>
+<span class="nc" id="L164">		this.fixpointC = triangulation.getMesh().getBooleanVertexContainer(propFixPoint);</span>
+<span class="nc" id="L165">		this.constraintC = triangulation.getMesh().getBooleanEdgeContainer(propConstrained);</span>
+<span class="nc" id="L166">		this.velocityXC = triangulation.getMesh().getDoubleVertexContainer(propVelocityX);</span>
+<span class="nc" id="L167">		this.velocityYC = triangulation.getMesh().getDoubleVertexContainer(propVelocityY);</span>
+<span class="nc" id="L168">		this.absVelocityC = triangulation.getMesh().getDoubleVertexContainer(propAbsVelocity);</span>
+<span class="nc" id="L169">		this.shapes = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L170">		this.bound = null;</span>
+<span class="nc" id="L171">		this.edgeLengthFunc = edgeLengthFunc;</span>
+<span class="nc" id="L172">		this.nSteps = 0;</span>
+		//this.fixPointRelation = new HashMap&lt;&gt;();
+<span class="nc" id="L174">		this.triangulation = triangulation;</span>
+
+<span class="nc" id="L176">		this.distanceFunc = null;</span>
+<span class="nc" id="L177">		this.nonEmptyBaseMode = true;</span>
+<span class="nc" id="L178">		this.fixPoints = Collections.EMPTY_LIST;</span>
+<span class="nc" id="L179">		this.pointToSlidingLine = new HashMap&lt;&gt;();</span>
+		//this.frozenFaces = new HashSet&lt;&gt;();
+		//this.frozenVertices = new HashSet&lt;&gt;();
+		//this.poorFaces = new LinkedList&lt;&gt;();
+<span class="nc" id="L183">		this.triangulation.setCanIllegalPredicate(e -&gt; true);</span>
+<span class="nc" id="L184">		this.maxMovement = Double.NEGATIVE_INFINITY;</span>
+<span class="nc" id="L185">		this.triangulation.getMesh().streamBoundaryEdges().map(e -&gt; triangulation.getMesh().getVertex(e)).forEach(v -&gt; setFixPoint(v, true));</span>
+
+<span class="nc bnc" id="L187" title="All 2 branches missed.">		if(refine) {</span>
+<span class="nc" id="L188">			this.refiner = new GenVoronoiSegmentInsertion&lt;&gt;(triangulation, p -&gt; edgeLengthFunc.apply(p));</span>
+		} else {
+<span class="nc" id="L190">			this.refiner = null;</span>
+		}
+<span class="nc" id="L192">		this.useSlidingLines = true;</span>
+<span class="nc" id="L193">		this.smoothBorder = false;</span>
+
+<span class="nc" id="L195">	}</span>
+
+	/**
+	 * Constructor to use EikMesh on an existing {@link org.vadere.meshing.mesh.inter.ITriangulation}, that is
+	 * EikMesh uses this triangulation as a bases. It will not refine the the triangulation further.
+	 * Since there is no {@link IDistanceFunction} function the geometry i.e. the boundary and holes are defined by the given triangulation itself.
+	 * Therefore, the algorithm does not project points but uses slide points only.
+	 *
+	 * Assumption:
+	 * &lt;ol&gt;
+	 *     &lt;ul&gt;&lt;tt&gt;edgeLengthFunc&lt;/tt&gt; should be something like &lt;tt&gt;edgeLengthFunc&lt;/tt&gt;(p) = minEdgeLen + f(p) and should be &gt;= minEdgeLen everywhere!&lt;/ul&gt;
+	 *     &lt;ul&gt;&lt;tt&gt;triangulation&lt;/tt&gt; should be a valid triangulation&lt;/ul&gt;
+	 * &lt;/ol&gt;
+	 *
+	 *
+	 * @param edgeLengthFunc    the relative desired edge length function
+	 * @param triangulation     a valid triangulation
+	 */
+	public GenEikMesh(
+			@NotNull final IEdgeLengthFunction edgeLengthFunc,
+			@NotNull final IIncrementalTriangulation&lt;V, E, F&gt; triangulation) {
+<span class="nc" id="L216">		this(edgeLengthFunc, triangulation, false);</span>
+<span class="nc" id="L217">	}</span>
+
+	/**
+	 * Constructor to use EikMesh on an existing {@link org.vadere.meshing.mesh.inter.ITriangulation}, that is
+	 * EikMesh uses this triangulation as a bases. It will refineSimplex2D the triangulation by using a longest edge
+	 * split strategy {@link GenRivaraRefinement} to generate desired edge length determined by
+	 * len(p) = &lt;tt&gt;edgeLengthFunc(p)&lt;/tt&gt;. Since a {@link IDistanceFunction} function is given projection is used (and no sliding points).
+	 *
+	 * Assumption:
+	 * &lt;ol&gt;
+	 *     &lt;ul&gt;&lt;tt&gt;edgeLengthFunc&lt;/tt&gt; should be something like &lt;tt&gt;edgeLengthFunc&lt;/tt&gt;(p) = 1 + f(p) and should be &gt;= 1 everywhere!&lt;/ul&gt;
+	 *     &lt;ul&gt;&lt;tt&gt;triangulation&lt;/tt&gt; should be a valid triangulation with angles &gt;= 20 degree!&lt;/ul&gt;
+	 * &lt;/ol&gt;
+	 *
+	 *
+	 * @param distanceFunc      the signed distance function
+	 * @param edgeLengthFunc    the relative desired edge length function
+	 * @param triangulation     a valid triangulation
+	 * @param refine            determines whether the given triangulation will be refined or it will not.
+	 */
+	public GenEikMesh(
+			@NotNull final IDistanceFunction distanceFunc,
+			@NotNull final IEdgeLengthFunction edgeLengthFunc,
+			@NotNull final IIncrementalTriangulation&lt;V, E, F&gt; triangulation,
+<span class="nc" id="L241">			final boolean refine) {</span>
+<span class="nc" id="L242">		this.shapes = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L243">		this.bound = null;</span>
+<span class="nc" id="L244">		this.distanceFunc = distanceFunc;</span>
+<span class="nc" id="L245">		this.edgeLengthFunc = edgeLengthFunc;</span>
+<span class="nc" id="L246">		this.nSteps = 0;</span>
+		//this.fixPointRelation = new HashMap&lt;&gt;();
+<span class="nc" id="L248">		this.nonEmptyBaseMode = true;</span>
+<span class="nc" id="L249">		this.fixPoints = Collections.EMPTY_LIST;</span>
+<span class="nc" id="L250">		this.pointToSlidingLine = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L251">		this.maxMovement = Double.NEGATIVE_INFINITY;</span>
+
+
+<span class="nc bnc" id="L254" title="All 2 branches missed.">		if(refine) {</span>
+<span class="nc" id="L255">			this.refiner = new GenVoronoiSegmentInsertion&lt;&gt;(triangulation, p -&gt; edgeLengthFunc.apply(p));</span>
+		} else {
+<span class="nc" id="L257">			this.refiner = null;</span>
+		}
+
+<span class="nc" id="L260">		this.useSlidingLines = false;</span>
+<span class="nc" id="L261">		this.smoothBorder = true;</span>
+
+<span class="nc" id="L263">		this.fixpointC = triangulation.getMesh().getBooleanVertexContainer(propFixPoint);</span>
+<span class="nc" id="L264">		this.constraintC = triangulation.getMesh().getBooleanEdgeContainer(propConstrained);</span>
+<span class="nc" id="L265">		this.velocityXC = triangulation.getMesh().getDoubleVertexContainer(propVelocityX);</span>
+<span class="nc" id="L266">		this.velocityYC = triangulation.getMesh().getDoubleVertexContainer(propVelocityY);</span>
+<span class="nc" id="L267">		this.absVelocityC = triangulation.getMesh().getDoubleVertexContainer(propAbsVelocity);</span>
+<span class="nc" id="L268">	}</span>
+
+	/**
+	 * Constructor to use EikMesh to construct the whole new triangulation based on a given geometry
+	 * defined by a {@link IDistanceFunction} and additionally (optional) by some {@link VShape}s, where
+	 * each of the elements in &lt;tt&gt;shapes&lt;/tt&gt; is part of the (outside) boundary area.
+	 * The algorithm will generate sliding points on the base of the given {@link VShape}s and will project
+	 * based on the given {@link IDistanceFunction}.
+	 *
+	 * @param distanceFunc      the distance function defining the geometry
+	 * @param edgeLengthFunc    the relative desired edge lenght function
+	 * @param initialEdgeLen    the initial edge length i.e. approximately the minimum edge length
+	 * @param bound             the bound which has to contain the whole geometry
+	 * @param shapes            a collection of shapes used to generate fix points to improve the result on sharp corners
+	 * @param meshSupplier      a mesh supplier which is used to generate the mesh which will be filled
+	 */
+	public GenEikMesh(
+			@NotNull final IDistanceFunction distanceFunc,
+			@NotNull final IEdgeLengthFunction edgeLengthFunc,
+			@NotNull final Collection&lt;? extends IPoint&gt; fixPoints,
+			final double initialEdgeLen,
+			@NotNull final VRectangle bound,
+			@NotNull final Collection&lt;? extends VShape&gt; shapes,
+<span class="nc" id="L291">			@NotNull final IMeshSupplier&lt;V, E, F&gt; meshSupplier) {</span>
+<span class="nc" id="L292">		this.shapes = shapes;</span>
+<span class="nc" id="L293">		this.bound = bound;</span>
+<span class="nc" id="L294">		this.distanceFunc = distanceFunc;</span>
+<span class="nc" id="L295">		this.edgeLengthFunc = edgeLengthFunc;</span>
+<span class="nc" id="L296">		this.nSteps = 0;</span>
+		//this.fixPointRelation = new HashMap&lt;&gt;();
+<span class="nc" id="L298">		this.nonEmptyBaseMode = false;</span>
+<span class="nc" id="L299">		this.fixPoints = fixPoints;</span>
+<span class="nc" id="L300">		this.pointToSlidingLine = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">		this.useSlidingLines = !shapes.isEmpty();</span>
+<span class="nc" id="L302">		this.smoothBorder = true;</span>
+<span class="nc" id="L303">		this.removeOutsideTriangles = true;</span>
+<span class="nc" id="L304">		this.refiner = new GenUniformRefinementTriangulatorSFC(</span>
+				meshSupplier,
+				bound,
+				shapes,
+				edgeLengthFunc,
+				initialEdgeLen,
+				distanceFunc,
+<span class="nc" id="L311">				generateFixPoints());</span>
+
+<span class="nc" id="L313">		this.fixpointC = refiner.getMesh().getBooleanVertexContainer(propFixPoint);</span>
+<span class="nc" id="L314">		this.constraintC = refiner.getMesh().getBooleanEdgeContainer(propConstrained);</span>
+<span class="nc" id="L315">		this.velocityXC = refiner.getMesh().getDoubleVertexContainer(propVelocityX);</span>
+<span class="nc" id="L316">		this.velocityYC = refiner.getMesh().getDoubleVertexContainer(propVelocityY);</span>
+<span class="nc" id="L317">		this.absVelocityC = refiner.getMesh().getDoubleVertexContainer(propAbsVelocity);</span>
+<span class="nc" id="L318">	}</span>
+
+	public GenEikMesh(
+			@NotNull final IDistanceFunction distanceFunc,
+			@NotNull final IEdgeLengthFunction edgeLengthFunc,
+			final double initialEdgeLen,
+			@NotNull final VRectangle bound,
+			@NotNull final Collection&lt;? extends VShape&gt; shapes,
+			@NotNull final IMeshSupplier&lt;V, E, F&gt; meshSupplier) {
+<span class="nc" id="L327">		this(distanceFunc, edgeLengthFunc, Collections.EMPTY_LIST, initialEdgeLen, bound, shapes, meshSupplier);</span>
+<span class="nc" id="L328">	}</span>
+
+	public GenEikMesh(
+			@NotNull final IDistanceFunction distanceFunc,
+			@NotNull final IEdgeLengthFunction edgeLengthFunc,
+			final double initialEdgeLen,
+			@NotNull final VRectangle bound,
+			@NotNull final IMeshSupplier&lt;V, E, F&gt; meshSupplier) {
+<span class="nc" id="L336">		this(distanceFunc, edgeLengthFunc, initialEdgeLen, bound, Collections.EMPTY_LIST, meshSupplier);</span>
+<span class="nc" id="L337">	}</span>
+
+	public GenEikMesh(@NotNull final VPolygon segmentBound,
+	                  final double initialEdgeLen,
+	                  @NotNull final Collection&lt;? extends VShape&gt; shapes,
+	                  @NotNull final IMeshSupplier&lt;V, E, F&gt; meshSupplier){
+<span class="nc" id="L343">		this(new DistanceFunction(segmentBound, shapes), p -&gt; initialEdgeLen, initialEdgeLen, GeometryUtils.boundRelative(segmentBound.getPoints()), shapes, meshSupplier);</span>
+<span class="nc" id="L344">	}</span>
+
+	/**
+	 * This should be called if the edge length function or the distance function changes.
+	 */
+	private void reset() {
+<span class="nc" id="L350">		this.maxMovement = Double.POSITIVE_INFINITY;</span>
+<span class="nc" id="L351">		this.nSteps = 0;</span>
+<span class="nc" id="L352">		this.dQuality = Double.POSITIVE_INFINITY;</span>
+<span class="nc" id="L353">	}</span>
+
+	/**
+	 * This will initialize the mesh before any force is computed and any vertex is displaced.
+	 */
+	public void initialize() {
+<span class="nc bnc" id="L359" title="All 4 branches missed.">		if(hasRefiner() &amp;&amp; !refiner.isFinished()) {</span>
+<span class="nc" id="L360">			refiner.refine();</span>
+		} else {
+<span class="nc" id="L362">			initialEdgeLen = getTriangulation().getMesh().streamEdges().map(e -&gt; getMesh().toLine(e).length()).min(Double::compareTo).orElse(Double.POSITIVE_INFINITY);</span>
+			//deps = 2.22e-16 * initialEdgeLen;
+<span class="nc" id="L364">			deps = 0.0001 * initialEdgeLen;</span>
+
+<span class="nc" id="L366">			computeFixPoints();</span>
+<span class="nc bnc" id="L367" title="All 2 branches missed.">			if(hasRefiner()) {</span>
+<span class="nc" id="L368">				refiner.getConstrains().forEach(e -&gt; setConstraint(e, true));</span>
+			}
+
+<span class="nc bnc" id="L371" title="All 2 branches missed.">			if(useSlidingLines) {</span>
+<span class="nc" id="L372">				computeSlidingLines();</span>
+			}
+<span class="nc" id="L374">			quality = getQuality();</span>
+<span class="nc" id="L375">			initialized = true;</span>
+		}
+<span class="nc" id="L377">	}</span>
+
+	private boolean useSlidingLines() {
+<span class="nc" id="L380">		return useSlidingLines;</span>
+	}
+
+	/**
+	 * Returns the fix points, i.e. points that can not move.
+	 *
+	 * @return the collection of fix points
+	 */
+	public Collection&lt;V&gt; getFixVertices() {
+<span class="nc" id="L389">		return refiner.getFixPoints();</span>
+	}
+
+	/**
+	 * Returns true if the initial mesh has been generated, false otherwise
+	 *
+	 * @return true if the initial mesh has been generated, false otherwise
+	 */
+	public boolean isInitialized() {
+<span class="nc" id="L398">		return initialized;</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate() {
+<span class="nc" id="L403">		return generate(true);</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate(boolean finalize) {
+<span class="nc bnc" id="L408" title="All 2 branches missed.">		while (!isInitialized()) {</span>
+<span class="nc" id="L409">			initialize();</span>
+		}
+
+<span class="nc bnc" id="L412" title="All 2 branches missed.">		while (!isFinished()) {</span>
+<span class="nc" id="L413">			improve();</span>
+		}
+
+<span class="nc bnc" id="L416" title="All 2 branches missed.">		if(finalize) {</span>
+<span class="nc" id="L417">			finish();</span>
+<span class="nc" id="L418">			getMesh().garbageCollection();</span>
+		}
+
+<span class="nc" id="L421">		return getTriangulation();</span>
+	}
+
+	/**
+	 * Returns true if the final mesh has been constructed, that is if the algorithm converges or the mesh quality is good enough.
+	 *
+	 * @return true if the final mesh has been constructed, false otherwise
+	 */
+	public boolean isFinished() {
+<span class="nc" id="L430">		synchronized (getMesh()) {</span>
+<span class="nc bnc" id="L431" title="All 2 branches missed.">			boolean converged = dQuality &lt; Parameters.qualityConvergence;</span>
+<span class="nc bnc" id="L432" title="All 12 branches missed.">			return isInitialized() &amp;&amp; quality &gt;= Parameters.qualityMeasurement &amp;&amp; converged || (maxMovement &gt; 0 &amp;&amp; maxMovement / initialEdgeLen &lt; Parameters.DPTOL) || nSteps &gt;= MAX_STEPS;</span>
+		}
+	}
+
+	@Override
+	public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="nc" id="L438">		return getTriangulation().getMesh();</span>
+	}
+
+	/**
+	 * Convert vertices to fix points if their surrounding faces have a good enough quality.
+	 */
+	private void freezeVertices() {
+<span class="nc bnc" id="L445" title="All 2 branches missed.">		if(freezeVertices) {</span>
+<span class="nc bnc" id="L446" title="All 4 branches missed.">			getMesh().streamVertices().filter(v -&gt; getMesh().streamFaces(v).filter(f -&gt; !getMesh().isBoundary(f)).allMatch(f -&gt; faceToQuality(f) &gt; Parameters.qualityMeasurement)).forEach(v -&gt; setFixPoint(v, true));</span>
+<span class="nc" id="L447">			getMesh().streamFaces().filter(f -&gt; getMesh().streamVertices(f).allMatch(v -&gt; isFixPoint(v))).forEach(f -&gt; getMesh().setBooleanData(f, &quot;frozen&quot;, true));</span>
+		}
+<span class="nc" id="L449">	}</span>
+
+	@Override
+	public void improve() {
+<span class="nc" id="L453">		synchronized (getMesh()) {</span>
+			//System.out.println(getMesh().streamVertices().filter(v -&gt; isSlidePoint(v)).count());
+<span class="nc bnc" id="L455" title="All 2 branches missed.">			if(!isInitialized()) {</span>
+<span class="nc" id="L456">				initialize();</span>
+			}
+			else {
+<span class="nc" id="L459">				maxMovement = Double.NEGATIVE_INFINITY;</span>
+				// geometry is defined by a PSLG
+<span class="nc bnc" id="L461" title="All 2 branches missed.">				if(removeLowBoundaryTriangles) {</span>
+<span class="nc" id="L462">					removeFacesAtBoundary();</span>
+<span class="nc bnc" id="L463" title="All 2 branches missed.">				} else if(removeOutsideTriangles) {</span>
+<span class="nc" id="L464">					shrinkBoundary();</span>
+				}
+
+<span class="nc bnc" id="L467" title="All 4 branches missed.">				if(hasDistanceFunction() &amp;&amp; smoothBorder) {</span>
+<span class="nc" id="L468">					getTriangulation().smoothBoundary(distanceFunc, v -&gt; isFixPoint(v));</span>
+				}
+
+<span class="nc bnc" id="L471" title="All 2 branches missed.">				if(allowFaceCollapse) {</span>
+<span class="nc" id="L472">					getTriangulation().collapseBoundaryFaces(</span>
+<span class="nc" id="L473">							f -&gt; true,</span>
+<span class="nc bnc" id="L474" title="All 4 branches missed.">							e -&gt; !isFixPoint(getMesh().getVertex(e)) &amp;&amp; getTriangulation().isLargeAngle(e, Parameters.MAX_COLLAPSE_ANGLE),</span>
+							v -&gt; {
+<span class="nc bnc" id="L476" title="All 2 branches missed.">								if(useSlidingLines) {</span>
+<span class="nc" id="L477">									E edge = getMesh().getBoundaryEdge(v).get();</span>
+<span class="nc bnc" id="L478" title="All 4 branches missed.">									if(isSlidePoint(getMesh().getVertex(getMesh().getNext(edge))) &amp;&amp; isSlidePoint(getMesh().getVertex(getMesh().getPrev(edge)))) {</span>
+<span class="nc" id="L479">										pointToSlidingLine.put(v, pointToSlidingLine.get(getMesh().getVertex(getMesh().getNext(edge))));</span>
+									}
+								}
+<span class="nc" id="L482">							});</span>
+				}
+				/*if(splitFaces) {
+					for(F f : getMesh().getFaces()) {
+						if(getTriangulation().faceToQuality(f) &lt; 0.4) {
+							VTriangle triangle = getMesh().toTriangle(f);
+							VPoint circumCenter = triangle.getCircumcenter();
+							if(triangle.contains(circumCenter)) {
+								getTriangulation().insertVertex(getMesh().createPoint(circumCenter.getX(), circumCenter.getY()), f);
+							}
+						}
+					}
+				}*/
+				//if(nSteps % 5 == 0) {
+<span class="nc" id="L496">				flipEdges();</span>
+
+				//}
+
+<span class="nc" id="L500">				scalingFactor = computeEdgeScalingFactor(edgeLengthFunc);</span>
+<span class="nc" id="L501">				computeVertexForces();</span>
+				//computeBoundaryForces(); // replaced by virtual edges!
+<span class="nc" id="L503">				updateEdges();</span>
+<span class="nc" id="L504">				updateVertices();</span>
+<span class="nc" id="L505">				freezeVertices();</span>
+<span class="nc" id="L506">				nSteps++;</span>
+
+
+<span class="nc" id="L509">				double tmpQuality = getQuality();</span>
+<span class="nc bnc" id="L510" title="All 2 branches missed.">				if(nSteps % nStepQualityTest == 0) {</span>
+<span class="nc" id="L511">					dQuality = Math.abs(tmpQuality-quality);</span>
+<span class="nc" id="L512">					quality = tmpQuality;</span>
+				}
+<span class="nc bnc" id="L514" title="All 4 branches missed.">				assert getMesh().isValid();</span>
+<span class="nc" id="L515">				log.debug(&quot;quality (&quot; + nSteps + &quot;):&quot; + tmpQuality);</span>
+			}
+<span class="nc" id="L517">		}</span>
+<span class="nc" id="L518">	}</span>
+
+	/**
+	 * Returns true if the algorithm is based on a distance function. Otherwise it is based on a PSLG and will return false.
+	 *
+	 * @return true if the algorithm is based on a distance function, false otherwise
+	 */
+	private boolean hasDistanceFunction() {
+<span class="nc bnc" id="L526" title="All 2 branches missed.">		return distanceFunc != null;</span>
+	}
+
+	/**
+	 * Finishes the mesh after the improvement has ended.
+	 */
+	public void finish() {
+<span class="nc bnc" id="L533" title="All 2 branches missed.">		if(hasDistanceFunction()){</span>
+			try {
+<span class="nc" id="L535">				removeFacesOutside(distanceFunc);</span>
+<span class="nc" id="L536">			} catch (IllegalMeshException e) {</span>
+<span class="nc" id="L537">				e.printStackTrace();</span>
+<span class="nc" id="L538">			}</span>
+		}
+<span class="nc" id="L540">	}</span>
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; getTriangulation() {
+<span class="nc bnc" id="L544" title="All 2 branches missed.">		return hasRefiner() ? refiner.getTriangulation() : triangulation;</span>
+	}
+
+	@Override
+	public synchronized Collection&lt;VTriangle&gt; getTriangles() {
+<span class="nc" id="L549">		return getTriangulation().streamTriangles().collect(Collectors.toList());</span>
+	}
+
+	/**
+	 * computes the edge forces / velocities for all half-edge i.e. for each edge twice!
+	 */
+	private void computeForces() {
+<span class="nc" id="L556">		streamEdges().forEach(e -&gt; getForce(getMesh().toPoint(e), getMesh().toPoint(getMesh().getPrev(e))));</span>
+<span class="nc" id="L557">	}</span>
+
+	/**
+	 * computes the edge forces / velocities for all half-edge i.e. for each edge twice!
+	 */
+	private void computeBoundaryForces() {
+<span class="nc" id="L563">		getMesh().streamBoundaryEdges().forEach(e -&gt; computeBoundaryForces(e));</span>
+<span class="nc" id="L564">	}</span>
+
+	/**
+	 * computes the vertex forces / velocities for all vertices
+	 */
+	private void computeVertexForces() {
+<span class="nc" id="L570">		streamVertices().forEach(v -&gt; computeForce(v));</span>
+<span class="nc" id="L571">	}</span>
+
+	/**
+	 * Computes and sets the overall force acting on a vertex. This force is determined by all adjacent real edges and
+	 * in case of points 'close' to the boundary by a virtual edge.
+	 *
+	 * @param vertex the vertex of interest
+	 */
+	private void computeForce(final V vertex) {
+		// TODO: Get rid of IPoint
+<span class="nc" id="L581">		IPoint p1 = getMesh().getPoint(vertex);</span>
+<span class="nc" id="L582">		boolean isAtBoundary = isBoundary(vertex);</span>
+
+<span class="nc bnc" id="L584" title="All 2 branches missed.">		for(E edge : getMesh().getEdgeIt(vertex)) {</span>
+
+			// (1) force computation for &quot;real&quot; edges
+<span class="nc" id="L587">			V v2 = getMesh().getVertex(getMesh().getTwin(edge));</span>
+<span class="nc" id="L588">			IPoint p2 = getMesh().getPoint(v2);</span>
+<span class="nc" id="L589">			VPoint force = getForce(getMesh().toPoint(p1), getMesh().toPoint(p2));</span>
+
+<span class="nc" id="L591">			increaseVelocity(vertex, force);</span>
+<span class="nc" id="L592">			increaseAbsVelocity(vertex, force.distanceToOrigin());</span>
+
+			// (2) force computation for &quot;virtual edges&quot;
+<span class="nc bnc" id="L595" title="All 4 branches missed.">			if(useVirtualEdges &amp;&amp; !isAtBoundary) {</span>
+<span class="nc" id="L596">				E prev = getMesh().getPrev(edge);</span>
+<span class="nc bnc" id="L597" title="All 4 branches missed.">				if(getMesh().isAtBoundary(prev) || isSlidePoint(getMesh().getVertex(prev))) {</span>
+<span class="nc" id="L598">					VPoint q1 = getMesh().toPoint(prev);</span>
+<span class="nc" id="L599">					VPoint q2 = getMesh().toPoint(getMesh().getPrev(prev));</span>
+
+<span class="nc" id="L601">					VPoint m = GeometryUtils.projectOntoLine(p1.getX(), p1.getY(), q1.getX(), q1.getY(), q2.getX(), q2.getY());</span>
+					//VPoint m = q1.add(q2).scalarMultiply(0.5);
+
+<span class="nc" id="L604">					VPoint dir = m.subtract(p1).scalarMultiply(2);</span>
+<span class="nc" id="L605">					VPoint q3 = getMesh().toPoint(p1).add(dir);</span>
+<span class="nc" id="L606">					VPoint virtualForce = getForceVirtual(getMesh().toPoint(p1), q3);</span>
+
+					// only take the part of the force which act perpendicular to the boundary edge (q1, q2)
+					//IPoint projection = GeometryUtils.projectOnto(virtualForce.getX(), virtualForce.getY(), q2.getX() - q1.getX(), q2.getY() - q1.getY());
+
+					//virtualForce = virtualForce.subtract(projection);
+
+
+					/*VPoint dir = m.subtract(p1).scalarMultiply(1.4);
+					VPoint q3 = getMesh().toPoint(p1).add(dir);
+					VPoint virtualForce = getForce(getMesh().toPoint(p1), q3);*/
+
+<span class="nc" id="L618">					increaseVelocity(vertex, virtualForce);</span>
+<span class="nc" id="L619">					increaseAbsVelocity(vertex, virtualForce.distanceToOrigin());</span>
+
+				}
+			}
+
+<span class="nc" id="L624">		}</span>
+<span class="nc" id="L625">	}</span>
+
+	/**
+	 * Computes the force for point p1 respect to point p2.
+	 * @param p1 the point of interest
+	 * @param p2 the second point
+	 *
+	 * @return the force for point p1 respect to point p2
+	 */
+	private VPoint getForce(@NotNull final VPoint p1, @NotNull final VPoint p2) {
+		// TODO: Get rid of VPoint
+<span class="nc" id="L636">		VPoint p1p2 = p1.subtract(p2);</span>
+<span class="nc" id="L637">		double len = p1p2.distanceToOrigin();</span>
+<span class="nc" id="L638">		double desiredLen = getDesiredEdgeLength(p1, p2);</span>
+<span class="nc" id="L639">		double ratio = len / desiredLen;</span>
+<span class="nc" id="L640">		double absForce = f.apply(ratio);</span>
+<span class="nc" id="L641">		VPoint force = p1p2.setMagnitude(absForce * desiredLen);</span>
+<span class="nc" id="L642">		return force;</span>
+	}
+
+	/**
+	 * Computes the force for point p1 respect to point p2.
+	 * @param p1 the point of interest
+	 * @param p2 the second point
+	 *
+	 * @return the force for point p1 respect to point p2
+	 */
+	private VPoint getForceVirtual(@NotNull final VPoint p1, @NotNull final VPoint p2) {
+		// TODO: Get rid of VPoint
+<span class="nc" id="L654">		VPoint p1p2 = p1.subtract(p2);</span>
+<span class="nc" id="L655">		double len = p1p2.distanceToOrigin();</span>
+<span class="nc bnc" id="L656" title="All 2 branches missed.">		if(len &lt;= GeometryUtils.DOUBLE_EPS) {</span>
+<span class="nc" id="L657">			return new VPoint(0, 0);</span>
+		}
+<span class="nc" id="L659">		double desiredLen = 0.9 * Math.sqrt(3) * getDesiredEdgeLength(p1, p2);</span>
+<span class="nc" id="L660">		double ratio = len / desiredLen;</span>
+<span class="nc" id="L661">		double absForce = f.apply(ratio);</span>
+<span class="nc" id="L662">		VPoint force = p1p2.setMagnitude(absForce * desiredLen);</span>
+<span class="nc" id="L663">		return force;</span>
+	}
+
+	/**
+	 * Computes the desired edge length at a for a given edge defined by (p1, p2).
+	 *
+	 * @param p1 the first point of the edge
+	 * @param p2 the second point of the edge
+	 *
+	 * @return the desired edge length
+	 */
+	private double getDesiredEdgeLength(@NotNull final VPoint p1, @NotNull final VPoint p2) {
+		// TODO: Get rid of VPoint
+<span class="nc" id="L676">		VPoint p = p1.add(p2).scalarMultiply(0.5);</span>
+<span class="nc" id="L677">		return getDesiredEdgeLength(p);</span>
+	}
+
+	/**
+	 * Computes the desired edge length at a given point &lt;tt&gt;p&lt;/tt&gt;.
+	 *
+	 * @param p the point at which the desired edge length is computed
+	 *
+	 * @return the desired edge length at a given point
+	 */
+	private double getDesiredEdgeLength(@NotNull final IPoint p) {
+		// TODO: Get rid of VPoint
+<span class="nc" id="L689">		return edgeLengthFunc.apply(p) * Parameters.FSCALE * scalingFactor;</span>
+	}
+
+	/**
+	 * Unused: see (A Matlab mesh generator for the two-dimensional finite element method, doi: 10.1016/j.amc.2014.11.009)
+	 *
+	 * @param edge
+	 */
+	private void computeForcesBossan(final E edge) {
+<span class="nc" id="L698">		V v1 = getMesh().getVertex(edge);</span>
+<span class="nc" id="L699">		V v2 = getMesh().getVertex(getMesh().getPrev(edge));</span>
+
+<span class="nc" id="L701">		double len = Math.sqrt((v1.getX() - v2.getX()) * (v1.getX() - v2.getX()) + (v1.getY() - v2.getY()) * (v1.getY() - v2.getY()));</span>
+<span class="nc" id="L702">		double desiredLen = edgeLengthFunc.apply(new VPoint((v1.getX() + v2.getX()) * 0.5, (v1.getY() + v2.getY()) * 0.5)) * Parameters.FSCALE * scalingFactor;</span>
+
+<span class="nc" id="L704">		double lenDiff = Math.max(desiredLen - len, 0);</span>
+<span class="nc" id="L705">		double dVelX = (v1.getX() - v2.getX()) * (lenDiff / (len / desiredLen));</span>
+<span class="nc" id="L706">		double dVelY = (v1.getY() - v2.getY()) * (lenDiff / (len / desiredLen));</span>
+<span class="nc" id="L707">		increaseVelocityX(v1, dVelX);</span>
+<span class="nc" id="L708">		increaseVelocityY(v1, dVelY);</span>
+<span class="nc" id="L709">	}</span>
+	/**
+	 * Moves (which may include a back projection) each vertex according to their forces / velocity
+	 * and resets their forces / velocities. A vertex might be broken (removed by edge collapse)
+	 * if the forces acting on an boundary vertex are to strong.
+	 */
+	private void updateVertices() {
+<span class="nc" id="L716">		streamVertices().forEach(v -&gt; updateVertex(v));</span>
+<span class="nc" id="L717">	}</span>
+
+	/**
+	 * Updates a vertex which is not a fix point, that is, the computed force is applied and the vertex move
+	 * according to this force. Additionally, the vertex might get back projected if it is outside or it might
+	 * break if the forces / the pressure are too large.
+	 *
+	 * @param vertex the vertex
+	 */
+	private void updateVertex(final V vertex) {
+		/*
+		 * (1) break / remove the vertex if the forces are to large / there is too much pressure
+		 * (2) otherwise displace the vertex
+		 */
+<span class="nc bnc" id="L731" title="All 4 branches missed.">		if(canBreak(vertex) &amp;&amp; isBreaking(vertex)) {</span>
+			// TODO: if the algorithm runs in parallel this might lead to unexpected results! synchronized required!
+<span class="nc" id="L733">			getTriangulation().collapse3DVertex(vertex, true);</span>
+		}
+<span class="nc bnc" id="L735" title="All 2 branches missed.">		else if(!isFixPoint(vertex)) {</span>
+			/*
+			 * (2.1) if it is a sliding point which slides on the boundary, then let the point only move on its sliding line.
+			 */
+<span class="nc bnc" id="L739" title="All 2 branches missed.">			if(isSlidePoint(vertex)) {</span>
+<span class="nc" id="L740">				VLine lineEdge = pointToSlidingLine.get(vertex);</span>
+<span class="nc" id="L741">				IPoint velocity = getForce(vertex);</span>
+<span class="nc" id="L742">				IPoint movement = velocity.scalarMultiply(delta);</span>
+<span class="nc" id="L743">				IPoint projection = GeometryUtils.projectOnto(movement.getX(), movement.getY(), lineEdge.getX2() - lineEdge.getX1(), lineEdge.getY2() - lineEdge.getY1());</span>
+<span class="nc" id="L744">				move(vertex, vertex.getX() + projection.getX(), vertex.getY() + projection.getY());</span>
+<span class="nc" id="L745">			}</span>
+			// (2.2) if it is not a sliding point, use the default movement and projection method.
+			else{
+				// (2.1) p_{k+1} = p_k + dt * F(p_k)
+<span class="nc" id="L749">				applyForce(vertex);</span>
+<span class="nc bnc" id="L750" title="All 2 branches missed.">				if(hasDistanceFunction()) {</span>
+<span class="nc" id="L751">					VPoint projection = computeProjection(vertex);</span>
+<span class="nc" id="L752">					move(vertex, projection.getX(), projection.getY());</span>
+				}
+			}
+		}
+<span class="nc" id="L756">		setVelocityX(vertex, 0);</span>
+<span class="nc" id="L757">		setVelocityY(vertex, 0);</span>
+<span class="nc" id="L758">		setAbsVelocity(vertex, 0);</span>
+<span class="nc" id="L759">	}</span>
+
+	/**
+	 * Moves the vertex to its new location (newX, newY) if and only if the movement is legal.
+	 *
+	 * @param vertex    the vertex of interest
+	 * @param newX      the new x-coordinate
+	 * @param newY      the new y-coordinate
+	 */
+	private boolean move(@NotNull final V vertex, double newX, double newY) {
+<span class="nc bnc" id="L769" title="All 2 branches missed.">		if(isLegalMove(vertex, newX, newY)) {</span>
+<span class="nc" id="L770">			double distance = GeometryUtils.length(vertex.getX() - newX, vertex.getY() - newY);</span>
+<span class="nc" id="L771">			getMesh().setCoords(vertex, newX, newY);</span>
+<span class="nc bnc" id="L772" title="All 2 branches missed.">			if(maxMovement &lt; distance) {</span>
+<span class="nc" id="L773">				maxMovement = distance;</span>
+			}
+<span class="nc" id="L775">			return true;</span>
+		}
+<span class="nc" id="L777">		return false;</span>
+	}
+
+	/**
+	 * Returns true if and only if the vertex is a sliding point which means it can only slide on a so called sliding line.
+	 *
+	 * @param vertex the vertex of interest.
+	 *
+	 * @return true if and only if the vertex is a sliding point
+	 */
+	public boolean isSlidePoint(@NotNull V vertex) {
+<span class="nc bnc" id="L788" title="All 4 branches missed.">		boolean slidePoint = /*getMesh().isAtBoundary(vertex) &amp;&amp;*/ !isFixPoint(vertex) &amp;&amp; pointToSlidingLine.containsKey(vertex);</span>
+<span class="nc" id="L789">		return slidePoint;</span>
+	}
+
+	/**
+	 * Tests if the new position is inside the 1-ring polygon.
+	 *
+	 * @param vertex the vertex which wants to be moved
+	 * @param newX   x-coordinate of the new vertex position
+	 * @param newY   y-coordinate of the new vertex position
+	 *
+	 * @return true if the movement is legal, false otherwise
+	 */
+	private boolean isLegalMove(@NotNull final V vertex, double newX, double newY) {
+		// only test for early iterations!
+<span class="nc bnc" id="L803" title="All 2 branches missed.">		if(nSteps &gt; Parameters.HIGHEST_LEGAL_TEST) {</span>
+<span class="nc" id="L804">			return true;</span>
+		}
+
+		//if(vertex.distance(newX, newY) &gt; GeometryUtils.DOUBLE_EPS) {
+
+			// TODO: at the boundary vertices can still overtake each other.
+			/*if(getMesh().isAtBoundary(vertex)) {
+				E boundaryEdge = getMesh().getBoundaryEdge(vertex).get();
+				V next = getMesh().getVertex(getMesh().getNext(boundaryEdge));
+				V prev = getMesh().getVertex(getMesh().getPrev(boundaryEdge));
+
+				IPoint dirN = next.subtract(vertex);
+				IPoint dirP = vertex.subtract(prev);
+
+				IPoint newDirN = next.subtract(new VPoint(newX, newY));
+				IPoint newDirP = new VPoint(newX, newY).subtract(prev);
+
+				double angleDifN = Math.abs(GeometryUtils.angleTo(dirN) - GeometryUtils.angleTo(newDirN));
+				double angleDifP = Math.abs(GeometryUtils.angleTo(dirP) - GeometryUtils.angleTo(newDirP));
+
+				if(angleDifN &gt; Math.PI || angleDifP &gt; Math.PI) {
+					return false;
+				}
+			}*/
+
+<span class="nc" id="L829">			return getMesh().streamEdges(vertex)</span>
+<span class="nc bnc" id="L830" title="All 2 branches missed.">					.filter(e -&gt; !getMesh().isBoundary(e))</span>
+<span class="nc" id="L831">					.map(e -&gt; getMesh().getPrev(e))</span>
+<span class="nc" id="L832">					.allMatch(e -&gt; getTriangulation().isLeftOf(newX, newY, e));</span>
+		//}
+		//return false;
+	}
+
+	/**
+	 * unused.
+	 */
+	private void updateFaces() {
+<span class="nc bnc" id="L841" title="All 2 branches missed.">		if(nonEmptyBaseMode) {</span>
+<span class="nc" id="L842">			getMesh().getFaces().stream().forEach(f -&gt; updateFace(f));</span>
+		}
+<span class="nc" id="L844">	}</span>
+
+	/**
+	 * unused
+	 * @param face
+	 */
+	private void updateFace(@NotNull F face) {
+<span class="nc bnc" id="L851" title="All 4 branches missed.">		if(canBreak(face) &amp;&amp; isBreaking(face)) {</span>
+<span class="nc" id="L852">			VPoint circumcenter = getMesh().toCircumcenter(face);</span>
+<span class="nc" id="L853">			getTriangulation().splitTriangle(face, getMesh().createPoint(circumcenter.getX(), circumcenter.getY()), false);</span>
+		}
+<span class="nc" id="L855">	}</span>
+
+	/**
+	 * Updates all edges. Some of those edges might get split, some may collapse.
+	 */
+	private void updateEdges() {
+		// edge splits
+<span class="nc" id="L862">		getMesh().getBoundaryEdges().forEach(e -&gt; updateBoundaryEdge(e));</span>
+<span class="nc bnc" id="L863" title="All 2 branches missed.">		if(allowEdgeCollapse) {</span>
+<span class="nc bnc" id="L864" title="All 2 branches missed.">			for(E e : getMesh().getEdges()) {</span>
+<span class="nc bnc" id="L865" title="All 4 branches missed.">				if(!getMesh().isDestroyed(e) &amp;&amp; !getMesh().isAtBoundary(e)) {</span>
+					// edge collapse
+<span class="nc" id="L867">					updateEdge(e);</span>
+				}
+<span class="nc" id="L869">			}</span>
+		}
+<span class="nc" id="L871">	}</span>
+
+	/**
+	 * Collapses the edge if it is too short.
+	 *
+	 * @param edge edge of interest
+	 *
+	 * @return true if the edge is collapsed, false otherwise
+	 */
+	private boolean updateEdge(@NotNull final E edge) {
+<span class="nc bnc" id="L881" title="All 4 branches missed.">		if(getTriangulation().isShortestHalfEdge(edge) &amp;&amp; (faceToQuality(edge) &lt; Parameters.MIN_COLLAPSE_QUALITY)) {</span>
+<span class="nc" id="L882">			V v1 = getMesh().getVertex(edge);</span>
+<span class="nc" id="L883">			V v2 = getMesh().getTwinVertex(edge);</span>
+
+<span class="nc bnc" id="L885" title="All 4 branches missed.">			if(!isFixPoint(v1) || !isFixPoint(v2)) {</span>
+
+<span class="nc bnc" id="L887" title="All 6 branches missed.">				if(isSlidePoint(v1) &amp;&amp; isSlidePoint(v2) &amp;&amp; !pointToSlidingLine.get(v1).equals(pointToSlidingLine.get(v2))) {</span>
+<span class="nc" id="L888">					return false;</span>
+				}
+
+				VPoint newPosition;
+<span class="nc bnc" id="L892" title="All 2 branches missed.">				if(isFixPoint(v1)) {</span>
+<span class="nc" id="L893">					newPosition = new VPoint(v1.getX(), v1.getY());</span>
+<span class="nc bnc" id="L894" title="All 2 branches missed.">				} else if(isFixPoint(v2)) {</span>
+<span class="nc" id="L895">					newPosition = new VPoint(v2.getX(), v2.getY());</span>
+<span class="nc bnc" id="L896" title="All 6 branches missed.">				} else if(isBoundary(v1) || (isSlidePoint(v1) &amp;&amp; !isSlidePoint(v2))) {</span>
+<span class="nc" id="L897">					newPosition = new VPoint(v1.getX(), v1.getY());</span>
+<span class="nc bnc" id="L898" title="All 6 branches missed.">				} else if(isBoundary(v2) || (isSlidePoint(v2) &amp;&amp; !isSlidePoint(v1))) {</span>
+<span class="nc" id="L899">					newPosition = new VPoint(v2.getX(), v2.getY());</span>
+				} else {
+<span class="nc" id="L901">					newPosition = new VPoint((v1.getX() + v2.getX()) * 0.5, (v1.getY() + v2.getY()) * 0.5);</span>
+				}
+
+<span class="nc bnc" id="L904" title="All 2 branches missed.">				if(isLegalMove(getMesh().getVertex(edge), newPosition.getX(), newPosition.getY()) &amp;&amp;</span>
+<span class="nc bnc" id="L905" title="All 2 branches missed.">						isLegalMove(getMesh().getTwinVertex(edge), newPosition.getX(), newPosition.getY())) {</span>
+
+<span class="nc" id="L907">					V v = getTriangulation().collapseEdge(edge, true);</span>
+
+<span class="nc" id="L909">					getMesh().setPoint(v, newPosition);</span>
+
+<span class="nc bnc" id="L911" title="All 4 branches missed.">					if((isSlidePoint(v1) &amp;&amp; !isFixPoint(v1))) {</span>
+<span class="nc" id="L912">						pointToSlidingLine.put(v, pointToSlidingLine.get(v1));</span>
+<span class="nc bnc" id="L913" title="All 4 branches missed.">					} else if((isSlidePoint(v2) &amp;&amp; !isFixPoint(v2))){</span>
+<span class="nc" id="L914">						pointToSlidingLine.put(v, pointToSlidingLine.get(v2));</span>
+					}
+
+<span class="nc bnc" id="L917" title="All 4 branches missed.">					if(isFixPoint(v1) || isFixPoint(v2)) {</span>
+<span class="nc" id="L918">						setFixPoint(v, true);</span>
+					}
+
+<span class="nc" id="L921">					log.debug(&quot;edge collapse&quot;);</span>
+				}
+
+<span class="nc" id="L924">				return true;</span>
+			}
+		}
+<span class="nc" id="L927">		return false;</span>
+	}
+
+	/**
+	 * Splits a boundary edge if necessary, i.e. if the boundary edge is very long.
+	 *
+	 * @param edge the edge
+	 */
+	private void updateBoundaryEdge(@NotNull final E edge) {
+<span class="nc bnc" id="L936" title="All 4 branches missed.">		if(canBreak(edge) &amp;&amp; isBreaking(edge)) {</span>
+<span class="nc" id="L937">			boolean isConstrained = isConstrained(edge);</span>
+			//if(distanceFunc == null) {
+<span class="nc" id="L939">			V v1 = getMesh().getVertex(edge);</span>
+<span class="nc" id="L940">			V v2 = getMesh().getVertex(getMesh().getPrev(edge));</span>
+			VLine line;
+
+<span class="nc bnc" id="L943" title="All 8 branches missed.">			boolean isFixedSlicePoint = useSlidingLines &amp;&amp; isFixPoint(v1) &amp;&amp; isFixPoint(v2) &amp;&amp; !hasDistanceFunction();</span>
+<span class="nc bnc" id="L944" title="All 6 branches missed.">			boolean isSlicePoint = (useSlidingLines &amp;&amp; (isSlidePoint(v1) || isSlidePoint(v2)));</span>
+
+<span class="nc bnc" id="L946" title="All 2 branches missed.">			if(isSlicePoint) {</span>
+<span class="nc bnc" id="L947" title="All 2 branches missed.">				if(pointToSlidingLine.containsKey(v1)) {</span>
+<span class="nc" id="L948">					line = pointToSlidingLine.get(v1);</span>
+				}
+				else {
+<span class="nc" id="L951">					line = pointToSlidingLine.get(v2);</span>
+				}
+<span class="nc bnc" id="L953" title="All 2 branches missed.">			} else if(isFixedSlicePoint) {</span>
+<span class="nc" id="L954">				line = getMesh().toLine(edge);</span>
+			} else {
+<span class="nc" id="L956">				line = null;</span>
+			}
+
+<span class="nc bnc" id="L959" title="All 4 branches missed.">			final boolean fisSlidePoint = isSlicePoint || isFixedSlicePoint;</span>
+<span class="nc" id="L960">			Pair&lt;E, E&gt; newEdges = getTriangulation().splitEdge(edge, false, v -&gt; {</span>
+<span class="nc" id="L961">				setFixPoint(v, false);</span>
+<span class="nc bnc" id="L962" title="All 2 branches missed.">				if(fisSlidePoint) {</span>
+<span class="nc" id="L963">					pointToSlidingLine.put(v, line);</span>
+				}
+<span class="nc" id="L965">			});</span>
+
+<span class="nc bnc" id="L967" title="All 2 branches missed.">			if(isConstrained) {</span>
+<span class="nc" id="L968">				setConstraint(newEdges.getLeft(), true);</span>
+<span class="nc" id="L969">				setConstraint(newEdges.getRight(), true);</span>
+			}
+			/*} else {
+				getTriangulation().splitEdge(edge, true, v -&gt; setFixPoint(v, false));
+			}*/
+		}
+<span class="nc" id="L975">	}</span>
+
+	/**
+	 * unused
+	 * @param face
+	 * @return
+	 */
+	private boolean canBreak(@NotNull final F face) {
+<span class="nc bnc" id="L983" title="All 2 branches missed.">		return !getMesh().isBoundary(face);</span>
+	}
+
+	/**
+	 * unused
+	 * @param face
+	 * @return
+	 */
+	private boolean isBreaking(@NotNull final F face) {
+<span class="nc bnc" id="L992" title="All 2 branches missed.">		if(faceToQuality(face) &gt; 0.95) {</span>
+<span class="nc" id="L993">			E edge = getMesh().getEdge(face);</span>
+<span class="nc bnc" id="L994" title="All 2 branches missed.">			if(edgeLengthFunc.apply(getMesh().toLine(edge).midPoint()) * 2.1 &lt;= getMesh().toLine(edge).length()) {</span>
+<span class="nc" id="L995">				VPoint circumcenter = getMesh().toCircumcenter(face);</span>
+<span class="nc" id="L996">				return triangulation.contains(circumcenter.getX(), circumcenter.getY(), face);</span>
+						//getMesh().toTriangle(face).contains(circumcenter);
+			}
+		}
+<span class="nc" id="L1000">		return false;</span>
+	}
+
+	/**
+	 * Returns true if the edge can be split, that is the edge can be replaced
+	 * by two new edges by splitting the edge and its face into two. The edge
+	 * has to be at the boundary.
+	 *
+	 * @param edge the edge
+	 * @return true if the edge can be collapsed / break.
+	 */
+	private boolean canBreak(@NotNull final E edge) {
+<span class="nc bnc" id="L1012" title="All 6 branches missed.">		return allowEdgeSplits /*&amp;&amp; getMesh().isAtBoundary(edge) */&amp;&amp; (getMesh().isBoundary(edge) || isConstrained(edge));</span>
+	}
+
+	/**
+	 * Returns true if the edge should be split. That is the case if the edge is long with
+	 * respect to the other two edges of the face, i.e. it has to be the longest edge and the
+	 * quality of the face is low. The analogy is that the edge breaks because it can not
+	 * become any longer.
+	 *
+	 * @param edge the edge which is tested
+	 * @return true if the edge breaks under the pressure of the forces, otherwise false.
+	 */
+	private boolean isBreaking(@NotNull final E edge) {
+<span class="nc bnc" id="L1025" title="All 4 branches missed.">		return getMesh().isLongestEdge(edge) &amp;&amp; faceToQuality(edge) &lt; Parameters.MIN_SPLIT_QUALITY;</span>
+	}
+
+	/**
+	 * Returns true if the vertex can be collapsed, that is the vertex can be removed
+	 * by removing one edge and collapsing the other two. The vertex has to be at
+	 * the boundary and has to have degree equal to three. We say that this vertex
+	 * can break under the pressure of the forces.
+	 *
+	 * @param vertex the vertex
+	 * @return true if the vertex can be collapsed / break.
+	 */
+	private boolean canBreak(@NotNull final V vertex) {
+<span class="nc bnc" id="L1038" title="All 6 branches missed.">		if(allowVertexCollapse &amp;&amp; isSlidePoint(vertex) &amp;&amp; getMesh().degree(vertex) == 3) {</span>
+			/*Optional&lt;E&gt; toDeleteEdge = getMesh().streamEdges(vertex).filter(e -&gt; !getMesh().isAtBoundary(e)).findAny();
+			if(toDeleteEdge.isPresent()) {
+				E edge = toDeleteEdge.get();
+				E twin = getMesh().getTwin(edge);
+				// 2 triangles!
+				return edge.equals(getMesh().getNext(getMesh().getNext(getMesh().getNext(edge)))) &amp;&amp; twin.equals(getMesh().getNext(getMesh().getNext(getMesh().getNext(twin))));
+			} else {
+				return false;
+			}*/
+<span class="nc" id="L1048">			return true;</span>
+		}
+<span class="nc" id="L1050">		return false;</span>
+	}
+
+	/**
+	 * Returns true if the vertex should be collapsed. That is the case if the resulting force
+	 * acting on the vertex is low but the sum of all absolute partial forces is high. An analogy
+	 * might be that the vertex breaks under the pressure of the forces.
+	 *
+	 * @param vertex the vertex which is tested.
+	 * @return true if the vertex breaks under the pressure of the forces, otherwise false.
+	 */
+	private boolean isBreaking(@NotNull final V vertex) {
+<span class="nc" id="L1062">		double force = getForce(vertex).distanceToOrigin();</span>
+<span class="nc" id="L1063">		double absForce = getAbsVelocity(vertex);</span>
+<span class="nc" id="L1064">		double forceMax = edgeLengthFunc.apply(vertex) * Parameters.FSCALE * scalingFactor * 3;</span>
+		//TODO remove magic numbers
+<span class="nc bnc" id="L1066" title="All 4 branches missed.">		boolean breaking = absForce &gt; forceMax * 0.3 &amp;&amp; force &lt; forceMax * 0.1;</span>
+		/*if(breaking) {
+			System.out.println(&quot;test&quot;);
+		}*/
+<span class="nc" id="L1070">		return breaking;</span>
+		//return absForce &gt; desiredLen &amp;&amp; force / absForce &lt; Parameters.MIN_FORCE_RATIO;
+	}
+
+
+	/**
+	 * Computes the projection of Projects vertices. The projection acts towards the boundary of the boundary.
+	 * EikMesh projects only boundary vertices. Furthermore, to improve the convergence rate EikMesh additionally
+	 * projects vertices which are inside if the projection is inside a valid circle segment.
+	 *
+	 * @param vertex the vertex might be projected
+	 */
+	private VPoint computeProjection(@NotNull final V vertex) {
+		// we only project boundary vertices back
+<span class="nc bnc" id="L1084" title="All 2 branches missed.">		if(isBoundary(vertex)) {</span>
+
+			// TODO: get rid of VPoint
+<span class="nc" id="L1087">			VPoint position = getMesh().toPoint(vertex);</span>
+<span class="nc" id="L1088">			double distance = distanceFunc.apply(position);</span>
+
+<span class="nc" id="L1090">			double x = position.getX();</span>
+<span class="nc" id="L1091">			double y = position.getY();</span>
+
+			// the gradient (dx, dy)
+<span class="nc" id="L1094">			double dGradPX = (distanceFunc.apply(position.add(new VPoint(deps, 0))) - distance) / deps;</span>
+<span class="nc" id="L1095">			double dGradPY = (distanceFunc.apply(position.add(new VPoint(0, deps))) - distance) / deps;</span>
+
+			// TODO: maybe a softer projection * deltaT
+			//double scale = Math.abs(distance) &gt; initialEdgeLen * 0.7 ? 0.7 : 1.0;
+<span class="nc" id="L1099">			double projX = dGradPX * distance;</span>
+<span class="nc" id="L1100">			double projY = dGradPY * distance;</span>
+
+<span class="nc" id="L1102">			double newX = x - projX;</span>
+<span class="nc" id="L1103">			double newY = y - projY;</span>
+
+			// back projection towards the inside if the point is outside
+<span class="nc bnc" id="L1106" title="All 2 branches missed.">			if(isOutside(distance)) {</span>
+<span class="nc" id="L1107">				return new VPoint(newX, newY);</span>
+			}
+			// back projection towards the inside if the point is inside (to improve the convergence rate of the algorithm)
+<span class="nc bnc" id="L1110" title="All 2 branches missed.">			else if(isInsideProjectionValid(vertex, newX, newY)) {</span>
+<span class="nc" id="L1111">				return new VPoint(newX, newY);</span>
+			}
+		}
+
+<span class="nc" id="L1115">		return new VPoint(vertex.getX(), vertex.getY());</span>
+	}
+
+	private boolean hasRefiner(){
+<span class="nc bnc" id="L1119" title="All 2 branches missed.">		return refiner != null;</span>
+	}
+
+	private void computeFixPoints() {
+<span class="nc bnc" id="L1123" title="All 2 branches missed.">		if(hasRefiner()) {</span>
+<span class="nc" id="L1124">			refiner.getFixPoints().forEach(v -&gt; setFixPoint(v, true));</span>
+		}
+<span class="nc" id="L1126">	}</span>
+
+	/**
+	 * This method can be used if the input for EikMesh is a valid triangulation and there is no
+	 * distance function available. By default, the distance function is required to project points onto
+	 * the boundary. We replace this requirement by projecting points onto the boundary segments i.e. points
+	 * can move on the lines of the segment-bound or a hole of a PSLG, that is a triangulation. Therefore,
+	 * this method constructs a map : boundary vertex -&gt; line which gives quick access to the projection line.
+	 */
+	private void computeSlidingLines() {
+		/*if(hasRefiner()) {
+			pointToSlidingLine = refiner.getProjections();
+
+			for (V v : refiner.getFixPoints()) {
+				setFixPoint(v, true);
+			}
+
+			for (E e : refiner.getConstrains()) {
+				if (getMesh().isBoundary(e)) {
+					setConstraint(e, true);
+				}
+			}
+		} else {*/
+<span class="nc" id="L1149">			pointToSlidingLine = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L1150" title="All 2 branches missed.">			for (F boundaryFace : getMesh().getBoundaryAndHoles()) {</span>
+<span class="nc" id="L1151">				List&lt;V&gt; slicePoints = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L1152">				Optional&lt;V&gt; optionalV = getMesh().streamVertices(boundaryFace).filter(v -&gt; isFixPoint(v)).findFirst();</span>
+
+<span class="nc bnc" id="L1154" title="All 2 branches missed.">				if(optionalV.isPresent()) {</span>
+<span class="nc" id="L1155">					V startFixPoint = optionalV.get();</span>
+<span class="nc" id="L1156">					V sf = startFixPoint;</span>
+
+<span class="nc" id="L1158">					E edge = getMesh().getBoundaryEdge(startFixPoint).get();</span>
+<span class="nc" id="L1159">					var iterator = new EdgeIterator&lt;&gt;(getMesh(), edge);</span>
+
+					do {
+<span class="nc" id="L1162">						edge = iterator.next();</span>
+<span class="nc" id="L1163">						V vertex = getMesh().getVertex(edge);</span>
+
+<span class="nc bnc" id="L1165" title="All 4 branches missed.">						if(isFixPoint(vertex) &amp;&amp; !startFixPoint.equals(vertex)) {</span>
+<span class="nc" id="L1166">							VLine line = new VLine(getMesh().toPoint(startFixPoint), getMesh().toPoint(vertex));</span>
+<span class="nc bnc" id="L1167" title="All 2 branches missed.">							for(V slicePoint : slicePoints) {</span>
+<span class="nc" id="L1168">								pointToSlidingLine.put(slicePoint, line);</span>
+								//setFixPoint(slicePoint, true);
+<span class="nc" id="L1170">							}</span>
+<span class="nc" id="L1171">							startFixPoint = vertex;</span>
+<span class="nc" id="L1172">							slicePoints.clear();</span>
+<span class="nc" id="L1173">						} else {</span>
+<span class="nc" id="L1174">							slicePoints.add(vertex);</span>
+						}
+<span class="nc bnc" id="L1176" title="All 2 branches missed.">					} while (iterator.hasNext());</span>
+
+<span class="nc bnc" id="L1178" title="All 2 branches missed.">					if(!startFixPoint.equals(sf)) {</span>
+<span class="nc" id="L1179">						VLine line = new VLine(getMesh().toPoint(startFixPoint), getMesh().toPoint(sf));</span>
+<span class="nc bnc" id="L1180" title="All 2 branches missed.">						for(V slicePoint : slicePoints) {</span>
+<span class="nc" id="L1181">							pointToSlidingLine.put(slicePoint, line);</span>
+							//setFixPoint(slicePoint, true);
+<span class="nc" id="L1183">						}</span>
+					}
+				}
+<span class="nc" id="L1186">			}</span>
+		//}
+<span class="nc bnc" id="L1188" title="All 4 branches missed.">		assert getMesh().getBoundaryVertices().stream().filter(v -&gt; isSlidePoint(v)).allMatch(v -&gt; pointToSlidingLine.containsKey(v));</span>
+<span class="nc" id="L1189">	}</span>
+
+	/*private void computeSlidingLines() {
+	    for (F boundaryFace : getMesh().getBoundaryAndHoles()) {
+
+		    List&lt;V&gt; nonFixPoints = new ArrayList&lt;&gt;();
+		    E be = getMesh().streamEdges(boundaryFace).filter(e -&gt; isNotColinear(e)).findFirst().get();
+		    V lastFixPoint = getMesh().getVertex(be);
+		    V firstFixPoint = getMesh().getVertex(be);
+		    //setFixPoint(lastFixPoint, true);
+		    VLine segment;
+		    var iterator = new EdgeIterator&lt;&gt;(getMesh(), be);
+
+		    do {
+			    E edge = iterator.next();
+
+			    V v1 = getMesh().getVertex(getMesh().getPrev(edge));
+			    V v2 = getMesh().getVertex(edge);
+			    V v3 = getMesh().getVertex(getMesh().getNext(edge));
+
+			    // not co-linear?
+			    if (Math.abs(GeometryUtils.ccw(v1, v2, v3)) &gt; GeometryUtils.DOUBLE_EPS) {
+			    	//setFixPoint(v2, true);
+				    segment = new VLine(getMesh().toPoint(lastFixPoint), getMesh().toPoint(v2));
+				    for (V v : nonFixPoints) {
+					    pointToSlidingLine.put(v, segment);
+				    }
+				    nonFixPoints = new ArrayList&lt;&gt;();
+				    lastFixPoint = v2;
+			    } else {
+				    nonFixPoints.add(v2);
+			    }
+
+			    if(!iterator.hasNext()) {
+				    segment = new VLine(getMesh().toPoint(lastFixPoint), getMesh().toPoint(firstFixPoint));
+				    for (V v : nonFixPoints) {
+					    pointToSlidingLine.put(v, segment);
+				    }
+				    nonFixPoints = new ArrayList&lt;&gt;();
+			    }
+		    } while (iterator.hasNext());
+
+		    assert nonFixPoints.isEmpty();
+	    }
+		assert getMesh().getBoundaryVertices().stream().filter(v -&gt; isSlidePoint(v)).allMatch(v -&gt; pointToSlidingLine.containsKey(v));
+    }*/
+
+	/**
+	 * Tests if a point is outside which is determined by the &lt;tt&gt;distance&lt;/tt&gt; value.
+	 *
+	 * @param distance
+	 *
+	 * @return true if the point is outside, false otherwise
+	 */
+	private boolean isOutside(@NotNull final double distance) {
+<span class="nc bnc" id="L1244" title="All 2 branches missed.">		return distance &gt; 0;</span>
+	}
+
+	/**
+	 * Tests if the inside projection is valid which is the case if the angle3D at the vertex (at the boundary)
+	 * is greater than 180 degree or the result of the projection lies inside the segment spanned by the
+	 * vertex and its two neighbouring border vertices.
+	 *
+	 * @param vertex    the vertex
+	 * @param newX      x-coordinate of the new position (after projection)
+	 * @param newY      y-coordinate of the new position (after projection)
+	 *
+	 * @return true if the inside projection is valid, false otherwise
+	 */
+	private boolean isInsideProjectionValid(@NotNull final V vertex, final double newX, final double newY) {
+<span class="nc" id="L1259">		Optional&lt;E&gt; boundaryEdgeOpt = getMesh().getBoundaryEdge(vertex);</span>
+
+<span class="nc bnc" id="L1261" title="All 2 branches missed.">		if(!boundaryEdgeOpt.isPresent()) {</span>
+<span class="nc" id="L1262">			return false;</span>
+		}
+		else {
+			// TODO: if the algorithm runs in parallel this might lead to unexpected results!
+<span class="nc" id="L1266">			E boundaryEdge = boundaryEdgeOpt.get();</span>
+<span class="nc" id="L1267">			VPoint p = getMesh().toPoint(vertex);</span>
+<span class="nc" id="L1268">			VPoint q = getMesh().toPoint(getMesh().getNext(boundaryEdge));</span>
+<span class="nc" id="L1269">			VPoint r = getMesh().toPoint(getMesh().getPrev(boundaryEdge));</span>
+<span class="nc" id="L1270">			double angle = GeometryUtils.angle(r, p, q);</span>
+<span class="nc bnc" id="L1271" title="All 6 branches missed.">			return angle &gt; Math.PI || (GeometryUtils.isLeftOf(r, p, newX, newY) &amp;&amp; GeometryUtils.isLeftOf(p, q, newX, newY));</span>
+		}
+	}
+
+	/**
+	 * Computes the anchor to vertex partial relation. This relation gives some
+	 * vertices their anchor point. If a vertex has an anchor point it will be driven
+	 * towards this point (instead of the normal movement).
+	 */
+	/*private void computeAnchorPointRelation() {
+		Set&lt;IPoint&gt; ancherPoints = generateFixPoints();
+		for(IPoint fixPoint : ancherPoints) {
+			V closest = null;
+			double distance = Double.MAX_VALUE;
+			for(V vertex : getMesh().getVertices()) {
+				if (closest == null || distance &gt; vertex.distance(fixPoint)) {
+					closest = vertex;
+					distance = vertex.distance(fixPoint);
+				}
+			}
+			if(fixPointRelation.containsKey(closest)) {
+				log.warn(&quot;too close fix points: use another set of fix points or another initial mesh!&quot;);
+			}
+			fixPointRelation.put(closest, fixPoint);
+		}
+	}*/
+
+	private Set&lt;IPoint&gt; generateFixPoints() {
+<span class="nc" id="L1299">		List&lt;VShape&gt; shapes = new ArrayList&lt;&gt;(this.shapes.size()+1);</span>
+<span class="nc" id="L1300">		shapes.addAll(this.shapes);</span>
+
+<span class="nc" id="L1302">		Set&lt;IPoint&gt; ancherPoints = generateAnchorPoints(shapes);</span>
+<span class="nc" id="L1303">		ancherPoints.addAll(fixPoints);</span>
+<span class="nc" id="L1304">		return ancherPoints;</span>
+	}
+
+	/**
+	 * Flips all edges which do not fulfill the Delaunay criterion and therefore being illegal.
+	 * Note that this is not a recursive flipping and therefore the result might not be a
+	 * Delaunay triangulation. However, due to the nature of the EikMesh algorithm (high quality initial mesh)
+	 * the triangulation is Delaunay in almost all cases and if not it is almost Delaunay.
+	 *
+	 * @return true, if any flip was necessary, false otherwise.
+	 */
+	private boolean flipEdges() {
+<span class="nc bnc" id="L1316" title="All 2 branches missed.">		if(runParallel) {</span>
+<span class="nc" id="L1317">			streamEdges()</span>
+<span class="nc" id="L1318">					.filter(e -&gt; getTriangulation().isIllegal(e))</span>
+<span class="nc bnc" id="L1319" title="All 2 branches missed.">					.filter(e -&gt; !isConstrained(e))</span>
+<span class="nc" id="L1320">					.forEach(e -&gt; getTriangulation().flipSync(e));</span>
+		}
+		else {
+<span class="nc" id="L1323">			streamEdges()</span>
+<span class="nc" id="L1324">					.filter(e -&gt; getTriangulation().isIllegal(e))</span>
+<span class="nc bnc" id="L1325" title="All 2 branches missed.">					.filter(e -&gt; !isConstrained(e))</span>
+<span class="nc" id="L1326">					.forEach(e -&gt; getTriangulation().flip(e));</span>
+		}
+<span class="nc" id="L1328">		return false;</span>
+	}
+
+	/**
+	 * Computation of the factor which transforms relative edge length into absolute ones.
+	 */
+	private double computeEdgeScalingFactor(@NotNull final IEdgeLengthFunction edgeLengthFunc) {
+<span class="nc" id="L1335">		double edgeLengthSum = streamEdges()</span>
+<span class="nc" id="L1336">				.map(edge -&gt; getMesh().toLine(edge))</span>
+<span class="nc" id="L1337">				.mapToDouble(line -&gt; line.length())</span>
+<span class="nc" id="L1338">				.sum();</span>
+
+<span class="nc" id="L1340">		double desiredEdgeLenSum = streamEdges()</span>
+<span class="nc" id="L1341">				.map(edge -&gt; getMesh().toLine(edge))</span>
+<span class="nc" id="L1342">				.map(line -&gt; line.midPoint())</span>
+<span class="nc" id="L1343">				.mapToDouble(midPoint -&gt; edgeLengthFunc.apply(midPoint)).sum();</span>
+<span class="nc" id="L1344">		return Math.sqrt((edgeLengthSum * edgeLengthSum) / (desiredEdgeLenSum * desiredEdgeLenSum));</span>
+	}
+
+
+	// helper methods
+	private Stream&lt;E&gt; streamEdges() {
+<span class="nc bnc" id="L1350" title="All 2 branches missed.">		return runParallel ? getMesh().streamEdgesParallel() : getMesh().streamEdges();</span>
+	}
+
+	private Stream&lt;V&gt; streamVertices() {
+<span class="nc bnc" id="L1354" title="All 2 branches missed.">		return runParallel ? getMesh().streamVerticesParallel() : getMesh().streamVertices();</span>
+	}
+
+	/**
+	 * Returns true if and only if the vertex {@link V} is a fix point.
+	 *
+	 * @param vertex the vertex of interest
+	 * @return true if and only if the vertex {@link V} is a fix point.
+	 */
+	private boolean isFixedVertex(final V vertex) {
+<span class="nc" id="L1364">		return isFixPoint(vertex) /*|| nonEmptyBaseMode &amp;&amp;getMesh().isAtBoundary(vertex)*/;</span>
+	}
+
+	/**
+	 * Returns the force which is currently i.e. which was computed by
+	 * {@link GenEikMesh#computeForce(IVertex)} applied to the vertex.
+	 *
+	 * @param vertex the vertex of interest
+	 * @return the force which is currently applied to the vertex
+	 */
+	private IPoint getForce(final V vertex) {
+<span class="nc" id="L1375">		return getVelocity(vertex);</span>
+	}
+
+	/**
+	 * Applies the force of the vertex to the vertex which results
+	 * in an displacement of the vertex.
+	 *
+	 * @param vertex the vertex of interest
+	 */
+	private void applyForce(final V vertex) {
+<span class="nc" id="L1385">		IPoint velocity = getForce(vertex);</span>
+<span class="nc" id="L1386">		double factor = 1.0;</span>
+<span class="nc" id="L1387">		IPoint movement = velocity.scalarMultiply(delta * factor);</span>
+<span class="nc" id="L1388">		int count = 0;</span>
+<span class="nc bnc" id="L1389" title="All 4 branches missed.">		while(!move(vertex, vertex.getX() + movement.getX(), vertex.getY() + movement.getY()) &amp;&amp; count &lt; 10) {</span>
+<span class="nc" id="L1390">			factor /= 2.0;</span>
+<span class="nc" id="L1391">			movement = velocity.scalarMultiply(delta * factor);</span>
+<span class="nc" id="L1392">			count++;</span>
+		}
+<span class="nc" id="L1394">	}</span>
+
+	/**
+	 * Computes the set of anchor points. An anchor point replaces fix points in EikMesh.
+	 * Instead of inserting fix points EikMesh pushes (via forces) close points of
+	 * an anchor point towards this anchor point. For each shape the the points of the
+	 * path defining the shape will be added to the set of anchor points.
+	 *
+	 * @param shapes a list of shapes.
+	 * @return the set of anchor points
+	 */
+	private Set&lt;IPoint&gt; generateAnchorPoints(@NotNull final Collection&lt;? extends  VShape&gt; shapes) {
+<span class="nc" id="L1406">		return shapes.stream()</span>
+<span class="nc" id="L1407">				.flatMap(shape -&gt; shape.getPath().stream())</span>
+<span class="nc" id="L1408">				.filter(p -&gt; bound.contains(p))</span>
+<span class="nc" id="L1409">				.collect(Collectors.toSet());</span>
+	}
+
+	/**
+	 * Removes all faces neighbouring a boundary which can and should be removed.
+	 *
+	 * This takes O(n) time where n is the number of removed faces which will be consumed.
+	 */
+	private void removeFacesAtBoundary() {
+<span class="nc bnc" id="L1418" title="All 2 branches missed.">		Predicate&lt;F&gt; isOutside = f -&gt; distanceFunc.apply(getMesh().toMidpoint(f)) &gt; 0;</span>
+<span class="nc" id="L1419">		Predicate&lt;F&gt; isSeparated = f -&gt; getMesh().isSeparated(f);</span>
+		//Predicate&lt;F&gt; isInvalid = f -&gt; !getTriangulation().isValid(f);
+<span class="nc bnc" id="L1421" title="All 4 branches missed.">		Predicate&lt;F&gt; isOfLowQuality = f -&gt; faceToQuality(f) &lt; Parameters.MIN_TRIANGLE_QUALITY &amp;&amp; !isShortBoundaryEdge(f);</span>
+<span class="nc" id="L1422">		Predicate&lt;F&gt; isBoundary = f -&gt; getMesh().isBoundary(f);</span>
+
+<span class="nc" id="L1424">		Predicate&lt;F&gt; mergePredicate = isSeparated/*.or(isInvalid)*/.or(isOutside).or(isOfLowQuality);</span>
+		try {
+<span class="nc" id="L1426">			getTriangulation().removeFacesAtBoundary(mergePredicate, isBoundary);</span>
+<span class="nc" id="L1427">		} catch (IllegalMeshException e) {</span>
+<span class="nc" id="L1428">			log.error(&quot;error!&quot;);</span>
+<span class="nc" id="L1429">		}</span>
+
+<span class="nc bnc" id="L1431" title="All 2 branches missed.">		if(useSlidingLines) {</span>
+<span class="nc" id="L1432">			updateProjectionLines();</span>
+		}
+<span class="nc" id="L1434">	}</span>
+
+	private void updateProjectionLines() {
+		// this is a bad code which just updates the pointToSlidingLine requiring to run on the border possibly in both directions
+<span class="nc bnc" id="L1438" title="All 2 branches missed.">		getMesh().streamVertices().filter(v -&gt; isSlidePoint(v)).filter(v -&gt; !pointToSlidingLine.containsKey(v)).forEach(v -&gt; {</span>
+<span class="nc" id="L1439">			E edge = getMesh().getBoundaryEdge(v).get();</span>
+<span class="nc" id="L1440">			V v1 = getMesh().getVertex(getMesh().getNext(edge));</span>
+<span class="nc" id="L1441">			V v2 =  getMesh().getVertex(getMesh().getPrev(edge));</span>
+
+<span class="nc bnc" id="L1443" title="All 4 branches missed.">			if(isFixPoint(v1) &amp;&amp; isFixPoint(v2)) {</span>
+<span class="nc" id="L1444">				pointToSlidingLine.put(v, new VLine(getMesh().toPoint(v1), getMesh().toPoint(v2)));</span>
+			} else {
+<span class="nc" id="L1446">				EdgeIterator&lt;V, E, F&gt; edgeIterator = new EdgeIterator&lt;&gt;(getMesh(), edge);</span>
+<span class="nc bnc" id="L1447" title="All 2 branches missed.">				while (edgeIterator.hasNext()) {</span>
+<span class="nc" id="L1448">					E next = edgeIterator.next();</span>
+<span class="nc" id="L1449">					V vertex = getMesh().getVertex(next);</span>
+<span class="nc bnc" id="L1450" title="All 2 branches missed.">					if(pointToSlidingLine.containsKey(vertex)) {</span>
+<span class="nc" id="L1451">						pointToSlidingLine.put(v, pointToSlidingLine.get(vertex));</span>
+					}
+
+<span class="nc bnc" id="L1454" title="All 2 branches missed.">					if(isFixPoint(vertex)) {</span>
+<span class="nc" id="L1455">						break;</span>
+					}
+<span class="nc" id="L1457">				}</span>
+
+<span class="nc bnc" id="L1459" title="All 2 branches missed.">				if(!pointToSlidingLine.containsKey(v)) {</span>
+<span class="nc" id="L1460">					EdgeIteratorReverse&lt;V, E, F&gt; reverseEdgeIterator = new EdgeIteratorReverse&lt;&gt;(getMesh(), edge);</span>
+<span class="nc bnc" id="L1461" title="All 2 branches missed.">					while (reverseEdgeIterator.hasNext()) {</span>
+<span class="nc" id="L1462">						E next = reverseEdgeIterator.next();</span>
+<span class="nc" id="L1463">						V vertex = getMesh().getVertex(next);</span>
+<span class="nc bnc" id="L1464" title="All 2 branches missed.">						if(pointToSlidingLine.containsKey(vertex)) {</span>
+<span class="nc" id="L1465">							pointToSlidingLine.put(v, pointToSlidingLine.get(vertex));</span>
+						}
+
+<span class="nc bnc" id="L1468" title="All 2 branches missed.">						if(isFixPoint(vertex)) {</span>
+<span class="nc" id="L1469">							break;</span>
+						}
+<span class="nc" id="L1471">					}</span>
+				}
+			}
+<span class="nc" id="L1474">		});</span>
+<span class="nc" id="L1475">	}</span>
+
+	/**
+	 * &lt;p&gt;Shrinks the boundary such that there are no more triangles outside the boundary i.e. where the distance is positive.&lt;/p&gt;
+	 */
+	private void shrinkBoundary() {
+<span class="nc bnc" id="L1481" title="All 2 branches missed.">		Predicate&lt;F&gt; removePredicate = face -&gt; distanceFunc.apply(getTriangulation().getMesh().toMidpoint(face)) &gt; 0;</span>
+<span class="nc" id="L1482">		getTriangulation().shrinkBoundary(removePredicate, true);</span>
+<span class="nc" id="L1483">	}</span>
+
+	/**
+	 * &lt;p&gt;Shrinks the border such that there are no more triangles outside the boundary i.e. where the distance is positive.
+	 * Note the border is part of the whole boundary which is defined by the border and the holes.&lt;/p&gt;
+	 */
+	private void shrinkBorder() {
+<span class="nc bnc" id="L1490" title="All 2 branches missed.">		Predicate&lt;F&gt; removePredicate = face -&gt; distanceFunc.apply(getTriangulation().getMesh().toMidpoint(face)) &gt; 0;</span>
+<span class="nc" id="L1491">		getTriangulation().shrinkBorder(removePredicate, true);</span>
+<span class="nc" id="L1492">	}</span>
+
+	/**
+	 * &lt;p&gt;Creates holes everywhere where the distance function is positive. Neighbouring holes will be merged.&lt;/p&gt;
+	 */
+	private void createHoles() {
+<span class="nc" id="L1498">		List&lt;F&gt; faces = getTriangulation().getMesh().getFaces();</span>
+<span class="nc bnc" id="L1499" title="All 2 branches missed.">		for(F face : faces) {</span>
+<span class="nc bnc" id="L1500" title="All 4 branches missed.">			if(!getTriangulation().getMesh().isDestroyed(face) &amp;&amp; !getTriangulation().getMesh().isHole(face)) {</span>
+<span class="nc bnc" id="L1501" title="All 2 branches missed.">				getTriangulation().createHole(face, f -&gt; distanceFunc.apply(getTriangulation().getMesh().toMidpoint(f)) &gt; 0, true);</span>
+			}
+<span class="nc" id="L1503">		}</span>
+<span class="nc" id="L1504">	}</span>
+
+
+	private boolean isShortBoundaryEdge(@NotNull final F face) {
+<span class="nc" id="L1508">		E edge = getMesh().getBoundaryEdge(face).get();</span>
+		// corner =&gt; can be deleted
+
+<span class="nc" id="L1511">		VLine l1 = getMesh().toLine(edge);</span>
+<span class="nc" id="L1512">		VLine l2 = getMesh().toLine(getMesh().getNext(edge));</span>
+<span class="nc" id="L1513">		VLine l3 = getMesh().toLine(getMesh().getPrev(edge));</span>
+
+<span class="nc bnc" id="L1515" title="All 4 branches missed.">		if(l1.length() &lt; l2.length() || l1.length() &lt; l3.length()) {</span>
+<span class="nc" id="L1516">			return true;</span>
+		}
+
+<span class="nc" id="L1519">		return false;</span>
+	}
+
+	public void setDistanceFunc(@NotNull final IDistanceFunction distanceFunc) {
+<span class="nc" id="L1523">		this.distanceFunc = distanceFunc;</span>
+<span class="nc" id="L1524">		reset();</span>
+<span class="nc" id="L1525">		retriangulate();</span>
+<span class="nc" id="L1526">	}</span>
+
+	/*private boolean isFrozen(@NotNull final V vertex) {
+		if(isFixPoint(vertex)) {
+			return true;
+		}
+		return vertex.getMovement() / initialEdgeLen &lt; Parameters.DPTOL;
+	}*/
+
+	/*	public void setFixPointRelation(@NotNull final Map&lt;V, VPoint&gt; fixPointRelation) {
+		this.fixPointRelation = fixPointRelation;
+	}*/
+
+
+	/*private void splitTriangles() {
+		if(poorFaces.isEmpty()) {
+			poorFaces = getMesh().streamFaces().filter(f -&gt; faceToQuality(f) &lt; 0.2).limit(10).collect(Collectors.toCollection(LinkedList::new));
+		}
+
+		while (!poorFaces.isEmpty()) {
+			F f = poorFaces.poll();
+			if(faceToQuality(f) &lt; 0.2) {
+				VTriangle triangle = getMesh().toTriangle(f);
+				VPoint c = triangle.getCircumcenter();
+				getTriangulation().insertVertex(c.getX(), c.getY());
+			}
+		}
+    }*/
+
+    /*private void clearPoorTriangles() {
+		for(V vertex : getMesh().getVertices()) {
+			if(!getMesh().isAtBoundary(vertex)) {
+				for(E edge : getMesh().getEdgeIt(vertex)) {
+					E prev = getMesh().getPrev(edge);
+					VLine line = getMesh().toLine(prev);
+					double distance = GeometryUtils.distanceToLineSegment(line.getX1(), line.getY1(), line.getX2(), line.getY2(), vertex.getX(), vertex.getY());
+					if(distance &lt; initialEdgeLen * 0.1) {
+						getTriangulation().remove(vertex);
+						break;
+					}
+				}
+			}
+		}
+    }*/
+
+	private void retriangulate() {
+<span class="nc" id="L1572">		synchronized (getMesh()) {</span>
+<span class="nc" id="L1573">			log.info(&quot;EikMesh re-triangulates in step &quot; + nSteps);</span>
+<span class="nc" id="L1574">			getTriangulation().recompute();</span>
+<span class="nc" id="L1575">			shrinkBorder();</span>
+<span class="nc" id="L1576">			createHoles();</span>
+			//removeTrianglesOutsideBBox();
+			//removeTrianglesInsideObstacles();
+			/*try {
+				removeFacesOutside(distanceFunc);
+			} catch (IllegalMeshException e) {
+				log.error(&quot;error!&quot;);
+			}*/
+<span class="nc" id="L1584">		}</span>
+<span class="nc" id="L1585">	}</span>
+
+	private boolean isBoundary(@NotNull final V vertex) {
+<span class="nc" id="L1588">		return getMesh().isBoundary(getMesh().getEdge(vertex));</span>
+	}
+
+	/*
+	 * The following methods are helper methods to quickly access properties saved on vertices, edges and faces
+	 */
+
+	private void setConstraint(E edge, boolean constraint) {
+<span class="nc" id="L1596">		constraintC.setValue(edge, constraint);</span>
+<span class="nc" id="L1597">	}</span>
+
+	private boolean isConstrained(E edge) {
+<span class="nc" id="L1600">		return constraintC.getValue(edge);</span>
+	}
+
+	private void setFixPoint(V vertex, boolean fixPoint) {
+<span class="nc" id="L1604">		fixpointC.setValue(vertex, fixPoint);</span>
+<span class="nc" id="L1605">	}</span>
+
+	public boolean isFixPoint(V vertex) {
+<span class="nc" id="L1608">		return fixpointC.getValue(vertex);</span>
+	}
+
+	private void setVelocity(V vertex, IPoint velocity) {
+<span class="nc" id="L1612">		velocityXC.setValue(vertex, velocity.getX());</span>
+<span class="nc" id="L1613">		velocityYC.setValue(vertex, velocity.getY());</span>
+<span class="nc" id="L1614">	}</span>
+
+	private void setVelocityX(V vertex, double velX) {
+<span class="nc" id="L1617">		velocityXC.setValue(vertex, velX);</span>
+<span class="nc" id="L1618">	}</span>
+
+	private void setVelocityY(V vertex, double velY) {
+<span class="nc" id="L1621">		velocityYC.setValue(vertex, velY);</span>
+<span class="nc" id="L1622">	}</span>
+
+	private void increaseVelocity(V vertex, IPoint dvelocity) {
+<span class="nc" id="L1625">		increaseVelocityX(vertex, dvelocity.getX());</span>
+<span class="nc" id="L1626">		increaseVelocityY(vertex, dvelocity.getY());</span>
+<span class="nc" id="L1627">	}</span>
+
+	private double getVelocityX(V vertex) {
+<span class="nc" id="L1630">		return velocityXC.getValue(vertex);</span>
+	}
+
+	private void increaseVelocityX(V vertex, double dVelX) {
+<span class="nc" id="L1634">		double velX = velocityXC.getValue(vertex);</span>
+<span class="nc" id="L1635">		velocityXC.setValue(vertex, velX + dVelX);</span>
+<span class="nc" id="L1636">	}</span>
+
+	private void increaseVelocityY(V vertex, double dVelY) {
+<span class="nc" id="L1639">		double velY = velocityYC.getValue(vertex);</span>
+<span class="nc" id="L1640">		velocityYC.setValue(vertex, velY + dVelY);</span>
+<span class="nc" id="L1641">	}</span>
+
+	private double getVelocityY(V vertex) {
+<span class="nc" id="L1644">		return velocityYC.getValue(vertex);</span>
+	}
+
+	private VPoint getVelocity(V vertex) {
+<span class="nc" id="L1648">		return new VPoint(getVelocityX(vertex), getVelocityY(vertex));</span>
+	}
+
+	private void setAbsVelocity(V vertex, double absVelocity) {
+<span class="nc" id="L1652">		absVelocityC.setValue(vertex, absVelocity);</span>
+<span class="nc" id="L1653">	}</span>
+
+	private void increaseAbsVelocity(V vertex, double dAbsVelocity) {
+<span class="nc" id="L1656">		double absVel = absVelocityC.getValue(vertex);</span>
+<span class="nc" id="L1657">		absVelocityC.setValue(vertex, absVel + dAbsVelocity);</span>
+<span class="nc" id="L1658">	}</span>
+
+	// setter to configure the algorithm strategy.
+	private double getAbsVelocity(V vertex) {
+<span class="nc" id="L1662">		return absVelocityC.getValue(vertex);</span>
+	}
+
+	public void setAllowEdgeSplits(final boolean allowEdgeSplits) {
+<span class="nc" id="L1666">		this.allowEdgeSplits = allowEdgeSplits;</span>
+<span class="nc" id="L1667">	}</span>
+
+	public void setAllowVertexCollapse(final boolean allowVertexCollapse) {
+<span class="nc" id="L1670">		this.allowVertexCollapse = allowVertexCollapse;</span>
+<span class="nc" id="L1671">	}</span>
+
+	public void setUseVirtualEdges(final boolean useVirtualEdges) {
+<span class="nc" id="L1674">		this.useVirtualEdges = useVirtualEdges;</span>
+<span class="nc" id="L1675">	}</span>
+
+	public void setRemoveLowBoundaryTriangles(final boolean removeLowBoundaryTriangles) {
+<span class="nc" id="L1678">		this.removeLowBoundaryTriangles = removeLowBoundaryTriangles;</span>
+<span class="nc" id="L1679">	}</span>
+
+	public void setEdgeLenFunction(@NotNull final IEdgeLengthFunction edgeLengthFunc) {
+<span class="nc" id="L1682">		this.edgeLengthFunc = edgeLengthFunc;</span>
+<span class="nc" id="L1683">		reset();</span>
+<span class="nc" id="L1684">	}</span>
+
+	/**
+	 * Unused old strategy to deal with very obtuse triangles at the boundary.
+	 * This is replaced by the concept of virtual edges.
+	 *
+	 * @param edge
+	 */
+	private void computeBoundaryForces(final E edge) {
+		/*
+		 * EikMesh improvements
+		 */
+<span class="nc bnc" id="L1696" title="All 2 branches missed.">		if(getMesh().isBoundary(edge)) {</span>
+<span class="nc" id="L1697">			E twin = getMesh().getTwin(edge);</span>
+<span class="nc" id="L1698">			E next = getMesh().getNext(twin);</span>
+<span class="nc" id="L1699">			E prev = getMesh().getPrev(twin);</span>
+
+<span class="nc bnc" id="L1701" title="All 2 branches missed.">			if((getMesh().toLine(next).length() + getMesh().toLine(prev).length()) * 1.1 &lt; getMesh().toLine(edge).length()) {</span>
+				// get the opposite point
+<span class="nc" id="L1703">				V v1 = getMesh().getVertex(edge);</span>
+<span class="nc" id="L1704">				V v2 = getMesh().getVertex(getMesh().getPrev(edge));</span>
+<span class="nc" id="L1705">				V v3 = getMesh().getVertex(getMesh().getNext(getMesh().getTwin(edge)));</span>
+
+				// TODO: Get rid of VPoint
+<span class="nc" id="L1708">				VPoint midPoint = new VPoint((v1.getX() + v2.getX()) * 0.5, (v1.getY() + v2.getY()) * 0.5);</span>
+<span class="nc" id="L1709">				VPoint midLeft = new VPoint((v1.getX() + v3.getX()) * 0.5, (v1.getY() + v3.getY()) * 0.5);</span>
+<span class="nc" id="L1710">				VPoint midRight = new VPoint((v2.getX() + v3.getX()) * 0.5, (v2.getY() + v3.getY()) * 0.5);</span>
+<span class="nc" id="L1711">				VPoint q = new VPoint((midPoint.getX() + v3.getX()) * 0.5, (midPoint.getY() + v3.getY()) * 0.5);</span>
+
+<span class="nc" id="L1713">				double desiredLen = edgeLengthFunc.apply(q) * Parameters.FSCALE * scalingFactor;</span>
+<span class="nc" id="L1714">				double len = new VLine(midPoint, getMesh().toPoint(v3)).length();</span>
+
+<span class="nc" id="L1716">				double cDes = edgeLengthFunc.apply(midLeft);</span>
+<span class="nc" id="L1717">				double aDes = edgeLengthFunc.apply(new VLine(midLeft, getMesh().toPoint(edge)).midPoint());</span>
+<span class="nc" id="L1718">				double bDes = Math.sqrt(cDes*cDes - aDes*aDes) * Parameters.FSCALE * scalingFactor;</span>
+
+<span class="nc" id="L1720">				double c = getMesh().toLine(getMesh().getPrev(twin)).length();</span>
+<span class="nc" id="L1721">				double a = getMesh().toLine(edge).length() * 0.5;</span>
+<span class="nc" id="L1722">				double b = Math.sqrt(c*c - a*a);</span>
+
+
+<span class="nc" id="L1725">				double lenDiff = desiredLen - len;</span>
+
+<span class="nc bnc" id="L1727" title="All 2 branches missed.">				if(lenDiff &lt; 0 /*&amp;&amp; lenDiff &gt; -desiredLen*/) {</span>
+<span class="nc" id="L1728">					lenDiff *= 0.1;</span>
+				}
+
+				// TODO: get rid of VPoint
+<span class="nc" id="L1732">				double forceX = (midLeft.getX() - v3.getX()) * (lenDiff / len);</span>
+<span class="nc" id="L1733">				double forceY = (midLeft.getY() - v3.getY()) * (lenDiff / len);</span>
+<span class="nc" id="L1734">				double forceLen = GeometryUtils.length(forceX, forceY);</span>
+<span class="nc" id="L1735">				increaseVelocityX(v3, forceX);</span>
+<span class="nc" id="L1736">				increaseVelocityY(v3, forceY);</span>
+<span class="nc" id="L1737">				increaseAbsVelocity(v3, forceLen);</span>
+			}
+		}
+<span class="nc" id="L1740">	}</span>
+
+	/*private void removeTrianglesInsideHoles() {
+		List&lt;F&gt; holes = triangulation.getMesh().getHoles();
+		Predicate&lt;F&gt; mergeCondition = f -&gt; !triangulation.getMesh().isBoundary(f) &amp;&amp; distanceFunc.apply(triangulation.getMesh().toTriangle(f).midPoint()) &gt; 0;
+		for(F face : holes) {
+			triangulation.mergeFaces(face, mergeCondition, true);
+		}
+	}
+
+	private void removeTrianglesInsideObstacles() {
+		List&lt;F&gt; faces = triangulation.getMesh().getFaces();
+		for(F face : faces) {
+			if(!triangulation.getMesh().isDestroyed(face) &amp;&amp; !triangulation.getMesh().isHole(face)) {
+				triangulation.createHole(face, f -&gt; distanceFunc.apply(triangulation.getMesh().toTriangle(f).midPoint()) &gt; 0, true);
+			}
+		}
+	}
+
+	public void removeTrianglesOutsideBBox() {
+		triangulation.shrinkBorder(f -&gt; distanceFunc.apply(triangulation.getMesh().toTriangle(f).midPoint()) &gt; 0, true);
+	}*/
+
+	/*private boolean isDoubleLongEdge(@NotNull final E edge) {
+
+		if(!getMesh().isAtBoundary(edge)) {
+			VLine line = getMesh().toLine(edge);
+			double factor = 1.5;
+			VLine line1 = getMesh().toLine(getMesh().getNext(edge));
+			VLine line2 = getMesh().toLine(getMesh().getPrev(edge));
+
+			return getMesh().isAtBoundary(getMesh().getNext(edge)) &amp;&amp; line1.length() * factor &lt;= line.length()
+					|| getMesh().isAtBoundary(getMesh().getPrev(edge)) &amp;&amp; line2.length() * factor &lt;= line.length();
+		}
+		return false;
+	}*/
+
+	/*private boolean isDoubleLongEdge(@NotNull final E edge) {
+		VLine line = getMesh().toLine(edge);
+		double factor = 2.5;
+		if(getMesh().isAtBoundary(edge)) {
+			VLine line1 = getMesh().toLine(getMesh().getNext(edge));
+			VLine line2 = getMesh().toLine(getMesh().getPrev(edge));
+			return line.length() &gt;= line1.length() * factor || line.length() &gt;= line2.length() * factor;
+		}
+		else {
+			VLine line1 = getMesh().toLine(getMesh().getNext(getMesh().getTwin(edge)));
+			VLine line2 = getMesh().toLine(getMesh().getPrev(getMesh().getTwin(edge)));
+			VLine line3 = getMesh().toLine(getMesh().getPrev(edge));
+			VLine line4 = getMesh().toLine(getMesh().getPrev(edge));
+			return line.length() &gt;= line1.length() * factor || line.length() &gt;= line2.length() * factor
+					|| line.length() &gt;= line3.length() * factor || line.length() &gt;= line4.length() * factor;
+		}
+	}*/
+
+	/*private void removeBoundaryLowQualityTriangles() {
+
+		List&lt;F&gt; holes = triangulation.getMesh().getHoles();
+
+
+		Predicate&lt;F&gt; mergeCondition = f -&gt;
+				(!triangulation.getMesh().isDestroyed(f) &amp;&amp; !triangulation.getMesh().isBoundary(f) &amp;&amp; triangulation.getMesh().isAtBoundary(f)) // at boundary
+				&amp;&amp; (!triangulation.isValid(f) || (isCorner(f) || !isShortBoundaryEdge(f)) &amp;&amp; faceToQuality(f) &lt; Parameters.MIN_TRIANGLE_QUALITY) // bad quality
+		;
+
+		for(F face : holes) {
+			List&lt;F&gt; neighbouringFaces = getMesh().streamEdges(face).map(e -&gt; getMesh().getTwinFace(e)).collect(Collectors.toList());
+			for (F neighbouringFace : neighbouringFaces) {
+				if (mergeCondition.test(neighbouringFace)) {
+					triangulation.removeEdges(face, neighbouringFace, true);
+				}
+			}
+		}
+
+		List&lt;F&gt; neighbouringFaces = getMesh().streamEdges(getMesh().getBorder()).map(e -&gt; getMesh().getTwinFace(e)).collect(Collectors.toList());
+		for (F neighbouringFace : neighbouringFaces) {
+			if (mergeCondition.test(neighbouringFace)) {
+				triangulation.removeEdges(getMesh().getBorder(), neighbouringFace, true);
+			}
+		}
+
+		//triangulation.mergeFaces(getMesh().getBorder(), mergeCondition, true);
+	}
+
+	private boolean isNotColinear (@NotNull final E edge) {
+		V p1 = getMesh().getVertex(getMesh().getPrev(edge));
+		V p2 = getMesh().getVertex(edge);
+		V p3 = getMesh().getVertex(getMesh().getNext(edge));
+
+		// not co-linear?
+		return Math.abs(GeometryUtils.ccw(p1, p2, p3)) &gt; GeometryUtils.DOUBLE_EPS;
+	}
+
+	*/
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

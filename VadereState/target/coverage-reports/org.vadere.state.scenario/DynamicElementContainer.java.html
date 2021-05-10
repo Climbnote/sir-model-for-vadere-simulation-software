@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DynamicElementContainer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.scenario</a> &gt; <span class="el_source">DynamicElementContainer.java</span></div><h1>DynamicElementContainer.java</h1><pre class="source lang-java linenums">package org.vadere.state.scenario;
+
+import java.awt.geom.RectangularShape;
+import java.util.*;
+
+import org.vadere.util.geometry.LinkedCellsGrid;
+import org.vadere.util.geometry.shapes.VPoint;
+
+<span class="pc bpc" id="L9" title="1 of 2 branches missed.">public class DynamicElementContainer&lt;T extends DynamicElement&gt; {</span>
+	private transient final List&lt;DynamicElementAddListener&lt;T&gt;&gt; addListener;
+	private transient final List&lt;DynamicElementRemoveListener&lt;T&gt;&gt; removeListener;
+	private transient final List&lt;DynamicElementMoveListener&lt;T&gt;&gt; moveListener;
+
+	private final Map&lt;Integer, T&gt; elementMap;
+
+	private final List&lt;T&gt; initialElements;
+
+	/**
+	 * LinkedCellsGrid storing all elements for fast access.
+	 */
+	private final LinkedCellsGrid&lt;T&gt; cellsElements;
+
+	private final RectangularShape bounds;
+	private final double cellSize;
+
+<span class="fc" id="L26">	public DynamicElementContainer(RectangularShape bounds, double cellSize) {</span>
+<span class="fc" id="L27">		elementMap = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L28">		initialElements = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L29">		this.bounds = bounds;</span>
+<span class="fc" id="L30">		this.cellSize = cellSize;</span>
+
+<span class="fc" id="L32">		this.cellsElements = new LinkedCellsGrid&lt;&gt;(bounds.getMinX(), bounds.getMinY(), bounds.getWidth(),</span>
+<span class="fc" id="L33">				bounds.getHeight(), cellSize);</span>
+
+<span class="fc" id="L35">		this.addListener = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L36">		this.removeListener = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L37">		this.moveListener = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L38">	}</span>
+
+	public synchronized LinkedCellsGrid&lt;T&gt; getCellsElements() {
+<span class="nc" id="L41">		return cellsElements;</span>
+	}
+
+	public synchronized Collection&lt;T&gt; getElements() {
+<span class="nc" id="L45">		return elementMap.values();</span>
+	}
+
+	public synchronized T getElement(int id) {
+<span class="nc" id="L49">		return elementMap.get(id);</span>
+	}
+
+	public void addInitialElement(T initialElement) {
+<span class="nc" id="L53">		this.initialElements.add(initialElement);</span>
+<span class="nc" id="L54">	}</span>
+
+	public List&lt;T&gt; getInitialElements() {
+<span class="nc" id="L57">		return this.initialElements;</span>
+	}
+
+	public synchronized void addElement(T element) {
+<span class="nc" id="L61">		this.elementMap.put(element.getId(), element);</span>
+<span class="nc" id="L62">		this.cellsElements.addObject(element);</span>
+
+<span class="nc bnc" id="L64" title="All 4 branches missed.">		assert (elementMap.size() == cellsElements.size())</span>
+				: &quot;Number of pedestrians in LinkedCellGrid does not match number of pedestrians&quot; +
+				&quot; in topography&quot;;
+
+<span class="nc bnc" id="L68" title="All 2 branches missed.">		for (DynamicElementAddListener&lt;T&gt; listener : addListener) {</span>
+<span class="nc" id="L69">			listener.elementAdded(element);</span>
+<span class="nc" id="L70">		}</span>
+<span class="nc" id="L71">	}</span>
+
+	public synchronized void moveElement(T element, VPoint oldPosition) {
+<span class="nc" id="L74">		this.cellsElements.moveObject(element, oldPosition);</span>
+
+<span class="nc bnc" id="L76" title="All 4 branches missed.">		assert (elementMap.size() == cellsElements.size())</span>
+				: &quot;Number of pedestrians in LinkedCellGrid does not match number of pedestrians&quot; +
+				&quot; in topography&quot;;
+
+<span class="nc bnc" id="L80" title="All 2 branches missed.">		for (DynamicElementMoveListener&lt;T&gt; listener : moveListener) {</span>
+<span class="nc" id="L81">			listener.elementMove(element);</span>
+<span class="nc" id="L82">		}</span>
+<span class="nc" id="L83">	}</span>
+
+	public synchronized void removeElement(T element) {
+<span class="nc" id="L86">		this.elementMap.remove(element.getId());</span>
+<span class="nc" id="L87">		this.cellsElements.removeObject(element);</span>
+
+<span class="nc bnc" id="L89" title="All 4 branches missed.">		assert (elementMap.size() == cellsElements.size())</span>
+				: &quot;Number of pedestrians in LinkedCellGrid does not match number of pedestrians&quot; +
+				&quot; in topography&quot;;
+<span class="nc bnc" id="L92" title="All 2 branches missed.">		for (DynamicElementRemoveListener&lt;T&gt; listener : removeListener) {</span>
+<span class="nc" id="L93">			listener.elementRemoved(element);</span>
+<span class="nc" id="L94">		}</span>
+<span class="nc" id="L95">	}</span>
+
+	public synchronized void addElementRemovedListener(DynamicElementRemoveListener&lt;T&gt; listener) {
+<span class="nc" id="L98">		this.removeListener.add(listener);</span>
+<span class="nc" id="L99">	}</span>
+
+	public synchronized void addElementAddedListener(DynamicElementAddListener&lt;T&gt; listener) {
+<span class="nc" id="L102">		this.addListener.add(listener);</span>
+<span class="nc" id="L103">	}</span>
+
+	public List&lt;DynamicElementAddListener&lt;T&gt;&gt; getElementAddedListener() {
+<span class="nc" id="L106">		return this.addListener;</span>
+	}
+
+	public List&lt;DynamicElementRemoveListener&lt;T&gt;&gt; getElementRemovedListener() {
+<span class="nc" id="L110">		return this.removeListener;</span>
+	}
+
+	public void clear() {
+<span class="nc" id="L114">		this.elementMap.clear();</span>
+<span class="nc" id="L115">		this.cellsElements.clear();</span>
+<span class="nc" id="L116">	}</span>
+
+	public void clearListeners() {
+<span class="nc" id="L119">		this.addListener.clear();</span>
+<span class="nc" id="L120">		this.removeListener.clear();</span>
+<span class="nc" id="L121">	}</span>
+
+	public boolean idExists(int id){
+<span class="nc" id="L124">		return elementMap.containsKey(id);</span>
+	}
+
+	@Override
+	protected DynamicElementContainer&lt;T&gt; clone() throws CloneNotSupportedException {
+<span class="nc" id="L129">		DynamicElementContainer&lt;T&gt; clone = new DynamicElementContainer&lt;&gt;(bounds, cellSize);</span>
+
+<span class="nc bnc" id="L131" title="All 2 branches missed.">		for (T element : this.elementMap.values()) {</span>
+<span class="nc" id="L132">			clone.addElement(element);</span>
+<span class="nc" id="L133">		}</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">		for (T initialElement : this.initialElements) {</span>
+<span class="nc" id="L135">			clone.addInitialElement(initialElement);</span>
+<span class="nc" id="L136">		}</span>
+
+		// clone listener?
+
+<span class="nc" id="L140">		return clone;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L145">		final int prime = 31;</span>
+<span class="nc" id="L146">		int result = 1;</span>
+<span class="nc" id="L147">		result = prime * result</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">				+ ((cellsElements == null) ? 0 : cellsElements.hashCode());</span>
+<span class="nc" id="L149">		result = prime * result</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">				+ ((elementMap == null) ? 0 : elementMap.hashCode());</span>
+<span class="nc" id="L151">		result = prime * result</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">				+ ((initialElements == null) ? 0 : initialElements.hashCode());</span>
+<span class="nc" id="L153">		return result;</span>
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+<span class="nc bnc" id="L158" title="All 2 branches missed.">		if (this == obj)</span>
+<span class="nc" id="L159">			return true;</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">		if (obj == null)</span>
+<span class="nc" id="L161">			return false;</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">		if (!(obj instanceof DynamicElementContainer))</span>
+<span class="nc" id="L163">			return false;</span>
+<span class="nc" id="L164">		DynamicElementContainer other = (DynamicElementContainer) obj;</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">		if (cellsElements == null) {</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">			if (other.cellsElements != null)</span>
+<span class="nc" id="L167">				return false;</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">		} else if (!cellsElements.equals(other.cellsElements))</span>
+<span class="nc" id="L169">			return false;</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">		if (elementMap == null) {</span>
+<span class="nc bnc" id="L171" title="All 2 branches missed.">			if (other.elementMap != null)</span>
+<span class="nc" id="L172">				return false;</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">		} else if (!elementMap.equals(other.elementMap))</span>
+<span class="nc" id="L174">			return false;</span>
+<span class="nc bnc" id="L175" title="All 2 branches missed.">		if (initialElements == null) {</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">			if (other.initialElements != null)</span>
+<span class="nc" id="L177">				return false;</span>
+<span class="nc bnc" id="L178" title="All 2 branches missed.">		} else if (!initialElements.equals(other.initialElements))</span>
+<span class="nc" id="L179">			return false;</span>
+<span class="nc" id="L180">		return true;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

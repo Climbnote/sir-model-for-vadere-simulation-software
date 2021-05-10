@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TextScenarioPrinter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.io</a> &gt; <span class="el_source">TextScenarioPrinter.java</span></div><h1>TextScenarioPrinter.java</h1><pre class="source lang-java linenums">package org.vadere.util.io;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * Prints a scenario file with obstacles, sources and targets forming a given
+ * text.
+ * 
+ */
+<span class="nc" id="L19">public class TextScenarioPrinter {</span>
+	private static final int widthPerCharacter = 3;
+	private static final int heightPerCharacter = 3;
+	private static final int boundaryWidth = 1;
+
+	/**
+	 * the number of the target ids in the given text. Used to change the
+	 * coordinates appropriately.
+	 */
+	private static int targetCounter;
+<span class="nc" id="L29">	public static String pathToLetters = &quot;data/TextScenarioPrinter&quot;;</span>
+	private static int targetCounterAdd;
+	private static double yAdd;
+	private static double xAdd;
+
+	/**
+	 * Entry point, use arg0 to set the text, arg1 to set the output file name.
+	 * 
+	 * @param args
+	 *        string array. args[0] must be the text, args[1] the output
+	 *        file name.
+	 */
+	public static void main(String... args) {
+<span class="nc bnc" id="L42" title="All 2 branches missed.">		if (args.length &lt; 2) {</span>
+<span class="nc" id="L43">			System.out</span>
+<span class="nc" id="L44">					.println(&quot;Please specify text (arg0) and filepath (arg1) for the text scenario.&quot;);</span>
+<span class="nc" id="L45">			return;</span>
+		}
+
+		// store the text in uppercase
+<span class="nc" id="L49">		String text = args[0].replace(&quot;\\n&quot;, &quot;\n&quot;).toUpperCase();</span>
+
+		// store the file path for the new scenario file containing the
+		// obstacles etc.
+<span class="nc" id="L53">		String textScenarioFilePath = args[1];</span>
+
+		// create the text scenario
+<span class="nc" id="L56">		createTextScenario(text, textScenarioFilePath);</span>
+<span class="nc" id="L57">	}</span>
+
+	/**
+	 * Creates a scenario file from a given text.
+	 * 
+	 * @param text
+	 *        the text to convert to a scenario
+	 * @param textScenarioFilePath
+	 *        the file path to the new scenario file
+	 */
+	private static void createTextScenario(String text,
+			String textScenarioFilePath) {
+<span class="nc" id="L69">		String[] lines = text.split(&quot;\n&quot;);</span>
+<span class="nc" id="L70">		int maxLenPerLine = 0;</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">		for (String line : lines) {</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">			if (line.length() &gt; maxLenPerLine) {</span>
+<span class="nc" id="L73">				maxLenPerLine = line.length();</span>
+			}
+		}
+<span class="nc" id="L76">		int xSize = maxLenPerLine * widthPerCharacter + boundaryWidth * 2;</span>
+<span class="nc" id="L77">		int ySize = lines.length * heightPerCharacter + boundaryWidth * 2;</span>
+
+<span class="nc" id="L79">		String scenarioLines =</span>
+				&quot;&lt;?xml version=\&quot;1.0\&quot; encoding=\&quot;UTF-8\&quot; standalone=\&quot;no\&quot;?&gt;&lt;scenario&gt;&lt;topography boundaryWidth=\&quot;1.00\&quot; xSize=\&quot;&quot;
+						+ xSize + &quot;\&quot; ySize=\&quot;&quot; + ySize + &quot;\&quot;&gt;&quot;;
+<span class="nc" id="L82">		String topographyLines = &quot;&quot;;</span>
+<span class="nc" id="L83">		String objectsLines = &quot;&quot;;</span>
+<span class="nc" id="L84">		targetCounter = 1;</span>
+<span class="nc" id="L85">		yAdd = 0; // this value is added to every y value of a letters scenario</span>
+		// definition file. used to introduce line breaks.
+<span class="nc" id="L87">		xAdd = 0;</span>
+
+		// loop through letters, build topology and objects
+<span class="nc bnc" id="L90" title="All 2 branches missed.">		for (char letter : text.toCharArray()) {</span>
+<span class="nc" id="L91">			String[] definition = convertLetterToscenario(letter);</span>
+<span class="nc" id="L92">			topographyLines += System.lineSeparator() + definition[0];</span>
+<span class="nc" id="L93">			objectsLines += System.lineSeparator() + definition[1];</span>
+		}
+
+		// combine scenario file
+<span class="nc" id="L97">		scenarioLines = String.format(&quot;%s%n%s&lt;/topography&gt;%n%s%n&lt;/scenario&gt;&quot;,</span>
+				scenarioLines, topographyLines, objectsLines);
+
+		// write the scenario file
+<span class="nc" id="L101">		Charset charset = StandardCharsets.UTF_8;</span>
+		Path filepath;
+		try {
+<span class="nc" id="L104">			filepath = Paths.get(textScenarioFilePath);</span>
+<span class="nc" id="L105">			Files.deleteIfExists(filepath);</span>
+<span class="nc" id="L106">			filepath = Files.createFile(filepath);</span>
+<span class="nc" id="L107">			BufferedWriter writer = Files.newBufferedWriter(filepath, charset);</span>
+<span class="nc" id="L108">			writer.write(scenarioLines, 0, scenarioLines.length());</span>
+<span class="nc" id="L109">			writer.flush();</span>
+<span class="nc" id="L110">		} catch (IOException x) {</span>
+<span class="nc" id="L111">			System.err.format(&quot;IOException: %s%n&quot;, x);</span>
+<span class="nc" id="L112">		}</span>
+<span class="nc" id="L113">	}</span>
+
+	/**
+	 * Converts a given char to a sequence of scenario object definitions stored
+	 * in a string.
+	 * 
+	 * @param letter
+	 * @return a string array containing the topography [0] and object
+	 *         definitions [1] (obstacles, sources, targets).
+	 */
+	private static String[] convertLetterToscenario(char letter) {
+		// a line break just means adding a character width to y
+<span class="nc bnc" id="L125" title="All 2 branches missed.">		if (letter == '\n') {</span>
+<span class="nc" id="L126">			yAdd += widthPerCharacter;</span>
+<span class="nc" id="L127">			xAdd = 0;</span>
+<span class="nc" id="L128">			return new String[] {&quot;&quot;, &quot;&quot;};</span>
+		}
+
+<span class="nc" id="L131">		Path pathToLetterDefinition = Paths.get(pathToLetters,</span>
+<span class="nc" id="L132">				String.format(&quot;%c&quot;, letter) + &quot;.xml&quot;);</span>
+<span class="nc" id="L133">		String topographyOutput = &quot;&quot;;</span>
+<span class="nc" id="L134">		String objectsOutput = &quot;&quot;;</span>
+<span class="nc" id="L135">		boolean isTopology = true;</span>
+<span class="nc" id="L136">		targetCounterAdd = 0;</span>
+		try {
+<span class="nc" id="L138">			List&lt;String&gt; lines = Files.readAllLines(pathToLetterDefinition,</span>
+					StandardCharsets.UTF_8);
+
+<span class="nc bnc" id="L141" title="All 2 branches missed.">			for (String line : lines) {</span>
+<span class="nc bnc" id="L142" title="All 4 branches missed.">				if (line.startsWith(&quot;&lt;?xml&quot;) || line.startsWith(&quot;&lt;scenario&gt;&quot;)</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">						|| line.startsWith(&quot;&lt;topography&quot;)</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">						|| line.startsWith(&quot;&lt;/scenario&gt;&quot;)) {</span>
+<span class="nc" id="L145">					continue;</span>
+				}
+<span class="nc bnc" id="L147" title="All 2 branches missed.">				if (line.contains(&quot;&lt;/topography&gt;&quot;)) {</span>
+<span class="nc" id="L148">					isTopology = false;</span>
+				} else {
+<span class="nc bnc" id="L150" title="All 2 branches missed.">					if (isTopology) {</span>
+<span class="nc" id="L151">						topographyOutput += correctCoordinates(line);</span>
+					} else {
+<span class="nc" id="L153">						objectsOutput += correctCoordinates(line);</span>
+					}
+				}
+<span class="nc" id="L156">			}</span>
+<span class="nc" id="L157">		} catch (IOException e) {</span>
+			// file not found, can't create object definitions.
+			// don't write this letter, but increase letter counter, thus
+			// leaving a hole in the scenario text.
+<span class="nc" id="L161">			topographyOutput = &quot;&quot;;</span>
+<span class="nc" id="L162">			objectsOutput = &quot;&quot;;</span>
+<span class="nc" id="L163">		}</span>
+
+<span class="nc" id="L165">		xAdd += widthPerCharacter;</span>
+<span class="nc" id="L166">		targetCounter += targetCounterAdd;</span>
+
+<span class="nc" id="L168">		return new String[] {topographyOutput, objectsOutput};</span>
+	}
+
+	/**
+	 * Corrects the coordinates in the given line of a scenario definition file
+	 * according to current letterCounter, sourceCounter and targetCounter
+	 * values.
+	 * 
+	 * @param line
+	 *        line of a scenario definition file
+	 * @return the same line, only that all contained coordinates are adjusted.
+	 */
+	private static String correctCoordinates(String line) {
+<span class="nc" id="L181">		String[] coordinateTypes = new String[] {&quot;x&quot;, &quot;y&quot;, &quot;xMin&quot;, &quot;xMax&quot;,</span>
+				&quot;yMin&quot;, &quot;yMax&quot;, &quot;targetId&quot;, &quot;id&quot;};
+
+<span class="nc bnc" id="L184" title="All 2 branches missed.">		for (String type : coordinateTypes) {</span>
+<span class="nc" id="L185">			String modifiedType = &quot; &quot; + type + &quot;=&quot;;</span>
+			// if the line triangleContains one of the given coordinateTypes, replace
+			// the number by an appropriate new number.
+			// this depends on whether its an x or y value type.
+<span class="nc bnc" id="L189" title="All 2 branches missed.">			if (line.contains(modifiedType)) {</span>
+<span class="nc" id="L190">				String originalText = line;</span>
+<span class="nc" id="L191">				StringBuffer newText = new StringBuffer();</span>
+<span class="nc" id="L192">				StringBuffer tempBuff = null;</span>
+				// match floating point values
+<span class="nc" id="L194">				Pattern myPattern = Pattern.compile(type</span>
+						+ &quot;=\&quot;[-+]?([0-9]*\\.[0-9]+|[0-9]+)\&quot;&quot;);
+<span class="nc" id="L196">				Matcher myMatcher = myPattern.matcher(originalText);</span>
+				// run through all number matches
+<span class="nc bnc" id="L198" title="All 2 branches missed.">				while (myMatcher.find()) {</span>
+<span class="nc" id="L199">					tempBuff = new StringBuffer();</span>
+<span class="nc" id="L200">					String toReplace = myMatcher.group();</span>
+<span class="nc" id="L201">					double number = Double.parseDouble(toReplace.substring(</span>
+<span class="nc" id="L202">							type.length() + &quot;=\&quot;&quot;.length(), toReplace.length()</span>
+<span class="nc" id="L203">									- &quot;\&quot;&quot;.length()));</span>
+
+					// if we found a source or target id, change to the current source/target id counter.
+<span class="nc bnc" id="L206" title="All 2 branches missed.">					if (type.contains(&quot;id&quot;)) {</span>
+<span class="nc" id="L207">						number -= 1; // remove the initial number, as ids in each letter definition file start with one, not zero.</span>
+<span class="nc" id="L208">						number += targetCounter;</span>
+<span class="nc" id="L209">						targetCounterAdd++;</span>
+
+<span class="nc" id="L211">						tempBuff.append(String.format(type + &quot;=\&quot;%.0f\&quot;&quot;,</span>
+<span class="nc" id="L212">								number));</span>
+<span class="nc bnc" id="L213" title="All 2 branches missed.">					} else if (type.contains(&quot;targetId&quot;)) {</span>
+<span class="nc" id="L214">						number -= 1; // remove the initial number, as ids in each letter definition file start with one, not zero.</span>
+<span class="nc" id="L215">						number += targetCounter;</span>
+<span class="nc" id="L216">						tempBuff.append(String.format(type + &quot;=\&quot;%.0f\&quot;&quot;,</span>
+<span class="nc" id="L217">								number));</span>
+					} else
+					// a real coordinate, change according to letterCounter
+					{
+						// only change x values
+<span class="nc bnc" id="L222" title="All 2 branches missed.">						if (!type.contains(&quot;y&quot;)) {</span>
+<span class="nc" id="L223">							number += xAdd + 1;</span>
+						} else {
+<span class="nc" id="L225">							number += 1;</span>
+<span class="nc" id="L226">							number += yAdd;</span>
+						}
+
+<span class="nc" id="L229">						tempBuff.append(String.format(type + &quot;=\&quot;%.2f\&quot;&quot;,</span>
+<span class="nc" id="L230">								number));</span>
+					}
+
+<span class="nc" id="L233">					myMatcher.appendReplacement(newText, tempBuff.toString());</span>
+<span class="nc" id="L234">				}</span>
+
+<span class="nc" id="L236">				myMatcher.appendTail(newText);</span>
+<span class="nc" id="L237">				line = newText.toString();</span>
+			}
+		}
+
+<span class="nc" id="L241">		return line;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BackgroundMesh.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">BackgroundMesh.java</span></div><h1>BackgroundMesh.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.ITriConnectivity;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.shapes.IPoint;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+public class BackgroundMesh&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; {
+
+	private ITriConnectivity&lt;V, E, F&gt; triConnectivity;
+	private Map&lt;Object, F&gt; cache;
+
+<span class="nc" id="L19">	public BackgroundMesh(@NotNull final ITriConnectivity&lt;V, E, F&gt; triConnectivity) {</span>
+<span class="nc" id="L20">		this.triConnectivity = triConnectivity;</span>
+<span class="nc" id="L21">		this.cache = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L22">	}</span>
+
+	public Optional&lt;F&gt; locate(@NotNull final Object obj, @NotNull final IPoint point) {
+<span class="nc" id="L25">		return locate(obj, point.getX(), point.getY());</span>
+	}
+
+	public Optional&lt;F&gt; locate(@NotNull final Object obj, final double x, final double y) {
+<span class="nc bnc" id="L29" title="All 2 branches missed.">		if(cache.containsKey(obj)) {</span>
+<span class="nc" id="L30">			F startFace = cache.get(obj);</span>
+<span class="nc" id="L31">			return triConnectivity.locateMarch(x, y, startFace);</span>
+		}
+		else {
+<span class="nc" id="L34">			Optional&lt;F&gt; optionalF = triConnectivity.locate(x, y);</span>
+<span class="nc bnc" id="L35" title="All 2 branches missed.">			if(optionalF.isPresent()) {</span>
+<span class="nc" id="L36">				cache.put(obj, optionalF.get());</span>
+			}
+<span class="nc" id="L38">			return optionalF;</span>
+		}
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

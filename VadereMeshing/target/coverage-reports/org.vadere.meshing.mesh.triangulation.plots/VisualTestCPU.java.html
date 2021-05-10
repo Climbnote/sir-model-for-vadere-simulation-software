@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VisualTestCPU.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.plots</a> &gt; <span class="el_source">VisualTestCPU.java</span></div><h1>VisualTestCPU.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.plots;
+
+import org.apache.commons.lang3.time.StopWatch;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.math.IDistanceFunction;
+import org.vadere.util.visualization.ColorHelper;
+import org.vadere.meshing.mesh.gen.AFace;
+import org.vadere.meshing.mesh.gen.AHalfEdge;
+import org.vadere.meshing.mesh.gen.AMesh;
+import org.vadere.meshing.mesh.gen.AVertex;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PMesh;
+import org.vadere.meshing.mesh.gen.PVertex;
+import org.vadere.meshing.mesh.inter.IMeshSupplier;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.meshing.utils.io.tex.TexGraphGenerator;
+import org.vadere.meshing.mesh.inter.IPointConstructor;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.EikMeshPoint;
+import org.vadere.meshing.mesh.gen.MeshPanel;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.gen.GenEikMesh;
+
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
+
+import javax.swing.*;
+
+<span class="nc" id="L33">public class VisualTestCPU {</span>
+
+<span class="nc" id="L35">	private static final Logger log = Logger.getLogger(RunTimeGPUEdgeBased.class);</span>
+
+<span class="nc" id="L37">	private static final VRectangle bbox = new VRectangle(-11, -11, 22, 22);</span>
+<span class="nc" id="L38">	private static final IEdgeLengthFunction uniformEdgeLength = p -&gt; 1.0;</span>
+<span class="nc" id="L39">	private static final IPointConstructor&lt;EikMeshPoint&gt; pointConstructor = (x, y) -&gt; new EikMeshPoint(x, y, false);</span>
+	private static final double initialEdgeLength = 0.7;
+
+	private static void overallUniformRingA() {
+<span class="nc" id="L43">		VPolygon hex = VShape.generateHexagon(4.0);</span>
+<span class="nc" id="L44">		IMeshSupplier&lt;AVertex, AHalfEdge, AFace&gt; supplier = () -&gt; new AMesh();</span>
+<span class="nc" id="L45">		IDistanceFunction distanceFunc = p -&gt; Math.abs(7 - Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY())) - 3;</span>
+
+		//IDistanceFunction distanceFunc = IDistanceFunction.intersect(p -&gt; Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY()) - 10, IDistanceFunction.create(bbox, hex));
+<span class="nc" id="L48">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L50">		GenEikMesh meshGenerator = new GenEikMesh(distanceFunc, p -&gt; 1.0 + (distanceFunc.apply(p) * distanceFunc.apply(p) / 6.0), initialEdgeLength, bbox, new ArrayList&lt;&gt;(), supplier);</span>
+
+<span class="nc" id="L52">		ColorHelper colorHelper = new ColorHelper(meshGenerator.getMesh().getNumberOfFaces());</span>
+<span class="nc" id="L53">		Function&lt;AFace, Color&gt; colorFunction = f -&gt; colorHelper.numberToColor(f.getId());</span>
+
+<span class="nc" id="L55">		MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; distmeshPanel = new MeshPanel&lt;&gt;(meshGenerator.getMesh(), f -&gt; false, 1000, 800, colorFunction);</span>
+<span class="nc" id="L56">		JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L57">		frame.setVisible(true);</span>
+<span class="nc" id="L58">		frame.setTitle(&quot;uniformRing()&quot;);</span>
+<span class="nc" id="L59">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L60">		distmeshPanel.repaint();</span>
+
+<span class="nc" id="L62">		StopWatch overAllTime = new StopWatch();</span>
+<span class="nc" id="L63">		overAllTime.start();</span>
+		//meshGenerator.improve();
+		//meshGenerator.improve();
+		//meshGenerator.improve();
+
+
+<span class="nc" id="L69">		int nSteps = 0;</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">		while (nSteps &lt; 300) {</span>
+<span class="nc" id="L71">			nSteps++;</span>
+<span class="nc" id="L72">			meshGenerator.improve();</span>
+<span class="nc" id="L73">			overAllTime.suspend();</span>
+			try {
+<span class="nc" id="L75">				Thread.sleep(200);</span>
+<span class="nc" id="L76">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L77">				e.printStackTrace();</span>
+<span class="nc" id="L78">			}</span>
+<span class="nc" id="L79">			distmeshPanel.repaint();</span>
+<span class="nc" id="L80">			log.info(&quot;quality: &quot; + meshGenerator.getQuality());</span>
+<span class="nc" id="L81">			log.info(&quot;min-quality: &quot; + meshGenerator.getMinQuality());</span>
+<span class="nc" id="L82">			overAllTime.resume();</span>
+		}
+<span class="nc" id="L84">		overAllTime.stop();</span>
+
+<span class="nc" id="L86">		log.info(&quot;#vertices: &quot; + meshGenerator.getMesh().getVertices().size());</span>
+<span class="nc" id="L87">		log.info(&quot;#edges: &quot; + meshGenerator.getMesh().getEdges().size());</span>
+<span class="nc" id="L88">		log.info(&quot;#faces: &quot; + meshGenerator.getMesh().getFaces().size());</span>
+<span class="nc" id="L89">		log.info(&quot;quality: &quot; + meshGenerator.getQuality());</span>
+<span class="nc" id="L90">		log.info(&quot;min-quality: &quot; + meshGenerator.getMinQuality());</span>
+<span class="nc" id="L91">		log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+
+
+
+<span class="nc" id="L95">		System.out.println(TexGraphGenerator.toTikz(meshGenerator.getMesh(), colorFunction, 1.0f));</span>
+
+<span class="nc" id="L97">	}</span>
+
+	private static void overallUniformRingP() {
+<span class="nc" id="L100">		VPolygon hex = VShape.generateHexagon(4.0);</span>
+<span class="nc" id="L101">		IMeshSupplier&lt;PVertex, PHalfEdge, PFace&gt; supplier = () -&gt; new PMesh();</span>
+<span class="nc" id="L102">		IDistanceFunction distanceFunc = p -&gt; Math.abs(7 - Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY())) - 3;</span>
+
+		//IDistanceFunction distanceFunc = IDistanceFunction.intersect(p -&gt; Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY()) - 10, IDistanceFunction.create(bbox, hex));
+<span class="nc" id="L105">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L107">		GenEikMesh meshGenerator = new GenEikMesh(distanceFunc, p -&gt; 1.0 + (distanceFunc.apply(p) * distanceFunc.apply(p) / 6.0), initialEdgeLength, bbox, new ArrayList&lt;&gt;(), supplier);</span>
+<span class="nc" id="L108">		meshGenerator.initialize();</span>
+<span class="nc" id="L109">		MeshPanel&lt;PVertex, PHalfEdge, PFace&gt; distmeshPanel = new MeshPanel&lt;&gt;(meshGenerator.getMesh(), f -&gt; false, 1000, 800);</span>
+<span class="nc" id="L110">		JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L111">		frame.setVisible(true);</span>
+<span class="nc" id="L112">		frame.setTitle(&quot;uniformRing()&quot;);</span>
+<span class="nc" id="L113">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L114">		distmeshPanel.repaint();</span>
+
+<span class="nc" id="L116">		StopWatch overAllTime = new StopWatch();</span>
+<span class="nc" id="L117">		overAllTime.start();</span>
+<span class="nc" id="L118">		int nSteps = 0;</span>
+
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		while (nSteps &lt; 300) {</span>
+<span class="nc" id="L121">			nSteps++;</span>
+
+<span class="nc" id="L123">			overAllTime.suspend();</span>
+			try {
+<span class="nc" id="L125">				Thread.sleep(200);</span>
+<span class="nc" id="L126">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L127">				e.printStackTrace();</span>
+<span class="nc" id="L128">			}</span>
+<span class="nc" id="L129">			meshGenerator.improve();</span>
+<span class="nc" id="L130">			distmeshPanel.repaint();</span>
+<span class="nc" id="L131">			log.info(&quot;quality: &quot; + meshGenerator.getQuality());</span>
+<span class="nc" id="L132">			log.info(&quot;min-quality: &quot; + meshGenerator.getMinQuality());</span>
+<span class="nc" id="L133">			overAllTime.resume();</span>
+		}
+<span class="nc" id="L135">		overAllTime.stop();</span>
+
+<span class="nc" id="L137">		log.info(&quot;#vertices: &quot; + meshGenerator.getMesh().getVertices().size());</span>
+<span class="nc" id="L138">		log.info(&quot;#edges: &quot; + meshGenerator.getMesh().getEdges().size());</span>
+<span class="nc" id="L139">		log.info(&quot;#faces: &quot; + meshGenerator.getMesh().getFaces().size());</span>
+<span class="nc" id="L140">		log.info(&quot;quality: &quot; + meshGenerator.getQuality());</span>
+<span class="nc" id="L141">		log.info(&quot;min-quality: &quot; + meshGenerator.getMinQuality());</span>
+<span class="nc" id="L142">		log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+
+<span class="nc" id="L144">	}</span>
+
+	public static void main(String[] args) {
+<span class="nc" id="L147">		overallUniformRingA();</span>
+<span class="nc" id="L148">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

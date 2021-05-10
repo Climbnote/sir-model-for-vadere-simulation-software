@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TraCIException.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.traci</a> &gt; <span class="el_source">TraCIException.java</span></div><h1>TraCIException.java</h1><pre class="source lang-java linenums">package org.vadere.state.traci;
+
+public class TraCIException extends RuntimeException {
+
+	public TraCIException(String message) {
+<span class="nc" id="L6">		super(message);</span>
+<span class="nc" id="L7">	}</span>
+
+	public TraCIException(String message, Object... arg) {
+<span class="nc" id="L10">		super(String.format(message, arg));</span>
+<span class="nc" id="L11">	}</span>
+
+	public TraCIException(String message, Throwable cause, Object... arg) {
+<span class="nc" id="L14">		super(String.format(message, arg), cause);</span>
+<span class="nc" id="L15">	}</span>
+
+	public TraCIException(String message, Throwable cause) {
+<span class="nc" id="L18">		super(message, cause);</span>
+<span class="nc" id="L19">	}</span>
+
+	public static TraCIException cmdErr(String cmd, Throwable cause) {
+<span class="nc" id="L22">		return new TraCIException(&quot;Error creating command: &quot; + cmd.toString(), cause);</span>
+	}
+
+	public static TraCIException cmdErrDatatype(String cmd, Throwable cause) {
+<span class="nc" id="L26">		return new TraCIException(&quot;Error creating Datatype: &quot; + cmd.toString(), cause);</span>
+	}
+
+	public static TraCIException cmdErrVariableType(String cmd, Throwable cause) {
+<span class="nc" id="L30">		return new TraCIException(&quot;Error creating PersonVar: &quot; + cmd.toString(), cause);</span>
+	}
+
+	public static TraCIException getNotImplemented(String varId, String cmdId) {
+<span class="nc" id="L34">		return new TraCIException(&quot;GetCommand for variableIdentifier &quot; + varId</span>
+				+ &quot;not supported in API: &quot; + cmdId);
+	}
+
+	public String getMessageForClient() {
+<span class="nc" id="L39">		return getMessage();</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

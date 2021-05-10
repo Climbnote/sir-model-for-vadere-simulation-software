@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VTrajectory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.simulation</a> &gt; <span class="el_source">VTrajectory.java</span></div><h1>VTrajectory.java</h1><pre class="source lang-java linenums">package org.vadere.state.simulation;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.vadere.util.geometry.shapes.VRectangle;
+
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Optional;
+import java.util.stream.Stream;
+
+<span class="pc bpc" id="L13" title="1 of 2 branches missed.">public class VTrajectory implements Iterable&lt;FootStep&gt; {</span>
+
+	// Variables
+	private LinkedList&lt;FootStep&gt; footSteps;
+
+	// Constructors
+<span class="fc" id="L19">	public VTrajectory() {</span>
+<span class="fc" id="L20">		footSteps = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L21">	}</span>
+
+	// Getters
+	public LinkedList&lt;FootStep&gt; getFootSteps() {
+<span class="nc" id="L25">		return new LinkedList&lt;&gt;(footSteps);</span>
+	}
+
+	public boolean adjustEndTime(@NotNull final double endTime) {
+<span class="nc bnc" id="L29" title="All 2 branches missed.">		if(!isEmpty()) {</span>
+<span class="nc bnc" id="L30" title="All 4 branches missed.">			while (!isEmpty() &amp;&amp; footSteps.peekLast().getStartTime() &gt;= endTime) {</span>
+<span class="nc" id="L31">				footSteps.removeLast();</span>
+			}
+
+<span class="nc bnc" id="L34" title="All 2 branches missed.">			if(footSteps.isEmpty()) {</span>
+<span class="nc" id="L35">				return false;</span>
+			}
+<span class="nc" id="L37">			FootStep footStep = footSteps.removeLast();</span>
+<span class="nc" id="L38">			footSteps.addLast(new FootStep(footStep.getStart(), footStep.getEnd(), footStep.getStartTime(), endTime));</span>
+<span class="nc" id="L39">		} else {</span>
+<span class="nc" id="L40">			throw new IllegalStateException(&quot;cant adjust the last footstep of an empty trajectory.&quot;);</span>
+		}
+<span class="nc" id="L42">		return true;</span>
+	}
+
+	// Methods
+	public int size() {
+<span class="nc" id="L47">		return footSteps.size();</span>
+	}
+
+	public Optional&lt;Double&gt; speed(@NotNull final VRectangle rectangle) {
+<span class="nc" id="L51">		VTrajectory cutting = clone();</span>
+<span class="nc" id="L52">		cutting.cut(rectangle);</span>
+<span class="nc" id="L53">		return cutting.speed();</span>
+	}
+
+	public boolean isInBetween(double startTime, double endTime) {
+<span class="nc bnc" id="L57" title="All 2 branches missed.">		if(isEmpty()) {</span>
+<span class="nc" id="L58">			return false;</span>
+		}
+<span class="nc bnc" id="L60" title="All 4 branches missed.">		return footSteps.peekFirst().getStartTime() &lt;= startTime &amp;&amp; footSteps.peekLast().getEndTime() &gt;= endTime;</span>
+	}
+
+	public boolean isInBetween(@NotNull final VTrajectory other) {
+<span class="nc bnc" id="L64" title="All 4 branches missed.">		if(isEmpty() || other.isEmpty()) {</span>
+<span class="nc" id="L65">			return false;</span>
+		}
+<span class="nc" id="L67">		return isInBetween(other.footSteps.peekFirst().getStartTime(), other.footSteps.peekLast().getEndTime());</span>
+
+	}
+
+	public Optional&lt;Double&gt; getStartTime() {
+<span class="nc bnc" id="L72" title="All 2 branches missed.">		if(isEmpty()) {</span>
+<span class="nc" id="L73">			return Optional.empty();</span>
+		}
+<span class="nc" id="L75">		return Optional.of(footSteps.peekFirst().getStartTime());</span>
+	}
+
+	public Optional&lt;Double&gt; getEndTime() {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		if(isEmpty()) {</span>
+<span class="nc" id="L80">			return Optional.empty();</span>
+		}
+<span class="nc" id="L82">		return Optional.of(footSteps.peekLast().getEndTime());</span>
+	}
+
+	public boolean isEmpty() {
+<span class="nc" id="L86">		return footSteps.isEmpty();</span>
+	}
+
+	public double length() {
+<span class="nc" id="L90">		return footSteps.stream().mapToDouble(footStep -&gt; footStep.length()).sum();</span>
+	}
+
+	public double length(final double startSimTime, final double endSimTime) {
+<span class="nc" id="L94">		return clone().cut(startSimTime, endSimTime).length();</span>
+	}
+
+	public Optional&lt;Double&gt; duration() {
+<span class="nc bnc" id="L98" title="All 2 branches missed.">		if(footSteps.isEmpty()) {</span>
+<span class="nc" id="L99">			return Optional.empty();</span>
+		}
+		else {
+<span class="nc" id="L102">			double duration = footSteps.peekLast().getEndTime() - footSteps.peekFirst().getStartTime();</span>
+<span class="nc" id="L103">			return Optional.of(duration);</span>
+		}
+	}
+
+	public Optional&lt;Double&gt; speed() {
+<span class="nc bnc" id="L108" title="All 2 branches missed.">		if(footSteps.isEmpty()) {</span>
+<span class="nc" id="L109">			return Optional.empty();</span>
+		}
+		else {
+<span class="nc" id="L112">			return Optional.of(length() / duration().get());</span>
+		}
+	}
+
+	public VTrajectory add(@NotNull final FootStep footStep) {
+
+<span class="nc bnc" id="L118" title="All 4 branches missed.">		assert footSteps.isEmpty() ||</span>
+<span class="nc bnc" id="L119" title="All 2 branches missed.">				(footSteps.peekLast().getEndTime() &lt;= footStep.getStartTime() &amp;&amp;  // make sure it is in order</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">						footSteps.peekLast().getStartTime() &lt; footStep.getStartTime());</span>
+
+<span class="nc" id="L122">		footSteps.add(footStep);</span>
+<span class="nc" id="L123">		return this;</span>
+	}
+
+	public FootStep removeLast() {
+<span class="nc bnc" id="L127" title="All 4 branches missed.">		assert !footSteps.isEmpty();</span>
+<span class="nc" id="L128">		return footSteps.removeLast();</span>
+	}
+
+	public VTrajectory cut(@NotNull final VRectangle rectangle) {
+<span class="nc" id="L132">		LinkedList&lt;FootStep&gt; newFootSteps = new LinkedList&lt;&gt;();</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">		boolean inside = !footSteps.isEmpty() ? rectangle.contains(footSteps.peekFirst().getStart()) : false;</span>
+
+<span class="nc bnc" id="L135" title="All 2 branches missed.">		for(FootStep footStep : footSteps) {</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">			if(footStep.intersects(rectangle)) {</span>
+<span class="nc" id="L137">				Pair&lt;FootStep, FootStep&gt; splitStep = footStep.cut(footStep.computeIntersectionTime(rectangle));</span>
+
+<span class="nc bnc" id="L139" title="All 2 branches missed.">				if(!inside) {</span>
+<span class="nc" id="L140">					newFootSteps.clear();</span>
+<span class="nc" id="L141">					newFootSteps.add(splitStep.getRight());</span>
+				}
+				else {
+<span class="nc" id="L144">					newFootSteps.add(splitStep.getLeft());</span>
+				}
+
+<span class="nc bnc" id="L147" title="All 2 branches missed.">				inside = !inside;</span>
+
+<span class="nc" id="L149">			}</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">			else if(inside) {</span>
+<span class="nc" id="L151">				newFootSteps.add(footStep);</span>
+			}
+<span class="nc" id="L153">		}</span>
+
+<span class="nc" id="L155">		VTrajectory copy = new VTrajectory();</span>
+<span class="nc" id="L156">		copy.footSteps = newFootSteps;</span>
+<span class="nc" id="L157">		return copy;</span>
+	}
+
+	private boolean isEntering(@NotNull final VRectangle rectangle, @NotNull FootStep intersectionStep) {
+<span class="nc" id="L161">		return rectangle.contains(intersectionStep.getEnd());</span>
+	}
+
+	public void cutTail(final double simStartTime) {
+<span class="nc bnc" id="L165" title="All 4 branches missed.">		while (!footSteps.isEmpty() &amp;&amp; footSteps.peekFirst().getEndTime() &lt;= simStartTime) {</span>
+<span class="nc" id="L166">			footSteps.removeFirst();</span>
+		}
+
+<span class="nc bnc" id="L169" title="All 4 branches missed.">		if(!footSteps.isEmpty() &amp;&amp; footSteps.peekFirst().getStartTime() &lt; simStartTime) {</span>
+<span class="nc" id="L170">			FootStep footStep = footSteps.removeFirst();</span>
+<span class="nc" id="L171">			footSteps.addFirst(footStep.cut(simStartTime).getRight());</span>
+		}
+
+<span class="nc" id="L174">	}</span>
+
+	public void cutHead(final double simEndTime) {
+<span class="nc bnc" id="L177" title="All 4 branches missed.">		while (!footSteps.isEmpty() &amp;&amp; footSteps.peekLast().getStartTime() &gt;= simEndTime) {</span>
+<span class="nc" id="L178">			footSteps.removeLast();</span>
+		}
+
+<span class="nc bnc" id="L181" title="All 4 branches missed.">		if(!footSteps.isEmpty() &amp;&amp; footSteps.peekLast().getEndTime() &gt; simEndTime) {</span>
+<span class="nc" id="L182">			FootStep footStep = footSteps.removeLast();</span>
+<span class="nc" id="L183">			footSteps.addLast(footStep.cut(simEndTime).getLeft());</span>
+		}
+<span class="nc" id="L185">	}</span>
+
+	public void concat(@NotNull final VTrajectory trajectory) {
+<span class="nc bnc" id="L188" title="All 2 branches missed.">		for (FootStep footStep : trajectory) {</span>
+<span class="nc bnc" id="L189" title="All 4 branches missed.">			if(isEmpty() || (footStep.getStartTime() &gt;= footSteps.peekLast().getEndTime())) {</span>
+<span class="nc" id="L190">				footSteps.addLast(footStep);</span>
+			}
+<span class="nc" id="L192">		}</span>
+<span class="nc" id="L193">	}</span>
+
+	public void clear() {
+<span class="nc" id="L196">		footSteps.clear();</span>
+<span class="nc" id="L197">	}</span>
+
+	public VTrajectory clone() {
+<span class="nc" id="L200">		VTrajectory newTrajectory = new VTrajectory();</span>
+
+<span class="nc" id="L202">		LinkedList&lt;FootStep&gt; footStepCopy = new LinkedList&lt;&gt;(footSteps);</span>
+<span class="nc" id="L203">		newTrajectory.footSteps = footStepCopy;</span>
+
+<span class="nc" id="L205">		return newTrajectory;</span>
+	}
+
+	public VTrajectory cut(final double startTime, final double endTime) {
+<span class="nc" id="L209">		LinkedList&lt;FootStep&gt; copy = new LinkedList&lt;&gt;(footSteps);</span>
+<span class="nc" id="L210">		VTrajectory subTrajectory = new VTrajectory();</span>
+<span class="nc" id="L211">		subTrajectory.footSteps = copy;</span>
+<span class="nc" id="L212">		subTrajectory.cutHead(endTime);</span>
+<span class="nc" id="L213">		subTrajectory.cutTail(startTime);</span>
+<span class="nc" id="L214">		return subTrajectory;</span>
+	}
+
+	@NotNull
+	@Override
+	public Iterator&lt;FootStep&gt; iterator() {
+<span class="nc" id="L220">		return footSteps.iterator();</span>
+	}
+
+	public Iterator&lt;FootStep&gt; descendingIterator() {
+<span class="nc" id="L224">		return footSteps.descendingIterator();</span>
+	}
+
+	public Stream&lt;FootStep&gt; stream() {
+<span class="nc" id="L228">		return footSteps.stream();</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L233">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc" id="L234">		footSteps.stream().forEach(footStep -&gt; builder.append(footStep));</span>
+<span class="nc" id="L235">		return builder.toString();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JsonLogicParser.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.io.parser</a> &gt; <span class="el_source">JsonLogicParser.java</span></div><h1>JsonLogicParser.java</h1><pre class="source lang-java linenums">package org.vadere.util.io.parser;
+
+import com.fasterxml.jackson.databind.JsonNode;
+
+import org.jetbrains.annotations.NotNull;
+
+import java.text.ParseException;
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * This {@link org.vadere.util.io.parser.JsonLogicParser} is able to generate a {@linkg VPredicate}
+ * based on a logical expression ({@link String})
+ * that tests a Object of type {@link JsonNode}.
+ *
+ * Example expressions:
+ *      attributes.id : {1,2,3,4,5,6,7,8,9,10}
+ *      attributes.id != 5
+ *      position.x &gt; 5.3 &amp;&amp; position.x &lt;= 10
+ *      position.x &lt; 4 || position.x &gt; 10
+ *      targetIds:{1,3,4}
+ *      {1,2,3}:targetIds
+ *      (position.x &lt; 4 || position.x &gt; 10) || position.x &gt; 5.3 &amp;&amp; position.x &lt;= 10
+ *
+ */
+public class JsonLogicParser extends LogicalParser&lt;JsonNode&gt; {
+
+	public JsonLogicParser(final String expression) {
+<span class="fc" id="L29">		super(expression);</span>
+<span class="fc" id="L30">	}</span>
+
+	@Override
+	protected VPredicate&lt;JsonNode&gt; getPredicate(final String expression) throws ParseException {
+		// subset or superset
+<span class="fc bfc" id="L35" title="All 2 branches covered.">		if (expression.equals(&quot;false&quot;)) {</span>
+<span class="fc" id="L36">			return jsonObj -&gt; false;</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">		} else if (expression.equals(&quot;true&quot;)) {</span>
+<span class="fc" id="L38">			return jsonObj -&gt; true;</span>
+<span class="fc bfc" id="L39" title="All 2 branches covered.">		} else if (expression.contains(&quot;:&quot;)) {</span>
+			// {0,1,2}:targetIds is true if targetIds is a superset of {0,1,2}
+<span class="fc" id="L41">			String[] split = expression.split(&quot;:&quot;);</span>
+			// superset
+<span class="fc bfc" id="L43" title="All 2 branches covered.">			if (split[0].contains(&quot;{&quot;)) {</span>
+<span class="fc" id="L44">				return (JsonNode jsonObj) -&gt; {</span>
+<span class="fc" id="L45">					Set&lt;Double&gt; set = getSetFromString(split[0]);</span>
+<span class="fc" id="L46">					JsonNode element = getJsonElement(split[1], jsonObj);</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">					if (element.isArray()) {</span>
+<span class="fc" id="L48">						Set&lt;Double&gt; jsonSet = getSetFromJson(element);</span>
+<span class="fc" id="L49">						return jsonSet.containsAll(set);</span>
+					} else {
+<span class="fc bfc" id="L51" title="All 4 branches covered.">						return set.size() == 1 &amp;&amp; set.contains(element.asDouble());</span>
+					}
+				};
+			} // subset
+			else {
+				// targetIds:{0,1,2} is true if targetIds is a subset of {0,1,2}
+<span class="fc" id="L57">				return (JsonNode jsonObj) -&gt; {</span>
+<span class="fc" id="L58">					Set&lt;Double&gt; set = getSetFromString(split[1]);</span>
+<span class="fc" id="L59">					JsonNode element = getJsonElement(split[0], jsonObj);</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">					if (element.isArray()) {</span>
+<span class="fc" id="L61">						Set&lt;Double&gt; jsonSet = getSetFromJson(element);</span>
+<span class="fc" id="L62">						return set.containsAll(jsonSet);</span>
+					} else {
+<span class="fc" id="L64">						return set.contains(element.asDouble());</span>
+					}
+				};
+			}
+<span class="fc bfc" id="L68" title="All 2 branches covered.">		} else if (expression.contains(&quot;==&quot;)) {</span>
+<span class="fc" id="L69">			return jsonObj -&gt; JsonLogicParser.evalEquals(expression, jsonObj);</span>
+<span class="fc bfc" id="L70" title="All 2 branches covered.">		} else if (expression.contains(&quot;!=&quot;)) {</span>
+<span class="fc" id="L71">			return jsonObj -&gt; JsonLogicParser.evalNotEquals(expression, jsonObj);</span>
+<span class="fc bfc" id="L72" title="All 2 branches covered.">		} else if (expression.contains(&quot;&lt;=&quot;)) {</span>
+<span class="fc" id="L73">			return jsonObj -&gt; JsonLogicParser.evalSmallerThanOrEquals(expression, jsonObj);</span>
+<span class="fc bfc" id="L74" title="All 2 branches covered.">		} else if (expression.contains(&quot;&gt;=&quot;)) {</span>
+<span class="fc" id="L75">			return jsonObj -&gt; JsonLogicParser.evalGreaterThanOrEquals(expression, jsonObj);</span>
+<span class="fc bfc" id="L76" title="All 2 branches covered.">		} else if (expression.contains(&quot;&lt;&quot;)) {</span>
+<span class="fc" id="L77">			return jsonObj -&gt; JsonLogicParser.evalSmallerThan(expression, jsonObj);</span>
+<span class="pc bpc" id="L78" title="1 of 2 branches missed.">		} else if (expression.contains(&quot;&gt;&quot;)) {</span>
+<span class="fc" id="L79">			return jsonObj -&gt; JsonLogicParser.evalGreaterThan(expression, jsonObj);</span>
+		} else {
+<span class="nc" id="L81">			throw new ParseException(&quot;unsupported expression: &quot; + expression, 0);</span>
+		}
+	}
+
+	// helper methods
+
+	private Set&lt;Double&gt; getSetFromJson(final JsonNode jsonArray) {
+<span class="fc" id="L88">		Set&lt;Double&gt; jsonSet = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L89" title="All 2 branches covered.">		for (JsonNode el : jsonArray) {</span>
+<span class="fc" id="L90">			jsonSet.add(el.asDouble());</span>
+<span class="fc" id="L91">		}</span>
+<span class="fc" id="L92">		return jsonSet;</span>
+	}
+
+	private Set&lt;Double&gt; getSetFromString(final String stringSet) {
+<span class="fc" id="L96">		Set&lt;Double&gt; set = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L97">		String cleanString = stringSet.substring(stringSet.indexOf('{') + 1, stringSet.indexOf('}'));</span>
+<span class="fc bfc" id="L98" title="All 2 branches covered.">		for (String s : cleanString.split(&quot;,&quot;)) {</span>
+<span class="fc" id="L99">			set.add(Double.parseDouble(s.trim()));</span>
+		}
+<span class="fc" id="L101">		return set;</span>
+	}
+
+	private static JsonNode getJsonElement(final String path, final JsonNode jsonObject) {
+<span class="fc" id="L105">		String[] parts = path.split(&quot;\\.&quot;);</span>
+<span class="fc" id="L106">		JsonNode obj = jsonObject;</span>
+<span class="pc bpc" id="L107" title="1 of 2 branches missed.">		if (path != null) {</span>
+<span class="pc bpc" id="L108" title="1 of 2 branches missed.">			for (int i = 0; i &lt; parts.length; i++) {</span>
+<span class="fc bfc" id="L109" title="All 2 branches covered.">				if (i &lt; parts.length - 1) {</span>
+<span class="fc" id="L110">					obj = obj.get(parts[i]);</span>
+				} else {
+<span class="fc" id="L112">					return obj.get(parts[i]);</span>
+				}
+			}
+		}
+<span class="nc" id="L116">		return null;</span>
+	}
+
+	private static JsonNode getJsonPrimitiv(final String path, final JsonNode jsonObj) throws ParseException {
+<span class="fc" id="L120">		JsonNode jsonElement = JsonLogicParser.getJsonElement(path, jsonObj);</span>
+<span class="pc bpc" id="L121" title="2 of 4 branches missed.">		if (jsonElement == null || !jsonElement.isValueNode()) {</span>
+<span class="nc" id="L122">			throw new ParseException(&quot;Json element does not exist or is not a primitive type.&quot;, 0);</span>
+		} else {
+<span class="fc" id="L124">			return jsonElement;</span>
+		}
+	}
+
+	private static boolean evalGreaterThan(final String expression, final JsonNode jsonObj) throws ParseException {
+<span class="fc" id="L129">		String[] split = expression.split(&quot;&gt;&quot;);</span>
+<span class="fc" id="L130">		JsonNode obj = getJsonPrimitiv(split[0], jsonObj);</span>
+
+<span class="pc bpc" id="L132" title="2 of 4 branches missed.">		if (obj.isNumber() &amp;&amp; isNumber(split[1])) {</span>
+<span class="fc bfc" id="L133" title="All 2 branches covered.">			return obj.asDouble() &gt; Double.parseDouble(split[1]);</span>
+		} else {
+<span class="nc" id="L135">			throw new ParseException(&quot;parse error in eq cause by &quot; + expression, 0);</span>
+		}
+	}
+
+	private static boolean evalGreaterThanOrEquals(final String expression, final JsonNode jsonObj)
+			throws ParseException {
+<span class="fc" id="L141">		String[] split = expression.split(&quot;&gt;=&quot;);</span>
+<span class="fc" id="L142">		JsonNode obj = getJsonPrimitiv(split[0], jsonObj);</span>
+
+<span class="pc bpc" id="L144" title="2 of 4 branches missed.">		if (obj.isNumber() &amp;&amp; isNumber(split[1])) {</span>
+<span class="fc bfc" id="L145" title="All 2 branches covered.">			return obj.asDouble() &gt;= Double.parseDouble(split[1]);</span>
+		} else {
+<span class="nc" id="L147">			throw new ParseException(&quot;parse error in eq cause by &quot; + expression, 0);</span>
+		}
+	}
+
+	private static boolean evalSmallerThan(final String expression, final JsonNode jsonObj) throws ParseException {
+<span class="fc" id="L152">		String[] split = expression.split(&quot;&lt;&quot;);</span>
+<span class="fc" id="L153">		JsonNode obj = JsonLogicParser.getJsonPrimitiv(split[0], jsonObj);</span>
+
+<span class="pc bpc" id="L155" title="2 of 4 branches missed.">		if (obj.isNumber() &amp;&amp; isNumber(split[1])) {</span>
+<span class="fc bfc" id="L156" title="All 2 branches covered.">			return obj.asDouble() &lt; Double.parseDouble(split[1]);</span>
+		} else {
+<span class="nc" id="L158">			throw new ParseException(&quot;parse error in eq cause by &quot; + expression, 0);</span>
+		}
+	}
+
+	private static boolean evalSmallerThanOrEquals(final String expression, final JsonNode jsonObj)
+			throws ParseException {
+<span class="fc" id="L164">		String[] split = expression.split(&quot;&lt;=&quot;);</span>
+<span class="fc" id="L165">		JsonNode obj = getJsonPrimitiv(split[0], jsonObj);</span>
+
+<span class="pc bpc" id="L167" title="2 of 4 branches missed.">		if (obj.isNumber() &amp;&amp; isNumber(split[1])) {</span>
+<span class="fc bfc" id="L168" title="All 2 branches covered.">			return obj.asDouble() &lt;= Double.parseDouble(split[1]);</span>
+		} else {
+<span class="nc" id="L170">			throw new ParseException(&quot;parse error in eq cause by &quot; + expression, 0);</span>
+		}
+	}
+
+	private static boolean evalEquals(final String expression, final JsonNode jsonObj) throws ParseException {
+<span class="fc" id="L175">		String[] split = expression.split(&quot;==&quot;);</span>
+<span class="fc" id="L176">		JsonNode obj = getJsonPrimitiv(split[0], jsonObj);</span>
+
+<span class="pc bpc" id="L178" title="3 of 4 branches missed.">		if (obj.isBoolean() &amp;&amp; isBoolean(split[1])) {</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">			return obj.asBoolean() == Boolean.parseBoolean(split[1]);</span>
+<span class="fc bfc" id="L180" title="All 2 branches covered.">		} else if (obj.isNumber()) {</span>
+<span class="fc bfc" id="L181" title="All 2 branches covered.">			return obj.asDouble() == Double.parseDouble(split[1]);</span>
+<span class="pc bpc" id="L182" title="1 of 2 branches missed.">		} else if (obj.isTextual()) {</span>
+<span class="fc" id="L183">			return obj.asText().equals(split[1]);</span>
+		} else {
+<span class="nc" id="L185">			throw new ParseException(&quot;parse error in eq cause by &quot; + expression, 0);</span>
+		}
+	}
+
+	private static boolean evalNotEquals(final String expression, final JsonNode jsonObj) throws ParseException {
+<span class="fc" id="L190">		String[] split = expression.split(&quot;!=&quot;);</span>
+<span class="fc" id="L191">		JsonNode obj = getJsonPrimitiv(split[0], jsonObj);</span>
+
+<span class="pc bpc" id="L193" title="3 of 4 branches missed.">		if (obj.isBoolean() &amp;&amp; isBoolean(split[1])) {</span>
+<span class="nc bnc" id="L194" title="All 2 branches missed.">			return obj.asBoolean() != Boolean.parseBoolean(split[1]);</span>
+<span class="fc bfc" id="L195" title="All 2 branches covered.">		} else if (obj.isNumber()) {</span>
+<span class="fc bfc" id="L196" title="All 2 branches covered.">			return obj.asDouble() != Double.parseDouble(split[1]);</span>
+<span class="pc bpc" id="L197" title="1 of 2 branches missed.">		} else if (obj.isTextual()) {</span>
+<span class="fc bfc" id="L198" title="All 2 branches covered.">			return !obj.asText().equals(split[1]);</span>
+		} else {
+<span class="nc" id="L200">			throw new ParseException(&quot;parse error in eq cause by &quot; + expression, 0);</span>
+		}
+	}
+
+	public static boolean isBoolean(@NotNull final String strBoolean) {
+<span class="nc bnc" id="L205" title="All 2 branches missed.">		if(&quot;true&quot;.equalsIgnoreCase(strBoolean)) {</span>
+<span class="nc" id="L206">			return true;</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">		} else if(&quot;false&quot;.equalsIgnoreCase(strBoolean)) {</span>
+<span class="nc" id="L208">			return true;</span>
+		} else {
+<span class="nc" id="L210">			return false;</span>
+		}
+	}
+
+	public static boolean isNumber(@NotNull final String strNum) {
+		try {
+<span class="fc" id="L216">			double d = Double.parseDouble(strNum);</span>
+<span class="nc" id="L217">		} catch (NumberFormatException | NullPointerException nfe) {</span>
+<span class="nc" id="L218">			return false;</span>
+<span class="fc" id="L219">		}</span>
+<span class="fc" id="L220">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

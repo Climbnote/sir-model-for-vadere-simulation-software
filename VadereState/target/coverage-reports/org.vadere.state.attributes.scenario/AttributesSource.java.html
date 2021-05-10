@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesSource.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.scenario</a> &gt; <span class="el_source">AttributesSource.java</span></div><h1>AttributesSource.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.scenario;
+
+import com.fasterxml.jackson.annotation.JsonView;
+
+import org.vadere.state.attributes.AttributesEmbedShape;
+import org.vadere.state.scenario.ConstantDistribution;
+import org.vadere.state.types.DynamicElementType;
+import org.vadere.state.util.Views;
+import org.vadere.util.geometry.shapes.VShape;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+
+public class AttributesSource extends AttributesEmbedShape {
+
+<span class="fc" id="L18">	public static final String CONSTANT_DISTRIBUTION = ConstantDistribution.class.getName();</span>
+	public static final int NO_MAX_SPAWN_NUMBER_TOTAL = -1;
+
+<span class="pc" id="L21">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private int id = ID_NOT_SET;
+
+	/** Shape and position. */
+<span class="pc" id="L25">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private VShape shape = null;
+<span class="pc" id="L27">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private String interSpawnTimeDistribution = CONSTANT_DISTRIBUTION;
+<span class="pc" id="L29">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+<span class="pc" id="L30">	private List&lt;Double&gt; distributionParameters = Collections.singletonList(1.0);</span>
+
+<span class="pc" id="L32">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private int spawnNumber = 1;
+
+	/** Maximum number of spawned elements. {@link #NO_MAX_SPAWN_NUMBER_TOTAL} -&gt; no maximum number. */
+<span class="pc" id="L36">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private int maxSpawnNumberTotal = NO_MAX_SPAWN_NUMBER_TOTAL;
+
+<span class="pc" id="L39">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private double startTime = 0;
+	/** endTime == startTime means one single spawn event. */
+<span class="pc" id="L42">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private double endTime = 0;
+	
+	/**
+	 * The pedestrians are spawned at random positions rather than from the top
+	 * left corner downwards.
+	 */
+	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid
+	private boolean spawnAtRandomPositions;
+
+
+	/**
+	 * If set to true, the pedestrians are spawned on a rectangular grid for the cellular automaton. Different to the
+	 * regular spawnArray, they will touch if the cells are 0.4m and the radius is set to 0.2m.
+	 */
+	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid
+	private boolean spawnAtGridPositionsCA;
+
+	/**
+	 * If set to true, only free space is used to create pedestrians at each
+	 * wave. When the endTime is reached and not enough pedestrians have been
+	 * created yet, there will be less pedestrians than spawnNumber *
+	 * (endTime-startTime)/spawnDelay in the scenario.
+	 *
+	 * useFreeSpaceOnly = false can cause errors if tow pedestrians arw spawned at
+	 * exactly the same place. Maybe Deprecate this switch.
+	 */
+<span class="pc" id="L69">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private boolean useFreeSpaceOnly = true;
+<span class="pc" id="L71">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private List&lt;Integer&gt; targetIds = new LinkedList&lt;&gt;();
+
+	/**
+	 *  This Attribute only takes affect if a model org.vadere.simulator.models.groups.GroupModel
+	 *  is present in the scenario. When this is the case this list defines the group size
+	 *  distribution of this source. The list can be arbitrary long but must add up to 1.
+	 *  The index of the list represents the size of the  groups and the value the probability
+	 *  index 0 =&gt; GroupSize = 1
+	 *  index 1 =&gt; GroupSize = 2
+	 *  ...
+	 *
+	 *  Example: ----------------------------------------------------------------------------------
+	 *  probability [ 0.0, 0.0, 0.25, 0.25, 0.25, .... ] ------------------------------------------
+  	 *  GroupSize   [  1    2    3     4     5         ] ------------------------------------------
+	 *  uniform distribution of groups of the size from 3 to 5 ------------------------------------
+	 */
+<span class="pc" id="L88">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+<span class="pc" id="L89">	private List&lt;Double&gt; groupSizeDistribution = Arrays.asList(1.0);</span>
+
+	/**
+	 * The type of dynamic elements this source creates.
+	 */
+<span class="pc" id="L94">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private DynamicElementType dynamicElementType = DynamicElementType.PEDESTRIAN;
+
+<span class="pc" id="L97">	@JsonView(Views.CacheViewExclude.class) // ignore when determining if floor field cache is valid</span>
+	private AttributesAgent attributesPedestrian = null;
+	@SuppressWarnings(&quot;unused&quot;)
+<span class="fc" id="L100">	private AttributesSource() {}</span>
+
+<span class="nc" id="L102">	public AttributesSource(int id) {</span>
+<span class="nc" id="L103">		this.id = id;</span>
+<span class="nc" id="L104">	}</span>
+
+<span class="nc" id="L106">	public AttributesSource(int id, VShape shape) {</span>
+<span class="nc" id="L107">		this.id = id;</span>
+<span class="nc" id="L108">		this.shape = shape;</span>
+<span class="nc" id="L109">	}</span>
+
+	// Getters...
+
+	/**
+	 * Class name of distribution for inter-spawn times. The name must point to a subclass of
+	 * {@link org.apache.commons.math3.distribution.RealDistribution}. This subclass must have at
+	 * least one public constructor with the following arguments: 1.
+	 * {@link org.apache.commons.math3.random.RandomGenerator},
+	 * 2. one or more arguments of type &lt;code&gt;double&lt;/code&gt; for distribution parameters.
+	 * 
+	 * @see Class#getName()
+	 *  https://commons.apache.org/proper/commons-math/apidocs/org/apache/commons/math3/distribution/package-summary.html
+	 */
+	public String getInterSpawnTimeDistribution() {
+<span class="fc" id="L124">		return interSpawnTimeDistribution;</span>
+	}
+
+	public List&lt;Double&gt; getDistributionParameters() {
+<span class="fc" id="L128">		return distributionParameters;</span>
+	}
+
+	/** Get number of pedestrians to be spawned at one point in time. */
+	public int getSpawnNumber() {
+<span class="nc" id="L133">		return spawnNumber;</span>
+	}
+
+	public double getStartTime() {
+<span class="nc" id="L137">		return startTime;</span>
+	}
+
+
+	/** If end time equals start time, exactly one single spawn event will be triggered. */
+	public double getEndTime() {
+<span class="nc" id="L143">		return endTime;</span>
+	}
+
+	/**
+	 * Maximum number of spawned elements. The number
+	 * {@link #NO_MAX_SPAWN_NUMBER_TOTAL} means there is no maximum.
+	 * 
+	 * This attribute can be used together with non-constant distributions. For
+	 * example, consider an exponential distribution. The times of events are
+	 * random. How to ensure, that exactly 10 elements are spawned? Solution:
+	 * Set the {@link #endTime} to 1e9 and this attribute to 10.
+	 */
+	public int getMaxSpawnNumberTotal() {
+<span class="nc" id="L156">		return maxSpawnNumberTotal;</span>
+	}
+
+	public boolean isSpawnAtRandomPositions() {
+<span class="nc" id="L160">		return spawnAtRandomPositions;</span>
+	}
+
+<span class="nc" id="L163">	public boolean isSpawnAtGridPositionsCA(){ return spawnAtGridPositionsCA; }</span>
+
+	public AttributesAgent getAttributesPedestrian() {
+<span class="nc" id="L166">		return attributesPedestrian;</span>
+	}
+
+	public boolean isUseFreeSpaceOnly() {
+<span class="nc" id="L170">		return useFreeSpaceOnly;</span>
+	}
+
+	public List&lt;Integer&gt; getTargetIds() {
+<span class="nc" id="L174">		return targetIds;</span>
+	}
+
+	public int getId() {
+<span class="nc" id="L178">		return id;</span>
+	}
+
+	@Override
+	public void setShape(VShape shape) {
+<span class="nc" id="L183">		this.shape = shape;</span>
+<span class="nc" id="L184">	}</span>
+
+	@Override
+	public VShape getShape() {
+<span class="nc" id="L188">		return shape;</span>
+	}
+
+	public DynamicElementType getDynamicElementType() {
+<span class="nc" id="L192">		return dynamicElementType;</span>
+	}
+
+	public void setStartTime(double time) {
+<span class="nc" id="L196">		checkSealed();</span>
+<span class="nc" id="L197">		startTime = time;</span>
+<span class="nc" id="L198">	}</span>
+
+	public void setEndTime(double time) {
+<span class="nc" id="L201">		checkSealed();</span>
+<span class="nc" id="L202">		endTime = time;</span>
+<span class="nc" id="L203">	}</span>
+
+	public void setDistributionParameters(List&lt;Double&gt; distributionParameters) {
+<span class="nc" id="L206">		checkSealed();</span>
+<span class="nc" id="L207">		this.distributionParameters = distributionParameters;</span>
+<span class="nc" id="L208">	}</span>
+
+	public void setInterSpawnTimeDistribution(String interSpawnTimeDistribution) {
+<span class="nc" id="L211">		checkSealed();</span>
+<span class="nc" id="L212">		this.interSpawnTimeDistribution = interSpawnTimeDistribution;</span>
+<span class="nc" id="L213">	}</span>
+
+	public void setMaxSpawnNumberTotal(int maxSpawnNumberTotal) {
+<span class="nc" id="L216">		checkSealed();</span>
+<span class="nc" id="L217">		this.maxSpawnNumberTotal = maxSpawnNumberTotal;</span>
+<span class="nc" id="L218">	}</span>
+
+	public void setSpawnAtRandomPositions(boolean spawnAtRandomPositions) {
+<span class="nc" id="L221">		checkSealed();</span>
+<span class="nc" id="L222">		this.spawnAtRandomPositions = spawnAtRandomPositions;</span>
+<span class="nc" id="L223">	}</span>
+
+	public List&lt;Double&gt; getGroupSizeDistribution() {
+<span class="nc" id="L226">		return groupSizeDistribution;</span>
+	}
+
+	public void setGroupSizeDistribution(List&lt;Double&gt; groupSizeDistribution) {
+<span class="nc" id="L230">		checkSealed();</span>
+<span class="nc" id="L231">		this.groupSizeDistribution = groupSizeDistribution;</span>
+<span class="nc" id="L232">	}</span>
+
+	public void setSpawnNumber(int spawnNumber) {
+<span class="nc" id="L235">		checkSealed();</span>
+<span class="nc" id="L236">		this.spawnNumber = spawnNumber;</span>
+<span class="nc" id="L237">	}</span>
+
+	public void setUseFreeSpaceOnly(boolean useFreeSpaceOnly) {
+<span class="nc" id="L240">		checkSealed();</span>
+<span class="nc" id="L241">		this.useFreeSpaceOnly = useFreeSpaceOnly;</span>
+<span class="nc" id="L242">	}</span>
+
+	public void setTargetIds(List&lt;Integer&gt; targetIds) {
+<span class="nc" id="L245">		checkSealed();</span>
+<span class="nc" id="L246">		this.targetIds = targetIds;</span>
+<span class="nc" id="L247">	}</span>
+
+	public void setDynamicElementType(DynamicElementType dynamicElementType) {
+<span class="nc" id="L250">		checkSealed();</span>
+<span class="nc" id="L251">		this.dynamicElementType = dynamicElementType;</span>
+<span class="nc" id="L252">	}</span>
+
+	public void setId(int id) {
+<span class="nc" id="L255">		checkSealed();</span>
+<span class="nc" id="L256">		this.id = id;</span>
+<span class="nc" id="L257">	}</span>
+
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

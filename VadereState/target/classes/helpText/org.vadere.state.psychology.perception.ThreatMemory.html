@@ -1,0 +1,28 @@
+<h1> ThreatMemory</h1>
+
+<p>
+A <a href='/helpText/org.vadere.state.psychology.perception.ThreatMemory.html' class='class_link'>ThreatMemory</a> is required to avoid following situation during simulation:
+
+<ol>
+<li>Cognition layer detects a <a href='/helpText/org.vadere.state.psychology.perception.types.Threat.html' class='class_link'>Threat</a>.</li>
+<li>In locomotion layer, a <a href='/helpText/org.vadere.state.scenario.TargetPedestrian.html' class='class_link'>Pedestrian</a> has no time credit to react to the <a href='/helpText/org.vadere.state.psychology.perception.types.Threat.html' class='class_link'>Threat</a>.</li>
+<li>In next simulation loop, the <a href='/helpText/org.vadere.state.psychology.perception.types.Threat.html' class='class_link'>Threat</a> is already gone.
+I.e., the <a href='/helpText/org.vadere.state.psychology.perception.types.Threat.html' class='class_link'>Threat</a> from previous simulation loop would be lost.</li>
+</ol>
+
+Therefore, provide a <a href='/helpText/org.vadere.state.psychology.perception.ThreatMemory.html' class='class_link'>ThreatMemory</a> with a boolean flag included which
+indicates if latest <a href='/helpText/org.vadere.state.psychology.perception.types.Threat.html' class='class_link'>Threat</a> was already handled by the locomotion layer.
+
+Note: Maybe, this memory could also be implemented as a stack. I.e., cognition layer
+pushes <a href='/helpText/org.vadere.state.psychology.perception.types.Threat.html' class='class_link'>Threat</a>s to the stack while the locomotion layer pops off the <a href='/helpText/org.vadere.state.psychology.perception.types.Threat.html' class='class_link'>Threat</a>s.
+But, this is ot a real "memory"!
+</p>
+
+<hr>
+<h2> Field: latestThreatUnhandled</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: allThreats</h2>
+<p>---</p>
+

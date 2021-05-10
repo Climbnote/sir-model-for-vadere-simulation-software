@@ -1,0 +1,864 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MeshQuantityPrinting.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.examples</a> &gt; <span class="el_source">MeshQuantityPrinting.java</span></div><h1>MeshQuantityPrinting.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.examples;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.gen.AFace;
+import org.vadere.meshing.mesh.gen.AHalfEdge;
+import org.vadere.meshing.mesh.gen.AVertex;
+import org.vadere.meshing.mesh.gen.MeshPanel;
+import org.vadere.meshing.mesh.gen.MeshRenderer;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PMesh;
+import org.vadere.meshing.mesh.gen.PVertex;
+import org.vadere.meshing.mesh.impl.PMeshPanel;
+import org.vadere.meshing.mesh.impl.PSLG;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IPointConstructor;
+import org.vadere.meshing.mesh.triangulation.DistanceFunctionApproxBF;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.EdgeLengthFunctionApprox;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+import org.vadere.meshing.mesh.triangulation.improver.distmesh.Distmesh;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.EikMeshPoint;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.gen.GenEikMesh;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.impl.AEikMesh;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.impl.PEikMesh;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.PContrainedDelaunayTriangulator;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.PDelaunayTriangulator;
+import org.vadere.meshing.utils.color.Colors;
+import org.vadere.meshing.utils.io.IOUtils;
+import org.vadere.meshing.utils.io.poly.MeshPolyWriter;
+import org.vadere.meshing.utils.io.poly.PSLGGenerator;
+import org.vadere.meshing.utils.io.tex.TexGraphGenerator;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VDisc;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.util.math.IDistanceFunction;
+
+import java.awt.Color;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+/**
+ * This class was used to generate many plots for my dissertation.
+ */
+<span class="nc" id="L60">public class MeshQuantityPrinting {</span>
+
+	public static void main(String... args) throws InterruptedException, IOException {
+		//spaceFillingCurve2();
+		//uniformMeshDiscFunction(0.10);
+		//uniformMeshDiscFunctionDistMesh(0.05);
+		//distMeshFail(0.05);
+		//delaunyTri(&quot;/poly/a.poly&quot;);
+		//eikMeshAirfoilPoly(0.005);
+		//eikMeshSupermarket(0.25);
+		//eikMeshKaiserslauternMittel(50000.0);
+<span class="nc" id="L71">		randomDelaunay();</span>
+<span class="nc" id="L72">	}</span>
+
+	public static void randomDelaunay() throws IOException, InterruptedException {
+<span class="nc" id="L75">		BufferedWriter meshWriter = null;</span>
+<span class="nc" id="L76">		ArrayList&lt;IPoint&gt; points = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L77">		Random random = new Random(1);</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">		for (int i = 0; i &lt; 100; i++) {</span>
+<span class="nc" id="L79">			points.add(new VPoint(random.nextDouble() * 10, random.nextDouble() * 10));</span>
+		}
+
+<span class="nc" id="L82">		PDelaunayTriangulator dt = new PDelaunayTriangulator(points);</span>
+<span class="nc" id="L83">		dt.generate();</span>
+
+<span class="nc" id="L85">		VPolygon bound = dt.getMesh().toPolygon(dt.getMesh().getBorder());</span>
+<span class="nc" id="L86">		var meshImprover = new PEikMesh(</span>
+<span class="nc" id="L87">				p -&gt; 1.0,</span>
+<span class="nc" id="L88">				dt.getTriangulation()</span>
+		);
+
+<span class="nc" id="L91">		Function&lt;PVertex, Color&gt; vertexColorFunction = v -&gt; {</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">			if(meshImprover.isSlidePoint(v)){</span>
+<span class="nc" id="L93">				return Colors.BLUE;</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">			} else if(meshImprover.isFixPoint(v)) {</span>
+<span class="nc" id="L95">				return Colors.RED;</span>
+			} else {
+<span class="nc" id="L97">				return Color.BLACK;</span>
+			}
+		};
+
+
+		// display the mesh
+<span class="nc" id="L103">		PMeshPanel meshPanel = new PMeshPanel(dt.getMesh(), 1000, 1000);</span>
+<span class="nc" id="L104">		meshPanel.display(&quot;Random Delaunay triangulation&quot;);</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">		while (!meshImprover.isFinished()) {</span>
+<span class="nc" id="L106">			meshImprover.improve();</span>
+<span class="nc" id="L107">			Thread.sleep(10);</span>
+<span class="nc" id="L108">			meshPanel.repaint();</span>
+		}
+
+<span class="nc" id="L111">		meshImprover.finish();</span>
+<span class="nc" id="L112">		meshPanel.repaint();</span>
+
+
+<span class="nc" id="L115">		points.clear();</span>
+<span class="nc" id="L116">		points.addAll(meshImprover.getMesh().getBoundaryPoints());</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">		for (int i = 0; i &lt; 100-points.size(); i++) {</span>
+<span class="nc" id="L118">			points.add(new VPoint(random.nextDouble() * 8, random.nextDouble() * 8));</span>
+		}
+
+<span class="nc" id="L121">		dt = new PDelaunayTriangulator(points);</span>
+<span class="nc" id="L122">		dt.generate();</span>
+
+<span class="nc" id="L124">		bound = dt.getMesh().toPolygon(dt.getMesh().getBorder());</span>
+<span class="nc" id="L125">		var meshImprover2 = new PEikMesh(</span>
+<span class="nc" id="L126">				p -&gt; 1.0,</span>
+<span class="nc" id="L127">				dt.getTriangulation()</span>
+		);
+
+
+<span class="nc" id="L131">		vertexColorFunction = v -&gt; {</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">			if(meshImprover2.isSlidePoint(v)){</span>
+<span class="nc" id="L133">				return Colors.BLUE;</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">			} else if(meshImprover2.isFixPoint(v)) {</span>
+<span class="nc" id="L135">				return Colors.RED;</span>
+			} else {
+<span class="nc" id="L137">				return Color.BLACK;</span>
+			}
+		};
+
+<span class="nc" id="L141">		File dir = new File(&quot;/Users/bzoennchen/Development/workspaces/hmRepo/PersZoennchen/PhD/trash/generated/eikmesh/&quot;);</span>
+<span class="nc" id="L142">		meshWriter = IOUtils.getWriter(&quot;randomDelaunay_before.tex&quot;, dir);</span>
+<span class="nc" id="L143">		meshWriter.write(TexGraphGenerator.toTikz(meshImprover2.getMesh(), f -&gt; Colors.YELLOW, edge -&gt; Color.BLACK, vertexColorFunction, 1.0f, true));</span>
+<span class="nc" id="L144">		meshWriter.close();</span>
+
+<span class="nc" id="L146">		PMeshPanel meshPanel2 = new PMeshPanel(meshImprover2.getMesh(), 1000, 1000);</span>
+<span class="nc" id="L147">		meshPanel2.display(&quot;Random Delaunay triangulation&quot;);</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">		while (!meshImprover2.isFinished()) {</span>
+<span class="nc" id="L149">			meshImprover2.improve();</span>
+<span class="nc" id="L150">			Thread.sleep(10);</span>
+<span class="nc" id="L151">			meshPanel2.repaint();</span>
+		}
+<span class="nc" id="L153">		meshImprover2.finish();</span>
+<span class="nc" id="L154">		meshPanel2.repaint();</span>
+
+<span class="nc" id="L156">		dir = new File(&quot;/Users/bzoennchen/Development/workspaces/hmRepo/PersZoennchen/PhD/trash/generated/eikmesh/&quot;);</span>
+<span class="nc" id="L157">		meshWriter = IOUtils.getWriter(&quot;randomDelaunay_after.tex&quot;, dir);</span>
+<span class="nc" id="L158">		meshWriter.write(TexGraphGenerator.toTikz(meshImprover2.getMesh(), f -&gt; Colors.YELLOW, edge -&gt; Color.BLACK, vertexColorFunction, 1.0f, true));</span>
+<span class="nc" id="L159">		meshWriter.close();</span>
+
+<span class="nc" id="L161">		BufferedWriter bufferedWriterQualities1 = IOUtils.getWriter(&quot;qualities1_eik.csv&quot;, dir);</span>
+<span class="nc" id="L162">		bufferedWriterQualities1.write(&quot;iteration quality\n&quot;);</span>
+
+<span class="nc" id="L164">		BufferedWriter bufferedWriterQualities2 = IOUtils.getWriter(&quot;qualities2_eik.csv&quot;, dir);</span>
+<span class="nc" id="L165">		bufferedWriterQualities2.write(&quot;iteration quality\n&quot;);</span>
+
+<span class="nc" id="L167">		BufferedWriter bufferedWriterAngles = IOUtils.getWriter(&quot;angles_eik.csv&quot;, dir);</span>
+<span class="nc" id="L168">		bufferedWriterAngles.write(&quot;iteration angle\n&quot;);</span>
+
+<span class="nc" id="L170">		bufferedWriterQualities1.write(printQualities(200, meshImprover2.getMesh(), f -&gt; meshImprover.getTriangulation().faceToQuality(f)));</span>
+<span class="nc" id="L171">		bufferedWriterQualities1.close();</span>
+
+<span class="nc" id="L173">		bufferedWriterQualities2.write(printQualities(200, meshImprover2.getMesh(), f -&gt; meshImprover.getTriangulation().faceToLongestEdgeQuality(f)));</span>
+<span class="nc" id="L174">		bufferedWriterQualities2.close();</span>
+
+<span class="nc" id="L176">		bufferedWriterAngles.write(printAngles(200, meshImprover2.getMesh()));</span>
+<span class="nc" id="L177">		bufferedWriterAngles.close();</span>
+<span class="nc" id="L178">	}</span>
+
+	public static void kaiserslautern() throws IOException, InterruptedException {
+<span class="nc" id="L181">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/kaiserslautern.poly&quot;);</span>
+<span class="nc" id="L182">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L183">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L184">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+
+<span class="nc" id="L186">		IPointConstructor&lt;EikMeshPoint&gt; pointConstructor = (x, y) -&gt; new EikMeshPoint(x, y);</span>
+<span class="nc" id="L187">		IDistanceFunction distanceFunction = IDistanceFunction.create(segmentBound, holes);</span>
+
+
+		// (3) use EikMesh to improve the mesh
+<span class="nc" id="L191">		double h0 = 5.0;</span>
+<span class="nc" id="L192">		var meshImprover = new PEikMesh(</span>
+				distanceFunction,
+<span class="nc" id="L194">				p -&gt; h0 + 0.3 * Math.abs(distanceFunction.apply(p)),</span>
+				h0,
+<span class="nc" id="L196">				new VRectangle(segmentBound.getBounds2D()),</span>
+<span class="nc" id="L197">				pslg.getHoles()</span>
+		);
+
+<span class="nc" id="L200">		Function&lt;PVertex, Color&gt; vertexColorFunction = v -&gt; {</span>
+<span class="nc bnc" id="L201" title="All 2 branches missed.">			if(meshImprover.isSlidePoint(v)){</span>
+<span class="nc" id="L202">				return Colors.BLUE;</span>
+<span class="nc bnc" id="L203" title="All 2 branches missed.">			} else if(meshImprover.isFixPoint(v)) {</span>
+<span class="nc" id="L204">				return Colors.RED;</span>
+			} else {
+<span class="nc" id="L206">				return Color.BLACK;</span>
+			}
+		};
+
+<span class="nc" id="L210">		meshImprover.generate();</span>
+<span class="nc" id="L211">		var meshPanel = new PMeshPanel(meshImprover.getMesh(), 1000, 800);</span>
+
+<span class="nc" id="L213">		BufferedWriter meshWriter = null;</span>
+<span class="nc" id="L214">		File dir = new File(&quot;/Users/bzoennchen/Development/workspaces/hmRepo/PersZoennchen/PhD/trash/generated/eikmesh/&quot;);</span>
+<span class="nc" id="L215">		meshWriter = IOUtils.getWriter(&quot;kaiserslautern.tex&quot;, dir);</span>
+<span class="nc" id="L216">		meshWriter.write(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; Colors.YELLOW, edge -&gt; Color.BLACK, vertexColorFunction, 1.0f, true));</span>
+<span class="nc" id="L217">		meshWriter.close();</span>
+
+<span class="nc" id="L219">		BufferedWriter bufferedWriterQualities1 = IOUtils.getWriter(&quot;qualities1_eik.csv&quot;, dir);</span>
+<span class="nc" id="L220">		bufferedWriterQualities1.write(&quot;iteration quality\n&quot;);</span>
+
+<span class="nc" id="L222">		BufferedWriter bufferedWriterQualities2 = IOUtils.getWriter(&quot;qualities2_eik.csv&quot;, dir);</span>
+<span class="nc" id="L223">		bufferedWriterQualities2.write(&quot;iteration quality\n&quot;);</span>
+
+<span class="nc" id="L225">		BufferedWriter bufferedWriterAngles = IOUtils.getWriter(&quot;angles_eik.csv&quot;, dir);</span>
+<span class="nc" id="L226">		bufferedWriterAngles.write(&quot;iteration angle\n&quot;);</span>
+
+<span class="nc" id="L228">		bufferedWriterQualities1.write(printQualities(200, meshImprover.getMesh(), f -&gt; meshImprover.getTriangulation().faceToQuality(f)));</span>
+<span class="nc" id="L229">		bufferedWriterQualities1.close();</span>
+
+<span class="nc" id="L231">		bufferedWriterQualities2.write(printQualities(200, meshImprover.getMesh(), f -&gt; meshImprover.getTriangulation().faceToLongestEdgeQuality(f)));</span>
+<span class="nc" id="L232">		bufferedWriterQualities2.close();</span>
+
+<span class="nc" id="L234">		bufferedWriterAngles.write(printAngles(200, meshImprover.getMesh()));</span>
+<span class="nc" id="L235">		bufferedWriterAngles.close();</span>
+
+		// display the mesh
+<span class="nc" id="L238">		meshPanel.display(&quot;Combined distance functions &quot; + h0);</span>
+<span class="nc" id="L239">	}</span>
+
+	public static void eikMeshAirfoilPoly(double h0) throws IOException, InterruptedException {
+<span class="nc" id="L242">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/airfoil.poly&quot;);</span>
+<span class="nc" id="L243">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+
+<span class="nc" id="L245">		VPolygon airfoil = pslg.getHoles().iterator().next();</span>
+<span class="nc" id="L246">		IEdgeLengthFunction e = p -&gt; h0 + Math.abs(airfoil.distance(p)) * 0.2;</span>
+
+<span class="nc" id="L248">		EdgeLengthFunctionApprox edgeLengthFunctionApprox = new EdgeLengthFunctionApprox(pslg, edge -&gt; Double.POSITIVE_INFINITY, e);</span>
+<span class="nc" id="L249">		edgeLengthFunctionApprox.smooth(0.2);</span>
+<span class="nc" id="L250">		IDistanceFunction distanceFunction = IDistanceFunction.create(pslg.getSegmentBound(), pslg.getHoles());</span>
+
+<span class="nc" id="L252">		GenEikMesh&lt;PVertex, PHalfEdge, PFace&gt; meshImprover = new GenEikMesh&lt;&gt;(distanceFunction, edgeLengthFunctionApprox, h0, pslg.getBoundingBox(), pslg.getAllPolygons(), () -&gt; new PMesh());</span>
+<span class="nc" id="L253">		var meshPanel = new PMeshPanel(meshImprover.getMesh(), 1000, 1000);</span>
+<span class="nc" id="L254">		meshPanel.display(&quot;Airfoil&quot;);</span>
+<span class="nc" id="L255">		int it = 1;</span>
+<span class="nc bnc" id="L256" title="All 2 branches missed.">		while (it &lt; 500) {</span>
+<span class="nc" id="L257">			meshImprover.improve();</span>
+<span class="nc" id="L258">			it++;</span>
+<span class="nc" id="L259">			synchronized (meshImprover.getMesh()) {</span>
+<span class="nc" id="L260">				meshPanel.repaint();</span>
+<span class="nc" id="L261">			}</span>
+<span class="nc" id="L262">			Thread.sleep(10);</span>
+		}
+
+<span class="nc" id="L265">		Function&lt;PVertex, Color&gt; vertexColorFunction = v -&gt; {</span>
+<span class="nc bnc" id="L266" title="All 2 branches missed.">			if(meshImprover.isSlidePoint(v)){</span>
+<span class="nc" id="L267">				return Colors.BLUE;</span>
+<span class="nc bnc" id="L268" title="All 2 branches missed.">			} else if(meshImprover.isFixPoint(v)) {</span>
+<span class="nc" id="L269">				return Colors.RED;</span>
+			} else {
+<span class="nc" id="L271">				return Color.BLACK;</span>
+			}
+		};
+
+<span class="nc" id="L275">		BufferedWriter meshWriter = null;</span>
+		try {
+<span class="nc" id="L277">			File dir = new File(&quot;/Users/bzoennchen/Development/workspaces/hmRepo/PersZoennchen/PhD/trash/generated/eikmesh/&quot;);</span>
+<span class="nc" id="L278">			BufferedWriter bufferedWriterQualities1 = IOUtils.getWriter(&quot;qualities1_eik.csv&quot;, dir);</span>
+<span class="nc" id="L279">			bufferedWriterQualities1.write(&quot;iteration quality\n&quot;);</span>
+
+<span class="nc" id="L281">			BufferedWriter bufferedWriterQualities2 = IOUtils.getWriter(&quot;qualities2_eik.csv&quot;, dir);</span>
+<span class="nc" id="L282">			bufferedWriterQualities2.write(&quot;iteration quality\n&quot;);</span>
+
+<span class="nc" id="L284">			BufferedWriter bufferedWriterAngles = IOUtils.getWriter(&quot;angles_eik.csv&quot;, dir);</span>
+<span class="nc" id="L285">			bufferedWriterAngles.write(&quot;iteration angle\n&quot;);</span>
+
+<span class="nc" id="L287">			bufferedWriterQualities1.write(printQualities(500, meshImprover.getMesh(), f -&gt; meshImprover.getTriangulation().faceToQuality(f)));</span>
+<span class="nc" id="L288">			bufferedWriterQualities1.close();</span>
+
+<span class="nc" id="L290">			bufferedWriterQualities2.write(printQualities(500, meshImprover.getMesh(), f -&gt; meshImprover.getTriangulation().faceToLongestEdgeQuality(f)));</span>
+<span class="nc" id="L291">			bufferedWriterQualities2.close();</span>
+
+<span class="nc" id="L293">			bufferedWriterAngles.write(printAngles(500, meshImprover.getMesh()));</span>
+<span class="nc" id="L294">			bufferedWriterAngles.close();</span>
+
+<span class="nc" id="L296">			meshWriter = IOUtils.getWriter(&quot;airfoil.tex&quot;, dir);</span>
+<span class="nc" id="L297">			meshWriter.write(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; Colors.YELLOW, edge -&gt; Color.BLACK, vertexColorFunction, 1.0f, true));</span>
+<span class="nc" id="L298">			meshWriter.close();</span>
+
+<span class="nc" id="L300">		} catch (IOException ex) {</span>
+<span class="nc" id="L301">			ex.printStackTrace();</span>
+<span class="nc" id="L302">		}</span>
+
+		//meshImprover.generate();
+		//write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 10.0f)), &quot;eikmesh_airfoil_&quot; + Double.toString(h0).replace('.', '_'));
+
+		// display the mesh
+<span class="nc" id="L308">	}</span>
+
+	public static void eikMeshSupermarket(double h0) throws IOException, InterruptedException {
+<span class="nc" id="L311">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/supermarket.poly&quot;);</span>
+<span class="nc" id="L312">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+
+<span class="nc" id="L314">		double smoothness = 0.4;</span>
+<span class="nc" id="L315">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L316">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+<span class="nc" id="L317">		IDistanceFunction distanceFunction = IDistanceFunction.create(segmentBound, holes);</span>
+<span class="nc" id="L318">		IDistanceFunction distanceFunctionApproximation = new DistanceFunctionApproxBF(pslg, distanceFunction, () -&gt; new PMesh());</span>
+
+<span class="nc" id="L320">		IEdgeLengthFunction edgeLengthFunction = p -&gt; h0 + smoothness * Math.abs((distanceFunctionApproximation).apply(p));</span>
+<span class="nc" id="L321">		EdgeLengthFunctionApprox edgeLengthFunctionApprox = new EdgeLengthFunctionApprox(pslg, edgeLengthFunction);</span>
+<span class="nc" id="L322">		edgeLengthFunctionApprox.smooth(smoothness);</span>
+
+		//EdgeLengthFunctionApprox edgeLengthFunctionApprox = new EdgeLengthFunctionApprox(pslg, edge -&gt; Double.POSITIVE_INFINITY, e);
+		//edgeLengthFunctionApprox.smooth(0.2);
+
+<span class="nc" id="L327">		var meshImprover = new PEikMesh(</span>
+				distanceFunctionApproximation,
+				edgeLengthFunction,
+				h0,
+<span class="nc" id="L331">				pslg.getBoundingBox(),</span>
+<span class="nc" id="L332">				pslg.getAllPolygons()</span>
+		);
+<span class="nc" id="L334">		var meshPanel = new PMeshPanel(meshImprover.getMesh(), 1400, 1400);</span>
+<span class="nc" id="L335">		meshPanel.display(&quot;Supermarket&quot;);</span>
+<span class="nc" id="L336">		int it = 1;</span>
+<span class="nc bnc" id="L337" title="All 2 branches missed.">		while (it &lt; 500) {</span>
+<span class="nc" id="L338">			meshImprover.improve();</span>
+<span class="nc" id="L339">			it++;</span>
+<span class="nc" id="L340">			synchronized (meshImprover.getMesh()) {</span>
+<span class="nc" id="L341">				meshPanel.repaint();</span>
+<span class="nc" id="L342">			}</span>
+<span class="nc" id="L343">			Thread.sleep(10);</span>
+		}
+
+<span class="nc" id="L346">		Function&lt;PVertex, Color&gt; vertexColorFunction = v -&gt; {</span>
+<span class="nc bnc" id="L347" title="All 2 branches missed.">			if(meshImprover.isSlidePoint(v)){</span>
+<span class="nc" id="L348">				return Colors.BLUE;</span>
+<span class="nc bnc" id="L349" title="All 2 branches missed.">			} else if(meshImprover.isFixPoint(v)) {</span>
+<span class="nc" id="L350">				return Colors.RED;</span>
+			} else {
+<span class="nc" id="L352">				return Color.BLACK;</span>
+			}
+		};
+
+<span class="nc" id="L356">		BufferedWriter meshWriter = null;</span>
+		try {
+<span class="nc" id="L358">			File dir = new File(&quot;/Users/bzoennchen/Development/workspaces/hmRepo/PersZoennchen/PhD/trash/generated/eikmesh/&quot;);</span>
+<span class="nc" id="L359">			BufferedWriter bufferedWriterQualities1 = IOUtils.getWriter(&quot;qualities1_eik.csv&quot;, dir);</span>
+<span class="nc" id="L360">			bufferedWriterQualities1.write(&quot;iteration quality\n&quot;);</span>
+
+<span class="nc" id="L362">			BufferedWriter bufferedWriterQualities2 = IOUtils.getWriter(&quot;qualities2_eik.csv&quot;, dir);</span>
+<span class="nc" id="L363">			bufferedWriterQualities2.write(&quot;iteration quality\n&quot;);</span>
+
+<span class="nc" id="L365">			BufferedWriter bufferedWriterAngles = IOUtils.getWriter(&quot;angles_eik.csv&quot;, dir);</span>
+<span class="nc" id="L366">			bufferedWriterAngles.write(&quot;iteration angle\n&quot;);</span>
+
+<span class="nc" id="L368">			bufferedWriterQualities1.write(printQualities(500, meshImprover.getMesh(), f -&gt; meshImprover.getTriangulation().faceToQuality(f)));</span>
+<span class="nc" id="L369">			bufferedWriterQualities1.close();</span>
+
+<span class="nc" id="L371">			bufferedWriterQualities2.write(printQualities(500, meshImprover.getMesh(), f -&gt; meshImprover.getTriangulation().faceToLongestEdgeQuality(f)));</span>
+<span class="nc" id="L372">			bufferedWriterQualities2.close();</span>
+
+<span class="nc" id="L374">			bufferedWriterAngles.write(printAngles(500, meshImprover.getMesh()));</span>
+<span class="nc" id="L375">			bufferedWriterAngles.close();</span>
+
+<span class="nc" id="L377">			meshWriter = IOUtils.getWriter(&quot;supermarket.tex&quot;, dir);</span>
+<span class="nc" id="L378">			meshWriter.write(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; Colors.YELLOW, edge -&gt; Color.BLACK, vertexColorFunction, 1.0f, true));</span>
+<span class="nc" id="L379">			meshWriter.close();</span>
+
+<span class="nc" id="L381">		} catch (IOException ex) {</span>
+<span class="nc" id="L382">			ex.printStackTrace();</span>
+<span class="nc" id="L383">		}</span>
+
+		//meshImprover.generate();
+		//write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 10.0f)), &quot;eikmesh_airfoil_&quot; + Double.toString(h0).replace('.', '_'));
+
+		// display the mesh
+<span class="nc" id="L389">	}</span>
+
+	public static void eikMeshKaiserslauternMittel(double h0) throws IOException, InterruptedException {
+<span class="nc" id="L392">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/kaiserslautern_mittel.poly&quot;);</span>
+<span class="nc" id="L393">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+
+<span class="nc" id="L395">		double smoothness = 0.3;</span>
+<span class="nc" id="L396">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L397">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+<span class="nc" id="L398">		IDistanceFunction distanceFunction = IDistanceFunction.create(segmentBound, holes);</span>
+<span class="nc" id="L399">		IDistanceFunction distanceFunctionApproximation = new DistanceFunctionApproxBF(pslg, distanceFunction, () -&gt; new PMesh());</span>
+
+<span class="nc" id="L401">		IEdgeLengthFunction edgeLengthFunction = p -&gt; h0 + smoothness * Math.abs((distanceFunctionApproximation).apply(p));</span>
+<span class="nc" id="L402">		EdgeLengthFunctionApprox edgeLengthFunctionApprox = new EdgeLengthFunctionApprox(pslg, edgeLengthFunction);</span>
+<span class="nc" id="L403">		edgeLengthFunctionApprox.smooth(smoothness);</span>
+
+		//EdgeLengthFunctionApprox edgeLengthFunctionApprox = new EdgeLengthFunctionApprox(pslg, edge -&gt; Double.POSITIVE_INFINITY, e);
+		//edgeLengthFunctionApprox.smooth(0.2);
+
+<span class="nc" id="L408">		var meshImprover = new PEikMesh(</span>
+				distanceFunctionApproximation,
+				edgeLengthFunctionApprox,
+				h0,
+<span class="nc" id="L412">				pslg.getBoundingBox(),</span>
+<span class="nc" id="L413">				pslg.getAllPolygons()</span>
+		);
+<span class="nc" id="L415">		var meshPanel = new PMeshPanel(meshImprover.getMesh(), 1000, 800);</span>
+<span class="nc" id="L416">		meshPanel.display(&quot;Kaiserslautern&quot;);</span>
+<span class="nc" id="L417">		int it = 1;</span>
+<span class="nc bnc" id="L418" title="All 2 branches missed.">		while (it &lt; 500) {</span>
+<span class="nc" id="L419">			meshImprover.improve();</span>
+<span class="nc" id="L420">			it++;</span>
+<span class="nc" id="L421">			synchronized (meshImprover.getMesh()) {</span>
+<span class="nc" id="L422">				meshPanel.repaint();</span>
+<span class="nc" id="L423">			}</span>
+<span class="nc" id="L424">			Thread.sleep(10);</span>
+		}
+
+<span class="nc" id="L427">		Function&lt;PVertex, Color&gt; vertexColorFunction = v -&gt; {</span>
+<span class="nc bnc" id="L428" title="All 2 branches missed.">			if(meshImprover.isSlidePoint(v)){</span>
+<span class="nc" id="L429">				return Colors.BLUE;</span>
+<span class="nc bnc" id="L430" title="All 2 branches missed.">			} else if(meshImprover.isFixPoint(v)) {</span>
+<span class="nc" id="L431">				return Colors.RED;</span>
+			} else {
+<span class="nc" id="L433">				return Color.BLACK;</span>
+			}
+		};
+
+<span class="nc" id="L437">		BufferedWriter meshWriter = null;</span>
+		try {
+<span class="nc" id="L439">			File dir = new File(&quot;/Users/bzoennchen/Development/workspaces/hmRepo/PersZoennchen/PhD/trash/generated/eikmesh/&quot;);</span>
+<span class="nc" id="L440">			BufferedWriter bufferedWriterQualities1 = IOUtils.getWriter(&quot;qualities1_eik.csv&quot;, dir);</span>
+<span class="nc" id="L441">			bufferedWriterQualities1.write(&quot;iteration quality\n&quot;);</span>
+
+<span class="nc" id="L443">			BufferedWriter bufferedWriterQualities2 = IOUtils.getWriter(&quot;qualities2_eik.csv&quot;, dir);</span>
+<span class="nc" id="L444">			bufferedWriterQualities2.write(&quot;iteration quality\n&quot;);</span>
+
+<span class="nc" id="L446">			BufferedWriter bufferedWriterAngles = IOUtils.getWriter(&quot;angles_eik.csv&quot;, dir);</span>
+<span class="nc" id="L447">			bufferedWriterAngles.write(&quot;iteration angle\n&quot;);</span>
+
+<span class="nc" id="L449">			bufferedWriterQualities1.write(printQualities(500, meshImprover.getMesh(), f -&gt; meshImprover.getTriangulation().faceToQuality(f)));</span>
+<span class="nc" id="L450">			bufferedWriterQualities1.close();</span>
+
+<span class="nc" id="L452">			bufferedWriterQualities2.write(printQualities(500, meshImprover.getMesh(), f -&gt; meshImprover.getTriangulation().faceToLongestEdgeQuality(f)));</span>
+<span class="nc" id="L453">			bufferedWriterQualities2.close();</span>
+
+<span class="nc" id="L455">			bufferedWriterAngles.write(printAngles(500, meshImprover.getMesh()));</span>
+<span class="nc" id="L456">			bufferedWriterAngles.close();</span>
+
+<span class="nc" id="L458">			meshWriter = IOUtils.getWriter(&quot;kaiserslautern_mittel.tex&quot;, dir);</span>
+<span class="nc" id="L459">			meshWriter.write(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; Colors.YELLOW, edge -&gt; Color.BLACK, vertexColorFunction, 1.0f, true));</span>
+<span class="nc" id="L460">			meshWriter.close();</span>
+
+<span class="nc" id="L462">		} catch (IOException ex) {</span>
+<span class="nc" id="L463">			ex.printStackTrace();</span>
+<span class="nc" id="L464">		}</span>
+
+		//meshImprover.generate();
+		//write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 10.0f)), &quot;eikmesh_airfoil_&quot; + Double.toString(h0).replace('.', '_'));
+
+		// display the mesh
+<span class="nc" id="L470">	}</span>
+
+	private static void spaceFillingCurve() throws InterruptedException, IOException {
+<span class="nc" id="L473">		double h0 = 0.2;</span>
+<span class="nc" id="L474">		VRectangle bound = new VRectangle(-2.1, -0.1, 8.2, 6.2);</span>
+
+		// distance function that defines a disc with radius 1 at (1,1).
+<span class="nc" id="L477">		VPoint center = new VPoint(1,1);</span>
+
+<span class="nc" id="L479">		VRectangle rect = new VRectangle(0, 0, 4, 4);</span>
+<span class="nc" id="L480">		VDisc disc = new VDisc(new VPoint(0, 2), 2);</span>
+<span class="nc" id="L481">		VDisc disc2 = new VDisc(new VPoint(4, 2), 2);</span>
+<span class="nc" id="L482">		VDisc disc3 = new VDisc(new VPoint(2, 2), 1);</span>
+<span class="nc" id="L483">		IDistanceFunction drect = IDistanceFunction.create(rect);</span>
+<span class="nc" id="L484">		IDistanceFunction drect2 = IDistanceFunction.union(drect, p -&gt; disc.distance(p));</span>
+<span class="nc" id="L485">		IDistanceFunction drect3 = IDistanceFunction.union(drect2, p -&gt; disc2.distance(p));</span>
+<span class="nc" id="L486">		IDistanceFunction d = IDistanceFunction.substract(drect3, p -&gt; disc3.distance(p));</span>
+
+		// define the EikMesh-Improver
+<span class="nc" id="L489">		IEdgeLengthFunction h = p -&gt; h0 + 0.5 * Math.abs(d.apply(p));</span>
+<span class="nc" id="L490">		List&lt;VShape&gt; constrains = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L491">		constrains.add(bound);</span>
+
+<span class="nc" id="L493">		AEikMesh meshImprover = new AEikMesh(</span>
+				d,
+				h,
+				h0,
+				bound,
+				Collections.EMPTY_LIST
+		);
+		//HSBtoRGB
+
+<span class="nc" id="L502">		int partitions = 3;</span>
+<span class="nc" id="L503">		int numberOfFaces = 1924;</span>
+<span class="nc" id="L504">		Function&lt;AFace, Color&gt; faceColorFunction = f -&gt; {</span>
+<span class="nc" id="L505">			int id = ((AFace)f).getId();</span>
+			//ColorHelper colorHelper = new ColorHelper(7400);
+<span class="nc" id="L507">			int fac = numberOfFaces / partitions;</span>
+<span class="nc" id="L508">			float part = id / numberOfFaces;</span>
+<span class="nc" id="L509">			return new Color(Color.HSBtoRGB((id / fac) / ((float)partitions), 0.7f, 1.0f));</span>
+			//return colorHelper.numberToColor(id);
+		};
+
+<span class="nc" id="L513">		MeshRenderer&lt;AVertex, AHalfEdge, AFace&gt; meshRenderer = new MeshRenderer&lt;&gt;(meshImprover.getMesh(), f -&gt; false, faceColorFunction);</span>
+<span class="nc" id="L514">		MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; meshPanel = new MeshPanel&lt;&gt;(meshRenderer, 500, 500);</span>
+<span class="nc" id="L515">		meshPanel.display();</span>
+
+<span class="nc bnc" id="L517" title="All 2 branches missed.">		while (!meshImprover.isFinished()) {</span>
+<span class="nc" id="L518">			Thread.sleep(10);</span>
+<span class="nc" id="L519">			meshImprover.improve();</span>
+<span class="nc" id="L520">			meshPanel.repaint();</span>
+<span class="nc" id="L521">			System.out.println(meshImprover.getMesh().getFaces().stream().mapToInt(f -&gt; f.getId()).max().getAsInt());</span>
+		}
+
+<span class="nc" id="L524">		BufferedWriter meshWriter = IOUtils.getWriter(&quot;spaceFillingCurve_partition_mesh.tex&quot;, new File(&quot;/Users/bzoennchen/Development/workspaces/hmRepo/PersZoennchen/PhD/trash/generated/eikmesh/&quot;));</span>
+<span class="nc" id="L525">		meshWriter.write(TexGraphGenerator.toTikz(meshImprover.getMesh(), faceColorFunction, e -&gt; Color.BLACK, v -&gt; Color.BLACK, 1.0f, true));</span>
+<span class="nc" id="L526">		meshWriter.close();</span>
+<span class="nc" id="L527">	}</span>
+
+	private static void spaceFillingCurve2() throws InterruptedException, IOException {
+<span class="nc" id="L530">		String fileName = &quot;/poly/kaiserslautern.poly&quot;;</span>
+<span class="nc" id="L531">		final InputStream inputStream = ElementSizeFunction.class.getResourceAsStream(&quot;/poly/bridge.poly&quot;);</span>
+<span class="nc" id="L532">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L533">		IDistanceFunction d = IDistanceFunction.create(pslg.getSegmentBound(), pslg.getHoles());</span>
+<span class="nc" id="L534">		double h0 = 0.5;</span>
+
+		// define the EikMesh-Improver
+<span class="nc" id="L537">		IEdgeLengthFunction h = p -&gt; h0 + 0.4 * Math.abs(d.apply(p));</span>
+<span class="nc" id="L538">		List&lt;VShape&gt; constrains = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L539">		constrains.add(pslg.getSegmentBound());</span>
+<span class="nc" id="L540">		constrains.addAll(pslg.getHoles());</span>
+
+<span class="nc" id="L542">		AEikMesh meshImprover = new AEikMesh(</span>
+				d,
+				h,
+				h0,
+<span class="nc" id="L546">				pslg.getBoundingBox(),</span>
+				constrains
+		);
+		//HSBtoRGB
+
+<span class="nc" id="L551">		int partitions = 3;</span>
+<span class="nc" id="L552">		int numberOfFaces = 8376;</span>
+<span class="nc" id="L553">		Function&lt;AFace, Color&gt; faceColorFunction = f -&gt; {</span>
+<span class="nc" id="L554">			int id = ((AFace)f).getId();</span>
+			//ColorHelper colorHelper = new ColorHelper(7400);
+<span class="nc" id="L556">			int fac = numberOfFaces / partitions;</span>
+<span class="nc" id="L557">			float part = id / numberOfFaces;</span>
+			//return new Color(Color.HSBtoRGB((id / fac) / ((float)partitions), 0.7f, 1.0f));
+<span class="nc" id="L559">			return new Color(Color.HSBtoRGB(((float)id) / numberOfFaces, 0.7f, 1.0f));</span>
+			//return colorHelper.numberToColor(id);
+		};
+
+<span class="nc" id="L563">		Function&lt;AVertex, Color&gt; vertexColorFunction = v -&gt; {</span>
+<span class="nc bnc" id="L564" title="All 2 branches missed.">			if(meshImprover.isFixPoint(v)) {</span>
+<span class="nc" id="L565">				return Colors.RED;</span>
+<span class="nc bnc" id="L566" title="All 2 branches missed.">			} else if(meshImprover.isSlidePoint(v)) {</span>
+<span class="nc" id="L567">				return Colors.BLUE;</span>
+			}
+<span class="nc" id="L569">			return Color.BLACK;</span>
+		};
+
+<span class="nc" id="L572">		MeshRenderer&lt;AVertex, AHalfEdge, AFace&gt; meshRenderer = new MeshRenderer&lt;&gt;(meshImprover.getMesh(), f -&gt; false, faceColorFunction, e -&gt; Color.black, vertexColorFunction);</span>
+<span class="nc" id="L573">		MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; meshPanel = new MeshPanel&lt;&gt;(meshRenderer, 1000, 1000);</span>
+<span class="nc" id="L574">		meshPanel.display();</span>
+
+<span class="nc bnc" id="L576" title="All 2 branches missed.">		while (!meshImprover.isFinished()) {</span>
+<span class="nc" id="L577">			Thread.sleep(10);</span>
+<span class="nc" id="L578">			meshImprover.improve();</span>
+<span class="nc" id="L579">			meshPanel.repaint();</span>
+<span class="nc" id="L580">			System.out.println(meshImprover.getQuality());</span>
+<span class="nc" id="L581">			System.out.println(meshImprover.getMesh().getNumberOfFaces());</span>
+		}
+
+<span class="nc" id="L584">		BufferedWriter meshWriter = IOUtils.getWriter(&quot;spaceFillingCurve_partition_mesh.tex&quot;, new File(&quot;/Users/bzoennchen/Development/workspaces/hmRepo/PersZoennchen/PhD/trash/generated/eikmesh/&quot;));</span>
+<span class="nc" id="L585">		meshWriter.write(TexGraphGenerator.toTikz(meshImprover.getMesh(), faceColorFunction, e -&gt; Color.BLACK, v -&gt; Color.BLACK, 1.0f, true));</span>
+<span class="nc" id="L586">		meshWriter.close();</span>
+
+<span class="nc" id="L588">		BufferedWriter writer = IOUtils.getWriter(&quot;bridge.poly&quot;, new File(&quot;/Users/bzoennchen/Development/workspaces/hmRepo/PersZoennchen/PhD/trash/generated/eikmesh/&quot;));</span>
+<span class="nc" id="L589">		MeshPolyWriter&lt;AVertex, AHalfEdge, AFace&gt; meshPolyWriter = new MeshPolyWriter&lt;&gt;();</span>
+<span class="nc" id="L590">		writer.write(meshPolyWriter.to2DPoly(meshImprover.getMesh()));</span>
+<span class="nc" id="L591">		writer.close();</span>
+<span class="nc" id="L592">	}</span>
+
+	private static void eikMeshQualities(
+			@NotNull final PEikMesh meshImprover,
+			final int maxIteration,
+			@NotNull final LinkedList&lt;Integer&gt; meshPrints,
+			@NotNull final File dir) throws IOException {
+<span class="nc" id="L599">		Collections.sort(meshPrints);</span>
+<span class="nc" id="L600">		BufferedWriter bufferedWriterQualities1 = IOUtils.getWriter(&quot;qualities1_eik.csv&quot;, dir);</span>
+<span class="nc" id="L601">		bufferedWriterQualities1.write(&quot;iteration quality\n&quot;);</span>
+
+<span class="nc" id="L603">		BufferedWriter bufferedWriterQualities2 = IOUtils.getWriter(&quot;qualities2_eik.csv&quot;, dir);</span>
+<span class="nc" id="L604">		bufferedWriterQualities2.write(&quot;iteration quality\n&quot;);</span>
+
+<span class="nc" id="L606">		BufferedWriter bufferedWriterAngles = IOUtils.getWriter(&quot;angles_eik.csv&quot;, dir);</span>
+<span class="nc" id="L607">		bufferedWriterAngles.write(&quot;iteration angle\n&quot;);</span>
+
+<span class="nc" id="L609">		int init = 1;</span>
+<span class="nc bnc" id="L610" title="All 2 branches missed.">		while (!meshImprover.isInitialized()) {</span>
+<span class="nc" id="L611">			meshImprover.initialize();</span>
+<span class="nc" id="L612">			BufferedWriter meshWriter = IOUtils.getWriter(&quot;mesh_int_&quot; + init + &quot;.tex&quot;, dir);</span>
+<span class="nc" id="L613">			meshWriter.write(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; Colors.YELLOW, e -&gt; Color.BLACK, v -&gt; Color.BLACK, 1.0f, true));</span>
+<span class="nc" id="L614">			meshWriter.close();</span>
+<span class="nc" id="L615">			init++;</span>
+<span class="nc" id="L616">		}</span>
+
+<span class="nc" id="L618">		var mesh = meshImprover.getMesh();</span>
+<span class="nc" id="L619">		var tri = meshImprover.getTriangulation();</span>
+<span class="nc" id="L620">		var panel = new PMeshPanel(meshImprover.getMesh(), 500, 500);</span>
+<span class="nc" id="L621">		panel.display();</span>
+
+<span class="nc" id="L623">		int iteration = 1;</span>
+<span class="nc bnc" id="L624" title="All 2 branches missed.">		while (iteration &lt; maxIteration+1) {</span>
+<span class="nc" id="L625">			meshImprover.improve();</span>
+<span class="nc" id="L626">			panel.repaint();</span>
+<span class="nc" id="L627">			bufferedWriterQualities1.write(printQualities(iteration, mesh, f -&gt; tri.faceToQuality(f)));</span>
+<span class="nc" id="L628">			bufferedWriterQualities2.write(printQualities(iteration, mesh, f -&gt; tri.faceToLongestEdgeQuality(f)));</span>
+<span class="nc" id="L629">			bufferedWriterAngles.write(printAngles(iteration, meshImprover.getMesh()));</span>
+
+<span class="nc bnc" id="L631" title="All 4 branches missed.">			if(!meshPrints.isEmpty() &amp;&amp; meshPrints.peek() == iteration) {</span>
+<span class="nc" id="L632">				meshPrints.poll();</span>
+<span class="nc" id="L633">				BufferedWriter meshWriter = IOUtils.getWriter(&quot;mesh_&quot; + iteration + &quot;.tex&quot;, dir);</span>
+<span class="nc" id="L634">				meshWriter.write(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; Colors.YELLOW, e -&gt; Color.BLACK, v -&gt; {</span>
+
+<span class="nc bnc" id="L636" title="All 2 branches missed.">					if(meshImprover.isFixPoint(v)){</span>
+<span class="nc" id="L637">						return Colors.RED;</span>
+					}
+<span class="nc bnc" id="L639" title="All 2 branches missed.">					if(meshImprover.isSlidePoint(v)) {</span>
+<span class="nc" id="L640">						return Colors.BLUE;</span>
+					}
+<span class="nc" id="L642">					return Color.BLACK;</span>
+				}, 1.0f, true));
+<span class="nc" id="L644">				meshWriter.close();</span>
+			}
+
+<span class="nc" id="L647">			iteration++;</span>
+		}
+
+<span class="nc" id="L650">		bufferedWriterQualities1.close();</span>
+<span class="nc" id="L651">		bufferedWriterQualities2.close();</span>
+<span class="nc" id="L652">		bufferedWriterAngles.close();</span>
+<span class="nc" id="L653">	}</span>
+
+	private static void distMeshQualities(@NotNull final Distmesh distmesh,
+	                                      final int maxIteration,
+	                                      @NotNull final LinkedList&lt;Integer&gt; meshPrints,
+	                                      @NotNull final File dir) throws IOException {
+<span class="nc" id="L659">		Collections.sort(meshPrints);</span>
+<span class="nc" id="L660">		BufferedWriter bufferedWriterQualities1 = IOUtils.getWriter(&quot;qualities1_dist.csv&quot;, dir);</span>
+<span class="nc" id="L661">		bufferedWriterQualities1.write(&quot;iteration quality\n&quot;);</span>
+
+<span class="nc" id="L663">		BufferedWriter bufferedWriterIllegalEdges = IOUtils.getWriter(&quot;illegal_edges.csv&quot;, dir);</span>
+<span class="nc" id="L664">		bufferedWriterIllegalEdges.write(&quot;iteration illEdges\n&quot;);</span>
+
+<span class="nc" id="L666">		BufferedWriter bufferedWriterQualities2 = IOUtils.getWriter(&quot;qualities2_dist.csv&quot;, dir);</span>
+<span class="nc" id="L667">		bufferedWriterQualities2.write(&quot;iteration quality\n&quot;);</span>
+
+<span class="nc" id="L669">		BufferedWriter bufferedWriterAngles = IOUtils.getWriter(&quot;angles_dist.csv&quot;, dir);</span>
+<span class="nc" id="L670">		bufferedWriterAngles.write(&quot;iteration angle\n&quot;);</span>
+
+<span class="nc" id="L672">		int iteration = 1;</span>
+<span class="nc bnc" id="L673" title="All 2 branches missed.">		while (iteration &lt; maxIteration+1) {</span>
+<span class="nc" id="L674">			distmesh.improve();</span>
+			/*if(iteration + 1 == maxIteration+1) {
+				distmesh.reTriangulate(true);
+			}*/
+<span class="nc" id="L678">			bufferedWriterIllegalEdges.write(iteration + &quot; &quot; + distmesh.getNumberOfIllegalTriangles() + &quot;\n&quot;);</span>
+<span class="nc" id="L679">			bufferedWriterQualities1.write(printQualities(iteration, distmesh, f -&gt; GeometryUtils.qualityOf(f)));</span>
+<span class="nc" id="L680">			bufferedWriterQualities2.write(printQualities(iteration, distmesh, f -&gt; GeometryUtils.qualityLongestEdgeInCircle(f.p1, f.p2, f.p3)));</span>
+<span class="nc" id="L681">			bufferedWriterAngles.write(printAngles(iteration, distmesh));</span>
+
+<span class="nc bnc" id="L683" title="All 4 branches missed.">			if(!meshPrints.isEmpty() &amp;&amp; meshPrints.peek() == iteration) {</span>
+<span class="nc" id="L684">				meshPrints.poll();</span>
+
+<span class="nc" id="L686">				BufferedWriter meshWriter = IOUtils.getWriter(&quot;mesh_&quot; + iteration + &quot;.tex&quot;, dir);</span>
+<span class="nc" id="L687">				meshWriter.write(TexGraphGenerator.toTikz(distmesh.getTriangles(),  f -&gt; Colors.YELLOW, e -&gt; Color.BLACK, v -&gt; Color.BLACK, 1.0f, true));</span>
+<span class="nc" id="L688">				meshWriter.close();</span>
+			}
+
+<span class="nc" id="L691">			iteration++;</span>
+		}
+
+<span class="nc" id="L694">		bufferedWriterIllegalEdges.close();;</span>
+<span class="nc" id="L695">		bufferedWriterQualities1.close();</span>
+<span class="nc" id="L696">		bufferedWriterQualities2.close();</span>
+<span class="nc" id="L697">		bufferedWriterAngles.close();</span>
+<span class="nc" id="L698">	}</span>
+
+	/**
+	 * This examples shows how to mesh a geometry that is defined by a {@link org.vadere.util.math.IDistanceFunction}.
+	 * The distance function has to be negative for all points inside the meshing area and positive for all other points.
+	 * Furthermore the distance function should be differentiable. Here the distance functions defines a disc at (1,1) with radius 1.
+	 * Additionally, the meshing algorithm requires a bound {@link VRectangle}, which contains the whole meshing area.
+	 * The edgeLength is a measure for the approximate edge lengths of all edges since it is a uniform triangulation,
+	 * i.e. the desired edge length function is a constant.
+	 */
+	public static void uniformMeshDiscFunction(double h0) throws InterruptedException, IOException {
+		// define a bounding box
+<span class="nc" id="L710">		VRectangle bound = new VRectangle(-0.1, -0.1, 2.2, 2.2);</span>
+
+		// distance function that defines a disc with radius 1 at (1,1).
+<span class="nc" id="L713">		VPoint center = new VPoint(1,1);</span>
+<span class="nc" id="L714">		VRectangle hole = new VRectangle(0.5, 0.5, 1, 1);</span>
+<span class="nc" id="L715">		IDistanceFunction rect = IDistanceFunction.create(hole);</span>
+<span class="nc" id="L716">		IDistanceFunction d = IDistanceFunction.substract(IDistanceFunction.createDisc(center.x, center.y, 1.0), rect);</span>
+
+		// define the EikMesh-Improver
+<span class="nc" id="L719">		IEdgeLengthFunction h = p -&gt; h0 + 0.2 * Math.abs(d.apply(p));</span>
+<span class="nc" id="L720">		List&lt;VShape&gt; constrains = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L721">		constrains.add(bound);</span>
+<span class="nc" id="L722">		constrains.add(hole);</span>
+
+<span class="nc" id="L724">		PEikMesh meshImprover = new PEikMesh(</span>
+				d,
+				h,
+				h0,
+				bound,
+				constrains
+		);
+
+<span class="nc" id="L732">		LinkedList linkedList = Arrays.asList(1,4,7,50,100,150).stream().collect(Collectors.toCollection(LinkedList::new));</span>
+
+<span class="nc" id="L734">		eikMeshQualities(meshImprover, 150, linkedList, new File(&quot;/Users/bzoennchen/Development/workspaces/hmRepo/PersZoennchen/PhD/trash/generated/eikmesh/&quot;));</span>
+
+<span class="nc" id="L736">	}</span>
+
+	public static void uniformMeshDiscFunctionDistMesh(double h0) throws InterruptedException, IOException {
+		// define a bounding box
+<span class="nc" id="L740">		VRectangle bound = new VRectangle(-0.1, -0.1, 2.2, 2.2);</span>
+
+		// distance function that defines a disc with radius 1 at (1,1).
+<span class="nc" id="L743">		VPoint center = new VPoint(1,1);</span>
+<span class="nc" id="L744">		VRectangle hole = new VRectangle(0.5, 0.5, 1, 1);</span>
+<span class="nc" id="L745">		IDistanceFunction rect = IDistanceFunction.create(hole);</span>
+<span class="nc" id="L746">		IDistanceFunction d = IDistanceFunction.substract(IDistanceFunction.createDisc(center.x, center.y, 1.0), rect);</span>
+
+		// define the EikMesh-Improver
+<span class="nc" id="L749">		IEdgeLengthFunction h = p -&gt; h0 + 0.2 * Math.abs(d.apply(p));</span>
+<span class="nc" id="L750">		Distmesh distmesh = new Distmesh(d, h, h0, bound, Collections.singleton(hole));</span>
+
+<span class="nc" id="L752">		LinkedList linkedList = Arrays.asList(1,4,7,50,100,150).stream().collect(Collectors.toCollection(LinkedList::new));</span>
+
+<span class="nc" id="L754">		distMeshQualities(distmesh, 150, linkedList, new File(&quot;/Users/bzoennchen/Development/workspaces/hmRepo/PersZoennchen/PhD/trash/generated/distmesh/&quot;));</span>
+
+<span class="nc" id="L756">	}</span>
+
+	public static void distMeshFail(double h0) throws InterruptedException, IOException {
+		// define a bounding box
+<span class="nc" id="L760">		VRectangle bound = new VRectangle(-0.1, -0.1, 2.2, 2.2);</span>
+
+		// distance function that defines a disc with radius 1 at (1,1).
+<span class="nc" id="L763">		VPoint center = new VPoint(1,1);</span>
+<span class="nc" id="L764">		VRectangle hole = new VRectangle(0.5, 0.5, 1, 0.05);</span>
+<span class="nc" id="L765">		IDistanceFunction rect = IDistanceFunction.create(hole);</span>
+<span class="nc" id="L766">		IDistanceFunction d = IDistanceFunction.substract(IDistanceFunction.createDisc(center.x, center.y, 1.0), rect);</span>
+
+		// define the EikMesh-Improver
+		//IEdgeLengthFunction h = p -&gt; h0 + 0.2 * Math.min(Math.min(Math.min(new VPoint(0.5, 0.5).distance(p), new VPoint(0.5, 0.5+0.05).distance(p)), new VPoint(1.5, 0.5).distance(p)), new VPoint(1.5, 0.5+0.05).distance(p));
+<span class="nc" id="L770">		IEdgeLengthFunction h = p -&gt; h0 + 0.2 * Math.abs(d.apply(p));</span>
+<span class="nc" id="L771">		Distmesh distmesh = new Distmesh(d, h, h0, bound, Collections.singleton(hole));</span>
+
+<span class="nc" id="L773">		LinkedList linkedList = Arrays.asList(1,4,7,50,100,150).stream().collect(Collectors.toCollection(LinkedList::new));</span>
+
+<span class="nc" id="L775">		distMeshQualities(distmesh, 150, linkedList, new File(&quot;/Users/bzoennchen/Development/workspaces/hmRepo/PersZoennchen/PhD/trash/generated/distmesh/&quot;));</span>
+
+<span class="nc" id="L777">	}</span>
+
+	private static void delaunyTri(@NotNull final String fileName) throws IOException {
+<span class="nc" id="L780">		InputStream in = MeshQuantityPrinting.class.getResourceAsStream(fileName);</span>
+<span class="nc" id="L781">		PSLG pslg = PSLGGenerator.toPSLG(in);</span>
+
+		//System.out.println(TexGraphGenerator.toTikz(pslg.getSegments(), pslg.getAllPolygons(), true, 1.0f));
+
+		//PDelaunayTriangulator dt = new PDelaunayTriangulator(pslg.getAllPoints());
+		//dt.generate(true);
+<span class="nc" id="L787">		PContrainedDelaunayTriangulator dt = new PContrainedDelaunayTriangulator(pslg, true);</span>
+<span class="nc" id="L788">		dt.generate(true);</span>
+<span class="nc" id="L789">		System.out.println(TexGraphGenerator.toTikz(dt.getMesh(), f -&gt; {</span>
+<span class="nc" id="L790">			VTriangle tri = dt.getMesh().toTriangle(f);</span>
+<span class="nc bnc" id="L791" title="All 2 branches missed.">			if(pslg.getSegmentBound().contains(tri.midPoint()))</span>
+<span class="nc" id="L792">				return Colors.YELLOW;</span>
+			else
+<span class="nc" id="L794">				return Color.WHITE;</span>
+<span class="nc" id="L795">		} , e -&gt; Color.BLACK, null,1.0f, true));</span>
+
+		//System.out.println(printQualities(1, dt.getMesh(), f -&gt; dt.getTriangulation().faceToQuality(f)));
+<span class="nc" id="L798">	}</span>
+
+	private static String printQualities(int iteration, IMesh&lt;PVertex, PHalfEdge, PFace&gt; mesh, Function&lt;PFace, Double&gt; rho){
+<span class="nc" id="L801">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc bnc" id="L802" title="All 2 branches missed.">		for(PFace face : mesh.getFaces()) {</span>
+<span class="nc" id="L803">			double quality = rho.apply(face);</span>
+<span class="nc" id="L804">			builder.append(iteration);</span>
+<span class="nc" id="L805">			builder.append(&quot; &quot;);</span>
+<span class="nc" id="L806">			builder.append(quality);</span>
+<span class="nc" id="L807">			builder.append(&quot;\n&quot;);</span>
+<span class="nc" id="L808">		}</span>
+<span class="nc" id="L809">		return builder.toString();</span>
+	}
+
+	private static String printQualities(int iteration, Distmesh mesh, Function&lt;VTriangle, Double&gt; rho){
+<span class="nc" id="L813">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc bnc" id="L814" title="All 2 branches missed.">		for(VTriangle triangle : mesh.getTriangles()) {</span>
+<span class="nc" id="L815">			double quality = rho.apply(triangle);</span>
+<span class="nc" id="L816">			builder.append(iteration);</span>
+<span class="nc" id="L817">			builder.append(&quot; &quot;);</span>
+<span class="nc" id="L818">			builder.append(quality);</span>
+<span class="nc" id="L819">			builder.append(&quot;\n&quot;);</span>
+<span class="nc" id="L820">		}</span>
+<span class="nc" id="L821">		return builder.toString();</span>
+	}
+
+	private static String printAngles(int iteration, IMesh&lt;PVertex, PHalfEdge, PFace&gt; mesh){
+<span class="nc" id="L825">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc bnc" id="L826" title="All 2 branches missed.">		for(PFace face : mesh.getFaces()) {</span>
+
+<span class="nc bnc" id="L828" title="All 2 branches missed.">			for(PHalfEdge edge : mesh.getEdges(face)) {</span>
+<span class="nc" id="L829">				VPoint p1 = mesh.toPoint(edge);</span>
+<span class="nc" id="L830">				VPoint p2 = mesh.toPoint(mesh.getNext(edge));</span>
+<span class="nc" id="L831">				VPoint p3 = mesh.toPoint(mesh.getPrev(edge));</span>
+<span class="nc" id="L832">				builder.append(iteration);</span>
+<span class="nc" id="L833">				builder.append(&quot; &quot;);</span>
+<span class="nc" id="L834">				builder.append(GeometryUtils.angle(p1, p2, p3));</span>
+<span class="nc" id="L835">				builder.append(&quot;\n&quot;);</span>
+<span class="nc" id="L836">			}</span>
+<span class="nc" id="L837">		}</span>
+<span class="nc" id="L838">		return builder.toString();</span>
+	}
+
+	private static String printAngles(int iteration, Distmesh distmesh){
+<span class="nc" id="L842">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc bnc" id="L843" title="All 2 branches missed.">		for(VTriangle face : distmesh.getTriangles()) {</span>
+
+<span class="nc" id="L845">			builder.append(iteration);</span>
+<span class="nc" id="L846">			builder.append(&quot; &quot;);</span>
+<span class="nc" id="L847">			builder.append(GeometryUtils.angle(face.p1, face.p2, face.p3));</span>
+<span class="nc" id="L848">			builder.append(&quot;\n&quot;);</span>
+
+<span class="nc" id="L850">			builder.append(iteration);</span>
+<span class="nc" id="L851">			builder.append(&quot; &quot;);</span>
+<span class="nc" id="L852">			builder.append(GeometryUtils.angle(face.p3, face.p1, face.p2));</span>
+<span class="nc" id="L853">			builder.append(&quot;\n&quot;);</span>
+
+<span class="nc" id="L855">			builder.append(iteration);</span>
+<span class="nc" id="L856">			builder.append(&quot; &quot;);</span>
+<span class="nc" id="L857">			builder.append(GeometryUtils.angle(face.p2, face.p3, face.p1));</span>
+<span class="nc" id="L858">			builder.append(&quot;\n&quot;);</span>
+
+<span class="nc" id="L860">		}</span>
+<span class="nc" id="L861">		return builder.toString();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

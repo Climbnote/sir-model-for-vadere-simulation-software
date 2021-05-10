@@ -1,0 +1,704 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VPolygon.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry.shapes</a> &gt; <span class="el_source">VPolygon.java</span></div><h1>VPolygon.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry.shapes;
+
+import java.awt.Shape;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Area;
+import java.awt.geom.Path2D;
+import java.awt.geom.PathIterator;
+import java.awt.geom.Rectangle2D;
+import java.util.Collections;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.GrahamScan;
+
+/**
+ * Note: A polygon which has the same points as a rectangle is not equals to the rectangle.
+ */
+<span class="pc bpc" id="L24" title="1 of 2 branches missed.">public class VPolygon extends Path2D.Double implements VShape {</span>
+	private static final long serialVersionUID = 6534837112398242609L;
+
+<span class="fc" id="L27">	public VPolygon(Path2D.Double path) {</span>
+<span class="fc" id="L28">		this.reset();</span>
+<span class="fc" id="L29">		this.append(path, false);</span>
+<span class="fc" id="L30">		this.closePath();</span>
+		/*if (!path.getBounds().isEmpty()) {
+
+		}*/
+<span class="fc" id="L34">	}</span>
+
+	public VPolygon() {
+<span class="nc" id="L37">		this(new Path2D.Double());</span>
+<span class="nc" id="L38">	}</span>
+
+	public VPolygon(Shape shape) {
+<span class="fc" id="L41">		this(new Path2D.Double(shape));</span>
+<span class="fc" id="L42">	}</span>
+
+	public boolean isSimple() {
+<span class="nc" id="L45">		List&lt;VPoint&gt; points = getPath();</span>
+<span class="nc bnc" id="L46" title="All 2 branches missed.">		for(int i = 0; i &lt; points.size(); i++) {</span>
+<span class="nc" id="L47">			VPoint p1 = points.get(i);</span>
+<span class="nc" id="L48">			VPoint p2 = points.get((i+1) % points.size());</span>
+<span class="nc bnc" id="L49" title="All 2 branches missed.">			for(int j = i + 1; j &lt; points.size(); j++) {</span>
+<span class="nc" id="L50">				VPoint q1 = points.get(j);</span>
+<span class="nc" id="L51">				VPoint q2 = points.get((j+1) % points.size());</span>
+
+<span class="nc bnc" id="L53" title="All 2 branches missed.">				if(GeometryUtils.intersectLineSegment(p1, p2, q1, q2)) {</span>
+<span class="nc" id="L54">					return false;</span>
+				}
+			}
+		}
+
+<span class="nc" id="L59">		return true;</span>
+	}
+
+	public boolean isCCW() {
+<span class="fc" id="L63">		List&lt;VPoint&gt; points = getPath();</span>
+<span class="pc bpc" id="L64" title="2 of 4 branches missed.">		assert points.size() &gt;= 3;</span>
+<span class="fc" id="L65">		GrahamScan scan = new GrahamScan(points);</span>
+<span class="fc" id="L66">		Set&lt;VPoint&gt; convexHull = new HashSet&lt;&gt;(scan.getConvexHull());</span>
+<span class="fc" id="L67">		List&lt;VPoint&gt; convexPartialPolygon = points.stream().filter(p -&gt; convexHull.contains(p)).collect(Collectors.toList());</span>
+<span class="fc" id="L68">		return GeometryUtils.isCCW(convexPartialPolygon.get(0), convexPartialPolygon.get(1), convexPartialPolygon.get(2));</span>
+	}
+
+	public VPolygon toCCWOrder() {
+<span class="nc bnc" id="L72" title="All 2 branches missed.">		if(isCCW()) {</span>
+<span class="nc" id="L73">			return this;</span>
+		}
+		else {
+<span class="nc" id="L76">			return revertOrder();</span>
+		}
+	}
+
+	//TODO: this does only work for certain cases!
+	public VPolygon smooth(double angle) {
+<span class="nc" id="L82">		List&lt;VPoint&gt; points = getPath();</span>
+<span class="nc bnc" id="L83" title="All 4 branches missed.">		assert points.size() &gt;= 3;</span>
+		boolean found;
+		do {
+<span class="nc" id="L86">			found = false;</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">			for(int i = 0; i &lt;= points.size()+1; i++) {</span>
+<span class="nc" id="L88">				VPoint p1 = points.get(i % (points.size()));</span>
+<span class="nc" id="L89">				VPoint p2 = points.get((i+1) % (points.size()));</span>
+<span class="nc" id="L90">				VPoint p3 = points.get((i+2) % (points.size()));</span>
+
+<span class="nc bnc" id="L92" title="All 2 branches missed.">				if(GeometryUtils.isCCW(p1, p2, p3)) {</span>
+<span class="nc" id="L93">					double triAngle = GeometryUtils.angle(p1, p2, p3);</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">					if(triAngle &lt; angle) {</span>
+<span class="nc" id="L95">						points.remove((i+1) % (points.size()));</span>
+<span class="nc" id="L96">						found = true;</span>
+					}
+				}
+			}
+<span class="nc bnc" id="L100" title="All 2 branches missed.">		} while (found);</span>
+
+<span class="nc" id="L102">		return GeometryUtils.toPolygon(points);</span>
+	}
+
+	public VPolygon revertOrder() {
+<span class="fc" id="L106">		List&lt;VPoint&gt; points = getPath();</span>
+<span class="fc" id="L107">		Collections.reverse(points);</span>
+<span class="fc" id="L108">		return GeometryUtils.toPolygon(points);</span>
+	}
+
+	public boolean isRectangular(){
+<span class="nc" id="L112">		Area tmp = new Area(this);</span>
+<span class="nc" id="L113">		return tmp.isRectangular();</span>
+	}
+
+	public VRectangle asVRectangle(){
+<span class="nc bnc" id="L117" title="All 2 branches missed.">		if (!isRectangular())</span>
+<span class="nc" id="L118">			return null;</span>
+
+		// retuns list of points.
+		// width points[0] -- points[1]
+		// height points[0] -- points[3]
+<span class="nc" id="L123">		ArrayList&lt;VPoint&gt; points = new ArrayList&lt;&gt;(getPoints());</span>
+<span class="nc bnc" id="L124" title="All 4 branches missed.">		assert points.size() == 4 : &quot;This is not a VRectangle&quot;;</span>
+<span class="nc" id="L125">		double width = points.get(0).distance(points.get(1));</span>
+<span class="nc" id="L126">		double height = points.get(0).distance(points.get(3));</span>
+<span class="nc" id="L127">		return new VRectangle(points.get(0).x, points.get(0).y, width, height);</span>
+	}
+
+	/**
+	 * Check whether the given polygon intersects with the open ball around
+	 * &quot;center&quot; with given radius.
+	 * 
+	 * @param center the center of the open ball
+	 * @param radius the radius of the open ball
+	 * @return true if any point of the polygon lies within the open ball.
+	 */
+	public boolean intersects(VPoint center, double radius) {
+		// if the center is contained in the polygon, parts of the ball are
+		// contained as well
+<span class="nc bnc" id="L141" title="All 2 branches missed.">		if (this.contains(center)) {</span>
+<span class="nc" id="L142">			return true;</span>
+		}
+
+		// check whether the center is closer to the sides than the radius
+		// loop over all lines and check intersection
+<span class="nc" id="L147">		List&lt;VPoint&gt; pointList = getPoints();</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">		for (int i = 0; i &lt; pointList.size() - 1; i++) {</span>
+			VLine intersectingLine;
+			// loop around
+<span class="nc bnc" id="L151" title="All 2 branches missed.">			if (i &lt; pointList.size() - 1) {</span>
+<span class="nc" id="L152">				intersectingLine = new VLine(pointList.get(i),</span>
+<span class="nc" id="L153">						pointList.get(i + 1));</span>
+			} else {
+<span class="nc" id="L155">				intersectingLine = new VLine(pointList.get(i), pointList.get(0));</span>
+			}
+
+			// check distance of closest point on the line to the center of the
+			// ball
+<span class="nc" id="L160">			if (GeometryUtils.closestToSegment(intersectingLine, center)</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">					.distance(center) &lt; radius) {</span>
+<span class="nc" id="L162">				return true;</span>
+			}
+		}
+
+<span class="nc" id="L166">		return false;</span>
+	}
+
+	/**
+	 * Returns a list of all points of this geometry.
+	 *
+	 * @return A list of points.
+	 */
+	public List&lt;VPoint&gt; getPoints() {
+<span class="fc" id="L175">		List&lt;VPoint&gt; resultList = new ArrayList&lt;&gt;(); // use ArrayList for better index retrieval</span>
+
+<span class="fc" id="L177">		PathIterator iterator = this.getPathIterator(null);</span>
+<span class="fc" id="L178">		double[] coords = new double[6];</span>
+<span class="fc bfc" id="L179" title="All 2 branches covered.">		while (!iterator.isDone()) {</span>
+<span class="fc" id="L180">			int type = iterator.currentSegment(coords);</span>
+<span class="fc" id="L181">			iterator.next();</span>
+<span class="fc bfc" id="L182" title="All 2 branches covered.">			if (type == PathIterator.SEG_LINETO) {</span>
+<span class="fc" id="L183">				resultList.add(new VPoint(coords[0], coords[1]));</span>
+			}
+<span class="fc" id="L185">		}</span>
+
+<span class="fc" id="L187">		return resultList;</span>
+	}
+
+	public boolean intersects(VLine intersectingLine) {
+
+		// check whether the center is closer to the sides than the radius
+		// loop over all lines and check intersection
+<span class="fc" id="L194">		List&lt;VPoint&gt; pointList = getPoints();</span>
+<span class="fc bfc" id="L195" title="All 2 branches covered.">		for (int i = 0; i &lt; pointList.size(); i++) {</span>
+			VLine polyLine;
+			// loop around
+<span class="fc bfc" id="L198" title="All 2 branches covered.">			if (i &lt; pointList.size() - 1) {</span>
+<span class="fc" id="L199">				polyLine = new VLine(pointList.get(i), pointList.get(i + 1));</span>
+			} else {
+<span class="fc" id="L201">				polyLine = new VLine(pointList.get(i), pointList.get(0));</span>
+			}
+
+			// check distance of closest point on the line to the center of the
+			// ball
+<span class="fc bfc" id="L206" title="All 2 branches covered.">			if (polyLine.intersectsLine(intersectingLine)) {</span>
+<span class="fc" id="L207">				return true;</span>
+			}
+		}
+<span class="fc" id="L210">		return false;</span>
+	}
+
+	/**
+	 * Checks whether two polygons (this and another polygon) do intersect.
+	 *
+	 * @param intersectingPolygon   the other polygon
+	 * @return true if the two polygons intersect
+	 */
+	public boolean intersects(final VPolygon intersectingPolygon) {
+
+<span class="nc bnc" id="L221" title="All 4 branches missed.">		if(containsShape(intersectingPolygon) || intersectingPolygon.containsShape(this)) {</span>
+<span class="nc" id="L222">			return true;</span>
+		}
+
+<span class="nc" id="L225">		List&lt;VPoint&gt; pointList = getPoints();</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">		for (int i = 0; i &lt; pointList.size() - 1; i++) {</span>
+			VLine polyLine;
+			// loop around
+<span class="nc bnc" id="L229" title="All 2 branches missed.">			if (i &lt; pointList.size() - 1) {</span>
+<span class="nc" id="L230">				polyLine = new VLine(pointList.get(i), pointList.get(i + 1));</span>
+			} else {
+<span class="nc" id="L232">				polyLine = new VLine(pointList.get(i), pointList.get(0));</span>
+			}
+
+			// check if current line intersects with given polygon
+<span class="nc bnc" id="L236" title="All 2 branches missed.">			if (intersectingPolygon.intersects(polyLine)) {</span>
+<span class="nc" id="L237">				return true;</span>
+			}
+		}
+
+<span class="nc" id="L241">		return false;</span>
+	}
+
+	/**
+	 * Checks whether this polygon and the rectangle intersects.
+	 *
+	 * @param rectangle   the rectangle
+	 * @return true if this polygon intersects with the rectangle
+	 */
+	public boolean intersects(final VRectangle rectangle) {
+
+<span class="nc bnc" id="L252" title="All 4 branches missed.">		if(containsShape(rectangle) || rectangle.containsShape(this)) {</span>
+<span class="nc" id="L253">			return true;</span>
+		}
+
+<span class="nc" id="L256">		return intersectsRectangleLine(rectangle);</span>
+	}
+
+	public boolean intersectsRectangleLine(final VRectangle rectangle) {
+<span class="nc bnc" id="L260" title="All 2 branches missed.">		return intersects(new VLine(rectangle.getMinX(), rectangle.getMinY(), rectangle.getMaxX(), rectangle.getMinY()))</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">			|| intersects(new VLine(rectangle.getMaxX(), rectangle.getMinY(), rectangle.getMaxX(), rectangle.getMaxY()))</span>
+<span class="nc bnc" id="L262" title="All 2 branches missed.">			|| intersects(new VLine(rectangle.getMaxX(), rectangle.getMaxY(), rectangle.getMinX(), rectangle.getMaxY()))</span>
+<span class="nc bnc" id="L263" title="All 2 branches missed.">			|| intersects(new VLine(rectangle.getMinX(), rectangle.getMaxY(), rectangle.getMinX(), rectangle.getMinY()));</span>
+	}
+
+	public double getArea() {
+<span class="fc" id="L267">		return GeometryUtils.areaOfPolygon(getPoints());</span>
+	}
+
+	// Assumed that first and last point are equal
+	public void grow(double absolute) {
+<span class="nc" id="L272">		LinkedList&lt;VPoint&gt; curVertices = new LinkedList&lt;VPoint&gt;();</span>
+<span class="nc" id="L273">		LinkedList&lt;VPoint&gt; newVertices = new LinkedList&lt;VPoint&gt;();</span>
+<span class="nc" id="L274">		VPoint lastVertex = VPoint.ZERO;</span>
+<span class="nc" id="L275">		VPoint curVertex = VPoint.ZERO;</span>
+<span class="nc" id="L276">		VPoint nxtVertex = VPoint.ZERO;</span>
+<span class="nc" id="L277">		VPoint deltaCurLast = VPoint.ZERO;</span>
+<span class="nc" id="L278">		VPoint deltaNxtCur = VPoint.ZERO;</span>
+<span class="nc" id="L279">		VPoint deltaNxtLast = VPoint.ZERO;</span>
+<span class="nc" id="L280">		double coord[] = new double[2];</span>
+		double distCurLast;
+		double distNxtCur;
+		double distNxtLastScaled;
+
+<span class="nc" id="L285">		for (PathIterator vertexItr = getPathIterator(null); !vertexItr</span>
+<span class="nc bnc" id="L286" title="All 2 branches missed.">				.isDone(); vertexItr.next()) {</span>
+<span class="nc" id="L287">			vertexItr.currentSegment(coord);</span>
+<span class="nc" id="L288">			curVertices.add(new VPoint(coord[0], coord[1]));</span>
+		}
+
+		/*
+		 * One or two vertices do not define a plane and hence growing within
+		 * the given meaning is impossible.
+		 */
+<span class="nc bnc" id="L295" title="All 2 branches missed.">		if (curVertices.size() &lt; 3) {</span>
+<span class="nc" id="L296">			return;</span>
+		}
+
+<span class="nc" id="L299">		lastVertex = curVertices.get(curVertices.size() - 2);</span>
+<span class="nc" id="L300">		curVertex = curVertices.getFirst();</span>
+
+<span class="nc bnc" id="L302" title="All 2 branches missed.">		for (int iVertex = 0; iVertex &lt; curVertices.size() - 1; ++iVertex) {</span>
+<span class="nc" id="L303">			nxtVertex = curVertices.get(iVertex + 1);</span>
+
+<span class="nc" id="L305">			distCurLast = curVertex.distance(lastVertex);</span>
+<span class="nc" id="L306">			double x = (curVertex.x - lastVertex.x) / distCurLast;</span>
+<span class="nc" id="L307">			double y = (curVertex.y - lastVertex.y) / distCurLast;</span>
+
+<span class="nc" id="L309">			deltaCurLast = new VPoint(x, y);</span>
+
+<span class="nc" id="L311">			distNxtCur = curVertex.distance(nxtVertex);</span>
+<span class="nc" id="L312">			x = (nxtVertex.x - curVertex.x) / distNxtCur;</span>
+<span class="nc" id="L313">			y = (nxtVertex.y - curVertex.y) / distNxtCur;</span>
+<span class="nc" id="L314">			deltaNxtCur = new VPoint(x, y);</span>
+
+<span class="nc" id="L316">			x = (deltaNxtCur.x + deltaCurLast.x);</span>
+<span class="nc" id="L317">			y = (deltaNxtCur.y + deltaCurLast.y);</span>
+<span class="nc" id="L318">			deltaNxtLast = new VPoint(x, y);</span>
+<span class="nc" id="L319">			distNxtLastScaled = deltaNxtLast.distance(new VPoint(0, 0));</span>
+
+<span class="nc" id="L321">			x = deltaNxtLast.x / distNxtLastScaled * absolute;</span>
+<span class="nc" id="L322">			y = deltaNxtLast.y / distNxtLastScaled * absolute;</span>
+<span class="nc" id="L323">			deltaNxtLast = new VPoint(x, y);</span>
+
+<span class="nc" id="L325">			newVertices.add(new VPoint(curVertex.x + deltaNxtLast.y,</span>
+					curVertex.y - deltaNxtLast.x));
+
+<span class="nc" id="L328">			lastVertex = curVertex;</span>
+<span class="nc" id="L329">			curVertex = nxtVertex;</span>
+
+		}
+
+<span class="nc" id="L333">		newVertices.add(newVertices.getFirst());</span>
+
+<span class="nc" id="L335">		this.reset();</span>
+<span class="nc bnc" id="L336" title="All 2 branches missed.">		if (!newVertices.isEmpty()) {</span>
+<span class="nc" id="L337">			this.moveTo(newVertices.get(0).x, newVertices.get(0).y);</span>
+<span class="nc" id="L338">			this.append(GeometryUtils.polygonFromPoints2D(newVertices</span>
+<span class="nc" id="L339">					.toArray(new VPoint[0])), false);</span>
+<span class="nc" id="L340">			this.closePath();</span>
+		}
+<span class="nc" id="L342">	}</span>
+
+	public LinkedList&lt;VPolygon&gt; borderAsShapes(double borderWidth, double shapeShrinkOffset, double segmentGrowOffset) {
+<span class="nc" id="L345">		LinkedList&lt;VPolygon&gt; border = new LinkedList&lt;VPolygon&gt;();</span>
+<span class="nc" id="L346">		PathIterator vertexItr = getPathIterator(null);</span>
+<span class="nc" id="L347">		double lastVertex[] = null;</span>
+<span class="nc" id="L348">		double curVertex[] = new double[2];</span>
+<span class="nc" id="L349">		double delta[] = new double[2];</span>
+		double dist;
+<span class="nc" id="L351">		double borderOffset = borderWidth / 2.0;</span>
+
+<span class="nc" id="L353">		vertexItr.currentSegment(curVertex);</span>
+<span class="nc" id="L354">		vertexItr.next();</span>
+
+<span class="nc bnc" id="L356" title="All 2 branches missed.">		while (!vertexItr.isDone()) {</span>
+<span class="nc" id="L357">			Path2D.Double segmentVertices = new Path2D.Double();</span>
+
+<span class="nc" id="L359">			lastVertex = curVertex.clone();</span>
+<span class="nc" id="L360">			int type = vertexItr.currentSegment(curVertex);</span>
+<span class="nc bnc" id="L361" title="All 2 branches missed.">			if (type == java.awt.geom.PathIterator.SEG_CLOSE) {</span>
+<span class="nc" id="L362">				break;</span>
+			}
+
+<span class="nc" id="L365">			delta[0] = curVertex[0] - lastVertex[0];</span>
+<span class="nc" id="L366">			delta[1] = curVertex[1] - lastVertex[1];</span>
+<span class="nc" id="L367">			dist = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1]);</span>
+			// normalize and scale
+<span class="nc" id="L369">			delta[0] = delta[0] / dist;</span>
+<span class="nc" id="L370">			delta[1] = delta[1] / dist;</span>
+
+<span class="nc" id="L372">			segmentVertices</span>
+<span class="nc" id="L373">					.moveTo(lastVertex[0]</span>
+									- delta[0]
+									* segmentGrowOffset
+									- delta[1]
+									* (borderOffset + shapeShrinkOffset + segmentGrowOffset),
+							lastVertex[1]
+									- delta[1]
+									* segmentGrowOffset
+									+ delta[0]
+									* (borderOffset + shapeShrinkOffset + segmentGrowOffset));
+<span class="nc" id="L383">			segmentVertices</span>
+<span class="nc" id="L384">					.lineTo(lastVertex[0]</span>
+									- delta[0]
+									* segmentGrowOffset
+									+ delta[1]
+									* (borderOffset - shapeShrinkOffset + segmentGrowOffset),
+							lastVertex[1]
+									- delta[1]
+									* segmentGrowOffset
+									- delta[0]
+									* (borderOffset - shapeShrinkOffset + segmentGrowOffset));
+<span class="nc" id="L394">			segmentVertices</span>
+<span class="nc" id="L395">					.lineTo(curVertex[0]</span>
+									+ delta[0]
+									* segmentGrowOffset
+									+ delta[1]
+									* (borderOffset - shapeShrinkOffset + segmentGrowOffset),
+							curVertex[1]
+									+ delta[1]
+									* segmentGrowOffset
+									- delta[0]
+									* (borderOffset - shapeShrinkOffset + segmentGrowOffset));
+<span class="nc" id="L405">			segmentVertices</span>
+<span class="nc" id="L406">					.lineTo(curVertex[0]</span>
+									+ delta[0]
+									* segmentGrowOffset
+									- delta[1]
+									* (borderOffset + shapeShrinkOffset + segmentGrowOffset),
+							curVertex[1]
+									+ delta[1]
+									* segmentGrowOffset
+									+ delta[0]
+									* (borderOffset + shapeShrinkOffset + segmentGrowOffset));
+
+			/* Insert first vertex as last too. */
+<span class="nc" id="L418">			segmentVertices</span>
+<span class="nc" id="L419">					.lineTo(lastVertex[0]</span>
+									- delta[0]
+									* segmentGrowOffset
+									- delta[1]
+									* (borderOffset + shapeShrinkOffset + segmentGrowOffset),
+							lastVertex[1]
+									- delta[1]
+									* segmentGrowOffset
+									+ delta[0]
+									* (borderOffset + shapeShrinkOffset + segmentGrowOffset));
+
+<span class="nc" id="L430">			border.add(new VPolygon(segmentVertices));</span>
+
+<span class="nc" id="L432">			vertexItr.next();</span>
+<span class="nc" id="L433">		}</span>
+
+<span class="nc" id="L435">		return border;</span>
+	}
+
+	@Override
+	public double distance(IPoint target) {
+		try {
+<span class="nc bnc" id="L441" title="All 2 branches missed.">			if (contains(target)) {</span>
+<span class="nc" id="L442">				return -closestPoint(target).distance(target);</span>
+			} else {
+<span class="nc" id="L444">				return closestPoint(target).distance(target);</span>
+			}
+<span class="nc" id="L446">		} catch (NullPointerException ex) {</span>
+<span class="nc bnc" id="L447" title="All 2 branches missed.">			if (contains(target)) {</span>
+<span class="nc" id="L448">				return -closestPoint(target).distance(target);</span>
+			} else {
+<span class="nc" id="L450">				return closestPoint(target).distance(target);</span>
+			}
+		}
+
+	}
+
+	@Override
+	public VPoint closestPoint(IPoint point) {
+<span class="fc" id="L458">		double currentMinDistance = java.lang.Double.MAX_VALUE;</span>
+<span class="fc" id="L459">		VPoint resultPoint = null;</span>
+
+<span class="fc" id="L461">		PathIterator iterator = this.getPathIterator(null);</span>
+
+<span class="fc" id="L463">		double[] first = null;</span>
+<span class="fc" id="L464">		double[] last = new double[2];</span>
+<span class="fc" id="L465">		double[] next = new double[2];</span>
+		VPoint currentClosest;
+
+<span class="fc" id="L468">		iterator.currentSegment(next);</span>
+<span class="fc" id="L469">		iterator.next();</span>
+
+<span class="fc bfc" id="L471" title="All 2 branches covered.">		while (!iterator.isDone()) {</span>
+<span class="fc" id="L472">			last[0] = next[0];</span>
+<span class="fc" id="L473">			last[1] = next[1];</span>
+
+<span class="fc bfc" id="L475" title="All 2 branches covered.">			if(first == null) {</span>
+<span class="fc" id="L476">				first = new double[]{last[0], last[1]};</span>
+			}
+
+<span class="fc" id="L479">			iterator.currentSegment(next);</span>
+
+<span class="fc" id="L481">			currentClosest = GeometryUtils.closestToSegment(new VLine(last[0],</span>
+					last[1], next[0], next[1]), point);
+
+<span class="fc bfc" id="L484" title="All 2 branches covered.">			if (currentClosest.distance(point) &lt; currentMinDistance) {</span>
+<span class="fc" id="L485">				currentMinDistance = currentClosest.distance(point);</span>
+<span class="fc" id="L486">				resultPoint = currentClosest;</span>
+			}
+
+<span class="fc" id="L489">			iterator.next();</span>
+		}
+
+		// dont forget the last and first point!
+<span class="pc bpc" id="L493" title="1 of 2 branches missed.">		if(first != null) {</span>
+<span class="fc" id="L494">			currentClosest = GeometryUtils.closestToSegment(new VLine(next[0],</span>
+					next[1], first[0], first[1]), point);
+
+<span class="pc bpc" id="L497" title="1 of 2 branches missed.">			if (currentClosest.distance(point) &lt; currentMinDistance) {</span>
+<span class="nc" id="L498">				currentMinDistance = currentClosest.distance(point);</span>
+<span class="nc" id="L499">				resultPoint = currentClosest;</span>
+			}
+		}
+
+<span class="fc" id="L503">		return resultPoint;</span>
+	}
+
+	@Override
+	public Optional&lt;VPoint&gt; getClosestIntersectionPoint(VPoint q1, VPoint q2, VPoint r) {
+<span class="nc" id="L508">		double currentMinDistance = java.lang.Double.MAX_VALUE;</span>
+<span class="nc" id="L509">		VPoint resultPoint = null;</span>
+
+<span class="nc" id="L511">		PathIterator iterator = this.getPathIterator(null);</span>
+
+<span class="nc" id="L513">		double[] first = null;</span>
+<span class="nc" id="L514">		double[] last = new double[2];</span>
+<span class="nc" id="L515">		double[] next = new double[2];</span>
+		VPoint currentIntersectionPoint;
+
+<span class="nc" id="L518">		iterator.currentSegment(next);</span>
+<span class="nc" id="L519">		iterator.next();</span>
+
+<span class="nc bnc" id="L521" title="All 2 branches missed.">		while (!iterator.isDone()) {</span>
+<span class="nc" id="L522">			last[0] = next[0];</span>
+<span class="nc" id="L523">			last[1] = next[1];</span>
+
+<span class="nc bnc" id="L525" title="All 2 branches missed.">			if(first == null) {</span>
+<span class="nc" id="L526">				first = new double[]{last[0], last[1]};</span>
+			}
+
+<span class="nc" id="L529">			iterator.currentSegment(next);</span>
+<span class="nc" id="L530">			VLine line = new VLine(last[0], last[1], next[0], next[1]);</span>
+<span class="nc bnc" id="L531" title="All 2 branches missed.">			if(GeometryUtils.intersectLine(line, q1, q2)) {</span>
+<span class="nc" id="L532">				currentIntersectionPoint = GeometryUtils.lineIntersectionPoint(new VLine(last[0],</span>
+<span class="nc" id="L533">						last[1], next[0], next[1]), q1.getX(), q1.getY(), q2.getX(), q2.getY());</span>
+
+<span class="nc bnc" id="L535" title="All 2 branches missed.">				if (currentIntersectionPoint.distance(r) &lt; currentMinDistance) {</span>
+<span class="nc" id="L536">					currentMinDistance = currentIntersectionPoint.distance(r);</span>
+<span class="nc" id="L537">					resultPoint = currentIntersectionPoint;</span>
+				}
+			}
+<span class="nc" id="L540">			iterator.next();</span>
+<span class="nc" id="L541">		}</span>
+
+		// dont forget the last and first point!
+<span class="nc bnc" id="L544" title="All 2 branches missed.">		if(first != null) {</span>
+<span class="nc" id="L545">			VLine line = new VLine(last[0], last[1], next[0], next[1]);</span>
+<span class="nc bnc" id="L546" title="All 2 branches missed.">			if(GeometryUtils.intersectLine(line, q1, q2)) {</span>
+<span class="nc" id="L547">				currentIntersectionPoint = GeometryUtils.lineIntersectionPoint(new VLine(last[0],</span>
+<span class="nc" id="L548">						last[1], next[0], next[1]), q1.getX(), q1.getY(), q2.getX(), q2.getY());</span>
+
+<span class="nc bnc" id="L550" title="All 2 branches missed.">				if (currentIntersectionPoint.distance(r) &lt; currentMinDistance) {</span>
+<span class="nc" id="L551">					currentMinDistance = currentIntersectionPoint.distance(r);</span>
+<span class="nc" id="L552">					resultPoint = currentIntersectionPoint;</span>
+				}
+			}
+		}
+
+<span class="nc" id="L557">		return Optional.ofNullable(resultPoint);</span>
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+<span class="pc bpc" id="L562" title="1 of 2 branches missed.">		if (this == obj) {</span>
+<span class="nc" id="L563">			return true;</span>
+		}
+<span class="pc bpc" id="L565" title="1 of 2 branches missed.">		if (obj == null) {</span>
+<span class="nc" id="L566">			return false;</span>
+		}
+<span class="pc bpc" id="L568" title="1 of 2 branches missed.">		if (!(obj instanceof VPolygon))</span>
+<span class="nc" id="L569">			return false;</span>
+
+<span class="fc" id="L571">		VPolygon other = (VPolygon) obj;</span>
+
+<span class="fc" id="L573">		List&lt;VPoint&gt; thisPoints = this.getPoints();</span>
+<span class="fc" id="L574">		List&lt;VPoint&gt; otherPoints = other.getPoints();</span>
+
+<span class="pc bpc" id="L576" title="1 of 2 branches missed.">		if (!thisPoints.equals(otherPoints))</span>
+<span class="nc" id="L577">			return false;</span>
+
+<span class="fc" id="L579">		return true;</span>
+	}
+
+	@Override
+	public boolean contains(final IPoint point) {
+<span class="fc" id="L584">		return super.contains(point.getX(), point.getY());</span>
+	}
+
+	@Override
+	public VPolygon translatePrecise(final IPoint vector) {
+<span class="nc" id="L589">		return translate(vector);</span>
+	}
+
+	@Override
+	public VPolygon translate(final IPoint vector) {
+<span class="nc" id="L594">		AffineTransform transform = new AffineTransform();</span>
+<span class="nc" id="L595">		transform.translate(vector.getX(), vector.getY());</span>
+<span class="nc" id="L596">		return new VPolygon(new Path2D.Double(this, transform));</span>
+	}
+
+	@Override
+	public VPolygon scale(final double scalar) {
+<span class="nc" id="L601">		AffineTransform transform = new AffineTransform();</span>
+<span class="nc" id="L602">		transform.scale(scalar, scalar);</span>
+<span class="nc" id="L603">		return new VPolygon(new Path2D.Double(this, transform));</span>
+	}
+
+	/**
+	 * based on https://stackoverflow.com/a/2792459
+	 */
+	@Override
+	public VPoint getCentroid() {
+//		List&lt;VPoint&gt; pointList = getPoints();
+//		double area = 0;
+//		double xValue = 0;
+//		double yValue = 0;
+//		for (int i = 0; i &lt; pointList.size() - 1; i++) {
+//			area += pointList.get(i).getX() * pointList.get(i + 1).getY()
+//					- pointList.get(i).getY() * pointList.get(i + 1).getX();
+//			xValue += (pointList.get(i).getX() + pointList.get(i + 1).getX())
+//					* (pointList.get(i).getX() * pointList.get(i + 1).getY()
+//					- pointList.get(i).getY() * pointList.get(i + 1).getX());
+//			yValue += (pointList.get(i).getY() + pointList.get(i + 1).getY())
+//					* (pointList.get(i).getX() * pointList.get(i + 1).getY()
+//					- pointList.get(i).getY() * pointList.get(i + 1).getX());
+//		}
+//
+//		// last with first point. This is outside of the loop to remove modulo operation
+//		// only needed in the last loop.
+//		int i = pointList.size() - 1;
+//		area += pointList.get(i).getX() * pointList.get(0).getY()
+//				- pointList.get(i).getY() * pointList.get(0).getX();
+//		xValue += (pointList.get(i).getX() + pointList.get(0).getX())
+//				* (pointList.get(i).getX() * pointList.get(0).getY()
+//				- pointList.get(i).getY() * pointList.get(0).getX());
+//		yValue += (pointList.get(i).getY() + pointList.get(0).getY())
+//				* (pointList.get(i).getX() * pointList.get(0).getY()
+//				- pointList.get(i).getY() * pointList.get(0).getX());
+//
+//		area /= 2;
+//		xValue /= (6 * area);
+//		yValue /= (6 * area);
+//
+//		return new VPoint(xValue, yValue);
+<span class="fc" id="L643">		return GeometryUtils.getPolygonCentroid(getPoints());</span>
+	}
+
+	public VPolygon rotate(IPoint anchor, double angle) {
+<span class="nc" id="L647">		VPolygon resultPolygon = new VPolygon(this);</span>
+<span class="nc" id="L648">		resultPolygon.transform(AffineTransform.getRotateInstance(angle, anchor.getX(), anchor.getY()));</span>
+<span class="nc" id="L649">		return resultPolygon;</span>
+	}
+
+	@Override
+	public ShapeType getType() {
+<span class="nc" id="L654">		return ShapeType.POLYGON;</span>
+	}
+
+	@Override
+	public boolean intersects(final VShape shape) {
+<span class="nc bnc" id="L659" title="All 2 branches missed.">		if(shape instanceof VPolygon) {</span>
+<span class="nc" id="L660">			return intersects((VPolygon) shape);</span>
+		}
+<span class="nc bnc" id="L662" title="All 2 branches missed.">		else if(shape instanceof VRectangle){</span>
+<span class="nc" id="L663">			return intersectsRectangleLine(((VRectangle)shape));</span>
+		}
+		else {
+<span class="nc" id="L666">			return VShape.super.intersects(shape);</span>
+		}
+	}
+
+	public List&lt;VLine&gt; getLinePath() {
+<span class="nc" id="L671">		List&lt;VPoint&gt; points = getPoints();</span>
+<span class="nc" id="L672">		List&lt;VLine&gt; lines = new ArrayList&lt;&gt;(points.size());</span>
+<span class="nc bnc" id="L673" title="All 2 branches missed.">		for(int i = 0; i &lt; points.size(); i++) {</span>
+<span class="nc" id="L674">			VLine line = new VLine(points.get(i), points.get((i+1) % points.size()));</span>
+<span class="nc" id="L675">			lines.add(line);</span>
+		}
+<span class="nc" id="L677">		return lines;</span>
+	}
+
+	@Override
+	public List&lt;VPoint&gt; getPath() {
+<span class="fc" id="L682">		return getPoints();</span>
+	}
+
+	@Override
+	public List&lt;VLine&gt; lines() {
+<span class="nc" id="L687">		return getLinePath();</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L692">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc" id="L693">		builder.append(&quot;[&quot;);</span>
+<span class="nc bnc" id="L694" title="All 2 branches missed.">		for(VPoint point : getPoints()) {</span>
+<span class="nc" id="L695">			builder.append(&quot;[&quot; + point.getX() + &quot;,&quot; + point.getY() + &quot;],&quot;);</span>
+<span class="nc" id="L696">		}</span>
+		// remove the last &quot;,&quot;
+<span class="nc" id="L698">		builder.deleteCharAt(builder.length()-1);</span>
+<span class="nc" id="L699">		builder.append(&quot;]&quot;);</span>
+<span class="nc" id="L700">		return builder.toString();</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RealWorldPlot.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.plots</a> &gt; <span class="el_source">RealWorldPlot.java</span></div><h1>RealWorldPlot.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.plots;
+
+import org.apache.commons.lang3.time.StopWatch;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.impl.PEikMesh;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PVertex;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.meshing.mesh.gen.MeshPanel;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.*;
+
+/**
+ * Created by bzoennchen on 10.06.18.
+ */
+<span class="nc" id="L23">public class RealWorldPlot {</span>
+
+<span class="nc" id="L25">	private String topographyString = &quot;{\n&quot; +</span>
+			&quot;  \&quot;attributes\&quot; : {\n&quot; +
+			&quot;    \&quot;bounds\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 0.0,\n&quot; +
+			&quot;      \&quot;y\&quot; : 0.0,\n&quot; +
+			&quot;      \&quot;width\&quot; : 15.0,\n&quot; +
+			&quot;      \&quot;height\&quot; : 20.0\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;boundingBoxWidth\&quot; : 0.5,\n&quot; +
+			&quot;    \&quot;bounded\&quot; : true\n&quot; +
+			&quot;  },\n&quot; +
+			&quot;  \&quot;obstacles\&quot; : [ {\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 6.9,\n&quot; +
+			&quot;      \&quot;y\&quot; : 5.0,\n&quot; +
+			&quot;      \&quot;width\&quot; : 0.1,\n&quot; +
+			&quot;      \&quot;height\&quot; : 8.8,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;id\&quot; : -1\n&quot; +
+			&quot;  }, {\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 4.9,\n&quot; +
+			&quot;      \&quot;y\&quot; : 5.0,\n&quot; +
+			&quot;      \&quot;width\&quot; : 0.1,\n&quot; +
+			&quot;      \&quot;height\&quot; : 8.8,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;id\&quot; : -1\n&quot; +
+			&quot;  }, {\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 6.9,\n&quot; +
+			&quot;      \&quot;y\&quot; : 13.8,\n&quot; +
+			&quot;      \&quot;width\&quot; : 0.4,\n&quot; +
+			&quot;      \&quot;height\&quot; : 5.7,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;id\&quot; : -1\n&quot; +
+			&quot;  }, {\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 4.5,\n&quot; +
+			&quot;      \&quot;y\&quot; : 13.0,\n&quot; +
+			&quot;      \&quot;width\&quot; : 0.5,\n&quot; +
+			&quot;      \&quot;height\&quot; : 0.8,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;id\&quot; : -1\n&quot; +
+			&quot;  }, {\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 4.5,\n&quot; +
+			&quot;      \&quot;y\&quot; : 5.5,\n&quot; +
+			&quot;      \&quot;width\&quot; : 0.1,\n&quot; +
+			&quot;      \&quot;height\&quot; : 7.5,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;id\&quot; : -1\n&quot; +
+			&quot;  }, {\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 0.1,\n&quot; +
+			&quot;      \&quot;y\&quot; : 5.2,\n&quot; +
+			&quot;      \&quot;width\&quot; : 4.5,\n&quot; +
+			&quot;      \&quot;height\&quot; : 0.3,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;id\&quot; : -1\n&quot; +
+			&quot;  }, {\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 2.0,\n&quot; +
+			&quot;      \&quot;y\&quot; : 5.5,\n&quot; +
+			&quot;      \&quot;width\&quot; : 0.6,\n&quot; +
+			&quot;      \&quot;height\&quot; : 14.0,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;id\&quot; : -1\n&quot; +
+			&quot;  }, {\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 2.6,\n&quot; +
+			&quot;      \&quot;y\&quot; : 19.1,\n&quot; +
+			&quot;      \&quot;width\&quot; : 4.3,\n&quot; +
+			&quot;      \&quot;height\&quot; : 0.4,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;id\&quot; : -1\n&quot; +
+			&quot;  } ],\n&quot; +
+			&quot;  \&quot;stairs\&quot; : [ {\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 5.0,\n&quot; +
+			&quot;      \&quot;y\&quot; : 5.0,\n&quot; +
+			&quot;      \&quot;width\&quot; : 1.9,\n&quot; +
+			&quot;      \&quot;height\&quot; : 1.77,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;id\&quot; : -1,\n&quot; +
+			&quot;    \&quot;treadCount\&quot; : 6,\n&quot; +
+			&quot;    \&quot;upwardDirection\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 0.0,\n&quot; +
+			&quot;      \&quot;y\&quot; : 1.0\n&quot; +
+			&quot;    }\n&quot; +
+			&quot;  }, {\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 5.0,\n&quot; +
+			&quot;      \&quot;y\&quot; : 8.29,\n&quot; +
+			&quot;      \&quot;width\&quot; : 1.9,\n&quot; +
+			&quot;      \&quot;height\&quot; : 4.72,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;id\&quot; : -1,\n&quot; +
+			&quot;    \&quot;treadCount\&quot; : 16,\n&quot; +
+			&quot;    \&quot;upwardDirection\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 0.0,\n&quot; +
+			&quot;      \&quot;y\&quot; : 1.0\n&quot; +
+			&quot;    }\n&quot; +
+			&quot;  } ],\n&quot; +
+			&quot;  \&quot;targets\&quot; : [ {\n&quot; +
+			&quot;    \&quot;id\&quot; : 20,\n&quot; +
+			&quot;    \&quot;absorbing\&quot; : false,\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 5.0,\n&quot; +
+			&quot;      \&quot;y\&quot; : 13.0,\n&quot; +
+			&quot;      \&quot;width\&quot; : 1.9,\n&quot; +
+			&quot;      \&quot;height\&quot; : 0.4,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;waitingTime\&quot; : 0.0,\n&quot; +
+			&quot;    \&quot;waitingTimeYellowPhase\&quot; : 0.0,\n&quot; +
+			&quot;    \&quot;parallelWaiters\&quot; : 0,\n&quot; +
+			&quot;    \&quot;individualWaiting\&quot; : true,\n&quot; +
+			&quot;    \&quot;deletionDistance\&quot; : 0.1,\n&quot; +
+			&quot;    \&quot;startingWithRedLight\&quot; : false,\n&quot; +
+			&quot;    \&quot;nextSpeed\&quot; : -1.0\n&quot; +
+			&quot;  }, {\n&quot; +
+			&quot;    \&quot;id\&quot; : 10,\n&quot; +
+			&quot;    \&quot;absorbing\&quot; : false,\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 5.0,\n&quot; +
+			&quot;      \&quot;y\&quot; : 4.5,\n&quot; +
+			&quot;      \&quot;width\&quot; : 1.9,\n&quot; +
+			&quot;      \&quot;height\&quot; : 0.5,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;waitingTime\&quot; : 0.0,\n&quot; +
+			&quot;    \&quot;waitingTimeYellowPhase\&quot; : 0.0,\n&quot; +
+			&quot;    \&quot;parallelWaiters\&quot; : 0,\n&quot; +
+			&quot;    \&quot;individualWaiting\&quot; : true,\n&quot; +
+			&quot;    \&quot;deletionDistance\&quot; : 0.1,\n&quot; +
+			&quot;    \&quot;startingWithRedLight\&quot; : false,\n&quot; +
+			&quot;    \&quot;nextSpeed\&quot; : -1.0\n&quot; +
+			&quot;  }, {\n&quot; +
+			&quot;    \&quot;id\&quot; : 21,\n&quot; +
+			&quot;    \&quot;absorbing\&quot; : true,\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 2.6,\n&quot; +
+			&quot;      \&quot;y\&quot; : 18.4,\n&quot; +
+			&quot;      \&quot;width\&quot; : 4.3,\n&quot; +
+			&quot;      \&quot;height\&quot; : 0.7,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;waitingTime\&quot; : 0.0,\n&quot; +
+			&quot;    \&quot;waitingTimeYellowPhase\&quot; : 0.0,\n&quot; +
+			&quot;    \&quot;parallelWaiters\&quot; : 0,\n&quot; +
+			&quot;    \&quot;individualWaiting\&quot; : true,\n&quot; +
+			&quot;    \&quot;deletionDistance\&quot; : 0.1,\n&quot; +
+			&quot;    \&quot;startingWithRedLight\&quot; : false,\n&quot; +
+			&quot;    \&quot;nextSpeed\&quot; : -1.0\n&quot; +
+			&quot;  }, {\n&quot; +
+			&quot;    \&quot;id\&quot; : 11,\n&quot; +
+			&quot;    \&quot;absorbing\&quot; : true,\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 5.5,\n&quot; +
+			&quot;      \&quot;y\&quot; : 0.5,\n&quot; +
+			&quot;      \&quot;width\&quot; : 5.0,\n&quot; +
+			&quot;      \&quot;height\&quot; : 0.5,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;waitingTime\&quot; : 0.0,\n&quot; +
+			&quot;    \&quot;waitingTimeYellowPhase\&quot; : 0.0,\n&quot; +
+			&quot;    \&quot;parallelWaiters\&quot; : 0,\n&quot; +
+			&quot;    \&quot;individualWaiting\&quot; : true,\n&quot; +
+			&quot;    \&quot;deletionDistance\&quot; : 0.1,\n&quot; +
+			&quot;    \&quot;startingWithRedLight\&quot; : false,\n&quot; +
+			&quot;    \&quot;nextSpeed\&quot; : -1.0\n&quot; +
+			&quot;  } ],\n&quot; +
+			&quot;  \&quot;sources\&quot; : [ {\n&quot; +
+			&quot;    \&quot;id\&quot; : -1,\n&quot; +
+			&quot;    \&quot;shape\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 8.7,\n&quot; +
+			&quot;      \&quot;y\&quot; : 5.1,\n&quot; +
+			&quot;      \&quot;width\&quot; : 1.0,\n&quot; +
+			&quot;      \&quot;height\&quot; : 0.5,\n&quot; +
+			&quot;      \&quot;type\&quot; : \&quot;RECTANGLE\&quot;\n&quot; +
+			&quot;    },\n&quot; +
+			&quot;    \&quot;interSpawnTimeDistribution\&quot; : \&quot;org.vadere.state.scenario.ConstantDistribution\&quot;,\n&quot; +
+			&quot;    \&quot;distributionParameters\&quot; : [ 1.0 ],\n&quot; +
+			&quot;    \&quot;spawnNumber\&quot; : 5,\n&quot; +
+			&quot;    \&quot;maxSpawnNumberTotal\&quot; : 5,\n&quot; +
+			&quot;    \&quot;startTime\&quot; : 0.0,\n&quot; +
+			&quot;    \&quot;endTime\&quot; : 0.0,\n&quot; +
+			&quot;    \&quot;spawnAtRandomPositions\&quot; : true,\n&quot; +
+			&quot;    \&quot;useFreeSpaceOnly\&quot; : false,\n&quot; +
+			&quot;    \&quot;targetIds\&quot; : [ 10, 20, 21 ],\n&quot; +
+			&quot;    \&quot;dynamicElementType\&quot; : \&quot;PEDESTRIAN\&quot;\n&quot; +
+			&quot;  } ],\n&quot; +
+			&quot;  \&quot;dynamicElements\&quot; : [ ],\n&quot; +
+			&quot;  \&quot;attributesPedestrian\&quot; : {\n&quot; +
+			&quot;    \&quot;radius\&quot; : 0.195,\n&quot; +
+			&quot;    \&quot;densityDependentSpeed\&quot; : false,\n&quot; +
+			&quot;    \&quot;speedDistributionMean\&quot; : 1.34,\n&quot; +
+			&quot;    \&quot;speedDistributionStandardDeviation\&quot; : 0.0,\n&quot; +
+			&quot;    \&quot;minimumSpeed\&quot; : 0.3,\n&quot; +
+			&quot;    \&quot;maximumSpeed\&quot; : 3.0,\n&quot; +
+			&quot;    \&quot;acceleration\&quot; : 2.0\n&quot; +
+			&quot;  },\n&quot; +
+			&quot;  \&quot;attributesCar\&quot; : {\n&quot; +
+			&quot;    \&quot;id\&quot; : -1,\n&quot; +
+			&quot;    \&quot;radius\&quot; : 0.195,\n&quot; +
+			&quot;    \&quot;densityDependentSpeed\&quot; : false,\n&quot; +
+			&quot;    \&quot;speedDistributionMean\&quot; : 1.34,\n&quot; +
+			&quot;    \&quot;speedDistributionStandardDeviation\&quot; : 0.0,\n&quot; +
+			&quot;    \&quot;minimumSpeed\&quot; : 0.3,\n&quot; +
+			&quot;    \&quot;maximumSpeed\&quot; : 3.0,\n&quot; +
+			&quot;    \&quot;acceleration\&quot; : 2.0,\n&quot; +
+			&quot;    \&quot;length\&quot; : 4.5,\n&quot; +
+			&quot;    \&quot;width\&quot; : 1.7,\n&quot; +
+			&quot;    \&quot;direction\&quot; : {\n&quot; +
+			&quot;      \&quot;x\&quot; : 1.0,\n&quot; +
+			&quot;      \&quot;y\&quot; : 0.0\n&quot; +
+			&quot;    }\n&quot; +
+			&quot;  }\n&quot; +
+			&quot;}&quot;;
+
+	public static void main(String... args) {
+
+<span class="nc" id="L257">		VPolygon boundary = GeometryUtils.polygonFromPoints2D(</span>
+				new VPoint(0,0),
+				new VPoint(0, 1),
+				new VPoint(1, 2),
+				new VPoint(2,1),
+				new VPoint(2,0));
+
+<span class="nc" id="L264">		VRectangle rect = new VRectangle(0.5, 0.5, 0.5, 0.5);</span>
+<span class="nc" id="L265">		List&lt;VShape&gt; obstacleShapes = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L266">		obstacleShapes.add(rect);</span>
+
+<span class="nc" id="L268">		PEikMesh meshImprover = new PEikMesh(</span>
+				boundary,
+				0.1,
+				obstacleShapes);
+
+<span class="nc" id="L273">		MeshPanel&lt;PVertex, PHalfEdge, PFace&gt; meshPanel = new MeshPanel&lt;&gt;(meshImprover.getMesh(), f -&gt; false, 1000, 800);</span>
+<span class="nc" id="L274">		JFrame frame = meshPanel.display();</span>
+<span class="nc" id="L275">		frame.setVisible(true);</span>
+<span class="nc" id="L276">		frame.setTitle(&quot;uniformRing()&quot;);</span>
+<span class="nc" id="L277">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L278">		meshPanel.repaint();</span>
+
+<span class="nc" id="L280">		StopWatch overAllTime = new StopWatch();</span>
+<span class="nc" id="L281">		overAllTime.start();</span>
+<span class="nc" id="L282">		overAllTime.suspend();</span>
+		//meshGenerator.improve();
+		//meshGenerator.improve();
+		//meshGenerator.improve();
+
+<span class="nc" id="L287">		int nSteps = 0;</span>
+<span class="nc bnc" id="L288" title="All 2 branches missed.">		while (nSteps &lt; 300) {</span>
+<span class="nc" id="L289">			nSteps++;</span>
+			try {
+<span class="nc" id="L291">				Thread.sleep(5);</span>
+<span class="nc" id="L292">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L293">				e.printStackTrace();</span>
+<span class="nc" id="L294">			}</span>
+<span class="nc" id="L295">			overAllTime.resume();</span>
+<span class="nc" id="L296">			meshImprover.improve();</span>
+<span class="nc" id="L297">			overAllTime.suspend();</span>
+<span class="nc" id="L298">			meshPanel.repaint();</span>
+		}
+<span class="nc" id="L300">		meshImprover.improve();</span>
+<span class="nc" id="L301">		overAllTime.resume();</span>
+<span class="nc" id="L302">		overAllTime.stop();</span>
+<span class="nc" id="L303">		meshPanel.repaint();</span>
+<span class="nc" id="L304">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

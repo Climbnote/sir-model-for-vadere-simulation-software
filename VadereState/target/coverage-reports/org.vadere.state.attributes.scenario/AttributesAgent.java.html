@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesAgent.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.scenario</a> &gt; <span class="el_source">AttributesAgent.java</span></div><h1>AttributesAgent.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.scenario;
+
+/**
+ * Provides attributes for an agent, like body radius, ...
+ * 
+ * TODO [priority=low] Create two Attributes for better performance: Common
+ * Attributes and individual Attributes for pedestrians.
+ * 
+ * 
+ */
+public class AttributesAgent extends AttributesDynamicElement {
+
+	// Calculate agent's walking direction by using different strategies.
+	// &quot;BY_GRADIENT&quot; can only be used in conjunction with locomotion models
+	// which uses a floor field (which provides a gradient). &quot;BY_TARGET_CENTER&quot;
+	// and &quot;BY_TARGET_CLOSEST_POINT&quot; is supported by all locomotion models.
+<span class="fc" id="L17">	public enum WalkingDirectionCalculation {</span>
+<span class="fc" id="L18">		BY_GRADIENT,</span>
+<span class="fc" id="L19">		BY_TARGET_CENTER,</span>
+<span class="fc" id="L20">		BY_TARGET_CLOSEST_POINT</span>
+	};
+
+	// from weidmann-1992 page 18, deviates in seitz-2016c page 2 (Methods): 2.0
+<span class="pc" id="L24">	private double radius = 0.2;</span>
+
+	// use a weidmann speed adjuster, this is not implemented jet =&gt; only densityDependentSpeed = false works.
+<span class="pc" id="L27">	private boolean densityDependentSpeed = false;</span>
+
+	// from weidmann-1992 page 18, seitz-2016c page 2 (Methods)
+<span class="pc" id="L30">	private double speedDistributionMean = 1.34;</span>
+
+	// from weidmann-1992 page 18, seitz-2016c page 2 (Methods)
+<span class="pc" id="L33">	private double speedDistributionStandardDeviation = 0.26;</span>
+
+	// from weidmann-1992 page 18, seitz-2016c page 2 (Methods)
+<span class="pc" id="L36">	private double minimumSpeed = 0.5;</span>
+
+	// from weidmann-1992 page 18, deviates in seitz-2016c page 2 (Methods): 2.0
+<span class="pc" id="L39">	private double maximumSpeed = 2.2;</span>
+
+	// only used for the GNM and SFM
+<span class="pc" id="L42">	private double acceleration = 2.0;</span>
+
+	// store n last foot steps for speed calculation
+<span class="pc" id="L45">	private int footstepHistorySize = 4;</span>
+
+	// agents search for other scenario elements (e.g., other agents) within this radius
+<span class="pc" id="L48">	private double searchRadius = 1.0;</span>
+
+	// Use &quot;BY_TARGET_CENTER&quot; as default because it is supported by all locomotion models.
+	// &quot;BY_TARGET_CLOSEST_POINT&quot; might be a fragile solution because the closest point between
+	// the agent and the target varies while the agent moves.
+	// &quot;BY_GRADIENT&quot; should be the most realistic configuration because it represents the
+	// instantaneous walking direction.
+<span class="pc" id="L55">	private WalkingDirectionCalculation walkingDirectionCalculation = WalkingDirectionCalculation.BY_TARGET_CENTER;</span>
+
+	/* angle3D in degree which is used to decide if two pedestrians move into the same direction, for instance:
+	 *
+	 * &lt;pre&gt;
+	 *     T2 o   o T1
+	 *        ^   ^
+	 *         \a/
+	 *          x
+	 *         / \
+	 *     P1 o   o P2
+	 *
+	 *     T1: target of pedestrian 1
+	 *     T2: target of pedestrian 2
+	 *     P1: pedestrian 1
+	 *     P2: pedestrian 2
+	 *     a : angle3D between the two vectors
+	 * &lt;/pre&gt;
+	 *
+	 * If the calculated angle3D &quot;a&quot; is equal or below this threshold, it is assumed that both pedestrians move into
+	 * the same direction and both cannot be swapped.
+	 */
+<span class="pc" id="L77">	private double walkingDirectionSameIfAngleLessOrEqual = 45.0;</span>
+
+	public AttributesAgent() {
+<span class="fc" id="L80">		this(-1);</span>
+<span class="fc" id="L81">	}</span>
+
+	public AttributesAgent(final int id) {
+<span class="fc" id="L84">		super(id);</span>
+<span class="fc" id="L85">	}</span>
+
+	/**
+	 * Copy constructor with new id assignment.
+	 */
+	public AttributesAgent(final AttributesAgent other, final int id) {
+<span class="nc" id="L91">		super(id);</span>
+<span class="nc" id="L92">		this.radius = other.radius;</span>
+<span class="nc" id="L93">		this.densityDependentSpeed = other.densityDependentSpeed;</span>
+<span class="nc" id="L94">		this.speedDistributionMean = other.speedDistributionMean;</span>
+<span class="nc" id="L95">		this.speedDistributionStandardDeviation = other.speedDistributionStandardDeviation;</span>
+<span class="nc" id="L96">		this.minimumSpeed = other.minimumSpeed;</span>
+<span class="nc" id="L97">		this.maximumSpeed = other.maximumSpeed;</span>
+<span class="nc" id="L98">		this.acceleration = other.acceleration;</span>
+<span class="nc" id="L99">		this.footstepHistorySize = other.footstepHistorySize;</span>
+<span class="nc" id="L100">		this.searchRadius = other.searchRadius;</span>
+<span class="nc" id="L101">		this.walkingDirectionCalculation = other.walkingDirectionCalculation;</span>
+<span class="nc" id="L102">	}</span>
+
+	// Getters...
+
+	public double getRadius() {
+<span class="fc" id="L107">		return radius;</span>
+	}
+
+	public boolean isDensityDependentSpeed() {
+<span class="nc" id="L111">		return densityDependentSpeed;</span>
+	}
+
+	public double getSpeedDistributionMean() {
+<span class="fc" id="L115">		return speedDistributionMean;</span>
+	}
+
+	public double getSpeedDistributionStandardDeviation() {
+<span class="fc" id="L119">		return speedDistributionStandardDeviation;</span>
+	}
+
+	public double getMinimumSpeed() {
+<span class="fc" id="L123">		return minimumSpeed;</span>
+	}
+
+	public double getMaximumSpeed() {
+<span class="fc" id="L127">		return maximumSpeed;</span>
+	}
+
+	public double getAcceleration() {
+<span class="nc" id="L131">		return acceleration;</span>
+	}
+
+<span class="fc" id="L134">	public int getFootstepHistorySize() { return footstepHistorySize; }</span>
+
+<span class="nc" id="L136">	public double getSearchRadius() { return searchRadius; }</span>
+
+<span class="nc" id="L138">	public WalkingDirectionCalculation getWalkingDirectionCalculation() { return walkingDirectionCalculation; }</span>
+
+<span class="nc" id="L140">	public double getWalkingDirectionSameIfAngleLessOrEqual() { return walkingDirectionSameIfAngleLessOrEqual; }</span>
+
+	// Setters...
+
+	public void setRadius(double radius) {
+<span class="nc" id="L145">		checkSealed();</span>
+<span class="nc" id="L146">		this.radius = radius;</span>
+<span class="nc" id="L147">	}</span>
+
+	public void setDensityDependentSpeed(boolean densityDependentSpeed) {
+<span class="nc" id="L150">		checkSealed();</span>
+<span class="nc" id="L151">		this.densityDependentSpeed = densityDependentSpeed;</span>
+<span class="nc" id="L152">	}</span>
+
+	public void setSpeedDistributionMean(double speedDistributionMean) {
+<span class="nc" id="L155">		checkSealed();</span>
+<span class="nc" id="L156">		this.speedDistributionMean = speedDistributionMean;</span>
+<span class="nc" id="L157">	}</span>
+
+	public void setSpeedDistributionStandardDeviation(double speedDistributionStandardDeviation) {
+<span class="nc" id="L160">		checkSealed();</span>
+<span class="nc" id="L161">		this.speedDistributionStandardDeviation = speedDistributionStandardDeviation;</span>
+<span class="nc" id="L162">	}</span>
+
+	public void setMinimumSpeed(double minimumSpeed) {
+<span class="nc" id="L165">		checkSealed();</span>
+<span class="nc" id="L166">		this.minimumSpeed = minimumSpeed;</span>
+<span class="nc" id="L167">	}</span>
+
+	public void setMaximumSpeed(double maximumSpeed) {
+<span class="nc" id="L170">		checkSealed();</span>
+<span class="nc" id="L171">		this.maximumSpeed = maximumSpeed;</span>
+<span class="nc" id="L172">	}</span>
+
+	public void setAcceleration(double acceleration) {
+<span class="nc" id="L175">		checkSealed();</span>
+<span class="nc" id="L176">		this.acceleration = acceleration;</span>
+<span class="nc" id="L177">	}</span>
+
+	public void setFootstepHistorySize(int footstepHistorySize) {
+<span class="nc" id="L180">		checkSealed();</span>
+<span class="nc" id="L181">		this.footstepHistorySize = footstepHistorySize;</span>
+<span class="nc" id="L182">	}</span>
+
+	public void setSearchRadius(double searchRadius) {
+<span class="nc" id="L185">		checkSealed();</span>
+<span class="nc" id="L186">		this.searchRadius = searchRadius;</span>
+<span class="nc" id="L187">	}</span>
+
+	public void setWalkingDirectionCalculation(WalkingDirectionCalculation walkingDirectionCalculation) {
+<span class="nc" id="L190">		checkSealed();</span>
+<span class="nc" id="L191">		this.walkingDirectionCalculation = walkingDirectionCalculation;</span>
+<span class="nc" id="L192">	}</span>
+
+	public void setWalkingDirectionSameIfAngleLessOrEqual(double walkingDirectionSameIfAngleLessOrEqual) {
+<span class="nc" id="L195">		checkSealed();</span>
+<span class="nc" id="L196">		this.walkingDirectionSameIfAngleLessOrEqual = walkingDirectionSameIfAngleLessOrEqual;</span>
+<span class="nc" id="L197">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

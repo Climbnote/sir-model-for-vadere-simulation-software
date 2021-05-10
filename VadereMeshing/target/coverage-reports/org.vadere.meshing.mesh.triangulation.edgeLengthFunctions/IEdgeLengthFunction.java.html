@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IEdgeLengthFunction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.edgeLengthFunctions</a> &gt; <span class="el_source">IEdgeLengthFunction.java</span></div><h1>IEdgeLengthFunction.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.edgeLengthFunctions;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PVertex;
+import org.vadere.meshing.mesh.impl.DataPoint;
+import org.vadere.meshing.mesh.impl.PSLG;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IPointConstructor;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.gen.GenEikMesh;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.PRuppertsTriangulator;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.ITriangulator;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.math.InterpolationUtil;
+
+import java.util.Comparator;
+import java.util.PriorityQueue;
+import java.util.function.Function;
+
+/**
+ * The edge-length function used in {@link GenEikMesh},
+ * {@link org.vadere.meshing.mesh.triangulation.improver.distmesh.Distmesh} and some
+ * {@link ITriangulator} gives for every position
+ * in the 2D Euclidean space the desired relative length of an edge of a mesh. Relative in the sense
+ * that if the function is a constant equals to c edges will be of approximately the same length and
+ * the actual length does not rely on c.
+ *
+ * @author Benedikt Zoennchen
+ */
+<span class="nc bnc" id="L35" title="All 2 branches missed.">@FunctionalInterface</span>
+public interface IEdgeLengthFunction extends Function&lt;IPoint,Double&gt; {
+
+	static final String propName = &quot;edgeLength&quot;;
+
+	static IEdgeLengthFunction createLFS(@NotNull final PSLG pslg) {
+<span class="nc" id="L41">		double g = 2.0;</span>
+<span class="nc" id="L42">		IPointConstructor&lt;DataPoint&lt;Double&gt;&gt; pointConstructor = (x, y) -&gt; new DataPoint&lt;&gt;(x, y);</span>
+<span class="nc" id="L43">		var ruppertsTriangulator = new PRuppertsTriangulator(</span>
+				pslg,
+				10
+		);
+
+<span class="nc" id="L48">		final var triangulation = ruppertsTriangulator.generate();</span>
+<span class="nc" id="L49">		var mesh = triangulation.getMesh();</span>
+
+<span class="nc" id="L51">		IEdgeLengthFunction edgeLengthFunction = p -&gt; {</span>
+<span class="nc" id="L52">			var face = triangulation.locate(p.getX(), p.getY()).get();</span>
+<span class="nc bnc" id="L53" title="All 2 branches missed.">			if(mesh.isBoundary(face)) {</span>
+<span class="nc" id="L54">				return Double.POSITIVE_INFINITY;</span>
+			}
+			else {
+				//TODO dulicated code see EdgeLengthFunction
+<span class="nc" id="L58">				double x[] = new double[3];</span>
+<span class="nc" id="L59">				double y[] = new double[3];</span>
+<span class="nc" id="L60">				double z[] = new double[3];</span>
+
+<span class="nc" id="L62">				triangulation.getTriPoints(face, x, y, z, propName);</span>
+
+<span class="nc" id="L64">				double totalArea = GeometryUtils.areaOfPolygon(x, y);</span>
+
+<span class="nc" id="L66">				return InterpolationUtil.barycentricInterpolation(x, y, z, totalArea, p.getX(), p.getY());</span>
+			}
+		};
+<span class="nc" id="L69">		return edgeLengthFunction;</span>
+	}
+
+	default &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; void smooth(double g, IIncrementalTriangulation&lt;V, E, F&gt; triangulation) {
+<span class="nc bnc" id="L73" title="All 4 branches missed.">		assert g &gt; 0;</span>
+		// smooth the function based such that it is g-Lipschitz
+<span class="nc" id="L75">		var mesh = triangulation.getMesh();</span>
+<span class="nc" id="L76">		PriorityQueue&lt;V&gt; heap = new PriorityQueue&lt;&gt;(</span>
+<span class="nc" id="L77">				Comparator.comparingDouble(v1 -&gt; mesh.getDoubleData(v1, propName))</span>
+		);
+<span class="nc" id="L79">		heap.addAll(mesh.getVertices());</span>
+
+<span class="nc bnc" id="L81" title="All 2 branches missed.">		while (!heap.isEmpty()) {</span>
+<span class="nc" id="L82">			var v = heap.poll();</span>
+<span class="nc" id="L83">			double hv = mesh.getDoubleData(v, propName);</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">			for (var u : mesh.getAdjacentVertexIt(v)) {</span>
+<span class="nc" id="L85">				double hu = mesh.getDoubleData(u, propName);</span>
+<span class="nc" id="L86">				double min = Math.min(hu, hv + g * v.distance(u));</span>
+
+				// update heap
+<span class="nc bnc" id="L89" title="All 2 branches missed.">				if (min &lt; hu) {</span>
+<span class="nc" id="L90">					heap.remove(u);</span>
+<span class="nc" id="L91">					mesh.setDoubleData(u, propName, min);</span>
+<span class="nc" id="L92">					heap.add(u);</span>
+				}
+<span class="nc" id="L94">			}</span>
+<span class="nc" id="L95">		}</span>
+<span class="nc" id="L96">	}</span>
+
+	/*static IEdgeLengthFunction smooth(double g) {
+
+		PriorityQueue&lt;PVertex&lt;DataPoint&lt;Double&gt;,Object, Object&gt;&gt; heap = new PriorityQueue&lt;&gt;();
+		while (heap.isEmpty()) {
+			var u = heap.poll();
+			var dataPoint = mesh.getPoint(u);
+
+			for(var v : mesh.getAdjacentVertexIt(u)) {
+				double hv = Math.min(mesh.getPoint(v).getData(), dataPoint.getData() + g * dataPoint.distance(v.getX(), v.getY()));
+				if(hv &lt; mesh.getPoint(v).getData()) {
+					heap.remove(v);
+					mesh.getPoint(v).setData(hv);
+					heap.add(v);
+				}
+			}
+		}
+	}*/
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

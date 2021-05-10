@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PFace.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">PFace.java</span></div><h1>PFace.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.inter.IFace;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * A Face is a region of a planar separation of the 2-D space, e.g. the region of a Polygon/Triangle and so on.
+ *
+ * @author Benedikt Zoennchen
+ */
+public class PFace implements IFace, Cloneable {
+
+<span class="fc" id="L16">	private static int MAX_FACE_PRINT_LEN = 100000;</span>
+
+	private Map&lt;String, Object&gt; propertyElements;
+
+	/**
+	 * One of the half-edges bordering this face.
+	 */
+	private PHalfEdge edge;
+
+	private boolean boundary;
+
+<span class="pc" id="L27">	private boolean destroyed = false;</span>
+
+	/**
+	 * Default constructor. To construct a face where you have already some half-edges
+	 * bordering this face.
+	 *  @param edge one of the half-edges bordering this face.
+	 * @param boundary indicates if this edge is a boundary (border or hole) edge
+	 */
+<span class="nc" id="L35">	protected PFace(@NotNull final PHalfEdge edge, final boolean boundary) {</span>
+<span class="nc" id="L36">		this.boundary = boundary;</span>
+<span class="nc" id="L37">		this.edge = edge;</span>
+<span class="nc" id="L38">		this.propertyElements = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L39">	}</span>
+
+	/**
+	 * The constructor to construct a face where you have already some half-edges
+	 * bordering this face.
+	 *
+	 * @param edge one of the half-edges bordering this face.
+	 */
+	protected PFace(@NotNull final PHalfEdge edge) {
+<span class="nc" id="L48">		this(edge, false);</span>
+<span class="nc" id="L49">	}</span>
+
+	/**
+	 * This constructor can be used for constructing a new face without having
+	 * constructed the bordering half-edges jet.
+	 */
+<span class="fc" id="L55">	PFace(boolean boundary) {</span>
+<span class="fc" id="L56">		this.boundary = boundary;</span>
+<span class="fc" id="L57">		this.propertyElements = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L58">	}</span>
+
+<span class="nc" id="L60">	PFace() {</span>
+<span class="nc" id="L61">		this.boundary = false;</span>
+<span class="nc" id="L62">	}</span>
+
+	boolean isBoundary() {
+<span class="fc" id="L65">		return boundary;</span>
+	}
+
+	void destroy() {
+<span class="fc" id="L69">		setEdge(null);</span>
+<span class="fc" id="L70">		destroyed = true;</span>
+<span class="fc" id="L71">		propertyElements.clear();</span>
+<span class="fc" id="L72">	}</span>
+
+	public void setBoundary(boolean border) {
+<span class="nc" id="L75">		this.boundary = border;</span>
+<span class="nc" id="L76">	}</span>
+
+	/**
+	 * Sets one of the half-edges bordering this face.
+	 *
+	 * @param edge half-edge bordering this face
+	 */
+	void setEdge(final PHalfEdge edge) {
+<span class="fc" id="L84">		this.edge = edge;</span>
+<span class="fc" id="L85">	}</span>
+
+	PHalfEdge getEdge() {
+<span class="fc" id="L88">		return edge;</span>
+	}
+
+	boolean isDestroyed() {
+<span class="fc" id="L92">		return destroyed;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="pc bpc" id="L97" title="1 of 2 branches missed.">		if(destroyed) {</span>
+<span class="nc" id="L98">			return &quot;destroyed Face&quot;;</span>
+		}
+<span class="fc" id="L100">		PHalfEdge current = edge;</span>
+<span class="fc" id="L101">		PHalfEdge next = edge.getNext();</span>
+<span class="fc" id="L102">		StringBuilder builder = new StringBuilder();</span>
+<span class="fc" id="L103">		int count = 0;</span>
+<span class="pc bpc" id="L104" title="1 of 4 branches missed.">		while (count &lt;= MAX_FACE_PRINT_LEN &amp;&amp; !edge.equals(next)) {</span>
+<span class="fc" id="L105">			builder.append(current + &quot;,&quot;);</span>
+<span class="fc" id="L106">			current = next;</span>
+<span class="fc" id="L107">			next = current.getNext();</span>
+<span class="fc" id="L108">			count++;</span>
+		}
+<span class="pc bpc" id="L110" title="1 of 2 branches missed.">		if(count &gt; MAX_FACE_PRINT_LEN) {</span>
+<span class="nc" id="L111">			builder.insert(0, &quot;LARGE-FACE:&quot;);</span>
+		}
+<span class="fc" id="L113">		builder.append(current);</span>
+<span class="fc" id="L114">		return builder.toString();</span>
+	}
+
+	/**
+	 * Construct a deep clone / copy of this face!
+	 * @return a deep clone of the face
+	 * @throws CloneNotSupportedException if the method is not jet implemented.
+	 */
+	@Override
+	protected PFace clone() throws CloneNotSupportedException {
+		try {
+<span class="nc" id="L125">			PFace clone = (PFace)super.clone();</span>
+<span class="nc" id="L126">			return clone;</span>
+<span class="nc" id="L127">		} catch (CloneNotSupportedException e) {</span>
+<span class="nc" id="L128">			throw new InternalError(e.getMessage());</span>
+		}
+	}
+
+	&lt;T&gt; void setData(final String name, T data) {
+<span class="nc" id="L133">		propertyElements.put(name, data);</span>
+<span class="nc" id="L134">	}</span>
+
+	&lt;T&gt; T getData(final String name, Class&lt;T&gt; clazz) {
+<span class="nc bnc" id="L137" title="All 2 branches missed.">		if (propertyElements.containsKey(name)) {</span>
+<span class="nc" id="L138">			return clazz.cast(propertyElements.get(name));</span>
+		} else {
+<span class="nc" id="L140">			return null;</span>
+		}
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

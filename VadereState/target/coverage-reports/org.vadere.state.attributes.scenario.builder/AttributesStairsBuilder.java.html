@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesStairsBuilder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.scenario.builder</a> &gt; <span class="el_source">AttributesStairsBuilder.java</span></div><h1>AttributesStairsBuilder.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.scenario.builder;
+
+import org.vadere.state.attributes.Attributes;
+import org.vadere.state.attributes.scenario.AttributesStairs;
+import org.vadere.util.geometry.shapes.Vector2D;
+import org.vadere.util.geometry.shapes.VShape;
+
+public final class AttributesStairsBuilder {
+<span class="nc" id="L9">	private VShape shape = null;</span>
+<span class="nc" id="L10">	private int id = Attributes.ID_NOT_SET;</span>
+<span class="nc" id="L11">	private int treadCount = 1;</span>
+<span class="nc" id="L12">	private Vector2D upwardDirection = new Vector2D(1.0, 0.0);</span>
+
+<span class="nc" id="L14">	private AttributesStairsBuilder() {</span>
+<span class="nc" id="L15">	}</span>
+
+	public static AttributesStairsBuilder anAttributesStairs() {
+<span class="nc" id="L18">		return new AttributesStairsBuilder();</span>
+	}
+
+	public AttributesStairsBuilder shape(VShape shape) {
+<span class="nc" id="L22">		this.shape = shape;</span>
+<span class="nc" id="L23">		return this;</span>
+	}
+
+	public AttributesStairsBuilder id(int id) {
+<span class="nc" id="L27">		this.id = id;</span>
+<span class="nc" id="L28">		return this;</span>
+	}
+
+	public AttributesStairsBuilder treadCount(int treadCount) {
+<span class="nc" id="L32">		this.treadCount = treadCount;</span>
+<span class="nc" id="L33">		return this;</span>
+	}
+
+	public AttributesStairsBuilder upwardDirection(Vector2D upwardDirection) {
+<span class="nc" id="L37">		this.upwardDirection = upwardDirection;</span>
+<span class="nc" id="L38">		return this;</span>
+	}
+
+	public AttributesStairs build() {
+<span class="nc" id="L42">		return new AttributesStairs(id, shape, treadCount, upwardDirection);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

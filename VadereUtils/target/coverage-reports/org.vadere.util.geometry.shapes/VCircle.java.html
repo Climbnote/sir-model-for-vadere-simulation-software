@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VCircle.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry.shapes</a> &gt; <span class="el_source">VCircle.java</span></div><h1>VCircle.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry.shapes;
+
+import com.google.common.collect.ImmutableList;
+
+import java.awt.Rectangle;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.PathIterator;
+import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Comparator;
+import java.util.Optional;
+
+import org.jetbrains.annotations.NotNull;
+
+<span class="pc bpc" id="L18" title="1 of 2 branches missed.">public class VCircle implements VShape, ICircleSector {</span>
+
+	private final VPoint center;
+	private final double radius;
+
+	public VCircle(double x, double y, double radius) {
+<span class="fc" id="L24">		this(new VPoint(x, y), radius);</span>
+<span class="fc" id="L25">	}</span>
+
+<span class="fc" id="L27">	public VCircle(VPoint center, double radius) {</span>
+
+<span class="fc bfc" id="L29" title="All 2 branches covered.">		if (radius &lt;= 0) {</span>
+<span class="fc" id="L30">			throw new IllegalArgumentException(&quot;Radius must be positive.&quot;);</span>
+		}
+
+<span class="fc" id="L33">		this.center = center;</span>
+<span class="fc" id="L34">		this.radius = radius;</span>
+<span class="fc" id="L35">	}</span>
+
+	/**
+	 * Construct a circle at (0,0) with a specific radius.
+	 * @param radius the radius of this circle
+	 */
+	public VCircle(double radius) {
+<span class="fc" id="L42">		this(0, 0, radius);</span>
+<span class="pc bpc" id="L43" title="2 of 4 branches missed.">		assert radius &gt; 0.0;</span>
+<span class="fc" id="L44">	}</span>
+
+	public double getRadius() {
+<span class="fc" id="L47">		return this.radius;</span>
+	}
+
+	/**
+	 * The distance to the boundary of the circle.
+	 * @param pos the position to which the distance will be computed
+	 */
+	@Override
+	public double distance(IPoint pos) {
+<span class="fc" id="L56">		return Math.abs(this.center.distance(pos) - this.radius);</span>
+	}
+
+	public double signedDistance(IPoint pos) {
+<span class="nc" id="L60">		return this.center.distance(pos) - this.radius;</span>
+	}
+
+	public VPoint getCenter() {
+<span class="fc" id="L64">		return this.center;</span>
+	}
+
+	@Override
+	public VPoint closestPoint(IPoint point) {
+<span class="fc" id="L69">		Vector2D direction = new Vector2D(point.getX() - center.x, point.getY()</span>
+				- center.y);
+<span class="fc" id="L71">		VPoint vector = direction.normalize(radius);</span>
+<span class="fc" id="L72">		return new VPoint(vector.x + center.x, vector.y + center.y);</span>
+	}
+
+	@Override
+	public boolean contains(@NotNull final VPoint point) {
+<span class="pc bpc" id="L77" title="1 of 2 branches missed.">		return point.distanceSq(center) &lt; radius * radius;</span>
+	}
+
+	/**
+	 * Returns zero, one or two points which are the intersection of this circle and the line
+	 * defined by p = (x11, y11) and q = (x22, y22).
+	 * @param x11   x-coordinate of the first point p
+	 * @param y11   y-coordinate of the first point p
+	 * @param x22   x-coordinate of the second point q
+	 * @param y22   y-coordinate of the second point q
+	 * @return  returns an immutable list {@link ImmutableList} of all immutable points {@link VPoint} intersecting the circle by the line defined by (p, q)
+	 */
+	public ImmutableList&lt;VPoint&gt; getIntersectionPoints(final double x11, final double y11, final double x22, final double y22) {
+
+<span class="nc" id="L91">		double x1 = x11 - center.x;</span>
+<span class="nc" id="L92">		double y1 = y11 - center.y;</span>
+<span class="nc" id="L93">		double x2 = x22 - center.x;</span>
+<span class="nc" id="L94">		double y2 = y22 - center.y;</span>
+
+<span class="nc" id="L96">		double dx = x2 - x1;</span>
+<span class="nc" id="L97">		double dy = y2 - y1;</span>
+<span class="nc" id="L98">		double dr = Math.sqrt(dx * dx + dy * dy);</span>
+<span class="nc" id="L99">		double disc = x1 * y2 - x2 * y1;</span>
+<span class="nc" id="L100">		double D = radius * radius * dr * dr - disc * disc;</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">		double sign = dy &lt; 0 ? -1 : 1;</span>
+
+<span class="nc bnc" id="L103" title="All 8 branches missed.">		assert (Math.abs(dx) &gt; 0.0 || Math.abs(dy) &gt; 0.0) &amp;&amp; dr * dr &gt; 0.0 : &quot;the line (&quot;+x1+&quot;,&quot;+y1+&quot;) -- (&quot;+x2+&quot;,&quot;+y2+&quot;) is invalid&quot;;</span>
+
+<span class="nc bnc" id="L105" title="All 2 branches missed.">		if (D == 0) {</span>
+<span class="nc" id="L106">			x1 = (disc * dy) / (dr * dr);</span>
+<span class="nc" id="L107">			y1 = (-disc * dx) / (dr * dr);</span>
+<span class="nc" id="L108">			return ImmutableList.of(new VPoint(x1 + this.getCenter().x, y1 + this.getCenter().y));</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">		} else if (D &lt; 0) {</span>
+<span class="nc" id="L110">			return ImmutableList.of();</span>
+		} else {
+<span class="nc" id="L112">			x1 = (disc * dy + sign * dx * Math.sqrt(D)) / (dr * dr);</span>
+<span class="nc" id="L113">			y1 = (-disc * dx + Math.abs(dy) * Math.sqrt(D)) / (dr * dr);</span>
+<span class="nc" id="L114">			x2 = (disc * dy - sign * dx * Math.sqrt(D)) / (dr * dr);</span>
+<span class="nc" id="L115">			y2 = (-disc * dx - Math.abs(dy) * Math.sqrt(D)) / (dr * dr);</span>
+
+<span class="nc" id="L117">			return ImmutableList.of(new VPoint(x1 + this.getCenter().x, y1 + this.getCenter().y), new VPoint(x2 + this.getCenter().x, y2 + this.getCenter().y));</span>
+		}
+	}
+
+	/**
+	 * Returns, the closest of all intersection points of the intersection of this circle and the
+	 * line (p, q).
+	 *
+	 * @param p defining the line
+	 * @param q defining the line
+	 * @param r the point of measurement
+	 * @return the closest of all intersection points of the intersection of this circle and the
+	 * line (p, q). There might be no such point!
+	 */
+	public Optional&lt;VPoint&gt; getClosestIntersectionPoint(@NotNull final VPoint p, @NotNull final VPoint q, @NotNull final VPoint r) {
+<span class="nc" id="L132">		ImmutableList&lt;VPoint&gt; intersectionPoints = getIntersectionPoints(p, q);</span>
+<span class="nc" id="L133">		return intersectionPoints.stream().min(Comparator.comparingDouble(point -&gt; point.distance(r)));</span>
+	}
+
+	/**
+	 * Returns, the closest of all intersection points of the intersection of this circle and the
+	 * line (p=(x1, y1), q = (x2, y2)) with respect to r = (x3, y3).
+	 */
+	public Optional&lt;VPoint&gt; getClosestIntersectionPoint(final double x1, final double y1, final double x2, final double y2, final double x3, final double y3) {
+<span class="nc" id="L141">		ImmutableList&lt;VPoint&gt; intersectionPoints = getIntersectionPoints(x1, y1, x2, y2);</span>
+<span class="nc" id="L142">		final VPoint r = new VPoint(x3, y3);</span>
+<span class="nc" id="L143">		return intersectionPoints.stream().min(Comparator.comparingDouble(point -&gt; point.distance(r)));</span>
+	}
+
+	/**
+	 * Assumption: there exist a intersection point of the line segment.
+	 *
+	 * @param x11
+	 * @param y11
+	 * @param x22
+	 * @param y22
+	 * @return
+	 */
+	public Optional&lt;VPoint&gt; getSegmentIntersectionPoints(final double x11, final double y11, final double x22, final double y22) {
+<span class="nc" id="L156">		ImmutableList&lt;VPoint&gt; list = getIntersectionPoints(x11, y11, x22, y22);</span>
+<span class="nc bnc" id="L157" title="All 4 branches missed.">		assert !list.isEmpty();</span>
+
+<span class="nc bnc" id="L159" title="All 2 branches missed.">		if(x11 == x22) {</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">			for (VPoint point : list) {</span>
+<span class="nc bnc" id="L161" title="All 8 branches missed.">				if(point.y &lt; y11 &amp;&amp; point.y &gt; y22 || point.y &gt; y11 &amp;&amp; point.y &lt; y22) {</span>
+<span class="nc" id="L162">					return Optional.of(point);</span>
+				}
+<span class="nc" id="L164">			}</span>
+		} else {
+<span class="nc bnc" id="L166" title="All 2 branches missed.">			for (VPoint point : list) {</span>
+<span class="nc bnc" id="L167" title="All 8 branches missed.">				if(point.x &lt; x11 &amp;&amp; point.x &gt; x22 || point.x &gt; x11 &amp;&amp; point.x &lt; x22) {</span>
+<span class="nc" id="L168">					return Optional.of(point);</span>
+				}
+<span class="nc" id="L170">			}</span>
+		}
+
+<span class="nc" id="L173">		return Optional.empty();</span>
+
+//		throw new IllegalArgumentException(&quot;line segment (&quot;+x11+&quot;,&quot;+y11+&quot;) - (&quot;+x22+&quot;,&quot;+y22+&quot;) does not intersect circle &quot; + this + &quot;.&quot;);
+	}
+
+
+	@Override
+	public boolean intersectsLine(double x1, double y1, double x2, double y2) {
+<span class="nc" id="L181">		return intersects(new VLine(x1, y1, x2, y2));</span>
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+<span class="pc bpc" id="L186" title="1 of 2 branches missed.">		if (this == obj) {</span>
+<span class="nc" id="L187">			return true;</span>
+		}
+<span class="pc bpc" id="L189" title="1 of 2 branches missed.">		if (obj == null) {</span>
+<span class="nc" id="L190">			return false;</span>
+		}
+<span class="pc bpc" id="L192" title="1 of 2 branches missed.">		if (!(obj instanceof VCircle))</span>
+<span class="nc" id="L193">			return false;</span>
+
+<span class="fc" id="L195">		VCircle other = (VCircle) obj;</span>
+
+<span class="pc bpc" id="L197" title="1 of 2 branches missed.">		if (this.radius != other.radius)</span>
+<span class="nc" id="L198">			return false;</span>
+<span class="pc bpc" id="L199" title="1 of 2 branches missed.">		if (!this.center.equals(other.center))</span>
+<span class="nc" id="L200">			return false;</span>
+
+<span class="fc" id="L202">		return true;</span>
+	}
+
+	@Override
+	public Rectangle getBounds() {
+<span class="nc" id="L207">		int diameter = (int) Math.ceil(2 * radius);</span>
+<span class="nc" id="L208">		return new Rectangle((int) Math.floor(center.x - radius),</span>
+<span class="nc" id="L209">				(int) Math.floor(center.y - radius), diameter, diameter);</span>
+	}
+
+	@Override
+	public Rectangle2D getBounds2D() {
+<span class="nc" id="L214">		return new Rectangle2D.Double(center.x - radius, center.y - radius,</span>
+				2 * radius, 2 * radius);
+	}
+
+	@Override
+	public boolean contains(double x, double y) {
+<span class="nc bnc" id="L220" title="All 2 branches missed.">		return Math.sqrt(Math.pow(center.x - x, 2) + Math.pow(center.y - y, 2)) &lt;= radius;</span>
+	}
+
+	@Override
+	public boolean contains(Point2D p) {
+<span class="nc bnc" id="L225" title="All 2 branches missed.">		return center.distance(p) &lt;= radius;</span>
+	}
+
+	@Override
+	public boolean contains(IPoint p) {
+<span class="nc bnc" id="L230" title="All 2 branches missed.">		return p.distance(center) &lt;= radius;</span>
+	}
+
+	@Override
+	public boolean intersects(double x, double y, double w, double h) {
+<span class="fc" id="L235">		VRectangle rect = new VRectangle(x, y, w, h);</span>
+
+<span class="pc bpc" id="L237" title="3 of 4 branches missed.">		if (rect.distance(center) &lt;= radius || rect.contains(center)) {</span>
+<span class="fc" id="L238">			return true;</span>
+		} else {
+<span class="nc" id="L240">			return false;</span>
+		}
+	}
+
+	@Override
+	public boolean intersects(Rectangle2D r) {
+<span class="fc" id="L246">		return intersects(r.getX(), r.getY(), r.getWidth(), r.getHeight());</span>
+	}
+
+	@Override
+	public boolean contains(double x, double y, double w, double h) {
+<span class="nc bnc" id="L251" title="All 8 branches missed.">		return (contains(x, y) &amp;&amp; contains(x + w, y) &amp;&amp; contains(x, y + h) &amp;&amp; contains(</span>
+				x + w, y + h));
+	}
+
+	@Override
+	public boolean contains(Rectangle2D r) {
+<span class="nc" id="L257">		return contains(r.getX(), r.getY(), r.getWidth(), r.getHeight());</span>
+	}
+
+	/**
+	 * Dummy implementation using Ellipse2D.Double.
+	 */
+	@Override
+	public PathIterator getPathIterator(AffineTransform at) {
+<span class="fc" id="L265">		return new Ellipse2D.Double(center.x - radius, center.y - radius,</span>
+<span class="fc" id="L266">				radius * 2, radius * 2).getPathIterator(at);</span>
+	}
+
+	/**
+	 * Dummy implementation using Ellipse2D.Double.
+	 */
+	@Override
+	public PathIterator getPathIterator(AffineTransform at, double flatness) {
+<span class="nc" id="L274">		return new Ellipse2D.Double(center.x - radius, center.y - radius,</span>
+<span class="nc" id="L275">				radius * 2, radius * 2).getPathIterator(at, flatness);</span>
+	}
+
+	@Override
+	public VShape translate(final IPoint vector) {
+<span class="nc" id="L280">		return new VCircle(getCenter().add(vector), getRadius());</span>
+	}
+
+	@Override
+	public VShape translatePrecise(final IPoint vector) {
+<span class="nc" id="L285">		return new VCircle(getCenter().addPrecise(vector), getRadius());</span>
+	}
+
+	@Override
+	public VShape scale(final double scalar) {
+<span class="nc" id="L290">		return new VCircle(getCenter().scalarMultiply(scalar), getRadius() * scalar);</span>
+	}
+
+	@Override
+	public boolean intersects(VLine intersectingLine) {
+<span class="nc bnc" id="L295" title="All 2 branches missed.">		if (intersectingLine.ptSegDist(this.getCenter()) &lt;= this.getRadius())</span>
+<span class="nc" id="L296">			return true;</span>
+<span class="nc" id="L297">		return false;</span>
+	}
+
+	@Override
+	public VPoint getCentroid() {
+<span class="fc" id="L302">		return center;</span>
+	}
+
+	@Override
+	public ShapeType getType() {
+<span class="nc" id="L307">		return ShapeType.CIRCLE;</span>
+	}
+
+	@Override
+	public List&lt;VPoint&gt; getPath() {
+		// approximate the circle!
+<span class="nc" id="L313">		int numberOfSegments = 10;</span>
+<span class="nc" id="L314">		List&lt;VPoint&gt; points = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L315" title="All 2 branches missed.">		for(int i = 0; i &lt; numberOfSegments; i++) {</span>
+<span class="nc" id="L316">			double rad = 2*Math.PI * i / numberOfSegments;</span>
+<span class="nc" id="L317">			double x = Math.cos(rad);</span>
+<span class="nc" id="L318">			double y = Math.sin(rad);</span>
+<span class="nc" id="L319">			points.add(center.add(new VPoint(x, y)));</span>
+		}
+<span class="nc" id="L321">		return points;</span>
+	}
+
+	@Override
+	public List&lt;VLine&gt; lines() {
+<span class="nc" id="L326">		throw new UnsupportedOperationException(&quot;not jet implemented.&quot;);</span>
+	}
+
+	@Override
+	public boolean intersects(VShape shape) {
+<span class="pc bpc" id="L331" title="1 of 2 branches missed.">		if (shape instanceof VCircle) {</span>
+<span class="fc" id="L332">			VCircle otherCircle = (VCircle) shape;</span>
+<span class="pc bpc" id="L333" title="1 of 2 branches missed.">			return otherCircle.getCenter().distance(this.getCenter()) &lt; (otherCircle.getRadius() + this.getRadius());</span>
+		} else {
+<span class="nc" id="L335">			return VShape.super.intersects(shape);</span>
+		}
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L341">		return &quot;VCircle{&quot; +</span>
+				&quot;center=&quot; + center +
+				&quot;, radius=&quot; + radius +
+				'}';
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

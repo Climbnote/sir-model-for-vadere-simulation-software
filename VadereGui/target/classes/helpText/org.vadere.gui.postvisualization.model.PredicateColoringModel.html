@@ -1,0 +1,34 @@
+<h1> PredicateColoringModel</h1>
+
+<p>
+This class is the model in the sense of the CVM pattern of the GUI which
+saves all <a href='/helpText/rel_/VPredicate.html' class='class_link'>VPredicate</a> which can be defined to color agents e.g. the
+user can fill the <a href='/helpText/org.vadere.gui.postvisualization.model.PedestrianColorTableModel.html' class='class_link'>PedestrianColorTableModel</a> with expressions like
+agent.position.x > 4 and define a color such as red for this expression. Therefore
+this class will return red for an agent with a x-coordinate > 4. This class
+implements the logic to add and remove such predicates while the
+<a href='/helpText/org.vadere.gui.postvisualization.model.PedestrianColorTableModel.html' class='class_link'>PedestrianColorTableModel</a> does only hold the data.
+
+@author Benedikt Zoennchen
+</p>
+
+<hr>
+<h2> Field: FALSE</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: colorEvalFunctions</h2>
+<p>
+Holds the acutal date, i.e. all predicates as <a href='/helpText/rel_/VPredicate.html' class='class_link'>VPredicate</a>.
+</p>
+
+<hr>
+<h2> Field: logger</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: pedestrianColorTableModel</h2>
+<p>
+Holds the actual data, i.e. all predicates in text form.
+</p>
+

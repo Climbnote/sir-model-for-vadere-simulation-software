@@ -1,0 +1,28 @@
+<h1> PedestrianVelocityByTrajectoryProcessor</h1>
+
+<p>
+This processor computes the velocity based on pedestrian trajectories i.e. a list of foot steps.
+This might be more accurate than using <a href='/helpText/org.vadere.simulator.projects.dataprocessing.processor.PedestrianVelocityProcessor.html' class='class_link'>PedestrianVelocityProcessor</a> which uses only positions.
+For example in the optimal steps model a pedestrian might move multiple times during one time step.
+Let t = (p1,p2), (p2,p3), and so on, (pn,pn+1) be the trajectory of a pedestrian at the current time step s.
+Then the processor cuts the trajectory based on how much the processor should look into the past which is
+controlled by <tt>backSteps</tt>. By cutting the trajectory is linear interpolated i.e. the cut don't have to be
+at the end or the beginning of a foot step but can be in between. The velocity is equal to the sum of all
+length of foot steps divided by the duration.
+
+@author Benedikt Zoennchen
+
+</p>
+
+<hr>
+<h2> Field: lastSimTimes</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: backSteps</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: pedestrianTrajectoryProcessor</h2>
+<p>---</p>
+

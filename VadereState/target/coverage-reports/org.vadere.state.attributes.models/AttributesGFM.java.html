@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesGFM.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.models</a> &gt; <span class="el_source">AttributesGFM.java</span></div><h1>AttributesGFM.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.models;
+
+import org.vadere.annotation.factories.attributes.ModelAttributeClass;
+import org.vadere.state.attributes.Attributes;
+
+@ModelAttributeClass
+<span class="nc" id="L7">public class AttributesGFM extends Attributes {</span>
+
+<span class="nc" id="L9">	private double gravityFactor = 1;</span>
+<span class="nc" id="L10">	private double normalParticleStiffness = 5000;</span>
+<span class="nc" id="L11">	private double dampingParticle = 40;</span>
+<span class="nc" id="L12">	private double normalObstacleStiffness = 10000;</span>
+<span class="nc" id="L13">	private double dampingObstacle = 40;</span>
+<span class="nc" id="L14">	private double timeStepSize = 0.01;</span>
+<span class="nc" id="L15">	private double dynamicFrictionParticle = 0.25;</span>
+<span class="nc" id="L16">	private double staticFrictionParticle = 0.2;</span>
+<span class="nc" id="L17">	private double dynamicFrictionObstacle = 0.25;</span>
+<span class="nc" id="L18">	private double staticFrictionObstacle = 0.2;</span>
+<span class="nc" id="L19">	private double addhesionCoefficient = 0.1;</span>
+<span class="nc" id="L20">	private double tangentialStiffness = 1000;</span>
+<span class="nc" id="L21">	private double tangentialDissipation = 10;</span>
+<span class="nc" id="L22">	private double startAccelerationX = 0;</span>
+<span class="nc" id="L23">	private double startAccelerationY = 0;</span>
+<span class="nc" id="L24">	private double accelerationTime = 0;</span>
+<span class="nc" id="L25">	private int accelerationId = 0;</span>
+<span class="nc" id="L26">	private double massParticle = 1;</span>
+<span class="nc" id="L27">	private double momOfInertia = 1;</span>
+<span class="nc" id="L28">	private double startOmega = 0;</span>
+
+	public double getGravityFactor() {
+<span class="nc" id="L31">		return gravityFactor;</span>
+	}
+
+	public double getNormalParticleStiffness() {
+<span class="nc" id="L35">		return normalParticleStiffness;</span>
+	}
+
+	public double getDampingParticle() {
+<span class="nc" id="L39">		return dampingParticle;</span>
+	}
+
+	public double getNormalObstacleStiffness() {
+<span class="nc" id="L43">		return normalObstacleStiffness;</span>
+	}
+
+	public double getDampingObstacle() {
+<span class="nc" id="L47">		return dampingObstacle;</span>
+	}
+
+	public double getTimeStepSize() {
+<span class="nc" id="L51">		return timeStepSize;</span>
+	}
+
+	public double getDynamicFrictionParticle() {
+<span class="nc" id="L55">		return dynamicFrictionParticle;</span>
+	}
+
+	public double getStaticFrictionParticle() {
+<span class="nc" id="L59">		return staticFrictionParticle;</span>
+	}
+
+	public double getDynamicFrictionObstacle() {
+<span class="nc" id="L63">		return dynamicFrictionObstacle;</span>
+	}
+
+	public double getStaticFrictionObstacle() {
+<span class="nc" id="L67">		return staticFrictionObstacle;</span>
+	}
+
+	public double getAddhessionCoefficient() {
+<span class="nc" id="L71">		return addhesionCoefficient;</span>
+	}
+
+	public double getTangentialStiffness() {
+<span class="nc" id="L75">		return tangentialStiffness;</span>
+	}
+
+	public double getTangentialDissipation() {
+<span class="nc" id="L79">		return tangentialDissipation;</span>
+	}
+
+	public double startAccelerationX() {
+<span class="nc" id="L83">		return startAccelerationX;</span>
+	}
+
+	public double startAccelerationY() {
+<span class="nc" id="L87">		return startAccelerationY;</span>
+	}
+
+	public double getAccelerationTime() {
+<span class="nc" id="L91">		return accelerationTime;</span>
+	}
+
+	public int getAccelerationId() {
+<span class="nc" id="L95">		return accelerationId;</span>
+	}
+
+	public double getMassParticle() {
+<span class="nc" id="L99">		return this.massParticle;</span>
+	}
+
+	public double getMomentOfInertia() {
+<span class="nc" id="L103">		return this.momOfInertia;</span>
+	}
+
+	public double getStartOmega() {
+<span class="nc" id="L107">		return startOmega;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

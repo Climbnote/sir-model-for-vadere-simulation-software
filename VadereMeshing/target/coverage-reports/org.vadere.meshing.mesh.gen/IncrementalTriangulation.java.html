@@ -1,0 +1,1267 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IncrementalTriangulation.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">IncrementalTriangulation.java</span></div><h1>IncrementalTriangulation.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+import org.apache.commons.lang3.tuple.Triple;
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IMeshSupplier;
+import org.vadere.meshing.mesh.inter.IPointConstructor;
+import org.vadere.meshing.mesh.inter.IPointLocator;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.ITriEventListener;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.iterators.EdgeIterator;
+import org.vadere.meshing.mesh.iterators.FaceIterator;
+import org.vadere.meshing.mesh.triangulation.BowyerWatsonSlow;
+import org.vadere.meshing.mesh.triangulation.triangulator.gen.GenConstrainedDelaunayTriangulator;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VCircle;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.util.logging.Logger;
+
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Random;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+import javax.swing.*;
+
+/**
+ * This class implements the Bowyer-Watson algorithm efficiently by using the mesh data structure {@link IMesh} and
+ * sophisticated point locators {@link IPointLocator} where {@link JumpAndWalk} is the default. The incremental nature
+ * of the implementation allows to insertVertex points after the triangulation is finished, i.e. after the virtual points and
+ * their neighbouring faces are removed. However, points have to lie inside some interior face of the current triangulation.
+ * Furthermore, this implementation allows for other criteria {@link Predicate} for flipping edges {@link E} than the
+ * Delaunay criterion, e.g. a more relaxed version. However it is only guaranteed to generate a valid triangulation if
+ * the Delaunay criterion is used. Otherwise, the user has to make sure that the triangulation remains valid.
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ *
+ * @see &lt;a href=&quot;https://en.wikipedia.org/wiki/Delaunay_triangulation&quot;&gt;Delaunay triangulation&lt;/a&gt;
+ * @see &lt;a href=&quot;https://en.wikipedia.org/wiki/Bowyer%E2%80%93Watson_algorithm&quot;&gt;Bowyer-Watson algorithm&lt;/a&gt;
+ */
+<span class="pc bpc" id="L67" title="1 of 2 branches missed.">public class IncrementalTriangulation&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements IIncrementalTriangulation&lt;V, E, F&gt; {</span>
+
+	protected Collection&lt;IPoint&gt; points;
+	private VRectangle bound;
+<span class="fc" id="L71">	private boolean finalized = false;</span>
+	private IMesh&lt;V, E, F&gt; mesh;
+	private IPointLocator&lt;V, E, F&gt; pointLocator;
+	private boolean initialized;
+	private List&lt;V&gt; virtualVertices;
+	private boolean useMeshForBound;
+	private IPointLocator.Type type;
+	private final List&lt;ITriEventListener&lt;V, E, F&gt;&gt; triEventListeners;
+
+
+<span class="fc" id="L81">	private static double BUFFER_PERCENTAGE = GeometryUtils.DOUBLE_EPS;</span>
+
+	// TODO this epsilon it hard coded!!! =&gt; replace it with a user choice
+<span class="fc" id="L84">	private double epsilon = 0.0001;</span>
+<span class="fc" id="L85">	private double edgeCoincidenceTolerance = GeometryUtils.DOUBLE_EPS;</span>
+
+	private Predicate&lt;E&gt; illegalPredicate;
+<span class="fc" id="L88">	private static Logger log = Logger.getLogger(IncrementalTriangulation.class);</span>
+
+	/*static {
+		ITriConnectivity.log.setDebug();
+	}*/
+
+	/**
+	 * Construct a triangulation using an empty mesh.
+	 *
+	 * @param mesh              the empty mesh
+	 * @param type              the type of the point location algorithm
+	 * @param points            points to be inserted, which also specify the bounding box
+	 * @param illegalPredicate  a predicate which tests if an edge is illegal, i.e. an edge is illegal if it does not
+	 *                          fulfill the delaunay criteria and the illegalPredicate
+	 */
+	public IncrementalTriangulation(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final IPointLocator.Type type,
+			@NotNull final Collection&lt;IPoint&gt; points,
+<span class="fc" id="L107">			@NotNull final Predicate&lt;E&gt; illegalPredicate) {</span>
+
+<span class="pc bpc" id="L109" title="2 of 4 branches missed.">		assert mesh.getNumberOfVertices() == 0;</span>
+<span class="fc" id="L110">		this.type = type;</span>
+<span class="fc" id="L111">		this.useMeshForBound = false;</span>
+<span class="fc" id="L112">		this.mesh = mesh;</span>
+<span class="fc" id="L113">		this.points = points;</span>
+<span class="fc" id="L114">		this.illegalPredicate = illegalPredicate;</span>
+<span class="fc" id="L115">		this.bound = GeometryUtils.boundRelative(points);</span>
+<span class="fc" id="L116">		this.finalized = false;</span>
+<span class="fc" id="L117">		this.initialized = false;</span>
+<span class="fc" id="L118">		this.mesh = mesh;</span>
+<span class="fc" id="L119">		this.triEventListeners = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L120">		this.setPointLocator(type);</span>
+<span class="fc" id="L121">	}</span>
+
+	/**
+	 * Construct a triangulation using an empty mesh.
+	 *
+	 * @param mesh              the empty mesh
+	 * @param type              the type of the point location algorithm
+	 * @param bound             the bound of the triangulation, i.e. there will be no points outside the bound to be inserted into the triangulation
+	 * @param illegalPredicate  a predicate which tests if an edge is illegal, i.e. an edge is illegal if it does not
+	 *                          fulfill the delaunay criteria and the illegalPredicate
+	 */
+	public IncrementalTriangulation(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final IPointLocator.Type type,
+			@NotNull final VRectangle bound,
+<span class="fc" id="L136">			@NotNull final Predicate&lt;E&gt; illegalPredicate) {</span>
+
+<span class="pc bpc" id="L138" title="2 of 4 branches missed.">		assert mesh.getNumberOfVertices() == 0;</span>
+<span class="fc" id="L139">		this.type = type;</span>
+<span class="fc" id="L140">		this.useMeshForBound = false;</span>
+<span class="fc" id="L141">		this.mesh = mesh;</span>
+<span class="fc" id="L142">		this.points = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L143">		this.illegalPredicate = illegalPredicate;</span>
+<span class="fc" id="L144">		this.bound = bound;</span>
+<span class="fc" id="L145">		this.finalized = false;</span>
+<span class="fc" id="L146">		this.initialized = false;</span>
+<span class="fc" id="L147">		this.triEventListeners = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L148">		this.setPointLocator(type);</span>
+<span class="fc" id="L149">	}</span>
+
+	/**
+	 * Construct a triangulation using an empty mesh.
+	 *
+	 * @param mesh              the empty mesh
+	 * @param type              the type of the point location algorithm
+	 * @param bound             the bound of the triangulation, i.e. there will be no points outside the bound to be inserted into the triangulation
+	 */
+	public IncrementalTriangulation(@NotNull final IMesh&lt;V, E, F&gt; mesh,
+	                                @NotNull final IPointLocator.Type type,
+	                                @NotNull final VRectangle bound) {
+<span class="fc" id="L161">		this(mesh, type, bound, halfEdge -&gt; true);</span>
+<span class="fc" id="L162">	}</span>
+
+	/**
+	 * Construct a triangulation using an empty mesh and {@link JumpAndWalk} as point location algorithm.
+	 *
+	 * @param mesh  the empty mesh
+	 * @param bound the bound of the triangulation, i.e. there will be no points outside the
+	 *              bound to be inserted into the triangulation
+	 */
+	public IncrementalTriangulation(@NotNull final IMesh&lt;V, E, F&gt; mesh,
+	                                @NotNull final VRectangle bound) {
+<span class="nc" id="L173">		this(mesh, IPointLocator.Type.JUMP_AND_WALK, bound, halfEdge -&gt; true);</span>
+<span class="nc" id="L174">	}</span>
+
+	public IncrementalTriangulation(@NotNull final IMesh&lt;V, E, F&gt; mesh,
+	                                @NotNull final VRectangle bound,
+	                                @NotNull final Predicate&lt;E&gt; illegalCondition) {
+<span class="fc" id="L179">		this(mesh, IPointLocator.Type.JUMP_AND_WALK, bound, illegalCondition);</span>
+<span class="fc" id="L180">	}</span>
+
+	/**
+	 * Construct a triangulation using non-empty mesh. The border of the mesh specifies the bound.
+	 * Therefore the bound has to specify some polygon and there will be no points inserted outside
+	 * the bound i.e. outside the mesh.
+	 *
+	 * @param mesh              the non-empty mesh which will be used and which specifies the bound
+	 * @param type              the type of the used point location algorithm
+	 * @param illegalPredicate  a predicate which tests if an edge is illegal, i.e. an edge is illegal if it does not
+	 *                          fulfill the delaunay criteria and the illegalPredicate
+	 */
+	public IncrementalTriangulation(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final IPointLocator.Type type,
+<span class="fc" id="L195">			@NotNull final Predicate&lt;E&gt; illegalPredicate) {</span>
+
+<span class="pc bpc" id="L197" title="2 of 4 branches missed.">		assert mesh.getNumberOfVertices() &gt;= 3;</span>
+<span class="fc" id="L198">		this.type = type;</span>
+<span class="fc" id="L199">		this.useMeshForBound = true;</span>
+<span class="fc" id="L200">		this.mesh = mesh;</span>
+<span class="fc" id="L201">		this.points = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L202">		this.illegalPredicate = illegalPredicate;</span>
+<span class="fc" id="L203">		this.bound = GeometryUtils.boundRelative(mesh.getPoints(mesh.getBorder()));</span>
+<span class="fc" id="L204">		this.initialized = false;</span>
+<span class="fc" id="L205">		this.finalized = false;</span>
+<span class="fc" id="L206">		this.virtualVertices = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L207">		this.virtualVertices.addAll(mesh.getVertices());</span>
+<span class="fc" id="L208">		this.triEventListeners = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L209">		this.setPointLocator(type);</span>
+<span class="fc" id="L210">	}</span>
+
+	/**
+	 * Construct a triangulation using non-empty mesh and {@link JumpAndWalk} as point location algorithm.
+	 * The border of the mesh specifies the bound. Therefore the bound has to specify some polygon and
+	 * there will be no points inserted outside the bound i.e. outside the mesh.
+	 *
+	 * @param mesh              the non-empty mesh which will be used and which specifies the bound
+	 * @param illegalPredicate  a predicate which tests if an edge is illegal, i.e. an edge is illegal if it does not
+	 *                          fulfill the delaunay criteria and the illegalPredicate
+	 */
+	public IncrementalTriangulation(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final Predicate&lt;E&gt; illegalPredicate) {
+<span class="nc" id="L224">		this(mesh, IPointLocator.Type.JUMP_AND_WALK, illegalPredicate);</span>
+<span class="nc" id="L225">	}</span>
+
+	/**
+	 * Construct a triangulation using non-empty mesh. The border of the mesh specifies the bound.
+	 * Therefore the bound has to specify some polygon and there will be no points inserted outside
+	 * the bound i.e. outside the mesh.
+	 *
+	 * @param mesh      the non-empty mesh which will be used and which specifies the bound
+	 * @param type      the type of the used point location algorithm
+	 * @param points    points to be inserted, which also specify the bounding box
+	 */
+	public IncrementalTriangulation(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final IPointLocator.Type type,
+			@NotNull final Collection&lt;IPoint&gt; points) {
+<span class="fc" id="L240">		this(mesh, type, points, halfEdge -&gt; true);</span>
+<span class="fc" id="L241">	}</span>
+
+	/**
+	 * Construct a triangulation using non-empty mesh. The border of the mesh specifies the bound.
+	 * Therefore the bound has to specify some polygon and there will be no points inserted outside
+	 * the bound i.e. outside the mesh.
+	 *
+	 * @param mesh      the non-empty mesh which will be used and which specifies the bound
+	 * @param type      the type of the used point location algorithm
+	 */
+	public IncrementalTriangulation(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final IPointLocator.Type type) {
+<span class="nc" id="L254">		this(mesh, type, halfEdge -&gt; true);</span>
+<span class="nc" id="L255">	}</span>
+
+	/**
+	 * Construct a triangulation using non-empty mesh and {@link JumpAndWalk} as point location algorithm.
+	 * The border of the mesh specifies the bound. Therefore the bound has to specify some polygon and
+	 * there will be no points inserted outside the bound i.e. outside the mesh.
+	 *
+	 * @param mesh      the non-empty mesh which will be used and which specifies the bound
+	 */
+	public IncrementalTriangulation(@NotNull final IMesh&lt;V, E, F&gt; mesh) {
+<span class="pc" id="L265">		this(mesh, IPointLocator.Type.JUMP_AND_WALK, halfEdge -&gt; true);</span>
+<span class="fc" id="L266">	}</span>
+
+	@Override
+	public void setCanIllegalPredicate(@NotNull final Predicate&lt;E&gt; illegalPredicate) {
+<span class="nc" id="L270">		this.illegalPredicate = illegalPredicate;</span>
+<span class="nc" id="L271">	}</span>
+
+	// end constructors
+
+	@Override
+	public void setPointLocator(@NotNull final IPointLocator.Type type) {
+
+		/**
+		 * This method is somehow recursive. The Delaunay-Hierarchy is a hierarchy of triangulations using the base point
+		 * location algorithm. Therefore if the type is equal to the Delaunay-Hierarchy a supplier is required which
+		 * construct triangulations based on this triangulation i.e. with the same &quot;starting&quot; mesh or bound!
+		 */
+<span class="fc bfc" id="L283" title="All 4 branches covered.">		switch (type) {</span>
+			case DELAUNAY_TREE:
+<span class="pc bpc" id="L285" title="1 of 2 branches missed.">				if(!points.isEmpty()) {</span>
+<span class="nc" id="L286">					throw new IllegalArgumentException(IPointLocator.Type.DELAUNAY_TREE + &quot; is only supported for empty triangulations.&quot;);</span>
+				}
+<span class="fc" id="L288">				pointLocator = new DelaunayTree&lt;&gt;(this);</span>
+<span class="fc" id="L289">				break;</span>
+			case DELAUNAY_HIERARCHY:
+				Supplier&lt;IIncrementalTriangulation&lt;V, E, F&gt;&gt; supplier;
+<span class="pc bpc" id="L292" title="1 of 2 branches missed.">				if(useMeshForBound) {</span>
+<span class="nc" id="L293">					supplier = () -&gt; new IncrementalTriangulation&lt;&gt;(mesh.clone(), IPointLocator.Type.BASE, illegalPredicate);</span>
+				}
+				else {
+<span class="fc" id="L296">					supplier = () -&gt; new IncrementalTriangulation&lt;&gt;(mesh.construct(), IPointLocator.Type.BASE, bound, illegalPredicate);</span>
+				}
+<span class="fc" id="L298">				pointLocator = new DelaunayHierarchy&lt;&gt;(this, supplier);</span>
+<span class="fc" id="L299">				break;</span>
+			case JUMP_AND_WALK:
+<span class="fc" id="L301">				pointLocator = new JumpAndWalk&lt;&gt;(this);</span>
+<span class="fc" id="L302">				break;</span>
+<span class="fc" id="L303">			default: pointLocator = new BasePointLocator&lt;&gt;(this);</span>
+		}
+<span class="fc" id="L305">	}</span>
+
+	public void fillHoles(@NotNull final IMeshSupplier&lt;V, E, F&gt; meshSupplier) {
+<span class="nc bnc" id="L308" title="All 2 branches missed.">		for(F hole : getMesh().getHoles()) {</span>
+<span class="nc" id="L309">			List&lt;IPoint&gt; points = getMesh().getPoints(hole);</span>
+<span class="nc" id="L310">			IncrementalTriangulation&lt;V, E, F&gt; incrementalTriangulation = new IncrementalTriangulation&lt;&gt;(</span>
+<span class="nc" id="L311">					meshSupplier.get(),</span>
+					IPointLocator.Type.JUMP_AND_WALK,
+<span class="nc" id="L313">					GeometryUtils.boundRelative(points),</span>
+<span class="nc" id="L314">					e -&gt; true);</span>
+
+<span class="nc" id="L316">			List&lt;VLine&gt; constrians = getMesh().streamEdges(hole).map(e -&gt; getMesh().toLine(e)).collect(Collectors.toList());</span>
+
+			// generate a contrained delaunay triangulation
+<span class="nc" id="L319">			GenConstrainedDelaunayTriangulator&lt;V, E, F&gt; cdt = new GenConstrainedDelaunayTriangulator&lt;&gt;(incrementalTriangulation, constrians, false, false);</span>
+<span class="nc" id="L320">			cdt.generate(true);</span>
+
+			// remove all faces outside the hole
+<span class="nc" id="L323">			VPolygon polygon = getMesh().toPolygon(hole);</span>
+<span class="nc bnc" id="L324" title="All 2 branches missed.">			Predicate&lt;F&gt; removePredicate = face -&gt; !polygon.contains(getMesh().toMidpoint(face));</span>
+<span class="nc" id="L325">			cdt.getTriangulation().shrinkBorder(removePredicate, true);</span>
+
+<span class="nc" id="L327">			IMesh&lt;V, E, F&gt; holeMesh = incrementalTriangulation.getMesh();</span>
+<span class="nc" id="L328">			Map&lt;V, V&gt; vertexToVertex = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L329">			Map&lt;F, F&gt; faceToFace = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L330">			Map&lt;E, E&gt; edgeToEdge = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L332">			E edge = getMesh().getEdge(hole);</span>
+<span class="nc" id="L333">			VPoint p2 = getMesh().toPoint(getMesh().getTwinVertex(edge));</span>
+<span class="nc" id="L334">			VPoint p1 = getMesh().toPoint(getMesh().getVertex(edge));</span>
+<span class="nc" id="L335">			E otherEdge = getMesh().getEdge(holeMesh.getBorder(), p1, p2).get();</span>
+
+
+<span class="nc" id="L338">			List&lt;E&gt; edges = getMesh().getEdges(edge).stream().map(e -&gt; getMesh().getTwin(e)).collect(Collectors.toList());</span>
+<span class="nc" id="L339">			List&lt;E&gt; otherEdges = holeMesh.getEdges(otherEdge);</span>
+<span class="nc" id="L340">			otherEdges.add(otherEdges.remove(0));</span>
+<span class="nc" id="L341">			Collections.reverse(otherEdges);</span>
+<span class="nc bnc" id="L342" title="All 4 branches missed.">			assert edges.size() == otherEdges.size();</span>
+
+			// copy elements
+<span class="nc bnc" id="L345" title="All 2 branches missed.">			for(int i = 0; i &lt; edges.size(); i++) {</span>
+<span class="nc" id="L346">				E e = edges.get(i);</span>
+<span class="nc" id="L347">				E o = otherEdges.get(i);</span>
+<span class="nc" id="L348">				vertexToVertex.put(holeMesh.getVertex(o), getMesh().getVertex(e));</span>
+			}
+
+<span class="nc bnc" id="L351" title="All 2 branches missed.">			for(V v : holeMesh.getVertices()) {</span>
+<span class="nc bnc" id="L352" title="All 2 branches missed.">				if(!getMesh().isAtBoundary(v)) {</span>
+					// maybe clone the vertex?
+<span class="nc" id="L354">					vertexToVertex.put(v, getMesh().insertVertex(holeMesh.getX(v), holeMesh.getY(v)));</span>
+				}
+<span class="nc" id="L356">			}</span>
+
+<span class="nc bnc" id="L358" title="All 2 branches missed.">			for(E e : holeMesh.getEdges()) {</span>
+<span class="nc" id="L359">				V v = holeMesh.getVertex(e);</span>
+<span class="nc" id="L360">				edgeToEdge.put(e, getMesh().createEdge(vertexToVertex.get(v)));</span>
+<span class="nc" id="L361">			}</span>
+
+<span class="nc bnc" id="L363" title="All 2 branches missed.">			for(F face : holeMesh.getFaces()) {</span>
+<span class="nc" id="L364">				faceToFace.put(face, getMesh().createFace());</span>
+<span class="nc" id="L365">			}</span>
+			//faceToFace.put(holeMesh.getBorder(), )
+
+			// copy connectivity
+<span class="nc bnc" id="L369" title="All 2 branches missed.">			for(E o : holeMesh.getEdges()) {</span>
+<span class="nc" id="L370">				E e = edgeToEdge.get(o);</span>
+<span class="nc" id="L371">				getMesh().setTwin(e, edgeToEdge.get(holeMesh.getTwin(o)));</span>
+<span class="nc" id="L372">				getMesh().setNext(e, edgeToEdge.get(holeMesh.getNext(o)));</span>
+<span class="nc" id="L373">				getMesh().setPrev(e, edgeToEdge.get(holeMesh.getPrev(o)));</span>
+<span class="nc" id="L374">				getMesh().setVertex(e, vertexToVertex.get(holeMesh.getVertex(o)));</span>
+
+<span class="nc bnc" id="L376" title="All 2 branches missed.">				if(!holeMesh.isBoundary(holeMesh.getFace(o))) {</span>
+<span class="nc" id="L377">					getMesh().setFace(e, faceToFace.get(holeMesh.getFace(o)));</span>
+				}
+<span class="nc" id="L379">			}</span>
+
+<span class="nc bnc" id="L381" title="All 2 branches missed.">			for(F o : holeMesh.getFaces()) {</span>
+<span class="nc" id="L382">				F e = faceToFace.get(o);</span>
+<span class="nc" id="L383">				getMesh().setEdge(e, edgeToEdge.get(holeMesh.getEdge(o)));</span>
+<span class="nc" id="L384">			}</span>
+
+<span class="nc bnc" id="L386" title="All 2 branches missed.">			for(V o : holeMesh.getVertices()) {</span>
+<span class="nc" id="L387">				V e = vertexToVertex.get(o);</span>
+<span class="nc" id="L388">				getMesh().setEdge(e, edgeToEdge.get(holeMesh.getEdge(o)));</span>
+<span class="nc" id="L389">			}</span>
+
+			// merge internal
+<span class="nc bnc" id="L392" title="All 2 branches missed.">			for(int i = 0; i &lt; edges.size(); i++) {</span>
+<span class="nc" id="L393">				E e = edges.get(i);</span>
+<span class="nc" id="L394">				E o = edgeToEdge.get(otherEdges.get(i));</span>
+
+<span class="nc" id="L396">				E twin = getMesh().getTwin(e);</span>
+<span class="nc" id="L397">				V tv = getMesh().getVertex(twin);</span>
+<span class="nc" id="L398">				E ve = getMesh().getEdge(tv);</span>
+<span class="nc" id="L399">				E oTwin = holeMesh.getTwin(o);</span>
+
+<span class="nc bnc" id="L401" title="All 2 branches missed.">				if(ve.equals(twin)) {</span>
+<span class="nc" id="L402">					getMesh().setEdge(tv, oTwin);</span>
+				}
+
+<span class="nc" id="L405">				getMesh().setTwin(e, oTwin);</span>
+<span class="nc" id="L406">				getMesh().destroyEdge(twin);</span>
+<span class="nc" id="L407">				getMesh().destroyEdge(o);</span>
+			}
+
+			// destroy the hole-mesh
+<span class="nc" id="L411">			holeMesh.clear();</span>
+<span class="nc" id="L412">			getMesh().destroyFace(hole);</span>
+<span class="nc" id="L413">		}</span>
+<span class="nc" id="L414">	}</span>
+
+	@Override
+	public void enableCache() {
+<span class="nc bnc" id="L418" title="All 2 branches missed.">		if(!pointLocator.isCached()) {</span>
+<span class="nc" id="L419">			pointLocator = new CachedPointLocator&lt;&gt;(pointLocator, this);</span>
+		}
+<span class="nc" id="L421">	}</span>
+
+	@Override
+	public void disableCache() {
+<span class="nc bnc" id="L425" title="All 2 branches missed.">		if(pointLocator.isCached()) {</span>
+<span class="nc" id="L426">			pointLocator = pointLocator.getUncachedLocator();</span>
+		}
+<span class="nc" id="L428">	}</span>
+
+	@Override
+	public void init() {
+<span class="fc bfc" id="L432" title="All 2 branches covered.">		if(!initialized) {</span>
+
+<span class="pc bpc" id="L434" title="1 of 2 branches missed.">			if(mesh.getNumberOfVertices() == 0) {</span>
+<span class="fc" id="L435">				double max = Math.max(bound.getWidth(), bound.getHeight());</span>
+<span class="fc" id="L436">				double min = Math.min(bound.getWidth(), bound.getHeight());</span>
+
+
+<span class="fc" id="L439">				double xMin = bound.getMinX();</span>
+<span class="fc" id="L440">				double yMin = bound.getMinY();</span>
+
+<span class="fc" id="L442">				double xMax = bound.getMinX() + 2*max;</span>
+<span class="fc" id="L443">				double yMax = bound.getMinY() + 2*max;</span>
+
+<span class="fc" id="L445">				V p0 = mesh.insertVertex(xMin, yMin);</span>
+<span class="fc" id="L446">				V p1 = mesh.insertVertex(xMax, yMin);</span>
+<span class="fc" id="L447">				V p2 = mesh.insertVertex(xMin, yMax);</span>
+
+				// construct super triangle
+<span class="fc" id="L450">				F superTriangle = mesh.createFace(p0, p1, p2);</span>
+<span class="fc" id="L451">				F borderFace = mesh.getTwinFace(mesh.getEdge(superTriangle));</span>
+				// end divide the square into 2 triangles
+
+<span class="fc" id="L454">				this.virtualVertices = Arrays.asList(p0, p1, p2);</span>
+<span class="fc" id="L455">				this.initialized = true;</span>
+<span class="fc" id="L456">			}</span>
+			else {
+<span class="nc bnc" id="L458" title="All 4 branches missed.">				assert mesh.getNumberOfVertices() &gt;= 3;</span>
+<span class="nc" id="L459">				F borderFace = mesh.getBorder();</span>
+				// end divide the square into 2 triangles
+
+<span class="nc" id="L462">				this.virtualVertices = mesh.streamVertices(borderFace).collect(Collectors.toList());</span>
+<span class="nc" id="L463">				this.initialized = true;</span>
+<span class="nc" id="L464">			}</span>
+		}
+		else {
+<span class="fc" id="L467">			log.warn(&quot;the second initialization of the &quot; + this.getClass().getSimpleName() + &quot; has no effect.&quot;);</span>
+		}
+<span class="fc" id="L469">	}</span>
+
+	public double getEdgeCoincidenceTolerance() {
+<span class="nc" id="L472">		return edgeCoincidenceTolerance;</span>
+	}
+
+	@Override
+	public List&lt;V&gt; getVirtualVertices() {
+<span class="fc" id="L477">		return virtualVertices;</span>
+	}
+
+	@Override
+	public List&lt;V&gt; getVertices() {
+<span class="pc bpc" id="L482" title="1 of 2 branches missed.">		return getMesh().streamVertices().filter(v -&gt; !virtualVertices.contains(v)).collect(Collectors.toList());</span>
+	}
+
+	@Override
+	public void compute() {
+<span class="fc" id="L487">		init();</span>
+
+		// 1. insertVertex points
+<span class="fc bfc" id="L490" title="All 2 branches covered.">		for(IPoint p : points) {</span>
+<span class="fc" id="L491">			insert(p);</span>
+<span class="fc" id="L492">		}</span>
+
+		// 2. remove super triangle
+<span class="fc" id="L495">		finish();</span>
+<span class="fc" id="L496">	}</span>
+
+    @Override
+    public void recompute() {
+<span class="fc" id="L500">	    virtualVertices = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L501">        initialized = false;</span>
+<span class="fc" id="L502">        finalized = false;</span>
+<span class="fc" id="L503">        points = mesh.getPoints();</span>
+<span class="fc" id="L504">	    bound = GeometryUtils.boundRelative(points);</span>
+<span class="fc" id="L505">        mesh.clear();</span>
+<span class="fc" id="L506">	    setPointLocator(type);</span>
+<span class="fc" id="L507">        compute();</span>
+<span class="fc" id="L508">    }</span>
+
+    @Override
+	public E insert(@NotNull final IPoint point, @NotNull F face) {
+<span class="fc" id="L512">		return insertVertex(getMesh().createVertex(point), face);</span>
+	}
+
+	public E insertVertex(@NotNull final V vertex, @NotNull final F face) {
+<span class="fc" id="L516">		return insertVertex(vertex, face, true);</span>
+	}
+
+
+	@Override
+	public E insertVertex(@NotNull final V vertex, @NotNull final F face, boolean legalize) {
+<span class="pc bpc" id="L522" title="1 of 2 branches missed.">		if(!initialized) {</span>
+<span class="nc" id="L523">			init();</span>
+		}
+
+<span class="fc" id="L526">		E edge = mesh.closestEdge(face, vertex.getX(), vertex.getY());</span>
+<span class="fc" id="L527">		IPoint p1 = mesh.getPoint(mesh.getPrev(edge));</span>
+<span class="fc" id="L528">		IPoint p2 = mesh.getPoint(edge);</span>
+
+		/*
+		 * 3 Cases:
+		 *      1) point lies on an vertex of a face =&gt; ignore the point
+		 *      2) point lies on an edge of a face =&gt; split the edge
+		 *      3) point lies in the interior of the face =&gt; split the face (this should be the main case)
+		 */
+<span class="fc bfc" id="L536" title="All 2 branches covered.">		if(isClose(vertex.getX(), vertex.getY(), face, edgeCoincidenceTolerance)) {</span>
+			//log.info(&quot;ignore insertion point, since the point &quot; + vertex + &quot; already exists or it is too close to another point!&quot;);
+<span class="fc" id="L538">			return getCloseEdge(face, vertex.getX(), vertex.getY(), edgeCoincidenceTolerance).get();</span>
+		}
+<span class="fc bfc" id="L540" title="All 2 branches covered.">		if(GeometryUtils.isOnEdge(p1, p2, vertex, edgeCoincidenceTolerance)) {</span>
+			//log.info(&quot;splitEdge()&quot;);
+<span class="fc" id="L542">			E newEdge = getAnyEdge(splitEdge(vertex, edge, legalize));</span>
+<span class="fc" id="L543">			insertEvent(newEdge);</span>
+<span class="fc" id="L544">			return newEdge;</span>
+		}
+		else {
+			//log.info(&quot;splitTriangle()&quot;);
+			/*if(!contains(vertex.getX(), vertex.getY(), face)) {
+				System.out.println(&quot;wtf&quot; + contains(vertex.getX(), vertex.getY(), face));
+			}*/
+<span class="pc bpc" id="L551" title="2 of 4 branches missed.">			assert contains(vertex.getX(), vertex.getY(), face) : face + &quot; does not contain &quot; + vertex;</span>
+
+<span class="fc" id="L553">			E newEdge = splitTriangle(face, vertex,  legalize);</span>
+<span class="fc" id="L554">			insertEvent(newEdge);</span>
+<span class="fc" id="L555">			return newEdge;</span>
+		}
+	}
+
+	private boolean contains(@NotNull final IPoint point) {
+<span class="fc" id="L560">		double x = point.getX();</span>
+<span class="fc" id="L561">		double y = point.getY();</span>
+<span class="fc" id="L562">		double x0 = bound.getMinX();</span>
+<span class="fc" id="L563">		double y0 = bound.getMinY();</span>
+<span class="pc bpc" id="L564" title="2 of 4 branches missed.">		return (x &gt;= x0 &amp;&amp;</span>
+				y &gt;= y0 &amp;&amp;
+<span class="pc bpc" id="L566" title="1 of 2 branches missed.">				x &lt;= x0 + bound.getWidth() &amp;&amp;</span>
+<span class="pc bpc" id="L567" title="1 of 2 branches missed.">				y &lt;= y0 + bound.getHeight());</span>
+	}
+
+	public E insert(double x, double y) {
+<span class="nc" id="L571">		return insert(mesh.createPoint(x, y));</span>
+	}
+
+	@Override
+	public E insert(@NotNull final IPoint point) {
+<span class="fc bfc" id="L576" title="All 2 branches covered.">		if(!initialized) {</span>
+<span class="fc" id="L577">			init();</span>
+		}
+
+<span class="pc bpc" id="L580" title="1 of 2 branches missed.">		if(contains(point)) {</span>
+<span class="fc" id="L581">			F face = pointLocator.locatePoint(point);</span>
+<span class="fc" id="L582">			return insert(point, face);</span>
+		}
+		else {
+<span class="nc" id="L585">			throw new IllegalArgumentException(point + &quot; is not contained in &quot; + bound);</span>
+		}
+	}
+
+	@Override
+	public E insertVertex(V vertex) {
+<span class="nc" id="L591">		return insertVertex(vertex, true);</span>
+	}
+
+	@Override
+	public E insertVertex(V vertex, boolean legalize) {
+<span class="nc bnc" id="L596" title="All 2 branches missed.">		if(!initialized) {</span>
+<span class="nc" id="L597">			init();</span>
+		}
+
+<span class="nc bnc" id="L600" title="All 2 branches missed.">		if(contains(vertex)) {</span>
+<span class="nc" id="L601">			F face = pointLocator.locatePoint(vertex);</span>
+<span class="nc" id="L602">			return insertVertex(vertex, face, legalize);</span>
+		}
+		else {
+<span class="nc" id="L605">			throw new IllegalArgumentException(vertex + &quot; is not contained in &quot; + bound);</span>
+		}
+	}
+
+	@Override
+	public void insertVertices(Collection&lt;? extends V&gt; vertices) {
+<span class="nc bnc" id="L611" title="All 2 branches missed.">		if(!initialized) {</span>
+<span class="nc" id="L612">			init();</span>
+		}
+
+<span class="nc bnc" id="L615" title="All 2 branches missed.">		for(V v : vertices) {</span>
+<span class="nc" id="L616">			insertVertex(v);</span>
+<span class="nc" id="L617">		}</span>
+<span class="nc" id="L618">	}</span>
+
+	@Override
+	public void insert(final Collection&lt;? extends IPoint&gt; points) {
+<span class="fc bfc" id="L622" title="All 2 branches covered.">		if(!initialized) {</span>
+<span class="fc" id="L623">			init();</span>
+		}
+
+		// 1. insertVertex points
+<span class="fc bfc" id="L627" title="All 2 branches covered.">		for(IPoint p : points) {</span>
+<span class="fc" id="L628">			insert(p);</span>
+<span class="fc" id="L629">		}</span>
+<span class="fc" id="L630">	}</span>
+
+	protected IPointLocator&lt;V, E, F&gt; getPointLocator() {
+<span class="nc" id="L633">	    return pointLocator;</span>
+    }
+
+	@Override
+	public boolean isVirtualFace(@NotNull final F face) {
+<span class="nc bnc" id="L638" title="All 2 branches missed.">		if(finalized) {</span>
+<span class="nc" id="L639">			return false;</span>
+		}
+		else {
+<span class="nc" id="L642">			return getMesh().streamVertices(face).anyMatch(v -&gt; virtualVertices.contains(v));</span>
+		}
+
+	}
+
+	@Override
+	public boolean isVirtualEdge(@NotNull final E edge) {
+<span class="nc bnc" id="L649" title="All 2 branches missed.">		if(finalized) {</span>
+<span class="nc" id="L650">			return false;</span>
+		}
+		else {
+<span class="nc bnc" id="L653" title="All 2 branches missed.">			return virtualVertices.contains(getMesh().getVertex(edge))</span>
+<span class="nc bnc" id="L654" title="All 2 branches missed.">					|| virtualVertices.contains(getMesh().getVertex(getMesh().getPrev(edge)));</span>
+		}
+	}
+
+	/**
+	 * Removes the super triangle from the mesh data structure.
+	 */
+	/*public void finish() {
+		if(!finalized) {
+			// we have to use other halfedges than he1 and he2 since they might be deleted
+			// if we deleteBoundaryFace he0!
+			List&lt;F&gt; faces1 = IteratorUtils.toList(new AdjacentFaceIterator(mesh, he0));
+			List&lt;F&gt; faces2 = IteratorUtils.toList(new AdjacentFaceIterator(mesh, he1));
+			List&lt;F&gt; faces3 = IteratorUtils.toList(new AdjacentFaceIterator(mesh, he2));
+
+			faces1.removeIf(f -&gt; mesh.isBoundary(f));
+			faces1.forEach(f -&gt; deleteBoundaryFace(f));
+
+			faces2.removeIf(f -&gt; mesh.isDestroyed(f) || mesh.isBoundary(f));
+			faces2.forEach(f -&gt; deleteBoundaryFace(f));
+
+			faces3.removeIf(f -&gt; mesh.isDestroyed(f) || mesh.isBoundary(f));
+			faces3.forEach(f -&gt; deleteBoundaryFace(f));
+
+			finalized = true;
+		}
+	}*/
+
+
+	private boolean isVirtualVertex(@NotNull final V v) {
+<span class="nc" id="L684">		return virtualVertices.contains(v);</span>
+	}
+
+
+	@Override
+	public void finish() {
+<span class="pc bpc" id="L690" title="1 of 2 branches missed.">		if(!finalized) {</span>
+			// remove the super triangle properly!
+<span class="pc bpc" id="L692" title="1 of 2 branches missed.">			if(!useMeshForBound) {</span>
+				// flip all edges
+<span class="fc" id="L694">				List&lt;E&gt; toLegalize = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L695" title="All 2 branches covered.">				for(V virtualPoint : virtualVertices) {</span>
+
+<span class="fc bfc" id="L697" title="All 2 branches covered.">					for(E edge : getMesh().getEdges(virtualPoint)) {</span>
+<span class="fc" id="L698">						V vertex = getMesh().getVertex(getMesh().getNext(edge));</span>
+<span class="fc bfc" id="L699" title="All 2 branches covered.">						if(isLeftOf(vertex.getX(), vertex.getY(), getMesh().getNext(getMesh().getTwin(edge)))) {</span>
+<span class="fc" id="L700">							flip(edge);</span>
+<span class="fc" id="L701">							toLegalize.add(edge);</span>
+						}
+<span class="fc" id="L703">					}</span>
+<span class="fc" id="L704">				}</span>
+
+<span class="fc bfc" id="L706" title="All 2 branches covered.">				for(V virtualPoint : virtualVertices) {</span>
+<span class="fc bfc" id="L707" title="All 2 branches covered.">					if(!mesh.isDestroyed(virtualPoint)) {</span>
+<span class="fc" id="L708">						List&lt;F&gt; faces1 = mesh.getFaces(virtualPoint);</span>
+<span class="fc" id="L709">						faces1.removeIf(f -&gt; mesh.isBoundary(f));</span>
+<span class="fc" id="L710">						faces1.forEach(f -&gt; removeFaceAtBorder(f, true));</span>
+					}
+<span class="fc" id="L712">				}</span>
+
+<span class="fc bfc" id="L714" title="All 2 branches covered.">				for(E edge : toLegalize) {</span>
+<span class="fc bfc" id="L715" title="All 2 branches covered.">					if(!getMesh().isDestroyed(edge)) {</span>
+<span class="fc" id="L716">						legalize(edge);</span>
+					}
+<span class="fc" id="L718">				}</span>
+			}
+
+			//assert getMesh().streamEdges().noneMatch(e -&gt; isIllegal(e));
+
+			/*if(!mesh.isDestroyed(p1)) {
+				List&lt;F&gt; faces2 = mesh.getFaces(p1);
+				faces2.removeIf(f -&gt; mesh.isDestroyed(f) || mesh.isBoundary(f));
+				faces2.forEach(f -&gt; removeFaceAtBoundary(f, true));
+			}
+
+			if(!mesh.isDestroyed(p2)) {
+				List&lt;F&gt; faces3 = mesh.getFaces(p2);
+				faces3.removeIf(f -&gt; mesh.isDestroyed(f) || mesh.isBoundary(f));
+				faces3.forEach(f -&gt; removeFaceAtBoundary(f, true));
+			}*/
+
+<span class="fc" id="L735">			finalized = true;</span>
+		}
+<span class="fc" id="L737">	}</span>
+
+	@Override
+	public void addTriEventListener(@NotNull ITriEventListener&lt;V, E, F&gt; triEventListener) {
+<span class="nc" id="L741">		triEventListeners.add(triEventListener);</span>
+<span class="nc" id="L742">	}</span>
+
+	@Override
+	public void removeTriEventListener(@NotNull ITriEventListener&lt;V, E, F&gt; triEventListener) {
+<span class="nc" id="L746">		triEventListeners.remove(triEventListener);</span>
+<span class="nc" id="L747">	}</span>
+
+	public boolean isDeletionOk(final F face) {
+<span class="nc bnc" id="L750" title="All 2 branches missed.">		if(mesh.isDestroyed(face)) {</span>
+<span class="nc" id="L751">			return false;</span>
+		}
+
+<span class="nc bnc" id="L754" title="All 2 branches missed.">		for(E halfEdge : mesh.getEdgeIt(face)) {</span>
+<span class="nc bnc" id="L755" title="All 2 branches missed.">			if(mesh.isBoundary(mesh.getTwin(halfEdge))) {</span>
+<span class="nc" id="L756">				return true;</span>
+			}
+<span class="nc" id="L758">		}</span>
+<span class="nc" id="L759">		return false;</span>
+	}
+
+	/**
+	 * Deletes a face assuming that the face triangleContains at least one boundary edge, otherwise the
+	 * deletion will not result in an feasibly triangulation.
+	 *
+	 * @param face the face that will be deleted, which as to be adjacent to the boundary.
+	 */
+	public void deleteBoundaryFace(final F face) {
+		//assert isDeletionOk(face);
+
+		// 3 cases: 1. triangle consist of 1, 2 or 3 boundary edges
+<span class="nc" id="L772">		List&lt;E&gt; boundaryEdges = new ArrayList&lt;&gt;(3);</span>
+<span class="nc" id="L773">		List&lt;E&gt; nonBoundaryEdges = new ArrayList&lt;&gt;(3);</span>
+
+<span class="nc bnc" id="L775" title="All 2 branches missed.">		for(E halfEdge : mesh.getEdgeIt(face)) {</span>
+<span class="nc bnc" id="L776" title="All 2 branches missed.">			if(mesh.isBoundary(mesh.getTwin(halfEdge))) {</span>
+<span class="nc" id="L777">				boundaryEdges.add(halfEdge);</span>
+			}
+			else {
+<span class="nc" id="L780">				nonBoundaryEdges.add(halfEdge);</span>
+			}
+<span class="nc" id="L782">		}</span>
+
+<span class="nc bnc" id="L784" title="All 2 branches missed.">		if(boundaryEdges.size() == 3) {</span>
+			// release memory
+<span class="nc" id="L786">			mesh.getEdges(face).forEach(halfEdge -&gt; mesh.destroyEdge(halfEdge));</span>
+		}
+<span class="nc bnc" id="L788" title="All 2 branches missed.">		else if(boundaryEdges.size() == 2) {</span>
+<span class="nc bnc" id="L789" title="All 2 branches missed.">			E toB = mesh.isBoundary(mesh.getTwin(mesh.getNext(boundaryEdges.get(0)))) ? boundaryEdges.get(0) : boundaryEdges.get(1);</span>
+<span class="nc bnc" id="L790" title="All 2 branches missed.">			E toF = mesh.isBoundary(mesh.getTwin(mesh.getNext(boundaryEdges.get(0)))) ? boundaryEdges.get(1) : boundaryEdges.get(0);</span>
+<span class="nc" id="L791">			E nB = nonBoundaryEdges.get(0);</span>
+<span class="nc" id="L792">			mesh.setFace(nB, mesh.getTwinFace(toF));</span>
+<span class="nc" id="L793">			mesh.setNext(nB, mesh.getNext(mesh.getTwin(toB)));</span>
+<span class="nc" id="L794">			mesh.setPrev(nB, mesh.getPrev(mesh.getTwin(toF)));</span>
+<span class="nc" id="L795">			mesh.setEdge(mesh.getFace(mesh.getTwin(toF)), nB);</span>
+
+			//this.face = mesh.getTwinFace(toF);
+
+			// release memory
+<span class="nc" id="L800">			mesh.destroyEdge(toF);</span>
+<span class="nc" id="L801">			mesh.destroyEdge(toB);</span>
+
+<span class="nc" id="L803">		}</span>
+		else {
+<span class="nc" id="L805">			E boundaryHe = boundaryEdges.get(0);</span>
+<span class="nc" id="L806">			E prec = mesh.getPrev(mesh.getTwin(boundaryHe));</span>
+<span class="nc" id="L807">			E succ = mesh.getNext(mesh.getTwin(boundaryHe));</span>
+
+<span class="nc" id="L809">			E next = mesh.getNext(boundaryHe);</span>
+<span class="nc" id="L810">			E prev = mesh.getPrev(boundaryHe);</span>
+<span class="nc" id="L811">			mesh.setPrev(next, prec);</span>
+<span class="nc" id="L812">			mesh.setFace(next, mesh.getTwinFace(boundaryHe));</span>
+
+<span class="nc" id="L814">			mesh.setNext(prev, succ);</span>
+<span class="nc" id="L815">			mesh.setFace(prev, mesh.getTwinFace(boundaryHe));</span>
+
+<span class="nc" id="L817">			mesh.setEdge(mesh.getFace(prec), prec);</span>
+
+			//this.face = mesh.getFace(prec);
+			// release memory
+<span class="nc" id="L821">			mesh.destroyEdge(boundaryHe);</span>
+		}
+
+<span class="nc" id="L824">		mesh.destroyFace(face);</span>
+<span class="nc" id="L825">	}</span>
+
+	@Override
+	public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="fc" id="L829">		return mesh;</span>
+	}
+
+	@Override
+	public Optional&lt;F&gt; locateFace(final IPoint point) {
+<span class="fc" id="L834">		return pointLocator.locate(point);</span>
+	}
+
+	@Override
+	public Optional&lt;F&gt; locateFace(@NotNull final IPoint point, final Object caller) {
+<span class="nc" id="L839">		return pointLocator.locate(point, caller);</span>
+	}
+
+	@Override
+	public Optional&lt;F&gt; locateFace(@NotNull final double x, final double y, final Object caller) {
+<span class="nc" id="L844">		return pointLocator.locate(x, y, caller);</span>
+	}
+
+	@Override
+	public Optional&lt;F&gt; locateFace(@NotNull final double x, final double y) {
+<span class="nc" id="L849">		return pointLocator.locate(x, y);</span>
+	}
+
+	@Override
+	public Set&lt;F&gt; getFaces() {
+<span class="nc" id="L854">		return streamFaces().collect(Collectors.toSet());</span>
+	}
+
+	@Override
+	public Stream&lt;F&gt; streamFaces() {
+<span class="nc" id="L859">		return stream();</span>
+	}
+
+	@Override
+	public Stream&lt;VTriangle&gt; streamTriangles() {
+<span class="fc" id="L864">		return stream().map(f -&gt; getMesh().toTriangle(f));</span>
+	}
+
+	@Override
+	public Stream&lt;Triple&lt;IPoint, IPoint, IPoint&gt;&gt; streamTriples() {
+<span class="nc" id="L869">		return mesh.streamFaces().map(f -&gt; faceToTriple(f));</span>
+	}
+
+	@Override
+	public Stream&lt;IPoint&gt; streamPoints() {
+<span class="nc" id="L874">		return mesh.streamPoints();</span>
+	}
+
+	@Override
+	public void remove(IPoint point) {
+<span class="fc" id="L879">		Optional&lt;F&gt; optFace = locateFace(point);</span>
+<span class="pc bpc" id="L880" title="1 of 2 branches missed.">		if(optFace.isPresent()) {</span>
+<span class="fc" id="L881">			F face = optFace.get();</span>
+<span class="pc bpc" id="L882" title="1 of 2 branches missed.">			for(V vertex : getMesh().getVertexIt(face)) {</span>
+<span class="fc bfc" id="L883" title="All 2 branches covered.">				if(getMesh().getPoint(vertex).equals(point)) {</span>
+<span class="fc" id="L884">					remove(vertex);</span>
+<span class="fc" id="L885">					break;</span>
+				}
+<span class="fc" id="L887">			}</span>
+		}
+<span class="fc" id="L889">	}</span>
+
+	public Collection&lt;VTriangle&gt; getTriangles() {
+<span class="nc" id="L892">		return stream().map(face -&gt; faceToTriangle(face)).collect(Collectors.toSet());</span>
+	}
+
+	private Triple&lt;IPoint, IPoint, IPoint&gt; faceToTriple(final F face) {
+<span class="nc" id="L896">		List&lt;IPoint&gt; points = mesh.getPoints(face);</span>
+<span class="nc bnc" id="L897" title="All 4 branches missed.">		assert points.size() == 3;</span>
+<span class="nc" id="L898">		IPoint p1 = points.get(0);</span>
+<span class="nc" id="L899">		IPoint p2 = points.get(1);</span>
+<span class="nc" id="L900">		IPoint p3 = points.get(2);</span>
+<span class="nc" id="L901">		return Triple.of(p1, p2, p3);</span>
+	}
+
+	private VTriangle faceToTriangle(final F face) {
+<span class="nc" id="L905">		List&lt;V&gt; points = mesh.getEdges(face).stream().map(edge -&gt; mesh.getVertex(edge)).collect(Collectors.toList());</span>
+<span class="nc" id="L906">		V p1 = points.get(0);</span>
+<span class="nc" id="L907">		V p2 = points.get(1);</span>
+<span class="nc" id="L908">		V p3 = points.get(2);</span>
+<span class="nc" id="L909">		return new VTriangle(new VPoint(p1.getX(), p1.getY()), new VPoint(p2.getX(), p2.getY()), new VPoint(p3.getX(), p3.getY()));</span>
+	}
+
+	/**
+	 * Checks if the edge xy of the triangle xyz is illegal with respect to a point p, which is the case if:
+	 * The the circumscribed cycle of the triangle triangle xyz contains p.
+	 *
+	 * Assumption: p = point(next(edge)).
+	 *
+	 * @param edge  the edge that might be illegal
+	 * @param p     point(next(edge))
+	 * @return true if the edge with respect to p is illegal, otherwise false
+	 */
+	@Override
+	public boolean isIllegal(@NotNull final E edge, @NotNull final V p) {
+		// TODO: duplicated code
+<span class="pc bpc" id="L925" title="1 of 4 branches missed.">		if(/*!isVirtualVertex(p) &amp;&amp; */!mesh.isAtBoundary(edge) &amp;&amp; illegalPredicate.test(edge)) {</span>
+<span class="fc" id="L926">			V v1 = getMesh().getVertex(edge);</span>
+<span class="fc" id="L927">			V v2 = getMesh().getTwinVertex(edge);</span>
+
+			/*if(isVirtualVertex(v1)) {
+				E e = getMesh().getNext(getMesh().getTwin(edge));
+				return !isVirtualEdge(e) &amp;&amp; isLeftOf(p.getX(), p.getY(), e);
+			} else if(isVirtualVertex(v2)) {
+				E e = getMesh().getPrev(getMesh().getTwin(edge));
+				return !isVirtualEdge(e) &amp;&amp; isLeftOf(p.getX(), p.getY(), e);
+			} else {*/
+<span class="fc" id="L936">				return isDelaunayIllegal(edge, p);</span>
+			//}
+		}
+
+<span class="fc" id="L940">		return false;</span>
+		//return isIllegal(edge, p, mesh);
+	}
+
+	@Override
+	public boolean isIllegal(@NotNull final E edge, @NotNull final V p, final double eps) {
+<span class="nc bnc" id="L946" title="All 4 branches missed.">		if(/*!isVirtualVertex(p) &amp;&amp; */!mesh.isAtBoundary(edge) &amp;&amp; illegalPredicate.test(edge)) {</span>
+			// special case for infinity vertices for which the arc of their circumcircle becomes a line!
+			//V v1 = getMesh().getVertex(edge);
+			//V v2 = getMesh().getTwinVertex(edge);
+
+			/*if(isVirtualVertex(v1)) {
+				return isLeftOf(p.getX(), p.getY(), getMesh().getNext(getMesh().getTwin(edge)));
+			} else if(isVirtualVertex(v2)) {
+				return isLeftOf(p.getX(), p.getY(), getMesh().getPrev(getMesh().getTwin(edge)));
+			} else {
+			*/
+<span class="nc" id="L957">				return isDelaunayIllegal(edge, p, eps);</span>
+			//}
+		}
+
+<span class="nc" id="L961">		return false;</span>
+		//return isIllegal(edge, p, mesh);
+	}
+
+	/*public static &lt;P extends IPoint, V extends  IVertex&lt;P&gt;, E extends IHalfEdge&lt;P&gt;, F extends IFace&lt;P&gt;&gt; boolean isIllegal(E edge, V p, IMesh&lt;P, V, E, F&gt; mesh) {
+		if(!mesh.isBoundary(mesh.getTwinFace(edge))) {
+			//V p = mesh.getVertex(mesh.getNext(edge));
+			E t0 = mesh.getTwin(edge);
+			E t1 = mesh.getNext(t0);
+			E t2 = mesh.getNext(t1);
+
+			V x = mesh.getVertex(t0);
+			V y = mesh.getVertex(t1);
+			V z = mesh.getVertex(t2);
+
+			//return Utils.angle3D(x, y, z) + Utils.angle3D(x, p, z) &gt; Math.PI;
+
+			//return Utils.isInCircumscribedCycle(x, y, z, p);
+			if (Utils.ccw(x,y,z) &gt; 0
+					t.dest().rightOf(e) &amp;&amp; v.isInCircle(e.orig(), t.dest(), e.dest())) {
+			log.info(Utils.ccw(x,y,z) &gt; 0);
+			return Utils.isInsideCircle(x, y, z, p);
+		}
+		return false;
+	}*/
+
+	/*public static &lt;P extends IPoint, CE, CF, V extends  IVertex, E extends IHalfEdge, F extends IFace&gt; boolean isIllegal(E edge, V p, IMesh&lt;V, E, F&gt; mesh) {
+		if(!mesh.isBoundary(mesh.getTwinFace(edge))) {
+			//assert mesh.getVertex(mesh.getNext(edge)).equals(p);
+			//V p = mesh.getVertex(mesh.getNext(edge));
+			E t0 = mesh.getTwin(edge);
+			E t1 = mesh.getNext(t0);
+			E t2 = mesh.getNext(t1);
+
+			V x = mesh.getVertex(t0);
+			V y = mesh.getVertex(t1);
+			V z = mesh.getVertex(t2);
+
+			//return Utils.angle3D(x, y, z) + Utils.angle3D(x, p, z) &gt; Math.PI;
+
+			//return Utils.isInCircumscribedCycle(x, y, z, p);
+			//if(Utils.ccw(z,x,y) &gt; 0) {
+				return GeometryUtils.isInsideCircle(z, x, y, p);
+			//}
+			//else {
+			//	return Utils.isInsideCircle(x, z, y, p);
+			//}
+		}
+		return false;
+	}*/
+
+	/*public static &lt;P extends IPoint&gt; boolean isIllegalEdge(final E edge){
+		P p = edge.getNext().getEnd();
+
+		if(!edge.isAtBoundary() &amp;&amp; !edge.getTwin().isAtBoundary()) {
+			P x = edge.getTwin().getEnd();
+			P y = edge.getTwin().getNext().getEnd();
+			P z = edge.getTwin().getNext().getNext().getEnd();
+			VTriangle triangle = new VTriangle(new VPoint(x.getX(), x.getY()), new VPoint(y.getX(), y.getY()), new VPoint(z.getX(), z.getY()));
+			return triangle.isInCircumscribedCycle(p);
+		}
+		return false;
+	}*/
+
+	@Override
+	public void legalizeNonRecursive(@NotNull final E edge, final V p) {
+<span class="fc" id="L1027">		int flips = 0;</span>
+<span class="fc" id="L1028">		int its = 0;</span>
+		//if(isIllegal(edge, p)) {
+
+			// this should be the same afterwards
+			//E halfEdge = getMesh().getNext(edge);
+
+<span class="fc" id="L1034">			IMesh&lt;V, E, F&gt; mesh = getMesh();</span>
+<span class="fc" id="L1035">			E startEdge = mesh.getPrev(edge);</span>
+<span class="fc" id="L1036">			E endEdge = mesh.getTwin(getMesh().getPrev(startEdge));</span>
+<span class="fc" id="L1037">			E currentEdge = mesh.getPrev(edge);</span>
+
+			// flipp
+			//c.prev.twin
+
+<span class="fc bfc" id="L1042" title="All 2 branches covered.">			while(currentEdge != endEdge) {</span>
+<span class="fc bfc" id="L1043" title="All 2 branches covered.">				while (isIllegal(mesh.getNext(currentEdge), p)) {</span>
+<span class="fc" id="L1044">					flip(mesh.getNext(currentEdge));</span>
+<span class="fc" id="L1045">					flips++;</span>
+<span class="fc" id="L1046">					its++;</span>
+				}
+<span class="fc" id="L1048">				its++;</span>
+
+<span class="fc" id="L1050">				currentEdge = mesh.getTwin(mesh.getPrev(currentEdge));</span>
+			}
+
+			//log.info(&quot;#flips = &quot; + flips);
+			//log.info(&quot;#its = &quot; + its);
+		//}
+<span class="fc" id="L1056">	}</span>
+
+	/*@Override
+	/*@Override
+	public void legalizeNonRecursive(@NotNull final E edge, final V p) {
+		boolean found = false;
+		do {
+			found = false;
+			for(E e : getMesh().getEdges()) {
+				if(isIllegal(e)) {
+					flip(e);
+					found = true;
+				}
+			}
+		} while (found);
+	}*/
+
+	@Override
+	public void flipEdgeEvent(final F f1, final F f2) {
+<span class="fc" id="L1075">		pointLocator.postFlipEdgeEvent(f1, f2);</span>
+<span class="pc bpc" id="L1076" title="1 of 2 branches missed.">		for(ITriEventListener&lt;V, E, F&gt; triEventListener : triEventListeners) {</span>
+<span class="nc" id="L1077">			triEventListener.postFlipEdgeEvent(f1, f2);</span>
+<span class="nc" id="L1078">		}</span>
+<span class="fc" id="L1079">	}</span>
+
+	@Override
+	public void splitTriangleEvent(final F original, final F f1, F f2, F f3, V v) {
+<span class="fc" id="L1083">		pointLocator.postSplitTriangleEvent(original, f1, f2, f3,v );</span>
+<span class="pc bpc" id="L1084" title="1 of 2 branches missed.">		for(ITriEventListener&lt;V, E, F&gt; triEventListener : triEventListeners) {</span>
+<span class="nc" id="L1085">			triEventListener.postSplitTriangleEvent(original, f1, f2, f3, v);</span>
+<span class="nc" id="L1086">		}</span>
+<span class="fc" id="L1087">	}</span>
+
+	@Override
+	public void splitEdgeEvent(E originalEdge, F original, F f1, F f2, V v) {
+<span class="fc" id="L1091">		pointLocator.postSplitHalfEdgeEvent(originalEdge, original, f1, f2,v );</span>
+<span class="pc bpc" id="L1092" title="1 of 2 branches missed.">		for(ITriEventListener&lt;V, E, F&gt; triEventListener : triEventListeners) {</span>
+<span class="nc" id="L1093">			triEventListener.postSplitHalfEdgeEvent(originalEdge, original, f1, f2, v);</span>
+<span class="nc" id="L1094">		}</span>
+<span class="fc" id="L1095">	}</span>
+
+	@Override
+	public void insertEvent(@NotNull final E halfEdge) {
+<span class="fc" id="L1099">		pointLocator.postInsertEvent(getMesh().getVertex(halfEdge));</span>
+<span class="pc bpc" id="L1100" title="1 of 2 branches missed.">		for(ITriEventListener&lt;V, E, F&gt; triEventListener : triEventListeners) {</span>
+<span class="nc" id="L1101">			triEventListener.postInsertEvent(getMesh().getVertex(halfEdge));</span>
+<span class="nc" id="L1102">		}</span>
+<span class="fc" id="L1103">	}</span>
+
+	@Override
+	public Iterator&lt;F&gt; iterator() {
+<span class="fc" id="L1107">		return new FaceIterator(mesh);</span>
+	}
+
+	public Stream&lt;F&gt; stream() {
+<span class="fc" id="L1111">		return StreamSupport.stream(this.spliterator(), false);</span>
+	}
+
+	@Override
+	public IncrementalTriangulation&lt;V, E, F&gt; clone() {
+		try {
+<span class="nc" id="L1117">			IncrementalTriangulation&lt;V, E, F&gt; clone = (IncrementalTriangulation&lt;V, E, F&gt;)super.clone();</span>
+<span class="nc" id="L1118">			clone.mesh = mesh.clone();</span>
+
+<span class="nc" id="L1120">			List&lt;V&gt; cVirtualVertices = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L1121" title="All 2 branches missed.">			for(V v : virtualVertices) {</span>
+<span class="nc bnc" id="L1122" title="All 2 branches missed.">				for(V cV : clone.mesh.getVertices()) {</span>
+<span class="nc bnc" id="L1123" title="All 2 branches missed.">					if(v.getPoint().equals(cV.getPoint())) {</span>
+<span class="nc" id="L1124">						cVirtualVertices.add(cV);</span>
+<span class="nc" id="L1125">						break;</span>
+					}
+<span class="nc" id="L1127">				}</span>
+<span class="nc" id="L1128">			}</span>
+
+<span class="nc bnc" id="L1130" title="All 4 branches missed.">			assert cVirtualVertices.size() == virtualVertices.size();</span>
+<span class="nc" id="L1131">			clone.virtualVertices = cVirtualVertices;</span>
+
+			/**
+			 * The point locator is not cloned but reconstructed. Cloning the Delaunay-Hierarchy or the Delaunay-Tree seems impossible with
+			 * respect to the performance. However, the reconstruction is also expensive O(n * log(n)) where n is the number of vertices.
+			 */
+<span class="nc" id="L1137">			clone.setPointLocator(pointLocator.getType());</span>
+
+<span class="nc" id="L1139">			return clone;</span>
+
+<span class="nc" id="L1141">		} catch (CloneNotSupportedException e) {</span>
+<span class="nc" id="L1142">			throw new InternalError(e.getMessage());</span>
+		}
+	}
+
+	// TODO: the following code can be deleted, this is only for visual checks
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+<span class="nc" id="L1149">		int height = 1000;</span>
+<span class="nc" id="L1150">		int width = 1000;</span>
+<span class="nc" id="L1151">		int max = Math.max(height, width);</span>
+
+<span class="nc" id="L1153">		Set&lt;IPoint&gt; points = new HashSet&lt;&gt;();</span>
+		/*points.add(new VPoint(20,20));
+		points.add(new VPoint(20,40));
+		points.add(new VPoint(75,53));
+		points.add(new VPoint(80,70));*/
+
+<span class="nc" id="L1159">		Random r = new Random(1);</span>
+<span class="nc bnc" id="L1160" title="All 2 branches missed.">		for(int i=0; i&lt;100; i++) {</span>
+<span class="nc" id="L1161">			VPoint point = new VPoint(width*r.nextDouble(), height*r.nextDouble());</span>
+<span class="nc" id="L1162">			points.add(point);</span>
+		}
+
+<span class="nc" id="L1165">		IPointConstructor&lt;VPoint&gt; pointConstructor =  (x, y) -&gt; new VPoint(x, y);</span>
+<span class="nc" id="L1166">		long ms = System.currentTimeMillis();</span>
+
+<span class="nc" id="L1168">		PMesh mesh = new PMesh();</span>
+<span class="nc" id="L1169">		IIncrementalTriangulation&lt;PVertex, PHalfEdge, PFace&gt; bw = IIncrementalTriangulation.createPTriangulation(</span>
+				IPointLocator.Type.DELAUNAY_HIERARCHY,
+				points
+		);
+<span class="nc" id="L1173">		bw.finish();</span>
+<span class="nc" id="L1174">		System.out.println(System.currentTimeMillis() - ms);</span>
+<span class="nc" id="L1175">        Set&lt;VLine&gt; edges = bw.getEdges();</span>
+
+<span class="nc" id="L1177">		JFrame window = new JFrame();</span>
+<span class="nc" id="L1178">		window.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);</span>
+<span class="nc" id="L1179">		window.setBounds(0, 0, max, max);</span>
+<span class="nc" id="L1180">		window.getContentPane().add(new Lines(edges, points, max));</span>
+<span class="nc" id="L1181">		window.setVisible(true);</span>
+
+
+<span class="nc" id="L1184">        ms = System.currentTimeMillis();</span>
+<span class="nc" id="L1185">        IIncrementalTriangulation&lt;AVertex, AHalfEdge, AFace&gt; bw2 = IIncrementalTriangulation.createATriangulation(</span>
+                IPointLocator.Type.DELAUNAY_HIERARCHY,
+                points
+        );
+<span class="nc" id="L1189">        bw2.finish();</span>
+<span class="nc" id="L1190">        System.out.println(System.currentTimeMillis() - ms);</span>
+
+<span class="nc" id="L1192">        Set&lt;VLine&gt; edges2 = bw2.getEdges();</span>
+<span class="nc" id="L1193">        JFrame window2 = new JFrame();</span>
+<span class="nc" id="L1194">        window2.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);</span>
+<span class="nc" id="L1195">        window2.setBounds(0, 0, max, max);</span>
+<span class="nc" id="L1196">        window2.getContentPane().add(new Lines(edges2, points, max));</span>
+<span class="nc" id="L1197">        window2.setVisible(true);</span>
+
+<span class="nc" id="L1199">		ms = System.currentTimeMillis();</span>
+<span class="nc" id="L1200">		BowyerWatsonSlow bw3 = new BowyerWatsonSlow(points);</span>
+<span class="nc" id="L1201">		bw3.execute();</span>
+<span class="nc" id="L1202">		Set&lt;VLine&gt; edges3 = bw3.getTriangles().stream()</span>
+<span class="nc" id="L1203">				.flatMap(triangle -&gt; triangle.streamLines()).collect(Collectors.toSet());</span>
+<span class="nc" id="L1204">		System.out.println(System.currentTimeMillis() - ms);</span>
+
+<span class="nc" id="L1206">		JFrame window3 = new JFrame();</span>
+<span class="nc" id="L1207">		window3.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);</span>
+<span class="nc" id="L1208">		window3.setBounds(0, 0, max, max);</span>
+<span class="nc" id="L1209">		window3.getContentPane().add(new Lines(edges3, points, max));</span>
+<span class="nc" id="L1210">		window3.setVisible(true);</span>
+
+
+		/*VRectangle bound = new VRectangle(0, 0, width, height);
+		ITriangulation triangulation = ITriangulation.createVPTriangulation(bound);
+		VPUniformRefinement uniformRefinement = new VPUniformRefinement(
+				triangulation,
+				bound,
+				Arrays.asList(new VRectangle(200, 200, 100, 200)),
+				p -&gt; 10.0);
+
+		uniformRefinement.generate();
+		Set&lt;VLine&gt; edges4 = triangulation.getEdges();
+
+		JFrame window4 = new JFrame();
+		window4.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+		window4.setBounds(0, 0, max, max);
+		window4.getContentPane().add(new Lines(edges4, edges4.stream().flatMap(edge -&gt; edge.streamPoints()).collect(Collectors.toSet()), max));
+		window4.setVisible(true);*/
+<span class="nc" id="L1229">	}</span>
+
+	private static class Lines extends JComponent{
+		private Set&lt;VLine&gt; edges;
+		private Set&lt;IPoint&gt; points;
+		private final int max;
+
+<span class="nc" id="L1236">		public Lines(final Set&lt;VLine&gt; edges, final Set&lt;IPoint&gt; points, final int max){</span>
+<span class="nc" id="L1237">			this.edges = edges;</span>
+<span class="nc" id="L1238">			this.points = points;</span>
+<span class="nc" id="L1239">			this.max = max;</span>
+<span class="nc" id="L1240">		}</span>
+
+		public void paint(Graphics g) {
+<span class="nc" id="L1243">			Graphics2D g2 = (Graphics2D) g;</span>
+<span class="nc" id="L1244">			g2.setBackground(Color.white);</span>
+<span class="nc" id="L1245">			g2.setStroke(new BasicStroke(1.0f));</span>
+<span class="nc" id="L1246">			g2.setColor(Color.black);</span>
+<span class="nc" id="L1247">			g2.draw(new VRectangle(200, 200, 100, 200));</span>
+<span class="nc" id="L1248">			g2.setColor(Color.gray);</span>
+			//g2.translate(200, 200);
+			//g2.scale(0.2, 0.2);
+
+<span class="nc" id="L1252">			g2.draw(new VRectangle(200, 200, 100, 200));</span>
+
+<span class="nc" id="L1254">			edges.stream().forEach(edge -&gt; {</span>
+<span class="nc" id="L1255">				Shape k = new VLine(edge.getP1().getX(), edge.getP1().getY(), edge.getP2().getX(), edge.getP2().getY());</span>
+<span class="nc" id="L1256">				g2.draw(k);</span>
+<span class="nc" id="L1257">			});</span>
+
+<span class="nc" id="L1259">			points.stream().forEach(point -&gt; {</span>
+<span class="nc" id="L1260">				VCircle k = new VCircle(point.getX(), point.getY(), 1.0);</span>
+<span class="nc" id="L1261">				g2.draw(k);</span>
+<span class="nc" id="L1262">			});</span>
+
+<span class="nc" id="L1264">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

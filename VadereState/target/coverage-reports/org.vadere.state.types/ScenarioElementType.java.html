@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ScenarioElementType.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.types</a> &gt; <span class="el_source">ScenarioElementType.java</span></div><h1>ScenarioElementType.java</h1><pre class="source lang-java linenums">package org.vadere.state.types;
+
+import java.awt.*;
+
+import org.vadere.state.attributes.Attributes;
+import org.vadere.state.attributes.scenario.*;
+
+<span class="fc" id="L8">public enum ScenarioElementType {</span>
+
+<span class="fc" id="L10">	OBSTACLE(Color.BLACK, AttributesObstacle.class),</span>
+<span class="fc" id="L11">	PEDESTRIAN(Color.BLUE, AttributesAgent.class),</span>
+<span class="fc" id="L12">	SOURCE(Color.ORANGE, AttributesSource.class),</span>
+<span class="fc" id="L13">	TARGET(Color.GREEN, AttributesTarget.class),</span>
+<span class="fc" id="L14">	TARGET_CHANGER(Color.ORANGE, AttributesTargetChanger.class),</span>
+<span class="fc" id="L15">	ABSORBING_AREA(Color.RED, AttributesAbsorbingArea.class),</span>
+<span class="fc" id="L16">	STAIRS(Color.PINK, AttributesStairs.class),</span>
+<span class="fc" id="L17">	TELEPORTER(Color.GRAY, AttributesTeleporter.class),</span>
+<span class="fc" id="L18">	CAR(Color.black, AttributesCar.class),</span>
+<span class="fc" id="L19">	MEASUREMENT_AREA(Color.red, AttributesMeasurementArea.class);</span>
+
+	private Color color;
+	private Class&lt;? extends Attributes&gt; clazz;
+
+<span class="fc" id="L24">	ScenarioElementType(final Color color, final Class&lt;? extends Attributes&gt; clazz) {</span>
+<span class="fc" id="L25">		this.color = color;</span>
+<span class="fc" id="L26">		this.clazz = clazz;</span>
+<span class="fc" id="L27">	}</span>
+
+	public Color getColor() {
+<span class="nc" id="L30">		return color;</span>
+	}
+
+	public Class&lt;? extends Attributes&gt; getAttributeClass() {
+<span class="nc" id="L34">		return clazz;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

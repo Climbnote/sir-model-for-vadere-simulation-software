@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: org.vadere.simulator.projects.dataprocessing.processor.AreaDensityVoronoiProcessorTest
+-------------------------------------------------------------------------------
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 2, Time elapsed: 0.027 s - in org.vadere.simulator.projects.dataprocessing.processor.AreaDensityVoronoiProcessorTest

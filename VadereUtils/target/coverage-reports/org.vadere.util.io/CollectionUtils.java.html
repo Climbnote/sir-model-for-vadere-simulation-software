@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CollectionUtils.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.io</a> &gt; <span class="el_source">CollectionUtils.java</span></div><h1>CollectionUtils.java</h1><pre class="source lang-java linenums">package org.vadere.util.io;
+
+import com.google.common.collect.Iterables;
+
+import org.jetbrains.annotations.NotNull;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+<span class="nc" id="L16">public class CollectionUtils {</span>
+
+	public static&lt;T&gt; List&lt;List&lt;T&gt;&gt; split(@NotNull final List&lt;T&gt; list, final int n) {
+		List&lt;List&lt;T&gt;&gt; lists;
+<span class="nc bnc" id="L20" title="All 2 branches missed.">		if(n &gt;= list.size()) {</span>
+<span class="nc" id="L21">			lists = new ArrayList&lt;&gt;(list.size());</span>
+<span class="nc bnc" id="L22" title="All 2 branches missed.">			for(int i = 0; i &lt; n; i++) {</span>
+<span class="nc" id="L23">				ArrayList&lt;T&gt; subList = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L24">				subList.add(list.get(i));</span>
+			}
+		} else {
+<span class="nc" id="L27">			int chunks = list.size() / n;</span>
+<span class="nc" id="L28">			int[] index = new int[n+1];</span>
+<span class="nc" id="L29">			index[0] = 0;</span>
+
+<span class="nc bnc" id="L31" title="All 2 branches missed.">			for(int i = 1; i &lt; n; i++) {</span>
+<span class="nc" id="L32">				index[i] = index[i-1] + chunks;</span>
+			}
+
+<span class="nc" id="L35">			index[n] = list.size();</span>
+
+<span class="nc" id="L37">			lists = IntStream.range(0, n)</span>
+<span class="nc" id="L38">					.mapToObj(i -&gt; list.subList(index[i], index[i + 1]))</span>
+<span class="nc" id="L39">					.collect(Collectors.toList());</span>
+		}
+
+
+<span class="nc" id="L43">		return lists;</span>
+	}
+
+	public static&lt;T&gt; List&lt;List&lt;T&gt;&gt; split(@NotNull final Collection&lt;T&gt; list, final int n) {
+<span class="nc" id="L47">		return split(list.stream().collect(Collectors.toList()), n);</span>
+	}
+
+
+	/**
+	 * Select objects from a list that have the given class type.
+	 * 
+	 * @param list
+	 * @param type
+	 * @return a list containing only the
+	 */
+	public static &lt;T, S extends T&gt; LinkedList&lt;S&gt; select(Collection&lt;T&gt; list,
+			Class&lt;S&gt; type) {
+<span class="nc" id="L60">		LinkedList&lt;S&gt; result = new LinkedList&lt;&gt;();</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">		for (T element : list) {</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">			if (element.getClass().isAssignableFrom(type)) {</span>
+<span class="nc" id="L63">				result.add(type.cast(element));</span>
+			}
+<span class="nc" id="L65">		}</span>
+<span class="nc" id="L66">		return result;</span>
+	}
+
+	/**
+	 * Returns true iff the given Collections contain exactly the same elements with exactly the same cardinalities.
+	 * That is, iff the cardinality of e in a is equal to the cardinality of e in b, for each element e in a or b.
+	 * @param a
+	 * @param b
+	 * @param equator
+	 * @param &lt;T&gt;
+	 * @return
+	 */
+	public static &lt;T&gt; boolean isEqualCollection(final Collection&lt;? extends T&gt; a, final Collection&lt;? extends T&gt; b, final IEquator&lt;T&gt; equator) {
+<span class="nc" id="L79">		Collection&lt;EquatorWrapper&lt;T&gt;&gt; ewA = a.stream().map(obj -&gt; new EquatorWrapper&lt;&gt;(equator, obj)).collect(Collectors.toList());</span>
+<span class="nc" id="L80">		Collection&lt;EquatorWrapper&lt;T&gt;&gt; ewB = b.stream().map(obj -&gt; new EquatorWrapper&lt;&gt;(equator, obj)).collect(Collectors.toList());</span>
+<span class="nc" id="L81">		return Iterables.elementsEqual(ewA, ewB);</span>
+	}
+
+	public static &lt;T&gt; boolean isEqualSet(final Set&lt;? extends T&gt; a, final Set&lt;? extends T&gt; b, final IEquator&lt;T&gt; equator) {
+<span class="nc" id="L85">		Set&lt;EquatorWrapper&lt;T&gt;&gt; ewA = a.stream().map(obj -&gt; new EquatorWrapper&lt;&gt;(equator, obj)).collect(Collectors.toSet());</span>
+<span class="nc" id="L86">		Set&lt;EquatorWrapper&lt;T&gt;&gt; ewB = b.stream().map(obj -&gt; new EquatorWrapper&lt;&gt;(equator, obj)).collect(Collectors.toSet());</span>
+<span class="nc" id="L87">		return ewA.equals(ewB);</span>
+	}
+
+	public interface IEquator&lt;T&gt; {
+		boolean equate(T a, T b);
+		int hash(T a);
+	}
+
+	private static class EquatorWrapper&lt;T&gt; {
+        private final IEquator&lt;T&gt; equator;
+        private final T object;
+
+<span class="nc" id="L99">        public EquatorWrapper(final IEquator&lt;T&gt; equator, final T object) {</span>
+<span class="nc" id="L100">            this.equator = equator;</span>
+<span class="nc" id="L101">            this.object = object;</span>
+<span class="nc" id="L102">        }</span>
+
+        public T getObject() {
+<span class="nc" id="L105">            return object;</span>
+        }
+
+		        @Override
+        public boolean equals(final Object obj) {
+<span class="nc bnc" id="L110" title="All 2 branches missed.">            if (!(obj instanceof EquatorWrapper)) {</span>
+<span class="nc" id="L111">	                return false;</span>
+            }
+
+            @SuppressWarnings(&quot;unchecked&quot;)
+<span class="nc" id="L115">            final EquatorWrapper&lt;T&gt; otherObj = (EquatorWrapper&lt;T&gt;) obj;</span>
+<span class="nc" id="L116">            return equator.equate(object, otherObj.getObject());</span>
+        }
+
+		        @Override
+        public int hashCode() {
+<span class="nc" id="L121">            return equator.hash(object);</span>
+        }
+    }
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

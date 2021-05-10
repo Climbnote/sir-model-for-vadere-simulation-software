@@ -1,0 +1,640 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EikMeshPlots.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.examples</a> &gt; <span class="el_source">EikMeshPlots.java</span></div><h1>EikMeshPlots.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.examples;
+
+import org.vadere.meshing.mesh.gen.MeshPanel;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PMesh;
+import org.vadere.meshing.mesh.gen.PVertex;
+import org.vadere.meshing.mesh.impl.PMeshPanel;
+import org.vadere.meshing.mesh.impl.PSLG;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IPointConstructor;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.EdgeLengthFunctionApprox;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+import org.vadere.meshing.mesh.triangulation.improver.distmesh.Distmesh;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.EikMeshPoint;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.gen.GenEikMesh;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.impl.PEikMesh;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.PDelaunayTriangulator;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.PRuppertsTriangulator;
+import org.vadere.meshing.utils.io.poly.PSLGGenerator;
+import org.vadere.meshing.utils.io.tex.TexGraphGenerator;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.util.math.IDistanceFunction;
+
+import java.awt.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Random;
+import java.util.function.Function;
+
+/**
+ * Script to construct Tikz-Plots for different edge length functions and geometries
+ * which are used for the manuel and the documentation.
+ */
+<span class="nc" id="L45">public class EikMeshPlots {</span>
+
+<span class="nc" id="L47">	private static final Color lightBlue = new Color(0.8584083044982699f, 0.9134486735870818f, 0.9645674740484429f);</span>
+
+	public static void main(String... args) throws InterruptedException, IOException {
+		/*discXAdaptive(0.02);
+		randomDelaunay();
+		uniformRing(0.05);
+		uniformRing(0.3);
+		uniformRing(0.1);
+		eikMeshA(0.01);
+		eikMeshA(0.05);
+		eikMeshA(0.02);
+		distanceFuncCombination(0.07);
+		discSubtractRect(0.1);
+		discSubtractRect(0.03);
+		discSubtractRect(0.01);
+
+		discSubtractRect2(0.1);
+		discSubtractRect2(0.03);
+		discSubtractRect2(0.01);
+
+		kaiserslautern();
+		ruppertsAndEikMeshKaiserslautern();*/
+		//bridge();
+		//roomLFS();
+		//cornerLFS();
+
+		//uniformRing(0.3);
+<span class="nc" id="L74">		randomDelaunay();</span>
+		//discSubtractRect2(0.1);
+		//squareInSquare(0.1);
+<span class="nc" id="L77">	}</span>
+
+	public static void randomDelaunay() throws IOException, InterruptedException {
+<span class="nc" id="L80">		ArrayList&lt;EikMeshPoint&gt; points = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L81">		Random random = new Random(1);</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">		for (int i = 0; i &lt; 100; i++) {</span>
+<span class="nc" id="L83">			points.add(new EikMeshPoint(random.nextDouble() * 10, random.nextDouble() * 10));</span>
+		}
+
+<span class="nc" id="L86">		PDelaunayTriangulator dt = new PDelaunayTriangulator(points);</span>
+<span class="nc" id="L87">		dt.generate();</span>
+		//write(toTexDocument(TexGraphGenerator.toTikz(dt.getMesh(), f -&gt; lightBlue, 1.0f)), &quot;eikmesh_random_before&quot;);
+
+<span class="nc" id="L90">		VPolygon bound = dt.getMesh().toPolygon(dt.getMesh().getBorder());</span>
+<span class="nc" id="L91">		var meshImprover = new PEikMesh(</span>
+<span class="nc" id="L92">				p -&gt; 2.0,</span>
+<span class="nc" id="L93">				dt.getTriangulation()</span>
+		);
+
+		// display the mesh
+<span class="nc" id="L97">		PMeshPanel meshPanel = new PMeshPanel(dt.getMesh(), 1000, 1000);</span>
+<span class="nc" id="L98">		meshPanel.display(&quot;Random Delaunay triangulation&quot;);</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">		while (!meshImprover.isFinished()) {</span>
+<span class="nc" id="L100">			meshImprover.improve();</span>
+<span class="nc" id="L101">			Thread.sleep(10);</span>
+<span class="nc" id="L102">			meshPanel.repaint();</span>
+		}
+
+<span class="nc" id="L105">		meshImprover.finish();</span>
+<span class="nc" id="L106">		meshPanel.repaint();</span>
+
+		/*var meshImprover2 = new PEikMesh(
+				p -&gt; 0.05 + 0.2 * Math.sqrt(p.getY() * p.getY() / 20.0 + p.getX() * p.getX() / 20.0),
+				dt.getTriangulation(),
+				true
+		);
+
+		while (!meshImprover2.isFinished()) {
+			meshImprover2.improve();
+			Thread.sleep(1);
+			meshPanel.repaint();
+			System.out.println(&quot;imp&quot;);
+		}
+		System.out.println(&quot;end&quot;);*/
+		//write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 1.0f)), &quot;eikmesh_random_after&quot;);
+<span class="nc" id="L122">	}</span>
+
+	public static void kaiserslautern() throws IOException, InterruptedException {
+<span class="nc" id="L125">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/kaiserslautern.poly&quot;);</span>
+<span class="nc" id="L126">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L127">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L128">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+
+<span class="nc" id="L130">		IPointConstructor&lt;EikMeshPoint&gt; pointConstructor = (x, y) -&gt; new EikMeshPoint(x, y);</span>
+<span class="nc" id="L131">		IDistanceFunction distanceFunction = IDistanceFunction.create(segmentBound, holes);</span>
+
+
+		// (3) use EikMesh to improve the mesh
+<span class="nc" id="L135">		double h0 = 5.0;</span>
+<span class="nc" id="L136">		var meshImprover = new PEikMesh(</span>
+				distanceFunction,
+<span class="nc" id="L138">				p -&gt; h0 + 0.3 * Math.abs(distanceFunction.apply(p)),</span>
+				h0,
+<span class="nc" id="L140">				new VRectangle(segmentBound.getBounds2D()),</span>
+<span class="nc" id="L141">				pslg.getHoles()</span>
+		);
+
+<span class="nc" id="L144">		meshImprover.generate();</span>
+<span class="nc" id="L145">		var meshPanel = new PMeshPanel(meshImprover.getMesh(), 1000, 800);</span>
+<span class="nc" id="L146">		write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 1.0f)), &quot;eikmesh_kaiserslautern_&quot; + Double.toString(h0).replace('.', '_'));</span>
+
+		// display the mesh
+<span class="nc" id="L149">		meshPanel.display(&quot;Combined distance functions &quot; + h0);</span>
+<span class="nc" id="L150">	}</span>
+
+	public static void bridge() throws IOException, InterruptedException {
+<span class="nc" id="L153">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/bridge.poly&quot;);</span>
+<span class="nc" id="L154">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L155">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L156">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+<span class="nc" id="L157">		IDistanceFunction distanceFunction = IDistanceFunction.create(segmentBound, holes);</span>
+
+		// (3) use EikMesh to improve the mesh
+<span class="nc" id="L160">		double h0 = 0.5;</span>
+<span class="nc" id="L161">		var meshImprover = new PEikMesh(</span>
+				distanceFunction,
+<span class="nc" id="L163">				p -&gt; h0 + 0.5 * Math.abs(distanceFunction.apply(p)),</span>
+				h0,
+<span class="nc" id="L165">				new VRectangle(segmentBound.getBounds2D()),</span>
+<span class="nc" id="L166">				pslg.getHoles()</span>
+		);
+
+<span class="nc" id="L169">		var meshPanel = new PMeshPanel(meshImprover.getMesh(), 1000, 800);</span>
+<span class="nc" id="L170">		meshPanel.display(&quot;Combined distance functions &quot; + h0);</span>
+<span class="nc bnc" id="L171" title="All 2 branches missed.">		while (!meshImprover.isFinished()) {</span>
+<span class="nc" id="L172">			meshImprover.improve();</span>
+<span class="nc" id="L173">			Thread.sleep(20);</span>
+<span class="nc" id="L174">			meshPanel.repaint();</span>
+		}
+		//meshImprover.generate();
+
+<span class="nc" id="L178">		write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 1.0f)), &quot;eikmesh_kaiserslautern_&quot; + Double.toString(h0).replace('.', '_'));</span>
+
+		// display the mesh
+<span class="nc" id="L181">		meshPanel.display(&quot;Combined distance functions &quot; + h0);</span>
+<span class="nc" id="L182">	}</span>
+
+	public static void roomLFS() throws IOException, InterruptedException {
+<span class="nc" id="L185">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/room.poly&quot;);</span>
+<span class="nc" id="L186">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L187">		EdgeLengthFunctionApprox edgeLengthFunctionApprox = new EdgeLengthFunctionApprox(pslg, p -&gt; 2.0);</span>
+<span class="nc" id="L188">		edgeLengthFunctionApprox.printPython();</span>
+
+
+<span class="nc" id="L191">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L192">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+<span class="nc" id="L193">		IDistanceFunction distanceFunction = IDistanceFunction.create(segmentBound, holes);</span>
+
+		// (3) use EikMesh to improve the mesh
+<span class="nc" id="L196">		double h0 = 0.5;</span>
+<span class="nc" id="L197">		var meshImprover = new PEikMesh(</span>
+				distanceFunction,
+				edgeLengthFunctionApprox,
+				h0,
+<span class="nc" id="L201">				new VRectangle(segmentBound.getBounds2D()),</span>
+<span class="nc" id="L202">				pslg.getHoles()</span>
+		);
+
+<span class="nc" id="L205">		var meshPanel = new PMeshPanel(meshImprover.getMesh(), 1000, 800);</span>
+<span class="nc" id="L206">		meshPanel.display(&quot;Combined distance functions &quot; + h0);</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">		while (!meshImprover.isFinished()) {</span>
+<span class="nc" id="L208">			meshImprover.improve();</span>
+<span class="nc" id="L209">			Thread.sleep(20);</span>
+<span class="nc" id="L210">			meshPanel.repaint();</span>
+		}
+		//meshImprover.generate();
+
+<span class="nc" id="L214">		write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 1.0f)), &quot;eikmesh_kaiserslautern_&quot; + Double.toString(h0).replace('.', '_'));</span>
+
+		// display the mesh
+<span class="nc" id="L217">		meshPanel.display(&quot;Combined distance functions &quot; + h0);</span>
+<span class="nc" id="L218">	}</span>
+
+	public static void cornerLFS() throws IOException, InterruptedException {
+<span class="nc" id="L221">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/corner.poly&quot;);</span>
+<span class="nc" id="L222">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L223">		EdgeLengthFunctionApprox edgeLengthFunctionApprox = new EdgeLengthFunctionApprox(pslg, p -&gt; 1.0);</span>
+<span class="nc" id="L224">		edgeLengthFunctionApprox.printPython();</span>
+
+<span class="nc" id="L226">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L227">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+<span class="nc" id="L228">		IDistanceFunction distanceFunction = IDistanceFunction.create(segmentBound, holes);</span>
+
+		// (3) use EikMesh to improve the mesh
+<span class="nc" id="L231">		double h0 = 1.0;</span>
+<span class="nc" id="L232">		var meshImprover = new PEikMesh(</span>
+				distanceFunction,
+				edgeLengthFunctionApprox,
+				h0,
+<span class="nc" id="L236">				new VRectangle(segmentBound.getBounds2D()),</span>
+<span class="nc" id="L237">				pslg.getHoles()</span>
+		);
+
+<span class="nc" id="L240">		var meshPanel = new PMeshPanel(meshImprover.getMesh(), 1000, 800);</span>
+<span class="nc" id="L241">		meshPanel.display(&quot;Combined distance functions &quot; + h0);</span>
+<span class="nc bnc" id="L242" title="All 2 branches missed.">		while (!meshImprover.isFinished()) {</span>
+<span class="nc" id="L243">			meshImprover.improve();</span>
+<span class="nc" id="L244">			Thread.sleep(20);</span>
+<span class="nc" id="L245">			meshPanel.repaint();</span>
+		}
+		//meshImprover.generate();
+
+<span class="nc" id="L249">		write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 1.0f)), &quot;eikmesh_kaiserslautern_&quot; + Double.toString(h0).replace('.', '_'));</span>
+
+		// display the mesh
+<span class="nc" id="L252">		meshPanel.display(&quot;Combined distance functions &quot; + h0);</span>
+<span class="nc" id="L253">	}</span>
+
+	public static void eikMeshA(double h0) throws IOException, InterruptedException {
+<span class="nc" id="L256">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/a.poly&quot;);</span>
+<span class="nc" id="L257">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+
+<span class="nc" id="L259">		PEikMesh meshImprover = new PEikMesh(pslg.getSegmentBound(), h0, pslg.getHoles());</span>
+<span class="nc" id="L260">		meshImprover.generate();</span>
+<span class="nc" id="L261">		write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 10.0f)), &quot;eikmesh_a_&quot; + Double.toString(h0).replace('.', '_'));</span>
+
+		// display the mesh
+<span class="nc" id="L264">		var meshPanel = new PMeshPanel(meshImprover.getMesh(), 1000, 1000);</span>
+<span class="nc" id="L265">		meshPanel.display(&quot;A&quot;);</span>
+<span class="nc" id="L266">	}</span>
+
+	/*
+	102 -0.3 -0.4
+103 1.3 -0.4
+104 1.3 0.4
+105 -0.3 0.4
+	 */
+
+	/*public static void eikMeshAirfoil(double h0) throws IOException, InterruptedException {
+		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/airfoil.poly&quot;);
+		PSLG pslg = PSLGGenerator.toPSLG(inputStream);
+
+		VRectangle rectangle = new VRectangle(-0.3, -0.4, 1.6, 0.8);
+
+		EdgeLengthFunctionApprox edgeLengthFunctionApprox = new EdgeLengthFunctionApprox(pslg);
+		edgeLengthFunctionApprox.smooth(0.05);
+		IDistanceFunction distanceFunction = IDistanceFunction.create(pslg.getSegmentBound(), pslg.getHoles());
+
+		IDistanceFunction aifoil = p -&gt; {
+			double x = p.getX();
+			double y = 5 * (0.2969 * Math.sqrt(x) - 0.1260 * x - 0.3516 * x * x + 0.2843 * x * x * x - 0.1015 * x * x * x * x);
+		};
+
+		GenEikMesh&lt;PVertex, PHalfEdge, PFace&gt; meshImprover = new GenEikMesh&lt;&gt;(distanceFunction, edgeLengthFunctionApprox, h0, rectangle, Arrays.asList(rectangle), () -&gt; new PMesh());
+		var meshPanel = new PMeshPanel(meshImprover.getMesh(), 1000, 1000);
+		meshPanel.display(&quot;Airfoil&quot;);
+		int it = 1;
+		while (it &lt; 200) {
+			meshImprover.improve();
+			it++;
+			synchronized (meshImprover.getMesh()) {
+				meshPanel.repaint();
+			}
+			Thread.sleep(100);
+		}
+		//meshImprover.generate();
+		//write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 10.0f)), &quot;eikmesh_airfoil_&quot; + Double.toString(h0).replace('.', '_'));
+
+		// display the mesh
+	}*/
+
+	public static void distanceFuncCombination(double h0) throws IOException {
+		// define your holes
+<span class="nc" id="L310">		VRectangle rect = new VRectangle(-0.5, -0.5, 1, 1);</span>
+<span class="nc" id="L311">		VRectangle boundary = new VRectangle(-1.5, -0.7, 3, 1.4);</span>
+<span class="nc" id="L312">		IDistanceFunction d1_c = IDistanceFunction.createDisc(-0.5, 0, 0.5);</span>
+<span class="nc" id="L313">		IDistanceFunction d2_c = IDistanceFunction.createDisc(0.5, 0, 0.5);</span>
+<span class="nc" id="L314">		IDistanceFunction d_r = IDistanceFunction.create(rect);</span>
+<span class="nc" id="L315">		IDistanceFunction d_b = IDistanceFunction.create(boundary);</span>
+<span class="nc" id="L316">		IDistanceFunction d_union = IDistanceFunction.union(IDistanceFunction.union(d1_c, d_r), d2_c);</span>
+<span class="nc" id="L317">		IDistanceFunction d = IDistanceFunction.substract(d_b, d_union);</span>
+<span class="nc" id="L318">		var meshImprover = new PEikMesh(</span>
+				d,
+<span class="nc" id="L320">				p -&gt; h0 + 0.3 * Math.abs(d.apply(p)),</span>
+				h0,
+<span class="nc" id="L322">				GeometryUtils.boundRelative(boundary.getPath()),</span>
+<span class="nc" id="L323">				Arrays.asList(rect)</span>
+		);
+
+		// generate the mesh
+<span class="nc" id="L327">		meshImprover.generate();</span>
+
+		//System.out.println(TexGraphGenerator.toTikz(meshImprover.getMesh()));
+
+		// (optional) define the gui to display the mesh
+<span class="nc" id="L332">		var meshPanel = new PMeshPanel(meshImprover.getMesh(), 1000, 800);</span>
+<span class="nc" id="L333">		write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 10.0f)), &quot;eikmesh_d_combined_&quot; + Double.toString(h0).replace('.', '_'));</span>
+
+		// display the mesh
+<span class="nc" id="L336">		meshPanel.display(&quot;Combined distance functions &quot; + h0);</span>
+<span class="nc" id="L337">	}</span>
+
+	public static void discSubtractRect(double h0) throws IOException {
+		// define your holes
+<span class="nc" id="L341">		VRectangle rect = new VRectangle(-0.25, -0.25, 0.5, 0.5);</span>
+<span class="nc" id="L342">		VRectangle boundary = new VRectangle(-1.5, -0.7, 3, 1.4);</span>
+<span class="nc" id="L343">		IDistanceFunction d_c = IDistanceFunction.createDisc(0, 0, 0.5);</span>
+<span class="nc" id="L344">		IDistanceFunction d_r = IDistanceFunction.create(rect);</span>
+<span class="nc" id="L345">		IDistanceFunction d = IDistanceFunction.substract(d_c, d_r);</span>
+<span class="nc" id="L346">		var meshImprover = new PEikMesh(</span>
+				d,
+<span class="nc" id="L348">				p -&gt; h0 + 0.3 * Math.abs(d.apply(p)),</span>
+				h0,
+<span class="nc" id="L350">				GeometryUtils.boundRelative(boundary.getPath()),</span>
+<span class="nc" id="L351">				Arrays.asList(rect)</span>
+		);
+
+		// generate the mesh
+<span class="nc" id="L355">		meshImprover.generate();</span>
+
+		//System.out.println(TexGraphGenerator.toTikz(meshImprover.getMesh()));
+
+		// (optional) define the gui to display the mesh
+<span class="nc" id="L360">		PMeshPanel meshPanel = new PMeshPanel(meshImprover.getMesh(), 1000, 800);</span>
+<span class="nc" id="L361">		write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 10.0f)), &quot;eikmesh_disc_rect_non_uniform_&quot; + Double.toString(h0).replace('.', '_'));</span>
+
+		// display the mesh
+<span class="nc" id="L364">		meshPanel.display(&quot;Combined distance functions &quot; + h0);</span>
+<span class="nc" id="L365">	}</span>
+
+	public static void squareInSquare(double h0) throws IOException {
+		// define your holes
+<span class="nc" id="L369">		VRectangle innerRect = new VRectangle(-1, -1, 2, 2);</span>
+<span class="nc" id="L370">		VRectangle outerRect = new VRectangle(-3, -3, 6, 6);</span>
+
+		//IDistanceFunction d_in = IDistanceFunction.create(innerRect);
+		//IDistanceFunction d_out = IDistanceFunction.create(outerRect);
+
+		//IDistanceFunction d_in = p -&gt; Math.max(Math.abs(p.getX()), Math.abs(p.getY())) - 1;
+<span class="nc" id="L376">		IDistanceFunction d_in = p -&gt; p.distanceToOrigin() - 1;</span>
+<span class="nc" id="L377">		IDistanceFunction d_out = IDistanceFunction.create(outerRect);</span>
+<span class="nc" id="L378">		IDistanceFunction d = IDistanceFunction.substract(d_out, d_in);</span>
+
+<span class="nc" id="L380">		GenEikMesh&lt;PVertex, PHalfEdge, PFace&gt; meshImprover = new GenEikMesh(</span>
+				d,
+<span class="nc" id="L382">				h -&gt; h0,</span>
+				Collections.EMPTY_LIST,
+				h0,
+<span class="nc" id="L385">				GeometryUtils.boundRelative(outerRect.getPath()),</span>
+<span class="nc" id="L386">				Arrays.asList(outerRect),</span>
+<span class="nc" id="L387">				() -&gt; new PMesh()</span>
+		);
+
+		// generate the mesh
+<span class="nc" id="L391">		meshImprover.generate();</span>
+
+		//System.out.println(TexGraphGenerator.toTikz(meshImprover.getMesh()));
+
+		// (optional) define the gui to display the mesh
+<span class="nc" id="L396">		PMeshPanel meshPanel = new PMeshPanel(meshImprover.getMesh(), 1000, 800);</span>
+<span class="nc" id="L397">		write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 10.0f)), &quot;eikmesh_disc_rect_non_uniform_&quot; + Double.toString(h0).replace('.', '_'));</span>
+
+		// display the mesh
+<span class="nc" id="L400">		meshPanel.display(&quot;Combined distance functions &quot; + h0);</span>
+<span class="nc" id="L401">	}</span>
+
+	public static void discSubtractRect2(double h0) throws IOException {
+		// define your holes
+<span class="nc" id="L405">		VRectangle rect = new VRectangle(0, 0, 0.5, 0.5);</span>
+<span class="nc" id="L406">		VRectangle boundary = new VRectangle(-1.5, -0.7, 3, 1.4);</span>
+<span class="nc" id="L407">		IDistanceFunction d_c = IDistanceFunction.createDisc(0, 0, 0.5);</span>
+<span class="nc" id="L408">		IDistanceFunction d_r = IDistanceFunction.create(rect);</span>
+<span class="nc" id="L409">		IDistanceFunction d = IDistanceFunction.substract(d_c, d_r);</span>
+<span class="nc" id="L410">		var meshImprover = new PEikMesh(</span>
+				d,
+<span class="nc" id="L412">				p -&gt; h0 + 0.3 * Math.abs(d.apply(p)),</span>
+				h0,
+<span class="nc" id="L414">				GeometryUtils.boundRelative(boundary.getPath()),</span>
+<span class="nc" id="L415">				Arrays.asList(rect)</span>
+		);
+
+		// generate the mesh
+<span class="nc" id="L419">		meshImprover.generate();</span>
+
+		//System.out.println(TexGraphGenerator.toTikz(meshImprover.getMesh()));
+
+		// (optional) define the gui to display the mesh
+<span class="nc" id="L424">		PMeshPanel meshPanel = new PMeshPanel(meshImprover.getMesh(), 1000, 800);</span>
+<span class="nc" id="L425">		write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 10.0f)), &quot;eikmesh_disc_rect_sub_non_uniform_&quot; + Double.toString(h0).replace('.', '_'));</span>
+
+		// display the mesh
+<span class="nc" id="L428">		meshPanel.display(&quot;Combined distance functions &quot; + h0);</span>
+<span class="nc" id="L429">	}</span>
+
+	public static void uniformRing(double h0) throws InterruptedException, IOException {
+		// define a bounding box
+<span class="nc" id="L433">		VRectangle bound = new VRectangle(-0.1, -0.1, 2.2, 2.2);</span>
+
+		// distance function that defines a disc with radius 1 at (1,1).
+<span class="nc" id="L436">		VPoint center = new VPoint(1, 1);</span>
+<span class="nc" id="L437">		IDistanceFunction d = IDistanceFunction.createRing(1, 1, 0.2, 1.0);</span>
+
+		// define the EikMesh-Improver
+<span class="nc" id="L440">		IEdgeLengthFunction h = p -&gt; h0;</span>
+<span class="nc" id="L441">		PEikMesh meshImprover = new PEikMesh(</span>
+				d,
+				h,
+<span class="nc" id="L444">				Arrays.asList(center),</span>
+				h0,
+				bound
+		);
+
+
+		// (optional) define the gui to display the mesh
+<span class="nc" id="L451">		PMeshPanel meshPanel = new PMeshPanel(meshImprover.getMesh(), 1000, 800);</span>
+<span class="nc" id="L452">		meshPanel.display(&quot;Uniform ring &quot; + h0);</span>
+<span class="nc bnc" id="L453" title="All 2 branches missed.">		while (!meshImprover.isFinished()) {</span>
+<span class="nc" id="L454">			meshImprover.improve();</span>
+<span class="nc" id="L455">			Thread.sleep(10);</span>
+<span class="nc" id="L456">			meshPanel.repaint();</span>
+		}
+
+<span class="nc" id="L459">		meshImprover.finish();</span>
+<span class="nc" id="L460">		meshPanel.repaint();</span>
+		// generate the mesh
+		//meshImprover.generate();
+
+<span class="nc" id="L464">		write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 10.0f)), &quot;eikmesh_ring_uniform_&quot; + Double.toString(h0).replace('.', '_'));</span>
+
+		// display the mesh
+<span class="nc" id="L467">		meshPanel.display(&quot;Uniform ring &quot; + h0);</span>
+<span class="nc" id="L468">	}</span>
+
+	public static void discXAdaptive(final double h0) throws IOException {
+		// define a bounding box
+<span class="nc" id="L472">		VRectangle bound = new VRectangle(-0.1, -0.1, 2.2, 2.2);</span>
+
+		// distance function that defines a ring with inner-radius 0.2 and outer-radius 1 at (1,1).
+<span class="nc" id="L475">		IDistanceFunction ringDistance = IDistanceFunction.createDisc(1, 1, 1.0);</span>
+
+
+		// define the EikMesh-Improver
+<span class="nc" id="L479">		IEdgeLengthFunction edgeLengthFunction = p -&gt; h0 + 0.4 * Math.abs(p.getX() - 1);</span>
+<span class="nc" id="L480">		PEikMesh meshImprover = new PEikMesh(</span>
+				ringDistance,
+				edgeLengthFunction,
+				h0,
+				bound);
+
+		// (optional) define the gui to display the mesh
+<span class="nc" id="L487">		var meshPanel = new MeshPanel&lt;&gt;(meshImprover.getMesh(), 1000, 800);</span>
+
+		// generate the mesh
+<span class="nc" id="L490">		meshImprover.generate();</span>
+
+<span class="nc" id="L492">		write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(), f -&gt; lightBlue, 10.0f)), &quot;eikmesh_disc_xadaptive_&quot; + Double.toString(h0).replace('.', '_'));</span>
+
+		// display the mesh
+<span class="nc" id="L495">		meshPanel.display(&quot;Adaptive disc&quot;);</span>
+<span class="nc" id="L496">	}</span>
+
+	public static void ruppertsAndEikMeshKaiserslautern() throws IOException {
+<span class="nc" id="L499">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(&quot;/poly/a.poly&quot;);</span>
+<span class="nc" id="L500">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L501">		Collection&lt;VLine&gt; lines = pslg.getAllSegments();</span>
+<span class="nc" id="L502">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L503">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+
+<span class="nc" id="L505">		IDistanceFunction distanceFunction = IDistanceFunction.create(segmentBound, holes);</span>
+<span class="nc" id="L506">		IEdgeLengthFunction h = p -&gt; 0.01 /*+ 0.2*Math.abs(distanceFunction.apply(p))*/;</span>
+<span class="nc" id="L507">		var ruppert = new PRuppertsTriangulator(</span>
+				pslg,
+<span class="nc" id="L509">				p -&gt; 0.01,</span>
+				0.0
+		);
+
+<span class="nc" id="L513">		PMeshPanel panel = new PMeshPanel(ruppert.getMesh(), 1000, 1000);</span>
+<span class="nc" id="L514">		panel.display(&quot; Voronoi Vertex Insertion&quot;);</span>
+
+<span class="nc bnc" id="L516" title="All 2 branches missed.">		while (!ruppert.isFinished()) {</span>
+			try {
+<span class="nc" id="L518">				Thread.sleep(20);</span>
+<span class="nc" id="L519">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L520">				e.printStackTrace();</span>
+<span class="nc" id="L521">			}</span>
+
+<span class="nc" id="L523">			synchronized (ruppert.getMesh()) {</span>
+<span class="nc" id="L524">				ruppert.step();</span>
+<span class="nc" id="L525">			}</span>
+<span class="nc" id="L526">			panel.repaint();</span>
+		}
+
+<span class="nc" id="L529">		var eikMesh = new PEikMesh(h, ruppert.getTriangulation());</span>
+
+<span class="nc bnc" id="L531" title="All 2 branches missed.">		while (!eikMesh.isFinished()) {</span>
+			try {
+<span class="nc" id="L533">				Thread.sleep(30);</span>
+<span class="nc" id="L534">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L535">				e.printStackTrace();</span>
+<span class="nc" id="L536">			}</span>
+
+<span class="nc" id="L538">			synchronized (eikMesh.getMesh()) {</span>
+<span class="nc" id="L539">				eikMesh.improve();</span>
+<span class="nc" id="L540">			}</span>
+<span class="nc" id="L541">			panel.repaint();</span>
+		}
+
+<span class="nc" id="L544">		System.out.println(TexGraphGenerator.toTikz(ruppert.getMesh()));</span>
+<span class="nc" id="L545">		System.out.println(&quot;finished&quot;);</span>
+<span class="nc" id="L546">	}</span>
+
+	private static void write(final String string, final String filename) throws IOException {
+<span class="nc" id="L549">		File outputFile = new File(&quot;./eikmesh/&quot; + filename + &quot;.tex&quot;);</span>
+//		try(FileWriter fileWriter = new FileWriter(outputFile)) {
+		//fileWriter.write(string);
+//		}
+<span class="nc" id="L553">	}</span>
+
+	private static String toTexDocument(final String tikz) {
+<span class="nc" id="L556">		return &quot;\\documentclass[usenames,dvipsnames]{standalone}\n&quot; +</span>
+				&quot;\\usepackage[utf8]{inputenc}\n&quot; +
+				&quot;\\usepackage{amsmath}\n&quot; +
+				&quot;\\usepackage{amsfonts}\n&quot; +
+				&quot;\\usepackage{amssymb}\n&quot; +
+				&quot;\\usepackage{calc}\n&quot; +
+				&quot;\\usepackage{graphicx}\n&quot; +
+				&quot;\\usepackage{tikz}\n&quot; +
+				&quot;\\usepackage{xcolor}\n&quot; +
+				&quot;\n&quot; +
+				&quot;%\\clip (-0.200000,-0.100000) rectangle (1.2,0.8);\n&quot; +
+				&quot;\\begin{document}&quot; +
+				tikz
+				+
+				&quot;\\end{document}&quot;;
+	}
+
+
+
+
+	private static String printQualities(int iteration, IMesh&lt;PVertex, PHalfEdge, PFace&gt; mesh, Function&lt;PFace, Double&gt; rho){
+<span class="nc" id="L577">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc bnc" id="L578" title="All 2 branches missed.">		for(PFace face : mesh.getFaces()) {</span>
+<span class="nc" id="L579">			double quality = rho.apply(face);</span>
+<span class="nc" id="L580">			builder.append(iteration);</span>
+<span class="nc" id="L581">			builder.append(&quot; &quot;);</span>
+<span class="nc" id="L582">			builder.append(quality);</span>
+<span class="nc" id="L583">			builder.append(&quot;\n&quot;);</span>
+<span class="nc" id="L584">		}</span>
+<span class="nc" id="L585">		return builder.toString();</span>
+	}
+
+	private static String printQualities(int iteration, Distmesh mesh, Function&lt;VTriangle, Double&gt; rho){
+<span class="nc" id="L589">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc bnc" id="L590" title="All 2 branches missed.">		for(VTriangle triangle : mesh.getTriangles()) {</span>
+<span class="nc" id="L591">			double quality = rho.apply(triangle);</span>
+<span class="nc" id="L592">			builder.append(iteration);</span>
+<span class="nc" id="L593">			builder.append(&quot; &quot;);</span>
+<span class="nc" id="L594">			builder.append(quality);</span>
+<span class="nc" id="L595">			builder.append(&quot;\n&quot;);</span>
+<span class="nc" id="L596">		}</span>
+<span class="nc" id="L597">		return builder.toString();</span>
+	}
+
+	private static String printAngles(int iteration, IMesh&lt;PVertex, PHalfEdge, PFace&gt; mesh){
+<span class="nc" id="L601">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc bnc" id="L602" title="All 2 branches missed.">		for(PFace face : mesh.getFaces()) {</span>
+
+<span class="nc bnc" id="L604" title="All 2 branches missed.">			for(PHalfEdge edge : mesh.getEdges(face)) {</span>
+<span class="nc" id="L605">				VPoint p1 = mesh.toPoint(edge);</span>
+<span class="nc" id="L606">				VPoint p2 = mesh.toPoint(mesh.getNext(edge));</span>
+<span class="nc" id="L607">				VPoint p3 = mesh.toPoint(mesh.getPrev(edge));</span>
+<span class="nc" id="L608">				builder.append(iteration);</span>
+<span class="nc" id="L609">				builder.append(&quot; &quot;);</span>
+<span class="nc" id="L610">				builder.append(GeometryUtils.angle(p1, p2, p3));</span>
+<span class="nc" id="L611">				builder.append(&quot;\n&quot;);</span>
+<span class="nc" id="L612">			}</span>
+<span class="nc" id="L613">		}</span>
+<span class="nc" id="L614">		return builder.toString();</span>
+	}
+
+	private static String printAngles(int iteration, Distmesh distmesh){
+<span class="nc" id="L618">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc bnc" id="L619" title="All 2 branches missed.">		for(VTriangle face : distmesh.getTriangles()) {</span>
+
+<span class="nc" id="L621">			builder.append(iteration);</span>
+<span class="nc" id="L622">			builder.append(&quot; &quot;);</span>
+<span class="nc" id="L623">			builder.append(GeometryUtils.angle(face.p1, face.p2, face.p3));</span>
+<span class="nc" id="L624">			builder.append(&quot;\n&quot;);</span>
+
+<span class="nc" id="L626">			builder.append(iteration);</span>
+<span class="nc" id="L627">			builder.append(&quot; &quot;);</span>
+<span class="nc" id="L628">			builder.append(GeometryUtils.angle(face.p3, face.p1, face.p2));</span>
+<span class="nc" id="L629">			builder.append(&quot;\n&quot;);</span>
+
+<span class="nc" id="L631">			builder.append(iteration);</span>
+<span class="nc" id="L632">			builder.append(&quot; &quot;);</span>
+<span class="nc" id="L633">			builder.append(GeometryUtils.angle(face.p2, face.p3, face.p1));</span>
+<span class="nc" id="L634">			builder.append(&quot;\n&quot;);</span>
+
+<span class="nc" id="L636">		}</span>
+<span class="nc" id="L637">		return builder.toString();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

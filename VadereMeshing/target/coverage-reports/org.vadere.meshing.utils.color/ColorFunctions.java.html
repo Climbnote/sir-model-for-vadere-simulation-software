@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ColorFunctions.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.utils.color</a> &gt; <span class="el_source">ColorFunctions.java</span></div><h1>ColorFunctions.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.utils.color;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+
+import java.awt.*;
+import java.util.HashMap;
+import java.util.function.BiFunction;
+
+/**
+ * &lt;p&gt;Provides color values for mesh drawings depending on some functions.
+ * default implementations for faceDrawColor (boarder lines) and faceFillColor (filling)
+ * are present.&lt;/p&gt;
+ *
+ * @param &lt;P&gt; the type of the points (containers)
+ * @param &lt;CE&gt; the type of container of the half-edges
+ * @param &lt;CF&gt; the type of the container of the faces
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public class ColorFunctions
+		&lt;P extends IPoint, CE, CF, V extends IVertex, E extends IHalfEdge, F extends IFace&gt; {
+
+	private BiFunction&lt;IMesh&lt;V, E, F&gt;, F, Color&gt; faceFillColorFunc;
+	private BiFunction&lt;IMesh&lt;V, E, F&gt;, F, Color&gt; faceDrawColorFunc;
+	private HashMap&lt;F, Color&gt; faceFillColorMap;
+	private HashMap&lt;F, Color&gt; faceDrawColorMap;
+
+
+	/**
+	 * &lt;p&gt;The default constructor.&lt;/p&gt;
+	 */
+<span class="nc" id="L39">	public ColorFunctions() {</span>
+<span class="nc" id="L40">		faceFillColorFunc = (mesh, face) -&gt; ColorFunctions.qualityToGrayScale(mesh, face);</span>
+<span class="nc" id="L41">		faceDrawColorFunc = (m, f) -&gt; Color.BLACK;</span>
+<span class="nc" id="L42">		faceFillColorMap = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L43">		faceDrawColorMap = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L44">	}</span>
+
+	/**
+	 * &lt;p&gt;Computes the triangle quality of this face / triangle.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: The face is a valid triangle.&lt;/p&gt;
+	 *
+	 * @param mesh Mesh used for coloring
+	 * @param face face / triangle of which the quality will be computed
+	 *
+	 * @param &lt;P&gt; the type of the points (containers)
+	 * @param &lt;CE&gt; the type of container of the half-edges
+	 * @param &lt;CF&gt; the type of the container of the faces
+	 * @param &lt;V&gt; the type of the vertices
+	 * @param &lt;E&gt; the type of the half-edges
+	 * @param &lt;F&gt; the type of the faces
+	 *
+	 * @return the quality in (0;1) of the triangle
+	 */
+	public static &lt;P extends IPoint, CE, CF, V extends IVertex, E extends IHalfEdge, F extends IFace&gt; double faceToQuality(final IMesh&lt;V, E, F&gt; mesh, final F face) {
+<span class="nc" id="L64">		VLine[] lines = mesh.toTriangle(face).getLines();</span>
+<span class="nc" id="L65">		double a = lines[0].length();</span>
+<span class="nc" id="L66">		double b = lines[1].length();</span>
+<span class="nc" id="L67">		double c = lines[2].length();</span>
+<span class="nc" id="L68">		double part = 0.0;</span>
+<span class="nc bnc" id="L69" title="All 6 branches missed.">		if (a != 0.0 &amp;&amp; b != 0.0 &amp;&amp; c != 0.0) {</span>
+<span class="nc" id="L70">			part = ((b + c - a) * (c + a - b) * (a + b - c)) / (a * b * c);</span>
+		} else {
+<span class="nc" id="L72">			throw new IllegalArgumentException(face + &quot; is not a feasible triangle!&quot;);</span>
+		}
+<span class="nc" id="L74">		return part;</span>
+	}
+
+	/**
+	 *
+	 * @param mesh Mesh used for coloring
+	 * @param face face / triangle of which the color will be computed
+	 *
+	 * @param &lt;P&gt; the type of the points (containers)
+	 * @param &lt;CE&gt; the type of container of the half-edges
+	 * @param &lt;CF&gt; the type of the container of the faces
+	 * @param &lt;V&gt; the type of the vertices
+	 * @param &lt;E&gt; the type of the half-edges
+	 * @param &lt;F&gt; the type of the faces
+	 *
+	 * @return gray scale color object
+	 */
+	public static &lt;P extends IPoint, CE, CF, V extends IVertex, E extends IHalfEdge, F extends IFace&gt; Color qualityToGrayScale(final IMesh&lt;V, E, F&gt; mesh, final F face) {
+<span class="nc bnc" id="L92" title="All 2 branches missed.">		if(!mesh.isBoundary(face)) {</span>
+<span class="nc" id="L93">			float quality = (float) faceToQuality(mesh, face);</span>
+<span class="nc bnc" id="L94" title="All 4 branches missed.">			if(quality &lt;= 1 &amp;&amp; quality &gt;= 0) {</span>
+<span class="nc" id="L95">				return new Color(quality, quality, quality);</span>
+			}
+			else {
+<span class="nc" id="L98">				return Color.RED;</span>
+			}
+		}
+		else {
+<span class="nc" id="L102">			return Color.WHITE;</span>
+		}
+	}
+
+	/**
+	 * &lt;p&gt;Select face FillColor based on {@link #faceFillColorFunc} set in this object. If the color is
+	 * overwritten for the specified face by {@link #faceFillColorMap} then use this color.&lt;/p&gt;
+	 *
+	 * @param mesh Mesh used for coloring
+	 * @param face Face to color
+	 * @return color object
+	 */
+	public Color faceFillColor(final IMesh&lt;V, E, F&gt; mesh, final F face) {
+<span class="nc bnc" id="L115" title="All 2 branches missed.">		if (faceFillColorMap.containsKey(face)) {</span>
+<span class="nc" id="L116">			return faceFillColorMap.get(face);</span>
+		}
+<span class="nc" id="L118">		return this.faceFillColorFunc.apply(mesh, face);</span>
+	}
+
+	/**
+	 * &lt;p&gt;Select face DrawColor based on {@link #faceDrawColorFunc} set in this object. If the color is
+	 * overwritten for the specified face by {@link #faceDrawColorMap} then use this color.&lt;/p&gt;
+	 *
+	 * @param mesh Mesh used for coloring
+	 * @param face Face to color
+	 * @return Color object
+	 */
+	public Color faceDrawColor(final IMesh&lt;V, E, F&gt; mesh, final F face) {
+<span class="nc bnc" id="L130" title="All 2 branches missed.">		if (faceDrawColorMap.containsKey(face)) {</span>
+<span class="nc" id="L131">			return faceDrawColorMap.get(face);</span>
+		}
+
+<span class="nc" id="L134">		return this.faceDrawColorFunc.apply(mesh, face);</span>
+	}
+
+	/**
+	 * &lt;p&gt;Overwrite color returned by {@link #faceFillColorFunc} for specified face with specified color.&lt;/p&gt;
+	 *
+	 * @param face  Face which color will be overwritten
+	 * @param color New color for face
+	 */
+	public void overwriteFillColor(@NotNull final F face, @NotNull final Color color) {
+<span class="nc" id="L144">		faceFillColorMap.put(face, color);</span>
+<span class="nc" id="L145">	}</span>
+
+	/**
+	 * &lt;p&gt;Set a new faceFillColorFunc for this object.&lt;/p&gt;
+	 *
+	 * @param faceFillColorFunc BiFunction which specifies which color a face interior will get.
+	 */
+	public void setFaceFillColorFunc(@NotNull final BiFunction&lt;IMesh&lt;V, E, F&gt;, F, Color&gt; faceFillColorFunc) {
+<span class="nc" id="L153">		this.faceFillColorFunc = faceFillColorFunc;</span>
+<span class="nc" id="L154">	}</span>
+
+	/**
+	 * &lt;p&gt;Set a new faceFillColorFunc for this object.&lt;/p&gt;
+	 *
+	 * @param faceDrawColorFunc BiFunction which specifies which color the face contour will get.
+	 */
+	public void setFaceDrawColorFunc(@NotNull final BiFunction&lt;IMesh&lt;V, E, F&gt;, F, Color&gt; faceDrawColorFunc) {
+<span class="nc" id="L162">		this.faceDrawColorFunc = faceDrawColorFunc;</span>
+<span class="nc" id="L163">	}</span>
+
+	/**
+	 * &lt;p&gt;Overwrite color returned by {@link #faceDrawColorFunc} for specified face with specified color.&lt;/p&gt;
+	 *
+	 * @param face  Face which color will be overwritten
+	 * @param color New color for face
+	 */
+	public void overwriteDrawColor(@NotNull final F face, @NotNull final Color color) {
+<span class="nc" id="L172">		faceDrawColorMap.put(face, color);</span>
+<span class="nc" id="L173">	}</span>
+
+	/**
+	 * &lt;p&gt;delete previously overwritten face/color pairs.&lt;/p&gt;
+	 */
+	public void clear() {
+<span class="nc" id="L179">		faceDrawColorMap.clear();</span>
+<span class="nc" id="L180">		faceFillColorMap.clear();</span>
+<span class="nc" id="L181">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

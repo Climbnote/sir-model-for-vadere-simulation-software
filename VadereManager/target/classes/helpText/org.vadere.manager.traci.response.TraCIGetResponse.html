@@ -1,0 +1,34 @@
+<h1> TraCIGetResponse</h1>
+
+<p>
+Response object for <a href='/helpText/org.vadere.manager.traci.commands.TraCIGetCommand.html' class='class_link'>org.vadere.manager.traci.commands.TraCIGetCommand</a> command. This
+command is used to retrieve generic data from the simulator.
+
+The structure of the response:
+
+[ responseID(based on API) ] [ variableId ] [ elementId ] [ dataTypeId ] [ data ]
+
+- responseID(based on API): Each API (Person, Vehicle, Simulation, ...) has a different Id. -
+variableId: Id for the var. The numbers may be the same between different APIs - elementId:
+String based id for the object (i.e. a pedestrianId) - dataTypeId: see <a href='/helpText/org.vadere.state.traci.TraCIDataType.html' class='class_link'>TraCIDataType</a> -
+data: data to be returned.
+
+See <a href='/helpText/org.vadere.manager.traci.response.TraCIResponse.html' class='class_link'>TraCIResponse</a> for static factory methods used to create objects from byte[]
+</p>
+
+<hr>
+<h2> Field: variableIdentifier</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: responseDataType</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: responseData</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: elementIdentifier</h2>
+<p>---</p>
+

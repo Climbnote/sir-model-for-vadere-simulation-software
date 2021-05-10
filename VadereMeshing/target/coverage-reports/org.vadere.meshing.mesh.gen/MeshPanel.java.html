@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MeshPanel.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">MeshPanel.java</span></div><h1>MeshPanel.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+
+import java.awt.*;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
+import javax.swing.*;
+
+/**
+ * This {@link Canvas} can be used to display a {@link IMesh}.
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public class MeshPanel&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; extends JPanel {
+
+	private MeshRenderer&lt;V, E, F&gt; meshRenderer;
+<span class="nc" id="L27">	public static Function defaultFaceColors = f -&gt; new Color(0.8584083044982699f, 0.9134486735870818f, 0.9645674740484429f);</span>
+
+	/**
+	 * The width of the canvas.
+	 */
+	private double width;
+
+	/**
+	 * The height of the canvas.
+	 */
+	private double height;
+
+
+	/**
+	 * Default constructor.
+	 *
+	 * @param meshRenderer  a renderer which draws the mesh
+	 * @param width         the width of the canvas
+	 * @param height        the height of the canvas
+	 */
+	public MeshPanel(
+			@NotNull final MeshRenderer&lt;V, E, F&gt; meshRenderer,
+			final double width,
+<span class="nc" id="L50">			final double height) {</span>
+<span class="nc" id="L51">		this.meshRenderer = meshRenderer;</span>
+<span class="nc" id="L52">		this.height = height;</span>
+<span class="nc" id="L53">		this.width = width;</span>
+<span class="nc" id="L54">	}</span>
+
+	/**
+	 * Construct a mesh panel filling faces with the color defined by the color function.
+	 *
+	 * @param mesh              the mesh which will be rendered
+	 * @param alertPred         a {@link Predicate} of {@link F} which marks a face to be drawn in a special way.
+	 * @param width             width of the canvas
+	 * @param height            height of the canvas
+	 * @param colorFunction     color function coloring faces
+	 * @param edgeColorFunction color function coloring edges
+	 */
+	public MeshPanel(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final Predicate&lt;F&gt; alertPred,
+			final double width,
+			final double height,
+			@NotNull final Function&lt;F, Color&gt; colorFunction,
+<span class="nc" id="L72">			@NotNull final Function&lt;E, Color&gt; edgeColorFunction) {</span>
+<span class="nc" id="L73">		this.meshRenderer = new MeshRenderer&lt;&gt;(mesh, alertPred, colorFunction, edgeColorFunction);</span>
+<span class="nc" id="L74">		this.height = height;</span>
+<span class="nc" id="L75">		this.width = width;</span>
+<span class="nc" id="L76">	}</span>
+
+	public MeshPanel(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final Predicate&lt;F&gt; alertPred,
+			final double width,
+			final double height,
+			@NotNull final Function&lt;F, Color&gt; colorFunction,
+			@NotNull final Function&lt;E, Color&gt; edgeColorFunction,
+<span class="nc" id="L85">			@NotNull final Function&lt;V, Color&gt; vertexColorFuntion) {</span>
+<span class="nc" id="L86">		this.meshRenderer = new MeshRenderer&lt;&gt;(mesh, alertPred, colorFunction, edgeColorFunction, vertexColorFuntion);</span>
+<span class="nc" id="L87">		this.height = height;</span>
+<span class="nc" id="L88">		this.width = width;</span>
+<span class="nc" id="L89">	}</span>
+
+	/**
+	 * Construct a mesh panel filling faces with the color defined by the color function.
+	 *
+	 * @param mesh              the mesh which will be rendered
+	 * @param alertPred         a {@link Predicate} of {@link F} which marks a face to be drawn in a special way.
+	 * @param width             width of the canvas
+	 * @param height            height of the canvas
+	 * @param colorFunction     color function coloring faces
+	 */
+	public MeshPanel(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final Predicate&lt;F&gt; alertPred,
+			final double width,
+			final double height,
+<span class="nc" id="L105">			@NotNull final Function&lt;F, Color&gt; colorFunction) {</span>
+<span class="nc" id="L106">		this.meshRenderer = new MeshRenderer&lt;&gt;(mesh, alertPred, colorFunction, e -&gt; Color.GRAY);</span>
+<span class="nc" id="L107">		this.height = height;</span>
+<span class="nc" id="L108">		this.width = width;</span>
+<span class="nc" id="L109">	}</span>
+
+	/**
+	 * Construct a mesh panel filling all faces with the color white.
+	 *
+	 * @param mesh          the mesh which will be rendered
+	 * @param alertPred     a {@link Predicate} of {@link F} which marks a face to be drawn in a special way.
+	 * @param width         width of the canvas
+	 * @param height        height of the canvas
+	 */
+    public MeshPanel(
+    		@NotNull final IMesh&lt;V, E, F&gt; mesh,
+		    @NotNull final Predicate&lt;F&gt; alertPred,
+		    final double width,
+		    final double height) {
+<span class="nc" id="L124">    	this(mesh, alertPred, width, height, defaultFaceColors, e -&gt; Color.GRAY);</span>
+<span class="nc" id="L125">    }</span>
+
+	/**
+	 * Construct a mesh panel filling all faces with the color white.
+	 *
+	 * @param mesh          the mesh which will be rendered
+	 * @param width         width of the canvas
+	 * @param height        height of the canvas
+	 */
+	public MeshPanel(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			final double width,
+			final double height) {
+<span class="nc" id="L138">		this(mesh, f -&gt; false, width, height, defaultFaceColors, e -&gt; Color.GRAY);</span>
+<span class="nc" id="L139">	}</span>
+
+	@Override
+	public void update(Graphics g) {
+<span class="nc" id="L143">		paint(g);</span>
+<span class="nc" id="L144">	}</span>
+
+	@Override
+	public void paint(Graphics g) {
+<span class="nc" id="L148">		meshRenderer.render((Graphics2D) g, (int)Math.ceil(width), (int)Math.ceil(height));</span>
+<span class="nc" id="L149">	}</span>
+
+	public MeshRenderer&lt;V, E, F&gt; getMeshRenderer() {
+<span class="nc" id="L152">		return meshRenderer;</span>
+	}
+
+	public JFrame display() {
+<span class="nc" id="L156">		return display(&quot;Mesh&quot;);</span>
+	}
+
+	public JFrame display(final String title) {
+<span class="nc" id="L160">		JFrame jFrame = new JFrame();</span>
+<span class="nc" id="L161">		jFrame.setSize((int)width+10, (int)height+10);</span>
+<span class="nc" id="L162">		jFrame.add(this);</span>
+<span class="nc" id="L163">		jFrame.setTitle(title);</span>
+<span class="nc" id="L164">		jFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L165">		setVisible(true);</span>
+<span class="nc" id="L166">		jFrame.setVisible(true);</span>
+		//jFrame.setIgnoreRepaint(true);
+<span class="nc" id="L168">		jFrame.repaint();</span>
+<span class="nc" id="L169">		return jFrame;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

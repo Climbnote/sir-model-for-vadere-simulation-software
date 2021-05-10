@@ -1,0 +1,63 @@
+<h1> TargetVersionV1_5</h1>
+
+<p>
+Old scenario description for events looks like this:
+<pre>
+"eventInfos" : [ {
+"eventTimeframe" : {
+"startTime" : 0.0,
+"endTime" : 0.4,
+"repeat" : false,
+"waitTimeBetweenRepetition" : 0.0
+},
+"events" : [ {
+"type" : "BangEvent",
+"targets" : [ ],
+"originAsTargetId" : 1
+} ]
+</pre>
+
+This migration shall transform it to:
+<pre>
+"stimulusInfos" : [ {
+"timeframe" : {
+"startTime" : 0.0,
+"endTime" : 0.4,
+"repeat" : false,
+"waitTimeBetweenRepetition" : 0.0
+},
+"stimuli" : [ {
+"type" : "Bang",
+"originAsTargetId" : 1
+} ]
+</pre>
+
+Firstly, rename child nodes. Then, rename top-level "eventInfos" node.
+
+Also, rename
+- "useSalientBehavior" to "usePsychologyLayer" under "attributesSimulation" node
+- "FootStepMostImportantEventProcessor" to "FootStepMostImportantStimulusProcessor"
+- "FootStepSalientBehaviorProcessor" to "FootStepSelfCategoryProcessor"
+- "salientBehavior" to "selfCategory" in "dynamicElement" nodes
+
+After renaming, encapsulate two psychology-related attributes into
+a new "psychology" node in "dynamicElement" nodes:
+- mostImportantStimulus
+- selfCategory
+
+A resctructured dynamic element node looks like this:
+<pre>
+{
+...
+"psychology" : {
+"mostImportantStimulus" : {
+"type" : "ElapsedTime"
+},
+"selfCategory" : "TARGET_ORIENTED"
+},
+...
+"type" : "PEDESTRIAN"
+}
+</pre>
+</p>
+

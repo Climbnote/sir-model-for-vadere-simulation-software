@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesTimeCost.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.models</a> &gt; <span class="el_source">AttributesTimeCost.java</span></div><h1>AttributesTimeCost.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.models;
+
+import org.vadere.annotation.factories.attributes.ModelAttributeClass;
+import org.vadere.state.attributes.Attributes;
+
+/**
+ * Provides all! parameters for all! time cost functions.
+ *
+ * TODO: split AttributesTimeCost timeCostAttributes into multiple classes see comment in {@link AttributesFloorField}
+ */
+@ModelAttributeClass
+<span class="fc" id="L12">public class AttributesTimeCost extends Attributes {</span>
+
+<span class="fc" id="L14">	public enum LoadingType {</span>
+		/** use one single loading for all pedestrians. */
+<span class="fc" id="L16">		CONSTANT,</span>
+		/**
+		 * use c_D and c_D' for differ pedestrians of the some target and other
+		 * target.
+		 */
+<span class="fc" id="L21">		CONSTANT_RESPECT_TARGETS,</span>
+		/**
+		 * use the dynamic loading strategy to calculate for each pedestrian an
+		 * individual loading.
+		 */
+<span class="fc" id="L26">		DYNAMIC,</span>
+<span class="fc" id="L27">		QUEUEGAME;</span>
+	}
+
+	/** the standard derivation required for the gaussian method. */
+<span class="fc" id="L31">	private double standardDeviation = 0.7;</span>
+	/** the method of density measurement. */
+<span class="fc" id="L33">	private TimeCostFunctionType type = TimeCostFunctionType.UNIT;</span>
+	/** the weight of the density. */
+<span class="fc" id="L35">	private double obstacleDensityWeight = 3.5;</span>
+	/**
+	 * (hartmann-2012, c_D) = the weight of the pedestrian that has the some
+	 * target as the potential field that will be generated.
+	 */
+<span class="fc" id="L40">	private double pedestrianSameTargetDensityWeight = 3.5;</span>
+	/**
+	 * (hartmann-2012, c_D') = the weight of the pedestrian that has on other
+	 * target than the potential field that will be generated.
+	 */
+<span class="fc" id="L45">	private double pedestrianOtherTargetDensityWeight = 3.5;</span>
+	/** the weight for the constant loading c in hartmann-2012. */
+<span class="fc" id="L47">	private double pedestrianWeight = 3.5;</span>
+	/**
+	 * (queueing only) the factor that influences the queue width. = 1 &gt; means
+	 * lower width. The value should be in the interval [1;infty[.
+	 */
+	// @SerializedName(&quot;queueWidthLoading&quot;)
+<span class="fc" id="L53">	private double queueWidthLoading = 1;</span>
+
+	/** the loading that will be multiplied to the dynamic loading. */
+<span class="fc" id="L56">	private double pedestrianDynamicWeight = 6.0;</span>
+	/**
+	 * indicate that the dynamic potential field should calculate a individual
+	 * loading for each pedestrian or uses a constant loading strategy. This
+	 * will be done by the loading strategies. If the
+	 * loadingType=CONSTANT_RESPECT_TARGETS than
+	 * pedestrianSameTargetDensityWeight and pedestrianOtherTargetDensityWeight
+	 * has to be set. If loadingType=CONSTANT than pedestrianWeight has to be
+	 * set.
+	 */
+	// @SerializedName(&quot;loadingType&quot;)
+<span class="fc" id="L67">	private LoadingType loadingType = LoadingType.CONSTANT;</span>
+
+	/**
+	 * only used in TimeCostFunctionObstacleDistance
+	 */
+<span class="fc" id="L72">	private double width = 0.2;</span>
+
+	/**
+	 * only used in TimeCostFunctionObstacleDistance
+	 */
+<span class="fc" id="L77">	private double height = 1.0;</span>
+
+	// Getters...
+	public double getWidth() {
+<span class="nc" id="L81">		return width;</span>
+	}
+
+	public double getHeight() {
+<span class="nc" id="L85">		return height;</span>
+	}
+
+	public double getStandardDeviation() {
+<span class="nc" id="L89">		return standardDeviation;</span>
+	}
+
+	public TimeCostFunctionType getType() {
+<span class="nc" id="L93">		return type;</span>
+	}
+
+	public double getObstacleDensityWeight() {
+<span class="nc" id="L97">		return obstacleDensityWeight;</span>
+	}
+
+	public double getPedestrianSameTargetDensityWeight() {
+<span class="nc" id="L101">		return pedestrianSameTargetDensityWeight;</span>
+	}
+
+	public double getPedestrianOtherTargetDensityWeight() {
+<span class="nc" id="L105">		return pedestrianOtherTargetDensityWeight;</span>
+	}
+
+	public double getPedestrianWeight() {
+<span class="nc" id="L109">		return pedestrianWeight;</span>
+	}
+
+	public double getQueueWidthLoading() {
+<span class="nc" id="L113">		return queueWidthLoading;</span>
+	}
+
+	public double getPedestrianDynamicWeight() {
+<span class="nc" id="L117">		return pedestrianDynamicWeight;</span>
+	}
+
+	public LoadingType getLoadingType() {
+<span class="nc" id="L121">		return loadingType;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,684 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GenRuppertsTriangulator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">GenRuppertsTriangulator.java</span></div><h1>GenRuppertsTriangulator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.impl.PSLG;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.ITriEventListener;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.IPlacementStrategy;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.ITriangulator;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VCircle;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.util.logging.Logger;
+
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+
+/**
+ * &lt;p&gt;Ruperts-Algorithm: not jet finished: Slow implementation!&lt;/p&gt;
+ *
+ * @author Benedikt Zonnchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+<span class="nc bnc" id="L46" title="All 2 branches missed.">public class GenRuppertsTriangulator&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements ITriangulator&lt;V, E, F&gt;, ITriEventListener&lt;V, E, F&gt; {</span>
+
+<span class="nc" id="L48">	private static Logger logger = Logger.getLogger(GenRuppertsTriangulator.class);</span>
+
+	/**
+	 * A triangulator for generating the constrained Delaunay triangulation
+	 */
+	private final GenConstrainedDelaunayTriangulator&lt;V, E, F&gt; cdt;
+
+	/**
+	 * The (segment bounded) planar straight line graph which will be triangulated.
+	 */
+	private final PSLG pslgBound;
+
+	private final PSLG pslg;
+
+	/**
+	 * A user defined function for the desired circumcenter radius.
+	 */
+	private final Function&lt;IPoint, Double&gt; circumRadiusFunc;
+
+	/**
+	 * True if Ruppert's algorithm has finished, false otherwise
+	 */
+    private boolean generated;
+
+	/**
+	 * True if Ruppert's algorithm has been initialized i.e. the constrained Delaunay triangulation is constructed, false otherwise
+	 */
+	private boolean initialized;
+
+	/**
+	 * The set of segments, i.e. those should not be flipped
+	 */
+	private Set&lt;E&gt; segments;
+
+	/**
+	 * The triangulation which will be constructed.
+ 	 */
+	private IIncrementalTriangulation&lt;V, E, F&gt; triangulation;
+
+	/**
+	 * The minimal angle3D (in degree) Ruppert's algorithm should achieve, i.e. after termination no
+	 * triangle has an angle3D smaller than this angle3D.
+	 */
+	private double minAngle;
+
+	/**
+	 * The angle3D which guarantees that Ruppert's algorithm terminates. If the {@link GenRuppertsTriangulator#minAngle}
+	 * is smaller the algorithm might not terminate.
+	 */
+<span class="nc" id="L97">	public static double MIN_ANGLE_TO_TERMINATE = 20.6;</span>
+
+	/**
+	 * If true, all triangles inside holes and outside the segment-bound generated during the construction
+	 * will be removed before termination.
+	 */
+	private boolean createHoles;
+
+	private boolean allowSegmentFaces;
+
+	/**
+	 * A placement strategy which determines the position insertion points.
+	 */
+	private IPlacementStrategy&lt;V, E, F&gt; placementStrategy;
+
+
+	private LinkedList&lt;E&gt; encroachedSegements;
+
+	private Map&lt;F, VTriangle&gt; triangles;
+	private Map&lt;F, Double&gt; qualities;
+
+	private PriorityQueue&lt;F&gt; badTriangles;
+	private Set&lt;F&gt; badTriangleSet;
+
+	private PriorityQueue&lt;F&gt; largeTriangles;
+	private Set&lt;F&gt; largeTriangleSet;
+
+
+	public GenRuppertsTriangulator(
+			@NotNull final Supplier&lt;IMesh&lt;V, E, F&gt;&gt; meshSupplier,
+			@NotNull final PSLG pslg,
+			final double minAngle,
+			@NotNull Function&lt;IPoint, Double&gt; circumRadiusFunc,
+			final boolean createHoles) {
+<span class="nc" id="L131">		this(meshSupplier, pslg, minAngle, circumRadiusFunc, createHoles, true);</span>
+<span class="nc" id="L132">	}</span>
+
+	public GenRuppertsTriangulator(
+			@NotNull final Supplier&lt;IMesh&lt;V, E, F&gt;&gt; meshSupplier,
+			@NotNull final PSLG pslg,
+			final double minAngle,
+			@NotNull Function&lt;IPoint, Double&gt; circumRadiusFunc,
+			final boolean createHoles,
+			final boolean allowSegmentFaces) {
+<span class="nc" id="L141">		this(meshSupplier, pslg, pslg, minAngle, circumRadiusFunc, createHoles, allowSegmentFaces);</span>
+<span class="nc" id="L142">	}</span>
+
+	public GenRuppertsTriangulator(
+			@NotNull final Supplier&lt;IMesh&lt;V, E, F&gt;&gt; meshSupplier,
+			@NotNull final PSLG pslgBound,
+			@NotNull final PSLG pslg,
+			final double minAngle,
+			@NotNull Function&lt;IPoint, Double&gt; circumRadiusFunc,
+			final boolean createHoles,
+<span class="nc" id="L151">			final boolean allowSegmentFaces) {</span>
+<span class="nc" id="L152">		this.pslgBound = pslgBound;</span>
+<span class="nc" id="L153">		this.pslg = pslg;</span>
+<span class="nc" id="L154">		this.generated = false;</span>
+<span class="nc" id="L155">		this.segments = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L156">		this.initialized = false;</span>
+<span class="nc" id="L157">		this.minAngle = minAngle;</span>
+<span class="nc" id="L158">		this.createHoles = createHoles;</span>
+<span class="nc" id="L159">		this.allowSegmentFaces = allowSegmentFaces;</span>
+<span class="nc" id="L160">		this.circumRadiusFunc = circumRadiusFunc;</span>
+<span class="nc" id="L161">		this.encroachedSegements = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L162">		this.badTriangles = new PriorityQueue&lt;&gt;(new FaceQualityComparator());</span>
+<span class="nc" id="L163">		this.largeTriangles = new PriorityQueue&lt;&gt;(new FaceCircumradiusComparator());</span>
+<span class="nc" id="L164">		this.badTriangleSet = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L165">		this.largeTriangleSet = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L166">		this.triangles = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L167">		this.qualities = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L168">		this.cdt = new GenConstrainedDelaunayTriangulator&lt;&gt;(meshSupplier, pslgBound, false);</span>
+<span class="nc" id="L169">		this.placementStrategy = new DelaunayPlacement&lt;&gt;(cdt.getMesh());</span>
+<span class="nc" id="L170">	}</span>
+
+	public GenRuppertsTriangulator(
+			@NotNull final Supplier&lt;IMesh&lt;V, E, F&gt;&gt; meshSupplier,
+			@NotNull final PSLG pslg) {
+<span class="nc" id="L175">		this(meshSupplier, pslg, MIN_ANGLE_TO_TERMINATE, p -&gt; Double.POSITIVE_INFINITY, true);</span>
+<span class="nc" id="L176">	}</span>
+
+	public Set&lt;E&gt; getSegments() {
+<span class="nc" id="L179">		return segments;</span>
+	}
+
+	public boolean isFinished() {
+<span class="nc" id="L183">		return generated;</span>
+	}
+
+	@Override
+	public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="nc" id="L188">		return cdt.getMesh();</span>
+	}
+
+	/**
+	 * main refinement
+	 */
+	public void refineSimplex2D() {
+
+    	// split the next skinny triangle at its circumcenter TODO: order by quality ie worst triangle first!
+<span class="nc bnc" id="L197" title="All 4 branches missed.">		if(!badTriangles.isEmpty() || !largeTriangles.isEmpty()) {</span>
+<span class="nc bnc" id="L198" title="All 2 branches missed.">			boolean handleBad = !badTriangles.isEmpty();</span>
+			// (1) get the next bad triangle
+<span class="nc bnc" id="L200" title="All 2 branches missed.">			F face = handleBad ? pollBadTriangle() : pollLargeTriangle();</span>
+
+			// the triangle might be no longer skinny due to the insertion of points
+<span class="nc bnc" id="L203" title="All 8 branches missed.">			if((handleBad &amp;&amp; isBad(face)) || (!handleBad &amp;&amp; isLarge(face))) {</span>
+				// (2) compute the insertion point
+<span class="nc" id="L205">				VTriangle triangle = triangles.get(face);</span>
+<span class="nc bnc" id="L206" title="All 4 branches missed.">				assert getMesh().toTriangle(face).midPoint().distance(triangle.midPoint()) &lt; GeometryUtils.DOUBLE_EPS;</span>
+<span class="nc" id="L207">				VPoint circumCenter = placementStrategy.computePlacement(getMesh().getEdge(face), triangle);</span>
+
+				// (3) find segements which are encroached by the insertion point
+<span class="nc" id="L210">				findEncrocedSegments(circumCenter);</span>
+				// (4.1) if there are any encroached segments split them
+<span class="nc bnc" id="L212" title="All 2 branches missed.">				if(!encroachedSegements.isEmpty()) {</span>
+<span class="nc" id="L213">					deEncrocheSgements(circumCenter);</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">					if(isBad(face)) {</span>
+<span class="nc" id="L215">						addBadTriangle(face);</span>
+					}
+<span class="nc bnc" id="L217" title="All 2 branches missed.">					else if(isLarge(face)) {</span>
+<span class="nc" id="L218">						addLargeTriangle(face);</span>
+					}
+				} else { // (4.2) else insertVertex the point (and update data structure)
+//					assert segments.stream().noneMatch(edge -&gt; isEncroachedExpensive(edge));
+<span class="nc" id="L222">					E e = triangulation.insert(circumCenter.getX(), circumCenter.getY());</span>
+//					assert segments.stream().noneMatch(edge -&gt; isEncroachedExpensive(edge));
+<span class="nc" id="L224">					logger.debug(&quot;inserted: &quot; + circumCenter);</span>
+<span class="nc bnc" id="L225" title="All 2 branches missed.">					for(F f : getMesh().getFaceIt(getMesh().getVertex(e))) {</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">						if(isBad(f)) {</span>
+<span class="nc" id="L227">							addBadTriangle(f);</span>
+						}
+<span class="nc bnc" id="L229" title="All 2 branches missed.">						else if(isLarge(f)) {</span>
+<span class="nc" id="L230">							addLargeTriangle(f);</span>
+						}
+<span class="nc" id="L232">					}</span>
+				}
+			}
+		}
+<span class="nc" id="L236">	}</span>
+
+	private void findEncrocedSegments(@NotNull final VPoint circumCenter) {
+<span class="nc" id="L239">		segments.stream().filter(e -&gt; isEncroached(e, circumCenter)).forEach(e -&gt; encroachedSegements.add(e));</span>
+		//segments.stream().filter(e -&gt; isEncroached(e, circumCenter)).forEach(e -&gt; encroachedSegements.add(e));
+<span class="nc" id="L241">	}</span>
+
+	public void refineSub() {
+<span class="nc bnc" id="L244" title="All 2 branches missed.">    	while (getMesh().streamFaces().anyMatch(f -&gt; isBad(f))) {</span>
+<span class="nc" id="L245">    		refineSimplex2D();</span>
+	    }
+<span class="nc" id="L247">	}</span>
+
+	private void removeOutsideTriangles() {
+
+		// (1) remove triangles inside holes
+<span class="nc bnc" id="L252" title="All 2 branches missed.">	    for(VPolygon hole : pslgBound.getHoles()) {</span>
+<span class="nc" id="L253">		    Predicate&lt;F&gt; mergeCondition = f -&gt; hole.contains(getMesh().toTriangle(f).midPoint());</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">		    Optional&lt;F&gt; optFace = getMesh().streamFaces(f -&gt; !getMesh().isHole(f)).filter(mergeCondition).findAny();</span>
+<span class="nc bnc" id="L255" title="All 2 branches missed.">		    if (optFace.isPresent()) {</span>
+<span class="nc" id="L256">			    Optional&lt;F&gt; optionalF = triangulation.createHole(optFace.get(), mergeCondition, true);</span>
+		    }
+<span class="nc" id="L258">	    }</span>
+
+	    // (2) remove triangles outside the boundary
+<span class="nc bnc" id="L261" title="All 2 branches missed.">	    if(pslgBound.getSegmentBound() != null) {</span>
+<span class="nc bnc" id="L262" title="All 2 branches missed.">		    Predicate&lt;F&gt; mergeCondition = f -&gt; !pslgBound.getSegmentBound().contains(getMesh().toTriangle(f).midPoint());</span>
+<span class="nc" id="L263">		    triangulation.shrinkBorder(mergeCondition, true);</span>
+	    }
+<span class="nc" id="L265">	}</span>
+
+	private void markOutsideTriangles() {
+<span class="nc bnc" id="L268" title="All 2 branches missed.">		for(VPolygon hole : pslgBound.getHoles()) {</span>
+<span class="nc bnc" id="L269" title="All 4 branches missed.">			Predicate&lt;F&gt; markCondition = f -&gt; !isMarked(f) &amp;&amp; hole.contains(getMesh().toTriangle(f).midPoint());</span>
+<span class="nc bnc" id="L270" title="All 2 branches missed.">			Optional&lt;F&gt; optFace = getMesh().streamFaces(f -&gt; !getMesh().isHole(f)).filter(markCondition).findAny();</span>
+<span class="nc bnc" id="L271" title="All 2 branches missed.">			if (optFace.isPresent()) {</span>
+<span class="nc" id="L272">				List&lt;F&gt; faces = triangulation.findFaces(optFace.get(), markCondition, 0);</span>
+<span class="nc" id="L273">				faces.stream().forEach(f -&gt; mark(f));</span>
+			}
+<span class="nc" id="L275">		}</span>
+<span class="nc" id="L276">	}</span>
+
+	public void step() {
+<span class="nc bnc" id="L279" title="All 2 branches missed.">    	if(!initialized) {</span>
+		    // (1) compute the constrained Delaunay triangulation (CDT)
+<span class="nc" id="L281">		    triangulation = cdt.generate();</span>
+<span class="nc" id="L282">		    triangulation.addTriEventListener(this);</span>
+
+		    // (2) remove triangles inside holes and at concavities
+		    //removeTriangles();
+
+		    // (3) get the segments which should not be flipped!
+<span class="nc" id="L288">		    segments.addAll(cdt.getConstrains());</span>
+
+<span class="nc bnc" id="L290" title="All 4 branches missed.">		    triangulation.setCanIllegalPredicate(edge -&gt; !segments.contains(edge) &amp;&amp; !segments.contains(getMesh().getTwin(edge)));</span>
+
+<span class="nc bnc" id="L292" title="All 2 branches missed.">		    if(createHoles) {</span>
+<span class="nc" id="L293">			    removeOutsideTriangles();</span>
+		    } else {
+<span class="nc" id="L295">		    	markOutsideTriangles();</span>
+		    }
+
+		    // (4) split all encroached segments
+<span class="nc" id="L299">		    refineSimplex1D();</span>
+
+//		    assert segments.stream().noneMatch(edge -&gt; isEncroachedExpensive(edge));
+
+		    // (5) gather all bad triangles
+<span class="nc" id="L304">		    getMesh().streamFaces().filter(f -&gt; isBad(f)).forEach(f -&gt; addBadTriangle(f));</span>
+<span class="nc bnc" id="L305" title="All 4 branches missed.">		    getMesh().streamFaces().filter(f -&gt; isLarge(f) &amp;&amp; !isBad(f)).forEach(f -&gt; addLargeTriangle(f));</span>
+
+<span class="nc" id="L307">		    initialized = true;</span>
+<span class="nc bnc" id="L308" title="All 4 branches missed.">	    } else if(!badTriangles.isEmpty() || !largeTriangles.isEmpty()) {</span>
+<span class="nc" id="L309">		    refineSimplex2D();</span>
+<span class="nc bnc" id="L310" title="All 2 branches missed.">    	} else if(!generated){</span>
+<span class="nc bnc" id="L311" title="All 2 branches missed.">    		if(!allowSegmentFaces) {</span>
+<span class="nc" id="L312">			    List&lt;E&gt; initialSegments = segments.stream().collect(Collectors.toList());</span>
+<span class="nc bnc" id="L313" title="All 2 branches missed.">			    for (E segment : initialSegments) {</span>
+<span class="nc" id="L314">				    VLine line = getMesh().toLine(segment);</span>
+<span class="nc" id="L315">				    VLine smallest = null;</span>
+<span class="nc bnc" id="L316" title="All 2 branches missed.">				    for (E edge : getMesh().getEdgeIt(getMesh().getVertex(segment))) {</span>
+<span class="nc" id="L317">					    VLine nLine = getMesh().toLine(edge);</span>
+<span class="nc bnc" id="L318" title="All 4 branches missed.">					    if(smallest == null || smallest.length() &gt; nLine.length()) {</span>
+<span class="nc" id="L319">						    smallest = nLine;</span>
+					    }
+<span class="nc" id="L321">				    }</span>
+
+<span class="nc bnc" id="L323" title="All 2 branches missed.">				    for (E edge : getMesh().getEdgeIt(getMesh().getTwinVertex(segment))) {</span>
+<span class="nc" id="L324">					    VLine nLine = getMesh().toLine(edge);</span>
+<span class="nc bnc" id="L325" title="All 4 branches missed.">					    if(smallest == null || smallest.length() &gt; nLine.length()) {</span>
+<span class="nc" id="L326">						    smallest = nLine;</span>
+					    }
+<span class="nc" id="L328">				    }</span>
+
+<span class="nc bnc" id="L330" title="All 2 branches missed.">				    if(smallest.length() &lt; line.length() * 0.5) {</span>
+<span class="nc" id="L331">					    split(segment);</span>
+				    }
+<span class="nc" id="L333">			    }</span>
+<span class="nc" id="L334">			    split();</span>
+		    }
+<span class="nc" id="L336">			generated = true;</span>
+	    } else {
+<span class="nc" id="L338">		    logger.info(&quot;finished&quot;);</span>
+	    }
+<span class="nc" id="L340">	}</span>
+
+	private void split() {
+<span class="nc" id="L343">		List&lt;E&gt; edges = getMesh().getEdges();</span>
+<span class="nc bnc" id="L344" title="All 2 branches missed.">		for(E edge : edges) {</span>
+<span class="nc bnc" id="L345" title="All 2 branches missed.">			if(!segments.contains(edge)) {</span>
+<span class="nc" id="L346">				V v1 = getMesh().getVertex(edge);</span>
+<span class="nc" id="L347">				V v2 = getMesh().getTwinVertex(edge);</span>
+<span class="nc bnc" id="L348" title="All 4 branches missed.">				if(isSegmentVertex(v1) &amp;&amp; isSegmentVertex(v2)) {</span>
+<span class="nc" id="L349">					getTriangulation().splitEdge(edge, true);</span>
+				}
+			}
+<span class="nc" id="L352">		}</span>
+<span class="nc" id="L353">	}</span>
+
+	private F pollBadTriangle() {
+<span class="nc" id="L356">		F badFace = badTriangles.poll();</span>
+<span class="nc" id="L357">		badTriangleSet.remove(badFace);</span>
+<span class="nc" id="L358">		return badFace;</span>
+	}
+
+	private F pollLargeTriangle() {
+<span class="nc" id="L362">		F badFace = largeTriangles.poll();</span>
+<span class="nc" id="L363">		largeTriangleSet.remove(badFace);</span>
+<span class="nc" id="L364">		return badFace;</span>
+	}
+
+	private void addBadTriangle(@NotNull F face) {
+<span class="nc" id="L368">		VTriangle triangle = getMesh().toTriangle(face);</span>
+<span class="nc bnc" id="L369" title="All 2 branches missed.">		if(pslgBound.getSegmentBound().contains(triangle.midPoint())) {</span>
+<span class="nc" id="L370">			triangles.put(face, getMesh().toTriangle(face));</span>
+<span class="nc" id="L371">			qualities.put(face, getTriangulation().faceToQuality(face));</span>
+<span class="nc bnc" id="L372" title="All 2 branches missed.">			if(!badTriangleSet.contains(face)) {</span>
+<span class="nc" id="L373">				badTriangles.add(face);</span>
+<span class="nc" id="L374">				badTriangleSet.add(face);</span>
+			}
+		}
+
+<span class="nc" id="L378">	}</span>
+
+	private boolean isConstrainsValid(@NotNull final VPolygon polygon){
+<span class="nc" id="L381">		List&lt;VLine&gt; constrains = polygon.getLinePath();</span>
+<span class="nc bnc" id="L382" title="All 2 branches missed.">		for(int i = 0; i &lt; constrains.size(); i++) {</span>
+<span class="nc" id="L383">			VLine l1 = constrains.get(i);</span>
+<span class="nc" id="L384">			VLine l2 = constrains.get((i+1) % constrains.size());</span>
+
+<span class="nc" id="L386">			VPoint p1 = l1.getVPoint1();</span>
+<span class="nc" id="L387">			VPoint p2 = l1.getVPoint2();</span>
+<span class="nc" id="L388">			VPoint p3 = l2.getVPoint2();</span>
+
+<span class="nc" id="L390">			double angle = GeometryUtils.angle(p1, p2, p3);</span>
+			// angle3D should be larger than 60 degree
+<span class="nc bnc" id="L392" title="All 6 branches missed.">			assert GeometryUtils.isCW(p1, p2, p3) || angle &gt;= 2 * Math.PI / 6 : p1 + &quot;,&quot; + p2 + &quot;,&quot; + p3;</span>
+<span class="nc bnc" id="L393" title="All 2 branches missed.">			if(angle &lt;= 2 * Math.PI / 6 ){</span>
+<span class="nc" id="L394">				return false;</span>
+			}
+		}
+<span class="nc" id="L397">		return true;</span>
+	}
+
+	private void addLargeTriangle(@NotNull F face) {
+<span class="nc" id="L401">		VTriangle triangle = getMesh().toTriangle(face);</span>
+<span class="nc bnc" id="L402" title="All 2 branches missed.">		if(pslgBound.getSegmentBound().contains(triangle.midPoint())) {</span>
+<span class="nc" id="L403">			triangles.put(face, getMesh().toTriangle(face));</span>
+<span class="nc" id="L404">			qualities.put(face, getTriangulation().faceToQuality(face));</span>
+<span class="nc bnc" id="L405" title="All 2 branches missed.">			if(!largeTriangleSet.contains(face)) {</span>
+<span class="nc" id="L406">				largeTriangles.add(face);</span>
+<span class="nc" id="L407">				largeTriangleSet.add(face);</span>
+			}
+		}
+<span class="nc" id="L410">	}</span>
+
+	private void refineSimplex1D() {
+<span class="nc" id="L413">		segments.stream().filter(e -&gt; isEncroached(e)).forEach(e -&gt; encroachedSegements.addFirst(e));</span>
+		//segments.stream().filter(e -&gt; isEncroachedExpensive(e)).forEach(e -&gt; encroachedSegements.addFirst(e));
+<span class="nc" id="L415">		deEncrocheSgements();</span>
+<span class="nc" id="L416">	}</span>
+
+	private void deEncrocheSgements(@NotNull final VPoint circumcenter) {
+<span class="nc bnc" id="L419" title="All 2 branches missed.">		while (!encroachedSegements.isEmpty()) {</span>
+<span class="nc" id="L420">			E segment = encroachedSegements.poll();</span>
+<span class="nc bnc" id="L421" title="All 4 branches missed.">			assert segments.contains(segment);</span>
+
+			// to be robust for duplicates
+<span class="nc bnc" id="L424" title="All 2 branches missed.">			if(isEncroached(segment, circumcenter)) {</span>
+<span class="nc" id="L425">				split(segment);</span>
+			}
+<span class="nc" id="L427">		}</span>
+
+		// we require this because split may other edges which are not direct neighbours encroached!
+<span class="nc" id="L430">		refineSimplex1D();</span>
+<span class="nc" id="L431">	}</span>
+
+	private void deEncrocheSgements() {
+<span class="nc bnc" id="L434" title="All 2 branches missed.">		while (!encroachedSegements.isEmpty()) {</span>
+<span class="nc" id="L435">			E segment = encroachedSegements.poll();</span>
+<span class="nc bnc" id="L436" title="All 4 branches missed.">			assert segments.contains(segment);</span>
+
+			// to be robust for duplicates
+<span class="nc bnc" id="L439" title="All 2 branches missed.">			if(isEncroached(segment)) {</span>
+<span class="nc" id="L440">				split(segment);</span>
+			}
+<span class="nc" id="L442">		}</span>
+<span class="nc" id="L443">	}</span>
+
+	private Pair&lt;E, E&gt; split(@NotNull final E segment) {
+<span class="nc bnc" id="L446" title="All 2 branches missed.">		E splitSegment = isBoundary(segment) ? getMesh().getTwin(segment) : segment;</span>
+<span class="nc" id="L447">		int size = segments.size();</span>
+<span class="nc" id="L448">		segments.remove(splitSegment);</span>
+<span class="nc" id="L449">		segments.remove(getMesh().getTwin(splitSegment));</span>
+<span class="nc bnc" id="L450" title="All 4 branches missed.">		assert segments.size() == size - 2;</span>
+
+		// add s1, s2
+<span class="nc" id="L453">		VLine line = getMesh().toLine(splitSegment);</span>
+<span class="nc" id="L454">		VPoint midPoint = line.midPoint();</span>
+<span class="nc" id="L455">		V vertex = getMesh().createVertex(midPoint.getX(), midPoint.getY());</span>
+<span class="nc" id="L456">		V v1 = getMesh().getVertex(splitSegment);</span>
+<span class="nc" id="L457">		V v2 = getMesh().getTwinVertex(splitSegment);</span>
+
+<span class="nc bnc" id="L459" title="All 4 branches missed.">		boolean mark = !createHoles &amp;&amp; isMarked(getMesh().getTwinFace(splitSegment));</span>
+
+		// split s
+<span class="nc" id="L462">		List&lt;E&gt; toLegalize = triangulation.splitEdgeAndReturn(vertex, splitSegment, false);</span>
+
+		// update data structure: add s1, s2
+<span class="nc" id="L465">		E e1 = getMesh().getEdge(vertex, v1).get();</span>
+<span class="nc" id="L466">		E e2 = getMesh().getEdge(vertex, v2).get();</span>
+
+<span class="nc" id="L468">		segments.add(e1);</span>
+<span class="nc" id="L469">		segments.add(getMesh().getTwin(e1));</span>
+<span class="nc" id="L470">		segments.add(e2);</span>
+<span class="nc" id="L471">		segments.add(getMesh().getTwin(e2));</span>
+
+<span class="nc bnc" id="L473" title="All 2 branches missed.">		if(mark) {</span>
+			// we have to mark the correct face, this depends on the call above i.e. V v1 = getMesh().getVertex(splitSegment);
+			// and the fact that splitSegment is not a boundary edge.
+<span class="nc" id="L476">			mark(getMesh().getFace(e1));</span>
+<span class="nc" id="L477">			mark(getMesh().getTwinFace(e2));</span>
+		}
+
+<span class="nc bnc" id="L480" title="All 2 branches missed.">		for(E e : toLegalize) {</span>
+<span class="nc" id="L481">			triangulation.legalize(e, vertex);</span>
+<span class="nc" id="L482">		}</span>
+
+<span class="nc bnc" id="L484" title="All 2 branches missed.">		if(isEncroached(e1)) {</span>
+<span class="nc" id="L485">			encroachedSegements.add(e1);</span>
+<span class="nc bnc" id="L486" title="All 4 branches missed.">			assert segments.contains(e1);</span>
+		}
+
+<span class="nc bnc" id="L489" title="All 2 branches missed.">		if(isEncroached(e2)) {</span>
+<span class="nc" id="L490">			encroachedSegements.add(e2);</span>
+<span class="nc bnc" id="L491" title="All 4 branches missed.">			assert segments.contains(e2);</span>
+		}
+
+<span class="nc bnc" id="L494" title="All 2 branches missed.">		for(F f : getMesh().getFaceIt(vertex)) {</span>
+<span class="nc bnc" id="L495" title="All 2 branches missed.">			if(!isBoundary(f)) {</span>
+<span class="nc bnc" id="L496" title="All 2 branches missed.">				if(isBad(f)) {</span>
+<span class="nc" id="L497">					addBadTriangle(f);</span>
+				}
+<span class="nc bnc" id="L499" title="All 2 branches missed.">				else if(isLarge(f)) {</span>
+<span class="nc" id="L500">					addLargeTriangle(f);</span>
+				}
+			}
+<span class="nc" id="L503">		}</span>
+<span class="nc" id="L504">		handleVertexInsertion(vertex);</span>
+<span class="nc" id="L505">		return Pair.of(e1, e2);</span>
+	}
+
+	private boolean isBoundary(@NotNull final F f) {
+<span class="nc bnc" id="L509" title="All 4 branches missed.">		return getMesh().isBoundary(f) || isMarked(f);</span>
+	}
+
+	private boolean isBoundary(@NotNull final E edge) {
+<span class="nc" id="L513">		return isBoundary(getMesh().getFace(edge));</span>
+	}
+
+	private boolean isAtBoundary(@NotNull final E edge) {
+<span class="nc bnc" id="L517" title="All 4 branches missed.">		return isBoundary(edge) || isBoundary(getMesh().getTwin(edge));</span>
+	}
+
+    @Override
+    public IIncrementalTriangulation&lt;V, E, F&gt; generate() {
+<span class="nc" id="L522">	   return generate(true);</span>
+    }
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate(boolean finalize) {
+<span class="nc bnc" id="L527" title="All 2 branches missed.">		while (!isFinished()) {</span>
+<span class="nc" id="L528">			step();</span>
+		}
+<span class="nc" id="L530">		return triangulation;</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; getTriangulation() {
+<span class="nc" id="L535">		return triangulation;</span>
+	}
+
+	private boolean isLarge(@NotNull final F face) {
+<span class="nc" id="L539">		VTriangle triangle = getMesh().toTriangle(face);</span>
+<span class="nc bnc" id="L540" title="All 2 branches missed.">		return isInside(face)</span>
+<span class="nc bnc" id="L541" title="All 2 branches missed.">				&amp;&amp; (circumRadiusFunc.apply(triangle.getCircumcenter()) &lt; triangle.getCircumscribedRadius());</span>
+	}
+
+	private boolean isSegmentFace(@NotNull final F face) {
+<span class="nc bnc" id="L545" title="All 2 branches missed.">		if(allowSegmentFaces) {</span>
+<span class="nc" id="L546">			return false;</span>
+		}
+		else {
+<span class="nc" id="L549">			return getMesh().streamVertices(face).allMatch(v -&gt; isSegmentVertex(v));</span>
+		}
+	}
+
+	private boolean isSegmentVertex(@NotNull final V v) {
+<span class="nc" id="L554">		return getMesh().streamEdges(v).anyMatch(e -&gt; segments.contains(e));</span>
+	}
+
+	private boolean isBad(@NotNull final F face) {
+<span class="nc bnc" id="L558" title="All 4 branches missed.">		return isInside(face) &amp;&amp; isSkinny(face, minAngle);</span>
+    }
+
+    private boolean isInside(@NotNull final F face) {
+<span class="nc bnc" id="L562" title="All 2 branches missed.">		if(isBoundary(face)) {</span>
+<span class="nc" id="L563">			return false;</span>
+		}
+
+		//TODO: this might be expensive!
+<span class="nc" id="L567">		return pslg.getSegmentBound().contains(getMesh().toTriangle(face).midPoint());</span>
+    }
+
+	private boolean isSkinny(@NotNull final F face, final double angle) {
+<span class="nc" id="L571">		double alpha = angle; // lowest angle3D in degree</span>
+<span class="nc" id="L572">		double radAlpha = Math.toRadians(alpha);</span>
+<span class="nc" id="L573">		VTriangle triangle = getMesh().toTriangle(face);</span>
+
+<span class="nc bnc" id="L575" title="All 2 branches missed.">		return GeometryUtils.angle(triangle.p1, triangle.p2, triangle.p3) &lt; radAlpha</span>
+<span class="nc bnc" id="L576" title="All 2 branches missed.">				|| GeometryUtils.angle(triangle.p3, triangle.p1, triangle.p2) &lt; radAlpha</span>
+<span class="nc bnc" id="L577" title="All 2 branches missed.">				|| GeometryUtils.angle(triangle.p2, triangle.p3, triangle.p1) &lt; radAlpha;</span>
+	}
+
+	private boolean isEncroached(@NotNull final E segment, @NotNull final VPoint p) {
+<span class="nc" id="L581">		VLine line = getMesh().toLine(segment);</span>
+<span class="nc" id="L582">		VPoint midPoint = line.midPoint();</span>
+<span class="nc" id="L583">		VCircle diameterCircle = new VCircle(midPoint, midPoint.distance(line.getX1(), line.getY1()));</span>
+<span class="nc bnc" id="L584" title="All 6 branches missed.">		return p.distance(line.getVPoint1()) &gt; GeometryUtils.DOUBLE_EPS &amp;&amp; p.distance(line.getVPoint2()) &gt; GeometryUtils.DOUBLE_EPS &amp;&amp; diameterCircle.contains(p);</span>
+	}
+
+	private boolean isEncroached(@NotNull final E segment) {
+<span class="nc bnc" id="L588" title="All 2 branches missed.">		E seg = isBoundary(segment) ? getMesh().getTwin(segment) : segment;</span>
+<span class="nc" id="L589">		VPoint p1 = getMesh().toPoint(getMesh().getNext(seg));</span>
+<span class="nc bnc" id="L590" title="All 2 branches missed.">		if(isEncroached(seg, p1)) {</span>
+<span class="nc" id="L591">			return true;</span>
+<span class="nc bnc" id="L592" title="All 2 branches missed.">		} else if(isAtBoundary(seg)) {</span>
+<span class="nc" id="L593">			return false;</span>
+		} else {
+<span class="nc" id="L595">			VPoint p2 = getMesh().toPoint(getMesh().getNext(getMesh().getTwin(seg)));</span>
+<span class="nc" id="L596">			return isEncroached(seg, p2);</span>
+		}
+	}
+
+	private boolean isMarked(@NotNull final F face) {
+<span class="nc" id="L601">		return getMesh().getBooleanData(face, &quot;boundary&quot;);</span>
+	}
+
+	private void mark(@NotNull final F face) {
+<span class="nc" id="L605">		getMesh().setBooleanData(face, &quot;boundary&quot;, true);</span>
+<span class="nc" id="L606">	}</span>
+
+    /*private boolean isEncroached(@NotNull final E segment) {
+		E seg = getMesh().isBoundary(segment) ? getMesh().getTwin(segment) : segment;
+	    VLine line = getMesh().toLine(seg);
+	    VPoint midPoint = line.midPoint();
+	    VCircle diameterCircle = new VCircle(midPoint, midPoint.distance(line.getX1(), line.getY1()));
+
+	    IPoint p1 = getMesh().getPoint(getMesh().getNext(seg));
+
+	    if(diameterCircle.getCenter().distance(p1) &lt; diameterCircle.getRadius()) {
+		    return true;
+	    }
+
+	    if(!getMesh().isAtBoundary(seg)) {
+		    IPoint p2 = getMesh().getPoint(getMesh().getNext(getMesh().getTwin(seg)));
+		    if((diameterCircle.getCenter().distance(p2) &lt; diameterCircle.getRadius())) {
+			    return true;
+		    }
+	    }
+
+	    return false;
+    }*/
+
+    // TODO replace this!
+	private boolean isEncroachedExpensive(@NotNull final E segment) {
+<span class="nc" id="L632">		VLine line = getMesh().toLine(segment);</span>
+<span class="nc" id="L633">		VPoint midPoint = line.midPoint();</span>
+<span class="nc" id="L634">		VCircle diameterCircle = new VCircle(midPoint, midPoint.distance(line.getX1(), line.getY1()));</span>
+<span class="nc" id="L635">		return getMesh().streamPoints().anyMatch(p -&gt; isEncroached(segment, new VPoint(p.getX(), p.getY())));</span>
+	}
+
+	@Override
+	public void postSplitTriangleEvent(F original, F f1, F f2, F f3, V v) {
+		//handleVertexInsertion(v);
+<span class="nc" id="L641">	}</span>
+
+	@Override
+	public void postSplitHalfEdgeEvent(E originalEdge, F original, F f1, F f2, V v) {
+		//handleVertexInsertion(v);
+<span class="nc" id="L646">	}</span>
+
+	@Override
+	public void postFlipEdgeEvent(F f1, F f2) {
+
+<span class="nc" id="L651">	}</span>
+
+	@Override
+	public void postInsertEvent(V vertex) {
+<span class="nc" id="L655">		handleVertexInsertion(vertex);</span>
+<span class="nc" id="L656">	}</span>
+
+	private void handleVertexInsertion(@NotNull final V vertex) {
+<span class="nc bnc" id="L659" title="All 2 branches missed.">		for(E e : getMesh().getEdgeIt(vertex)) {</span>
+<span class="nc" id="L660">			E prev = getMesh().getPrev(e);</span>
+<span class="nc bnc" id="L661" title="All 4 branches missed.">			if(segments.contains(prev) &amp;&amp; isEncroached(prev)) {</span>
+<span class="nc" id="L662">				encroachedSegements.add(prev);</span>
+<span class="nc bnc" id="L663" title="All 4 branches missed.">				assert segments.contains(prev);</span>
+			}
+<span class="nc" id="L665">		}</span>
+<span class="nc" id="L666">	}</span>
+
+<span class="nc" id="L668">	private final class FaceCircumradiusComparator implements Comparator&lt;F&gt; {</span>
+
+		@Override
+		public int compare(F o1, F o2) {
+<span class="nc" id="L672">			return Double.compare(-triangles.get(o1).getCircumscribedRadius(), -triangles.get(o2).getCircumscribedRadius());</span>
+		}
+	}
+
+<span class="nc" id="L676">	private final class FaceQualityComparator implements Comparator&lt;F&gt; {</span>
+
+		@Override
+		public int compare(F o1, F o2) {
+<span class="nc" id="L680">			return Double.compare(qualities.get(o1), qualities.get(o2));</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

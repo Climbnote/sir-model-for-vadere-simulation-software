@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CellState.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.data.cellgrid</a> &gt; <span class="el_source">CellState.java</span></div><h1>CellState.java</h1><pre class="source lang-java linenums">package org.vadere.util.data.cellgrid;
+
+import java.util.Objects;
+
+public class CellState implements Cloneable {
+	public Double potential;
+	public PathFindingTag tag;
+
+<span class="fc" id="L9">	public CellState(Double potential, PathFindingTag tag) {</span>
+<span class="fc" id="L10">		this.potential = potential;</span>
+<span class="fc" id="L11">		this.tag = tag;</span>
+<span class="fc" id="L12">	}</span>
+
+<span class="fc" id="L14">	public CellState() {</span>
+<span class="fc" id="L15">		this.potential = Double.MAX_VALUE;</span>
+<span class="fc" id="L16">		this.tag = PathFindingTag.Undefined;</span>
+<span class="fc" id="L17">	}</span>
+
+	@Override
+	public boolean equals(Object o) {
+<span class="pc bpc" id="L21" title="1 of 2 branches missed.">		if (this == o) return true;</span>
+<span class="pc bpc" id="L22" title="2 of 4 branches missed.">		if (o == null || getClass() != o.getClass()) return false;</span>
+<span class="fc" id="L23">		CellState cellState = (CellState) o;</span>
+<span class="pc bpc" id="L24" title="2 of 4 branches missed.">		return potential.equals(cellState.potential) &amp;&amp;	tag == cellState.tag;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L29">		return Objects.hash(potential, tag);</span>
+	}
+
+	@Override
+	public CellState clone() {
+<span class="fc" id="L34">		return new CellState(Double.valueOf(potential), tag);</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L39">		String s = &quot;MAX   &quot;;</span>
+<span class="nc bnc" id="L40" title="All 2 branches missed.">		if (potential != Double.MAX_VALUE) {</span>
+<span class="nc" id="L41">			s = String.format(&quot;%2.4f&quot;, potential);</span>
+		}
+
+<span class="nc bnc" id="L44" title="All 7 branches missed.">		switch (tag) {</span>
+			case Undefined:
+<span class="nc" id="L46">				s += &quot;/U &quot;;</span>
+<span class="nc" id="L47">				break;</span>
+			case Reachable:
+<span class="nc" id="L49">				s += &quot;/R &quot;;</span>
+<span class="nc" id="L50">				break;</span>
+			case Reached:
+<span class="nc" id="L52">				s += &quot;/E &quot;;</span>
+<span class="nc" id="L53">				break;</span>
+			case Target:
+<span class="nc" id="L55">				s += &quot;/T &quot;;</span>
+<span class="nc" id="L56">				break;</span>
+			case Obstacle:
+<span class="nc" id="L58">				s += &quot;/O &quot;;</span>
+<span class="nc" id="L59">				break;</span>
+			case Margin:
+<span class="nc" id="L61">				s += &quot;/M &quot;;</span>
+				break;
+		}
+
+<span class="nc" id="L65">		return s;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

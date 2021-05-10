@@ -1,0 +1,56 @@
+<h1> PedestrianLoadingStrategyPotentialDifference</h1>
+
+<p>
+The PedestrianLoadingStrategyPotentialDifference calculates an individual
+laoding for each body of the floor based on target potential differences. The
+central idea is to calculate the potential difference on a potential field
+the body doesnt use. The value is a measure of the repulsion effect of this
+body with respect to all pedestrians that uses the potential field that uses
+this laoding strategy. A negative potential difference indicates that the
+body does not move towards the target, so the laoding should be higher. If
+the potential difference is zero the body does not move. The Problem is that
+a negative potential difference on the static potential field does not
+necesserely mean that the pedestrian disturbs. On the dynamic field on the
+other hand we have no well defined measurement. So we try to combine the
+informations. The dynamic field gives the indication that the movement is
+disturbing (if the potential difference is negative on the dynamic field) or
+is not disturbing (if the potential is positive). The static field gives the
+us the measurement.
+
+
+// TODO [priority=medium] [task=refactoring] Remove this class
+
+</p>
+
+<hr>
+<h2> Field: floor</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: divider</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: EPSILON</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: loading</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: prevPedestrianPositions</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: meanSpeed</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: targetId</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: baseField</h2>
+<p>---</p>
+

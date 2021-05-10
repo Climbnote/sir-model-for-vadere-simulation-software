@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CLVectorSum.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.opencl.examples</a> &gt; <span class="el_source">CLVectorSum.java</span></div><h1>CLVectorSum.java</h1><pre class="source lang-java linenums">package org.vadere.util.opencl.examples;
+
+
+import org.vadere.util.logging.Logger;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.opencl.*;
+import org.lwjgl.system.MemoryStack;
+import org.vadere.util.opencl.CLInfo;
+import org.vadere.util.opencl.CLUtils;
+import org.vadere.util.opencl.OpenCLException;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.util.Random;
+
+import static org.lwjgl.opencl.CL10.*;
+import static org.lwjgl.system.MemoryUtil.NULL;
+import static org.lwjgl.system.MemoryUtil.memUTF8;
+
+/**
+ * Created by bzoennchen on 08.09.17.
+ */
+public class CLVectorSum {
+
+    // CL ids
+    private MemoryStack stack;
+    private long clPlatform;
+    private long clDevice;
+    private long clContext;
+    private long clKernel;
+    private long clQueue;
+    private long clProgram;
+
+    // error code buffer
+    private IntBuffer errcode_ret;
+
+    // CL callbacks
+    private CLContextCallback contextCB;
+    private CLProgramCallback programCB;
+<span class="nc" id="L43">    private static Logger log = Logger.getLogger(CLVectorSum.class);</span>
+
+    // data on the host
+    private FloatBuffer a;
+    private FloatBuffer b;
+    private FloatBuffer c;
+
+    // addresses to memory on the GPU
+    private long aVector;
+    private long bVector;
+    private long cVector;
+
+    // size
+    private int n;
+
+<span class="nc" id="L58">    public CLVectorSum(final int size) {</span>
+<span class="nc" id="L59">        this.n = size;</span>
+<span class="nc" id="L60">    }</span>
+
+    private void initCallbacks() {
+<span class="nc" id="L63">        contextCB = CLContextCallback.create((errinfo, private_info, cb, user_data) -&gt;</span>
+        {
+<span class="nc" id="L65">            log.warn(&quot;[LWJGL] cl_context_callback&quot;);</span>
+<span class="nc" id="L66">            log.warn(&quot;\tInfo: &quot; + memUTF8(errinfo));</span>
+<span class="nc" id="L67">        });</span>
+
+<span class="nc" id="L69">        programCB = CLProgramCallback.create((program, user_data) -&gt;</span>
+        {
+	        try {
+<span class="nc bnc" id="L72" title="All 2 branches missed.">		        log.info(&quot;The cl_program [0x&quot;+program+&quot;] was built &quot; + (CLInfo.getProgramBuildInfoInt(program, clDevice, CL_PROGRAM_BUILD_STATUS) == CL_SUCCESS ? &quot;successfully&quot; : &quot;unsuccessfully&quot;));</span>
+<span class="nc" id="L73">	        } catch (OpenCLException e) {</span>
+<span class="nc" id="L74">		        e.printStackTrace();</span>
+<span class="nc" id="L75">	        }</span>
+<span class="nc" id="L76">        });</span>
+<span class="nc" id="L77">    }</span>
+
+    private void initCL() throws OpenCLException {
+        // helper for the memory allocation in java
+<span class="nc" id="L81">        stack = MemoryStack.stackPush();</span>
+<span class="nc" id="L82">        errcode_ret = stack.callocInt(1);</span>
+
+<span class="nc" id="L84">        IntBuffer numberOfPlatforms = stack.mallocInt(1);</span>
+<span class="nc" id="L85">        clGetPlatformIDs(null, numberOfPlatforms);</span>
+<span class="nc" id="L86">        PointerBuffer platformIDs = stack.mallocPointer(numberOfPlatforms.get(0));</span>
+<span class="nc" id="L87">        clGetPlatformIDs(platformIDs, numberOfPlatforms);</span>
+
+<span class="nc" id="L89">        clPlatform = platformIDs.get(0);</span>
+
+<span class="nc" id="L91">        IntBuffer numberOfDevices = stack.mallocInt(1);</span>
+<span class="nc" id="L92">        clGetDeviceIDs(clPlatform, CL_DEVICE_TYPE_GPU, null, numberOfDevices);</span>
+<span class="nc" id="L93">        PointerBuffer deviceIDs = stack.mallocPointer(numberOfDevices.get(0));</span>
+<span class="nc" id="L94">        clGetDeviceIDs(clPlatform, CL_DEVICE_TYPE_GPU, deviceIDs, numberOfDevices);</span>
+
+<span class="nc" id="L96">        clDevice = deviceIDs.get(0);</span>
+
+<span class="nc" id="L98">        printDeviceInfo(clDevice, &quot;CL_DEVICE_NAME&quot;, CL_DEVICE_NAME);</span>
+
+<span class="nc" id="L100">        PointerBuffer ctxProps = stack.mallocPointer(3);</span>
+<span class="nc" id="L101">        ctxProps.put(CL_CONTEXT_PLATFORM)</span>
+<span class="nc" id="L102">                .put(clPlatform)</span>
+<span class="nc" id="L103">                .put(NULL)</span>
+<span class="nc" id="L104">                .flip();</span>
+
+<span class="nc" id="L106">        clContext = clCreateContext(ctxProps, clDevice, contextCB, NULL, errcode_ret);</span>
+<span class="nc" id="L107">        CLInfo.checkCLError(errcode_ret);</span>
+
+<span class="nc" id="L109">        clQueue = clCreateCommandQueue(clContext, clDevice, 0, errcode_ret);</span>
+<span class="nc" id="L110">    }</span>
+
+    private void buildProgram() throws OpenCLException {
+<span class="nc" id="L113">        PointerBuffer strings = BufferUtils.createPointerBuffer(1);</span>
+<span class="nc" id="L114">        PointerBuffer lengths = BufferUtils.createPointerBuffer(1);</span>
+
+        ByteBuffer source;
+        try {
+<span class="nc" id="L118">            source = CLUtils.ioResourceToByteBuffer(&quot;demo/VectorSum.cl&quot;, 4096);</span>
+<span class="nc" id="L119">        } catch (IOException e) {</span>
+<span class="nc" id="L120">            throw new RuntimeException(e);</span>
+<span class="nc" id="L121">        }</span>
+
+
+<span class="nc" id="L124">        strings.put(0, source);</span>
+<span class="nc" id="L125">        lengths.put(0, source.remaining());</span>
+
+<span class="nc" id="L127">        clProgram = clCreateProgramWithSource(clContext, strings, lengths, errcode_ret);</span>
+
+<span class="nc" id="L129">        int errcode = clBuildProgram(clProgram, clDevice, &quot;&quot;, programCB, NULL);</span>
+<span class="nc" id="L130">        CLInfo.checkCLError(errcode);</span>
+
+<span class="nc" id="L132">        clKernel = clCreateKernel(clProgram, &quot;add&quot;, errcode_ret);</span>
+<span class="nc" id="L133">    }</span>
+
+    private void createMemory() {
+<span class="nc" id="L136">        c = stack.mallocFloat(n*2);</span>
+<span class="nc" id="L137">        a = stack.mallocFloat(n*2);</span>
+<span class="nc" id="L138">        b = stack.mallocFloat(n*2);</span>
+<span class="nc" id="L139">        Random random = new Random();</span>
+
+<span class="nc bnc" id="L141" title="All 2 branches missed.">        for(int i = 0; i &lt; n*2; i++) {</span>
+<span class="nc" id="L142">            a.put(i, random.nextFloat());</span>
+<span class="nc" id="L143">            b.put(i, random.nextFloat());</span>
+        }
+
+<span class="nc" id="L146">        aVector = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, a, errcode_ret);</span>
+<span class="nc" id="L147">        bVector = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, b, errcode_ret);</span>
+<span class="nc" id="L148">        cVector = clCreateBuffer(clContext, CL_MEM_READ_ONLY, 4*n*2, errcode_ret);</span>
+<span class="nc" id="L149">    }</span>
+
+    private void runKernel() {
+<span class="nc" id="L152">        clSetKernelArg1p(clKernel, 0, aVector);</span>
+<span class="nc" id="L153">        clSetKernelArg1p(clKernel, 1, bVector);</span>
+<span class="nc" id="L154">        clSetKernelArg1p(clKernel, 2, cVector);</span>
+
+<span class="nc" id="L156">        PointerBuffer kernel1DGlobalWorkSize = BufferUtils.createPointerBuffer(1);</span>
+<span class="nc" id="L157">        kernel1DGlobalWorkSize.put(0, n);</span>
+
+<span class="nc" id="L159">        clEnqueueNDRangeKernel(clQueue, clKernel, 1, null, kernel1DGlobalWorkSize, null, null, null);</span>
+
+<span class="nc" id="L161">        clFinish(clQueue);</span>
+<span class="nc" id="L162">        clEnqueueReadBuffer(clQueue, cVector, true, 0, c, null, null);</span>
+<span class="nc" id="L163">    }</span>
+
+    private void printResult() {
+<span class="nc" id="L166">        log.info(&quot;print CPU result&quot;);</span>
+<span class="nc bnc" id="L167" title="All 2 branches missed.">        for(int i = 0; i &lt; n*2; i++) {</span>
+<span class="nc" id="L168">            log.info(a.get(i) * b.get(i));</span>
+        }
+
+<span class="nc" id="L171">        log.info(&quot;print GPU result&quot;);</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">        for(int i = 0; i &lt; n*2; i++) {</span>
+<span class="nc" id="L173">            log.info(c.get(i));</span>
+        }
+<span class="nc" id="L175">    }</span>
+
+    private void clearCL() {
+<span class="nc" id="L178">        contextCB.free();</span>
+<span class="nc" id="L179">        programCB.free();</span>
+<span class="nc" id="L180">        clReleaseMemObject(aVector);</span>
+<span class="nc" id="L181">        clReleaseMemObject(bVector);</span>
+<span class="nc" id="L182">        clReleaseMemObject(cVector);</span>
+<span class="nc" id="L183">        clReleaseKernel(clKernel);</span>
+<span class="nc" id="L184">        clReleaseCommandQueue(clQueue);</span>
+<span class="nc" id="L185">        clReleaseProgram(clProgram);</span>
+<span class="nc" id="L186">        clReleaseContext(clContext);</span>
+<span class="nc" id="L187">    }</span>
+
+    /*
+     *
+     * Assumption: There is only one Platform with a GPU.
+     */
+    public static void main(String... args) throws OpenCLException {
+<span class="nc" id="L194">        CLVectorSum sum = new CLVectorSum(4);</span>
+<span class="nc" id="L195">        sum.initCallbacks();</span>
+<span class="nc" id="L196">        sum.initCL();</span>
+<span class="nc" id="L197">        sum.buildProgram();</span>
+<span class="nc" id="L198">        sum.createMemory();</span>
+<span class="nc" id="L199">        sum.runKernel();</span>
+<span class="nc" id="L200">        sum.printResult();</span>
+<span class="nc" id="L201">        sum.clearCL();</span>
+<span class="nc" id="L202">    }</span>
+
+    private static void printPlatformInfo(long platform, String param_name, int param) throws OpenCLException {
+<span class="nc" id="L205">        System.out.println(&quot;\t&quot; + param_name + &quot; = &quot; + CLInfo.getPlatformInfoStringUTF8(platform, param));</span>
+<span class="nc" id="L206">    }</span>
+
+    private static void printDeviceInfo(long device, String param_name, int param) throws OpenCLException {
+<span class="nc" id="L209">        System.out.println(&quot;\t&quot; + param_name + &quot; = &quot; + CLInfo.getDeviceInfoStringUTF8(device, param));</span>
+<span class="nc" id="L210">    }</span>
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

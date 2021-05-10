@@ -1,0 +1,657 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WeilerAtherton.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing</a> &gt; <span class="el_source">WeilerAtherton.java</span></div><h1>WeilerAtherton.java</h1><pre class="source lang-java linenums">package org.vadere.meshing;
+
+import org.apache.commons.math3.util.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PMesh;
+import org.vadere.meshing.mesh.gen.PVertex;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IPolyConnectivity;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * The Weiler-Atherton-Algorithm (https://en.wikipedia.org/wiki/Weiler%E2%80%93Atherton_clipping_algorithm)
+ * enables boolean operations on polygons, i.e.:
+ * &lt;ul&gt;
+ *     &lt;li&gt;
+ *         INTERSECTION of polygon A (subject) and B (clipper).
+ *     &lt;/li&gt;
+ *     &lt;li&gt;
+ *         UNION of polygon A (subject) and B (clipper).
+ *     &lt;/li&gt;
+ *     &lt;li&gt;
+ *         SUBTRACTION of polygon B (subject) from polygon A (clipper).
+ *     &lt;/li&gt;
+ * &lt;/ul&gt;
+ * Note that holes are not supported, i.e. if UNION produces a polygon with holes this will be filled.
+ * If SUBTRACTION produces a hole an error will be thrown since {@link VPolygon} do not support holes.
+ * Furthermore, it is assumed that each {@link VPolygon} which is involved is a simple non-self intersecting
+ * polygon. Co-linear and duplicated points, i.e. useless points, will be removed.
+ *
+ * @author Benedikt Zoennchen
+ */
+<span class="pc bpc" id="L47" title="1 of 2 branches missed.">public class WeilerAtherton {</span>
+
+	private List&lt;VPolygon&gt; polygons;
+	private final static double  EPSILON = 1.0E-12;
+	private static final String propNameIntersection = &quot;intersection&quot;;
+	private static final String propNameInside = &quot;inside&quot;;
+	private static final String propNameTwin = &quot;twin&quot;;
+
+<span class="fc" id="L55">	private enum Operation {</span>
+<span class="fc" id="L56">		INTERSECTION,</span>
+<span class="fc" id="L57">		UNION,</span>
+<span class="fc" id="L58">		SUBTRACTION</span>
+	}
+
+
+	/**
+	 * The default constructor.
+	 *
+	 * @param polygons a List of {@link VPolygon} which will be merged.
+	 */
+<span class="fc" id="L67">	public WeilerAtherton(@NotNull final List&lt;VPolygon&gt; polygons) {</span>
+<span class="fc" id="L68">		this.polygons = polygons;</span>
+<span class="fc" id="L69">	}</span>
+
+	/**
+	 * Constructs two faces which represents two polygons including their intersection points.
+	 * Each intersection point is connected to his twin (the connection point of the other face
+	 * which is geometrically the same point).
+	 *
+	 * @param subject       the subject polygon
+	 * @param subjectMesh   the subject mesh used to construct the face
+	 * @param clipping      the clipping polygon
+	 * @param clippingMesh  the clipping mesh used to constrcut the face
+	 *
+	 * @return two faces which represents two polygons including their intersection points (in CW order)
+	 */
+	public Pair&lt;PFace, PFace&gt; constructIntersectionFaces(
+			@NotNull final VPolygon subject,
+			@NotNull final PMesh subjectMesh,
+			@NotNull final VPolygon clipping,
+			@NotNull final PMesh clippingMesh) {
+
+<span class="fc" id="L89">		Set&lt;VPoint&gt; clipPointSet = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L90">		Set&lt;VPoint&gt; subPointSet = new HashSet&lt;&gt;();</span>
+
+<span class="fc" id="L92">		clipPointSet.addAll(clipping.getPath());</span>
+<span class="fc" id="L93">		subPointSet.addAll(subject.getPath());</span>
+
+<span class="fc" id="L95">		PFace subjectFace = subjectMesh.toFace(subject.getPath().stream().collect(Collectors.toList()));</span>
+<span class="fc" id="L96">		subjectMesh.streamVertices().forEach(v -&gt; {</span>
+<span class="fc" id="L97">			subjectMesh.setData(v, propNameIntersection, false);</span>
+<span class="pc bpc" id="L98" title="1 of 4 branches missed.">			subjectMesh.setData(v, propNameInside, clipPointSet.contains(v) || clipping.contains(v));</span>
+<span class="fc" id="L99">		});</span>
+
+<span class="fc" id="L101">		PFace clippingFace = clippingMesh.toFace(clipping.getPath().stream().collect(Collectors.toList()));</span>
+<span class="fc" id="L102">		clippingMesh.streamVertices().forEach(v -&gt; {</span>
+<span class="fc" id="L103">			clippingMesh.setData(v, propNameIntersection, false);</span>
+<span class="pc bpc" id="L104" title="1 of 4 branches missed.">			clippingMesh.setData(v, propNameInside, subPointSet.contains(v) || subject.contains(v));</span>
+<span class="fc" id="L105">		});</span>
+
+<span class="fc" id="L107">		List&lt;VPoint&gt; intersectionPoints = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L108">		PVertex ip = null;</span>
+
+		// compute intersections and add those to the two faces, this implementation is rather slow!
+
+<span class="fc" id="L112">		boolean intersectionFound = true;</span>
+<span class="fc" id="L113">		int count = 0;</span>
+<span class="fc bfc" id="L114" title="All 2 branches covered.">		while (intersectionFound) {</span>
+
+<span class="fc" id="L116">			List&lt;PHalfEdge&gt; clippingEdges = clippingMesh.getEdges(clippingFace);</span>
+<span class="fc" id="L117">			List&lt;PHalfEdge&gt; subjectEdges = subjectMesh.getEdges(subjectFace);</span>
+<span class="fc" id="L118">			intersectionFound = false;</span>
+
+			// TODO: this can be simplified!
+<span class="fc bfc" id="L121" title="All 2 branches covered.">			for(PHalfEdge clippingEdge : clippingEdges) {</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">				for(PHalfEdge subjectEdge : subjectEdges) {</span>
+<span class="fc" id="L123">					Optional&lt;VPoint&gt; optIntersectionPoint = equalIntersectionPoints(subjectEdge, subjectMesh, clippingEdge, clippingMesh);</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">					if(!optIntersectionPoint.isPresent()) {</span>
+<span class="fc" id="L125">						VLine l1 = subjectMesh.toLine(subjectEdge);</span>
+<span class="fc" id="L126">						VLine l2 = clippingMesh.toLine(clippingEdge);</span>
+
+<span class="fc" id="L128">						VPoint intersectionPoint = null;</span>
+
+<span class="pc bpc" id="L130" title="4 of 8 branches missed.">						if(!(l1.getP1().equals(l2.getP1()) || l1.getP1().equals(l2.getP2()) || l1.getP2().equals(l2.getP1()) || l1.getP2().equals(l2.getP2()))) {</span>
+<span class="fc bfc" id="L131" title="All 2 branches covered.">							if(GeometryUtils.distanceToLineSegment(new VPoint(l1.getP1()), new VPoint(l1.getP2()), new VPoint(l2.getP1())) &lt;= EPSILON) {</span>
+<span class="fc" id="L132">								intersectionPoint = new VPoint(l2.getP1());</span>
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">							} else if(GeometryUtils.distanceToLineSegment(new VPoint(l1.getP1()), new VPoint(l1.getP2()), new VPoint(l2.getP2())) &lt;= EPSILON) {</span>
+<span class="nc" id="L134">								intersectionPoint = new VPoint(l2.getP2());</span>
+<span class="fc bfc" id="L135" title="All 2 branches covered.">							} else if(GeometryUtils.distanceToLineSegment(new VPoint(l2.getP1()), new VPoint(l2.getP2()), new VPoint(l1.getP1())) &lt;= EPSILON) {</span>
+<span class="fc" id="L136">								intersectionPoint = new VPoint(l1.getP1());</span>
+<span class="fc bfc" id="L137" title="All 2 branches covered.">							} else if(GeometryUtils.distanceToLineSegment(new VPoint(l2.getP1()), new VPoint(l2.getP2()), new VPoint(l1.getP2())) &lt;= EPSILON) {</span>
+<span class="fc" id="L138">								intersectionPoint = new VPoint(l1.getP2());</span>
+<span class="fc bfc" id="L139" title="All 2 branches covered.">							} else if (GeometryUtils.intersectLineSegment(l1.getP1().getX(), l1.getP1().getY(), l1.getP2().getX(), l1.getP2().getY(), l2.getP1().getX(), l2.getP1().getY(), l2.getP2().getX(), l2.getP2().getY())) {</span>
+<span class="fc" id="L140">								intersectionPoint = GeometryUtils.intersectionPoint(l1.getP1().getX(), l1.getP1().getY(), l1.getP2().getX(), l1.getP2().getY(), l2.getP1().getX(), l2.getP1().getY(), l2.getP2().getX(), l2.getP2().getY());</span>
+							}
+						}
+
+<span class="fc bfc" id="L144" title="All 2 branches covered.">						if(intersectionPoint != null) {</span>
+
+<span class="fc" id="L146">							VPoint wp1 = intersectionPoint;</span>
+<span class="fc" id="L147">							VPoint wp2 = intersectionPoint;</span>
+
+<span class="fc" id="L149">							PHalfEdge prev = clippingMesh.getPrev(subjectEdge);</span>
+<span class="fc" id="L150">							PHalfEdge innerPrev = subjectMesh.getPrev(clippingEdge);</span>
+
+<span class="fc" id="L152">							PVertex ip1 = splitEdge(subjectEdge, wp1, subjectMesh);</span>
+<span class="fc" id="L153">							subjectMesh.setData(ip1, propNameIntersection, true);</span>
+<span class="fc" id="L154">							subjectMesh.setData(ip1, propNameInside, true);</span>
+
+<span class="fc" id="L156">							PVertex ip2 = splitEdge(clippingEdge, wp2, clippingMesh);</span>
+<span class="fc" id="L157">							clippingMesh.setData(ip2, propNameIntersection, true);</span>
+<span class="fc" id="L158">							clippingMesh.setData(ip2, propNameInside, true);</span>
+
+<span class="fc" id="L160">							clippingMesh.setData(ip2, propNameTwin, ip1);</span>
+<span class="fc" id="L161">							subjectMesh.setData(ip1, propNameTwin, ip2);</span>
+
+<span class="fc" id="L163">							intersectionPoints.add(intersectionPoint);</span>
+<span class="fc" id="L164">							intersectionFound = true;</span>
+							// go one step back
+						}
+<span class="fc" id="L167">					}</span>
+					else {
+<span class="fc" id="L169">						intersectionPoints.add(optIntersectionPoint.get());</span>
+					}
+
+<span class="fc bfc" id="L172" title="All 2 branches covered.">					if(intersectionFound) {</span>
+<span class="fc" id="L173">						break;</span>
+					}
+<span class="fc" id="L175">				}</span>
+
+<span class="fc bfc" id="L177" title="All 2 branches covered.">				if(intersectionFound) {</span>
+<span class="fc" id="L178">					break;</span>
+				}
+<span class="fc" id="L180">			}</span>
+<span class="fc" id="L181">		}</span>
+
+<span class="fc" id="L183">		return Pair.create(subjectFace, clippingFace);</span>
+	}
+
+	private PVertex splitEdge(@NotNull final PHalfEdge edge, @NotNull final IPoint p, @NotNull final PMesh mesh) {
+<span class="fc" id="L187">		PVertex v1 = mesh.getVertex(edge);</span>
+<span class="fc" id="L188">		PVertex v2 = mesh.getVertex(mesh.getPrev(edge));</span>
+<span class="fc bfc" id="L189" title="All 2 branches covered.">		if(mesh.toPoint(v1).equals(p)) {</span>
+<span class="fc" id="L190">			return v1;</span>
+		}
+
+<span class="fc bfc" id="L193" title="All 2 branches covered.">		if(mesh.toPoint(v2).equals(p)) {</span>
+<span class="fc" id="L194">			return v2;</span>
+		}
+
+<span class="fc" id="L197">		return IPolyConnectivity.splitEdge(edge, p, mesh);</span>
+	}
+
+	/**
+	 * Tests if the two edges from different faces have geometrical equal points. If this is the case
+	 * the points will be transformed into intersection points and they will be connected i.e. twins.
+	 *
+	 * @param subjectEdge   edge from the first face containing the first point
+	 * @param subjectMesh   mesh which created the first face
+	 * @param clippingEdge  edge from the second face containing the first point
+	 * @param clippingMesh  mesh which created the second face
+	 *
+	 * @return a point which is the intersection point or null / empty if the two edges did not have an geometrical equal point
+	 */
+	private Optional&lt;VPoint&gt; equalIntersectionPoints(
+			@NotNull final PHalfEdge subjectEdge,
+			@NotNull final PMesh subjectMesh,
+			@NotNull final PHalfEdge clippingEdge,
+			@NotNull final PMesh clippingMesh) {
+<span class="fc" id="L216">		PVertex v1 = subjectMesh.getVertex(subjectMesh.getPrev(subjectEdge));</span>
+<span class="fc" id="L217">		PVertex v2 = subjectMesh.getVertex(subjectEdge);</span>
+
+<span class="fc" id="L219">		PVertex u1 = clippingMesh.getVertex(clippingMesh.getPrev(clippingEdge));</span>
+<span class="fc" id="L220">		PVertex u2 = clippingMesh.getVertex(clippingEdge);</span>
+
+<span class="fc" id="L222">		VPoint p1 = subjectMesh.toPoint(v1);</span>
+<span class="fc" id="L223">		VPoint p2 = subjectMesh.toPoint(v2);</span>
+
+<span class="fc" id="L225">		VPoint q1 = clippingMesh.toPoint(u1);</span>
+<span class="fc" id="L226">		VPoint q2 = clippingMesh.toPoint(u2);</span>
+
+<span class="fc" id="L228">		boolean intersection1 = subjectMesh.getData(v1, propNameIntersection, Boolean.class).get();</span>
+<span class="fc" id="L229">		boolean intersection2 = subjectMesh.getData(v2, propNameIntersection, Boolean.class).get();</span>
+
+<span class="fc bfc" id="L231" title="All 2 branches covered.">		if(p1.equals(q1)) {</span>
+<span class="fc" id="L232">			subjectMesh.setData(v1, propNameIntersection, true);</span>
+<span class="fc" id="L233">			clippingMesh.setData(u1, propNameIntersection, true);</span>
+<span class="fc" id="L234">			subjectMesh.setData(v1, propNameTwin, u1);</span>
+<span class="fc" id="L235">			clippingMesh.setData(u1, propNameTwin, v1);</span>
+<span class="fc" id="L236">			return Optional.of(p1);</span>
+<span class="fc bfc" id="L237" title="All 2 branches covered.">		} else if(p1.equals(q2)) {</span>
+<span class="fc" id="L238">			subjectMesh.setData(v1, propNameIntersection, true);</span>
+<span class="fc" id="L239">			clippingMesh.setData(u2, propNameIntersection, true);</span>
+<span class="fc" id="L240">			subjectMesh.setData(v1, propNameTwin, u2);</span>
+<span class="fc" id="L241">			clippingMesh.setData(u2, propNameTwin, v1);</span>
+<span class="fc" id="L242">			return Optional.of(p1);</span>
+<span class="fc bfc" id="L243" title="All 2 branches covered.">		} else if(p2.equals(q1)) {</span>
+<span class="fc" id="L244">			subjectMesh.setData(v2, propNameIntersection, true);</span>
+<span class="fc" id="L245">			clippingMesh.setData(u1, propNameIntersection, true);</span>
+<span class="fc" id="L246">			subjectMesh.setData(v2, propNameTwin, u1);</span>
+<span class="fc" id="L247">			clippingMesh.setData(u1, propNameTwin, v2);</span>
+<span class="fc" id="L248">			return Optional.of(p2);</span>
+<span class="fc bfc" id="L249" title="All 2 branches covered.">		} else if(p2.equals(q2)) {</span>
+<span class="fc" id="L250">			subjectMesh.setData(v2, propNameIntersection, true);</span>
+<span class="fc" id="L251">			clippingMesh.setData(u2, propNameIntersection, true);</span>
+<span class="fc" id="L252">			subjectMesh.setData(v2, propNameTwin, u2);</span>
+<span class="fc" id="L253">			clippingMesh.setData(u2, propNameTwin, v2);</span>
+<span class="fc" id="L254">			return Optional.of(p2);</span>
+		}
+		else {
+<span class="fc" id="L257">			return Optional.empty();</span>
+		}
+	}
+
+	/**
+	 * Executes the Weiler-Atherton-Algorithm for all of its polygons.
+	 *
+	 * @return a list of merged polygons
+	 */
+	public List&lt;VPolygon&gt; cup() {
+
+<span class="fc" id="L268">		boolean merged = true;</span>
+<span class="fc" id="L269">		List&lt;VPolygon&gt; newPolygons = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L270">		newPolygons.addAll(polygons);</span>
+
+<span class="fc bfc" id="L272" title="All 2 branches covered.">		while (merged) {</span>
+<span class="fc" id="L273">			int ii = -1;</span>
+<span class="fc" id="L274">			int jj = -1;</span>
+<span class="fc" id="L275">			merged = false;</span>
+<span class="fc" id="L276">			List&lt;VPolygon&gt; cupResult = null;</span>
+<span class="fc bfc" id="L277" title="All 2 branches covered.">			for(int i = 0; i &lt; newPolygons.size(); i++) {</span>
+<span class="fc" id="L278">				VPolygon first = newPolygons.get(i);</span>
+
+<span class="fc bfc" id="L280" title="All 2 branches covered.">				for(int j = i+1; j &lt; newPolygons.size(); j++) {</span>
+<span class="fc" id="L281">					VPolygon second = newPolygons.get(j);</span>
+
+<span class="fc" id="L283">					cupResult = cup(first, second);</span>
+<span class="pc bpc" id="L284" title="2 of 4 branches missed.">					assert cupResult.size() &lt;= 2;</span>
+
+					// something got merged
+<span class="fc bfc" id="L287" title="All 2 branches covered.">					if(cupResult.size() &lt;= 1) {</span>
+<span class="fc" id="L288">						merged = true;</span>
+<span class="fc" id="L289">						ii = i;</span>
+<span class="fc" id="L290">						jj = j;</span>
+<span class="fc" id="L291">						break;</span>
+					}
+				}
+
+<span class="fc bfc" id="L295" title="All 2 branches covered.">				if(merged) {</span>
+<span class="fc" id="L296">					break;</span>
+				}
+			}
+
+<span class="fc bfc" id="L300" title="All 2 branches covered.">			if(merged) {</span>
+<span class="fc" id="L301">				newPolygons.remove(ii);</span>
+<span class="fc" id="L302">				newPolygons.remove(jj-1);</span>
+<span class="fc" id="L303">				newPolygons.add(cupResult.get(0));</span>
+			}
+<span class="fc" id="L305">		}</span>
+
+<span class="fc" id="L307">		return newPolygons;</span>
+	}
+
+	public Optional&lt;VPolygon&gt; subtraction() {
+<span class="fc" id="L311">		List&lt;VPolygon&gt; newPolygons = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L312">		newPolygons.addAll(polygons);</span>
+
+<span class="pc bpc" id="L314" title="1 of 2 branches missed.">		if(polygons.size() == 0) {</span>
+<span class="nc" id="L315">			return Optional.empty();</span>
+		}
+<span class="pc bpc" id="L317" title="1 of 2 branches missed.">		else if(polygons.size() == 1) {</span>
+<span class="nc" id="L318">			return Optional.of(polygons.get(0));</span>
+		}
+		else {
+<span class="fc" id="L321">			VPolygon subject = polygons.get(0);</span>
+<span class="fc" id="L322">			List&lt;VPolygon&gt; clippers = polygons.subList(1, polygons.size());</span>
+<span class="fc bfc" id="L323" title="All 2 branches covered.">			for(VPolygon clipper : clippers) {</span>
+<span class="fc" id="L324">				Optional&lt;VPolygon&gt; result = subtraction(subject, clipper);</span>
+<span class="pc bpc" id="L325" title="1 of 2 branches missed.">				if(result.isPresent()) {</span>
+<span class="fc" id="L326">					subject = result.get();</span>
+				} else {
+<span class="nc" id="L328">					return Optional.empty();</span>
+				}
+<span class="fc" id="L330">			}</span>
+<span class="fc" id="L331">			return Optional.of(subject);</span>
+		}
+	}
+
+	/**
+	 * Executes the Weiler-Atherton-Algorithm for all of its polygons.
+	 *
+	 * @return a list of merged polygons
+	 */
+	public Optional&lt;VPolygon&gt; cap() {
+<span class="fc" id="L341">		List&lt;VPolygon&gt; newPolygons = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L342">		newPolygons.addAll(polygons);</span>
+
+<span class="pc bpc" id="L344" title="1 of 2 branches missed.">		if(polygons.size() == 0) {</span>
+<span class="nc" id="L345">			return Optional.empty();</span>
+		}
+<span class="pc bpc" id="L347" title="1 of 2 branches missed.">		else if(polygons.size() == 1) {</span>
+<span class="nc" id="L348">			return Optional.of(polygons.get(0));</span>
+		}
+		else {
+<span class="fc" id="L351">			LinkedList&lt;VPolygon&gt; toDo = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L352">			toDo.addAll(polygons);</span>
+
+<span class="fc bfc" id="L354" title="All 2 branches covered.">			while (toDo.size() &gt;= 2) {</span>
+<span class="fc" id="L355">				VPolygon poly1 = toDo.remove();</span>
+<span class="fc" id="L356">				VPolygon poly2 = toDo.remove();</span>
+<span class="fc" id="L357">				List&lt;VPolygon&gt; capResult = cap(poly1, poly2);</span>
+
+<span class="fc bfc" id="L359" title="All 2 branches covered.">				if(capResult.isEmpty()) {</span>
+<span class="fc" id="L360">					return Optional.empty();</span>
+				}
+
+<span class="fc" id="L363">				toDo.addAll(capResult);</span>
+<span class="fc" id="L364">			}</span>
+
+<span class="pc bpc" id="L366" title="2 of 4 branches missed.">			assert toDo.size() == 1;</span>
+<span class="fc" id="L367">			return Optional.of(toDo.remove());</span>
+		}
+	}
+
+	private boolean contains(@NotNull final VPolygon polygon, @NotNull final IPoint point) {
+<span class="pc bpc" id="L372" title="2 of 4 branches missed.">		return polygon.contains(point) || Math.abs(polygon.distance(point)) &lt;= GeometryUtils.DOUBLE_EPS;</span>
+	}
+
+	private List&lt;VPolygon&gt; construct(
+			@NotNull final VPolygon subjectCandidat,
+			@NotNull final VPolygon clippingCandidat,
+			final Operation operation) {
+
+		//Predicate&lt;WeilerPoint&gt; startEdgeCondition = cap ? p -&gt; p.isInside() : p -&gt; !p.isInside();
+<span class="fc bfc" id="L381" title="All 2 branches covered.">		VPolygon subject = GeometryUtils.isCCW(subjectCandidat) ? subjectCandidat : subjectCandidat.revertOrder();</span>
+		VPolygon clipping;
+<span class="fc bfc" id="L383" title="All 2 branches covered.">		switch (operation) {</span>
+<span class="pc bpc" id="L384" title="1 of 2 branches missed.">			case SUBTRACTION: clipping = GeometryUtils.isCCW(clippingCandidat) ? clippingCandidat.revertOrder() : clippingCandidat; break;</span>
+			case UNION:
+			case INTERSECTION:
+			default: {
+<span class="pc bpc" id="L388" title="1 of 2 branches missed.">				clipping = GeometryUtils.isCCW(clippingCandidat) ? clippingCandidat : clippingCandidat.revertOrder(); break;</span>
+			}
+		}
+<span class="fc" id="L391">		PMesh subjectMesh = new PMesh();</span>
+<span class="fc" id="L392">		PMesh clippingMesh = new PMesh();</span>
+
+		//List&lt;VPolygon&gt; result = new ArrayList&lt;&gt;(2);
+
+		/**
+		 * (1) construct the list connections
+		 */
+<span class="fc" id="L399">		Pair&lt;PFace, PFace&gt; pair = constructIntersectionFaces(subject, subjectMesh, clipping, clippingMesh);</span>
+
+<span class="fc" id="L401">		PFace subjectFace = pair.getFirst();</span>
+<span class="fc" id="L402">		PFace clippingFace = pair.getSecond();</span>
+
+<span class="fc" id="L404">		Set&lt;PHalfEdge&gt; subjectExitingEdges = subjectMesh</span>
+<span class="fc" id="L405">				.streamEdges(subjectFace)</span>
+<span class="fc" id="L406">				.filter(edge -&gt; subjectMesh.getData(subjectMesh.getVertex(edge), propNameIntersection, Boolean.class).get())</span>
+<span class="fc bfc" id="L407" title="All 2 branches covered.">				.filter(edge -&gt; !clipping.contains(subjectMesh.toLine(subjectMesh.getNext(edge)).midPoint()))</span>
+<span class="fc" id="L408">				.filter(edge -&gt; clipping.contains(subjectMesh.toLine(edge).midPoint()))</span>
+				/*.filter(edge -&gt;
+						contains(clipping, subjectMesh.getPoint(subjectMesh.getPrev(edge))) &amp;&amp;
+						!contains(clipping, subjectMesh.getPoint(subjectMesh.getNext(edge))))*/
+<span class="fc" id="L412">				.collect(Collectors.toSet());</span>
+
+<span class="fc" id="L414">		Set&lt;PHalfEdge&gt; subjectEnteringEdges = subjectMesh</span>
+<span class="fc" id="L415">				.streamEdges(subjectFace)</span>
+<span class="fc" id="L416">				.filter(edge -&gt; subjectMesh.getData(subjectMesh.getVertex(edge), propNameIntersection, Boolean.class).get())</span>
+<span class="fc" id="L417">				.filter(edge -&gt; clipping.contains(subjectMesh.toLine(subjectMesh.getNext(edge)).midPoint()))</span>
+<span class="fc bfc" id="L418" title="All 2 branches covered.">				.filter(edge -&gt; !clipping.contains(subjectMesh.toLine(edge).midPoint()))</span>
+				/*.filter(edge -&gt;
+						contains(clipping, subjectMesh.getPoint(subjectMesh.getNext(edge))) &amp;&amp;
+						!contains(clipping, subjectMesh.getPoint(subjectMesh.getPrev(edge)))
+				)*/
+<span class="fc" id="L423">				.collect(Collectors.toSet());</span>
+
+<span class="fc" id="L425">		List&lt;VPoint&gt; points = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L426">		List&lt;VPolygon&gt; polygons = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L427">		PMesh mesh = subjectMesh;</span>
+
+		Set&lt;PHalfEdge&gt; intersectionSet;
+<span class="fc bfc" id="L430" title="All 2 branches covered.">		switch (operation) {</span>
+<span class="fc" id="L431">			case INTERSECTION: intersectionSet = subjectEnteringEdges; break;</span>
+			case UNION:
+			case SUBTRACTION:
+<span class="fc" id="L434">			default: intersectionSet = subjectExitingEdges; break;</span>
+		};
+
+		// cup will preserve the polyons.
+<span class="fc bfc" id="L438" title="All 2 branches covered.">		if(intersectionSet.isEmpty()) {</span>
+<span class="fc" id="L439">			boolean subInClip = subjectMesh</span>
+<span class="fc" id="L440">					.streamPoints(subjectFace)</span>
+<span class="fc" id="L441">					.allMatch(p -&gt; contains(clipping, p));</span>
+
+<span class="fc" id="L443">			boolean clipInSub = clippingMesh</span>
+<span class="fc" id="L444">					.streamPoints(clippingFace)</span>
+<span class="fc" id="L445">					.allMatch(p -&gt; contains(subject, p));</span>
+
+<span class="pc bpc" id="L447" title="1 of 3 branches missed.">			switch (operation) {</span>
+				case INTERSECTION: {
+<span class="pc bpc" id="L449" title="1 of 2 branches missed.">					if(subInClip) {</span>
+<span class="nc" id="L450">						polygons.add(subjectCandidat);</span>
+					}
+<span class="pc bpc" id="L452" title="1 of 2 branches missed.">					else if(clipInSub) {</span>
+<span class="nc" id="L453">						polygons.add(clippingCandidat);</span>
+					}
+				} break;
+				case UNION: {
+<span class="pc bpc" id="L457" title="1 of 2 branches missed.">					if(subInClip) {</span>
+<span class="nc" id="L458">						polygons.add(clippingCandidat);</span>
+					}
+<span class="pc bpc" id="L460" title="1 of 2 branches missed.">					else if(clipInSub) {</span>
+<span class="nc" id="L461">						polygons.add(subjectCandidat);</span>
+					}
+					else {
+<span class="fc" id="L464">						polygons.add(subjectCandidat);</span>
+<span class="fc" id="L465">						polygons.add(clippingCandidat);</span>
+					}
+<span class="fc" id="L467">				} break;</span>
+				case SUBTRACTION:
+				default: {
+<span class="nc bnc" id="L470" title="All 2 branches missed.">					if(clipInSub) {</span>
+<span class="nc" id="L471">						throw new IllegalArgumentException(&quot;subtracting a polygon which is contained in its counterpart will produce a polygon with a hole which is not supported.&quot;);</span>
+					}
+				} break;
+			}
+<span class="fc" id="L475">			return polygons;</span>
+		}
+
+<span class="fc bfc" id="L478" title="All 2 branches covered.">		while (!intersectionSet.isEmpty()) {</span>
+<span class="fc" id="L479">			PHalfEdge subjectEdge = intersectionSet.iterator().next();</span>
+<span class="fc" id="L480">			PHalfEdge subjectTwin = clippingMesh.getEdge(subjectMesh.getData(subjectMesh.getVertex(subjectEdge), propNameTwin, PVertex.class).get());</span>
+<span class="fc" id="L481">			PHalfEdge next = subjectEdge;</span>
+<span class="fc" id="L482">			intersectionSet.remove(subjectEdge);</span>
+
+			do {
+<span class="fc" id="L485">				next = mesh.getNext(next);</span>
+<span class="fc" id="L486">				var v = mesh.getVertex(next);</span>
+				// adaptPath
+<span class="fc bfc" id="L488" title="All 2 branches covered.">				if(mesh.getData(v, propNameIntersection, Boolean.class).get()) {</span>
+					/*
+					 * Special case!
+					 */
+<span class="fc" id="L492">					var twinPoint = mesh.getData(v, propNameTwin, PVertex.class).get();</span>
+<span class="fc bfc" id="L493" title="All 2 branches covered.">					PMesh twinMesh = mesh.equals(subjectMesh) ? clippingMesh : subjectMesh;</span>
+<span class="fc" id="L494">					PHalfEdge twinPointEdge = twinMesh.getEdge(twinPoint);</span>
+<span class="fc" id="L495">					VPoint prevTwinPoint = new VPoint(twinMesh.getPoint(twinMesh.getPrev(twinPointEdge)));</span>
+<span class="fc" id="L496">					VPoint prevPoint = new VPoint(mesh.getPoint(mesh.getPrev(next)));</span>
+
+<span class="fc" id="L498">					intersectionSet.remove(next);</span>
+<span class="fc" id="L499">					intersectionSet.remove(twinMesh.getEdge(twinPoint));</span>
+
+<span class="fc bfc" id="L501" title="All 2 branches covered.">					if(!prevTwinPoint.equals(prevPoint)) {</span>
+<span class="fc bfc" id="L502" title="All 2 branches covered.">						mesh = mesh.equals(subjectMesh) ? clippingMesh : subjectMesh;</span>
+<span class="fc" id="L503">						next = mesh.getEdge(mesh.getData(mesh.getVertex(next), propNameTwin, PVertex.class).get());</span>
+					}
+
+				}
+<span class="fc" id="L507">				points.add(new VPoint(mesh.getPoint(next)));</span>
+
+<span class="pc bpc" id="L509" title="1 of 4 branches missed.">			} while (!next.equals(subjectEdge) &amp;&amp; !next.equals(subjectTwin));</span>
+
+<span class="fc" id="L511">			polygons.add(GeometryUtils.toPolygon(GeometryUtils.filterUselessPoints(points, EPSILON)));</span>
+<span class="fc" id="L512">		}</span>
+
+<span class="fc" id="L514">		return polygons;</span>
+
+
+		/*PFace&lt;WeilerPoint&gt; subjectFace = pair.getFirst();
+		PFace&lt;WeilerPoint&gt; clippingFace = pair.getSecond();
+
+		// phase (2)
+		Optional&lt;PHalfEdge&lt;WeilerPoint&gt;&gt; intersectionEdges = subjectMesh.findAnyEdge(p -&gt; p.isIntersectionPoint());
+		Optional&lt;PHalfEdge&lt;WeilerPoint&gt;&gt; optStartPointSub = subjectMesh.findAnyEdge(startEdgeCondition);
+		Optional&lt;PHalfEdge&lt;WeilerPoint&gt;&gt; optStartPointClip = clippingMesh.findAnyEdge(startEdgeCondition);
+
+		Optional&lt;PHalfEdge&lt;WeilerPoint&gt;&gt; subInsideEdge = subjectMesh.findAnyEdge(p -&gt; p.isInside());
+		Optional&lt;PHalfEdge&lt;WeilerPoint&gt;&gt; clipInsideEdge = clippingMesh.findAnyEdge(p -&gt; p.isInside());
+
+		Optional&lt;PHalfEdge&lt;WeilerPoint&gt;&gt; subOutsideEdge = subjectMesh.findAnyEdge(p -&gt; !p.isInside());
+		Optional&lt;PHalfEdge&lt;WeilerPoint&gt;&gt; clipOutsideEdge = clippingMesh.findAnyEdge(p -&gt; !p.isInside());
+
+		// no point intersection and no point is contained in the other polygon =&gt; polygons do not overlap at all
+		if(!subInsideEdge.isPresent() &amp;&amp; !clipInsideEdge.isPresent() &amp;&amp; !intersectionEdges.isPresent()) {
+			// complete merge
+			if(!cap) {
+				return Pair.create(subject, clipping);
+			}
+			else {
+				return Pair.create(null, null);
+			}
+		}
+
+		// no point intersections and there is a point of the subject outside of the clipping =&gt; clipping is fully contained in subject
+		if(subOutsideEdge.isPresent() &amp;&amp; !intersectionEdges.isPresent()) {
+			// cup is the subject
+			if(!cap) {
+				return Pair.create(subject, null);
+			} // cap is the clipping
+			else {
+				return Pair.create(clipping, null);
+			}
+		}
+
+		// no point intersections and there is a point of the clipping outside of the subject =&gt; subject is fully contained in clipping
+		if(clipOutsideEdge.isPresent() &amp;&amp; !intersectionEdges.isPresent()) {
+			// cup is the subject
+			if(!cap) {
+				return Pair.create(clipping, null);
+			} // cap is the clipping
+			else {
+				return Pair.create(subject, null);
+			}
+		}
+
+		PHalfEdge&lt;WeilerPoint&gt; first = null;
+		PHalfEdge&lt;WeilerPoint&gt; next = null;
+		PMesh&lt;WeilerPoint&gt; mesh1 = null;
+		PMesh&lt;WeilerPoint&gt; mesh2 = null;
+
+
+		if(intersectionEdges.isPresent() &amp;&amp; optStartPointClip.isPresent()) {
+			first = optStartPointClip.get();
+			next = first;
+			mesh1 = clippingMesh;
+			mesh2 = subjectMesh;
+		}
+		else if(intersectionEdges.isPresent() &amp;&amp; optStartPointSub.isPresent()) {
+			first = optStartPointSub.get();
+			next = first;
+			mesh1 = subjectMesh;
+			mesh2 = clippingMesh;
+		}
+
+		PMesh&lt;WeilerPoint&gt; mesh = mesh1;
+		List&lt;VPoint&gt; points = new ArrayList&lt;&gt;();
+		int count = 0;
+		boolean foundDiff = false;
+		do {
+			count++;
+			//next = mesh.getNext(next);
+			WeilerPoint wp = mesh.getPoint(next);
+
+			// walk into the other mesh / polygon
+			if(wp.isIntersectionPoint()) {
+				// swap meshes
+				mesh = (mesh == mesh1 ? mesh2 : mesh1);
+
+				// swap edges
+				next = mesh.getEdge(wp.twinPoint);
+
+			}
+			if(count &gt; 1000) {
+				System.out.println(count + &quot; (2)&quot;);
+				constructIntersectionFaces(subject, subjectMesh, clipping, clippingMesh);
+			}
+			try {
+				next = mesh.getNext(next);
+			}
+			catch (NullPointerException e) {
+				System.out.println(&quot;shit&quot;);
+			}
+
+			points.add(new VPoint(wp));
+			if(!points.get(0).equals(mesh.getPoint(next))) {
+				foundDiff = true;
+			}
+		}
+		while (!foundDiff || !points.get(0).equals(mesh.getPoint(next)));
+
+		try{
+			Pair.create(GeometryUtils.toPolygon(GeometryUtils.filterUselessPoints(points, EPSILON)), null);
+		}
+		catch (Exception e) {
+			System.out.println(&quot;baba&quot;);
+		}
+		return Pair.create(GeometryUtils.toPolygon(GeometryUtils.filterUselessPoints(points, EPSILON)), null);*/
+	}
+
+	public List&lt;VPolygon&gt; cap(@NotNull final VPolygon subjectCandidat, @NotNull final VPolygon clippingCandidat) {
+<span class="fc" id="L629">		return construct(subjectCandidat, clippingCandidat, Operation.INTERSECTION);</span>
+	}
+
+	//private PVertex&lt;VPoint, Object, Object&gt; getTwin(@NotNull final PVertex&lt;VPoint, Object, Object&gt; v, PMesh&lt;VPoint, Object, &gt;)
+
+	/**
+	 * Executes the Weiler-Atherton-Algorithm for two polygons.
+	 *
+	 * @param subjectCandidat   the first polygon
+	 * @param clippingCandidat  the second polygon
+	 * @return a pair of polygon where the second element is null if the polygons got merged. This is not the case if there do not overlap.
+	 */
+	public List&lt;VPolygon&gt; cup(@NotNull final VPolygon subjectCandidat, @NotNull final VPolygon clippingCandidat) {
+<span class="fc" id="L642">		return construct(subjectCandidat, clippingCandidat, Operation.UNION);</span>
+	}
+
+	public Optional&lt;VPolygon&gt; subtraction(@NotNull final VPolygon subjectCandidat, @NotNull final VPolygon clippingCandidat) {
+<span class="fc" id="L646">		List&lt;VPolygon&gt; result = construct(subjectCandidat, clippingCandidat, Operation.SUBTRACTION);</span>
+<span class="pc bpc" id="L647" title="2 of 4 branches missed.">		assert result.size() &gt;= 1;</span>
+<span class="pc bpc" id="L648" title="1 of 2 branches missed.">		if(result.size() == 1) {</span>
+<span class="fc" id="L649">			return Optional.of(result.get(0));</span>
+<span class="nc bnc" id="L650" title="All 2 branches missed.">		} else if(result.isEmpty()) {</span>
+<span class="nc" id="L651">			return Optional.empty();</span>
+		} else{
+<span class="nc" id="L653">			throw new IllegalStateException(&quot;subtraction of two polygons should never produce more than one polygon.&quot;);</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

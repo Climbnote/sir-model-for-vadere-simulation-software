@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InfoUtils.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.opencl.examples</a> &gt; <span class="el_source">InfoUtils.java</span></div><h1>InfoUtils.java</h1><pre class="source lang-java linenums">package org.vadere.util.opencl.examples;
+
+/**
+ * Created by bzoennchen on 07.09.17.
+ */
+import org.lwjgl.*;
+import org.lwjgl.system.*;
+
+import java.nio.*;
+
+import static org.lwjgl.opencl.CL10.*;
+import static org.lwjgl.system.MemoryStack.*;
+import static org.lwjgl.system.MemoryUtil.*;
+
+/** OpenCL object info utilities. */
+public final class InfoUtils {
+
+<span class="nc" id="L18">	public InfoUtils() {</span>
+<span class="nc" id="L19">	}</span>
+
+	public static String getPlatformInfoStringASCII(long cl_platform_id, int param_name) {
+<span class="nc" id="L22">		try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L23">			PointerBuffer pp = stack.mallocPointer(1);</span>
+<span class="nc" id="L24">			checkCLError(clGetPlatformInfo(cl_platform_id, param_name, (ByteBuffer)null, pp));</span>
+<span class="nc" id="L25">			int bytes = (int)pp.get(0);</span>
+
+<span class="nc" id="L27">			ByteBuffer buffer = stack.malloc(bytes);</span>
+<span class="nc" id="L28">			checkCLError(clGetPlatformInfo(cl_platform_id, param_name, buffer, null));</span>
+
+<span class="nc" id="L30">			return memASCII(buffer, bytes - 1);</span>
+		}
+	}
+
+	public static String getPlatformInfoStringUTF8(long cl_platform_id, int param_name) {
+<span class="nc" id="L35">		try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L36">			PointerBuffer pp = stack.mallocPointer(1);</span>
+<span class="nc" id="L37">			checkCLError(clGetPlatformInfo(cl_platform_id, param_name, (ByteBuffer)null, pp));</span>
+<span class="nc" id="L38">			int bytes = (int)pp.get(0);</span>
+
+<span class="nc" id="L40">			ByteBuffer buffer = stack.malloc(bytes);</span>
+<span class="nc" id="L41">			checkCLError(clGetPlatformInfo(cl_platform_id, param_name, buffer, null));</span>
+
+<span class="nc" id="L43">			return memUTF8(buffer, bytes - 1);</span>
+		}
+	}
+
+	public static int getDeviceInfoInt(long cl_device_id, int param_name) {
+<span class="nc" id="L48">		try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L49">			IntBuffer pl = stack.mallocInt(1);</span>
+<span class="nc" id="L50">			checkCLError(clGetDeviceInfo(cl_device_id, param_name, pl, null));</span>
+<span class="nc" id="L51">			return pl.get(0);</span>
+		}
+	}
+
+
+	public static long getDeviceInfoLong(long cl_device_id, int param_name) {
+<span class="fc" id="L57">		try (MemoryStack stack = stackPush()) {</span>
+<span class="fc" id="L58">			LongBuffer pl = stack.mallocLong(1);</span>
+<span class="fc" id="L59">			checkCLError(clGetDeviceInfo(cl_device_id, param_name, pl, null));</span>
+<span class="fc" id="L60">			return pl.get(0);</span>
+		}
+	}
+
+	public static long getDeviceInfoPointer(long cl_device_id, int param_name) {
+<span class="fc" id="L65">		try (MemoryStack stack = stackPush()) {</span>
+<span class="fc" id="L66">			PointerBuffer pp = stack.mallocPointer(1);</span>
+<span class="fc" id="L67">			checkCLError(clGetDeviceInfo(cl_device_id, param_name, pp, null));</span>
+<span class="fc" id="L68">			return pp.get(0);</span>
+		}
+	}
+
+	public static String getDeviceInfoStringUTF8(long cl_device_id, int param_name) {
+<span class="nc" id="L73">		try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L74">			PointerBuffer pp = stack.mallocPointer(1);</span>
+<span class="nc" id="L75">			checkCLError(clGetDeviceInfo(cl_device_id, param_name, (ByteBuffer)null, pp));</span>
+<span class="nc" id="L76">			int bytes = (int)pp.get(0);</span>
+
+<span class="nc" id="L78">			ByteBuffer buffer = stack.malloc(bytes);</span>
+<span class="nc" id="L79">			checkCLError(clGetDeviceInfo(cl_device_id, param_name, buffer, null));</span>
+
+<span class="nc" id="L81">			return memUTF8(buffer, bytes - 1);</span>
+		}
+	}
+
+	public static long getMemObjectInfoPointer(long cl_mem, int param_name) {
+<span class="nc" id="L86">		try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L87">			PointerBuffer pp = stack.mallocPointer(1);</span>
+<span class="nc" id="L88">			checkCLError(clGetMemObjectInfo(cl_mem, param_name, pp, null));</span>
+<span class="nc" id="L89">			return pp.get(0);</span>
+		}
+	}
+
+	public static long getMemObjectInfoInt(long cl_mem, int param_name) {
+<span class="nc" id="L94">		try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L95">			IntBuffer pi = stack.mallocInt(1);</span>
+<span class="nc" id="L96">			checkCLError(clGetMemObjectInfo(cl_mem, param_name, pi, null));</span>
+<span class="nc" id="L97">			return pi.get(0);</span>
+		}
+	}
+
+	public static int getProgramBuildInfoInt(long cl_program_id, long cl_device_id, int param_name) {
+<span class="nc" id="L102">		try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L103">			IntBuffer pl = stack.mallocInt(1);</span>
+<span class="nc" id="L104">			checkCLError(clGetProgramBuildInfo(cl_program_id, cl_device_id, param_name, pl, null));</span>
+<span class="nc" id="L105">			return pl.get(0);</span>
+		}
+	}
+
+	public static String getProgramBuildInfoStringASCII(long cl_program_id, long cl_device_id, int param_name) {
+<span class="nc" id="L110">		try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L111">			PointerBuffer pp = stack.mallocPointer(1);</span>
+<span class="nc" id="L112">			checkCLError(clGetProgramBuildInfo(cl_program_id, cl_device_id, param_name, (ByteBuffer)null, pp));</span>
+<span class="nc" id="L113">			int bytes = (int)pp.get(0);</span>
+
+<span class="nc" id="L115">			ByteBuffer buffer = stack.malloc(bytes);</span>
+<span class="nc" id="L116">			checkCLError(clGetProgramBuildInfo(cl_program_id, cl_device_id, param_name, buffer, null));</span>
+
+<span class="nc" id="L118">			return memASCII(buffer, bytes - 1);</span>
+		}
+	}
+
+	public static void checkCLError(IntBuffer errcode) {
+<span class="nc" id="L123">		checkCLError(errcode.get(errcode.position()));</span>
+<span class="nc" id="L124">	}</span>
+
+	public static void checkCLError(int errcode) {
+<span class="pc bpc" id="L127" title="1 of 2 branches missed.">		if (errcode != CL_SUCCESS) {</span>
+<span class="nc" id="L128">			throw new RuntimeException(String.format(&quot;OpenCL error [0x%X, %d]&quot;, errcode, errcode));</span>
+		}
+<span class="fc" id="L130">	}</span>
+
+	public static boolean checkCLSuccess(int errcode) {
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">		return (errcode == CL_SUCCESS);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

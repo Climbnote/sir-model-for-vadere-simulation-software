@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EikMeshPlots.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.plots</a> &gt; <span class="el_source">EikMeshPlots.java</span></div><h1>EikMeshPlots.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.plots;
+
+import org.apache.commons.lang3.time.StopWatch;
+import org.vadere.meshing.mesh.gen.AFace;
+import org.vadere.meshing.mesh.gen.AHalfEdge;
+import org.vadere.meshing.mesh.gen.AMesh;
+import org.vadere.meshing.mesh.gen.AVertex;
+import org.vadere.meshing.mesh.inter.IMeshSupplier;
+import org.vadere.meshing.mesh.inter.IPointConstructor;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.gen.GenEikMesh;
+import org.vadere.meshing.mesh.gen.MeshPanel;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.EikMeshPoint;
+import org.vadere.meshing.utils.io.tex.TexGraphGenerator;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.math.IDistanceFunction;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Predicate;
+
+import javax.swing.*;
+
+/**
+ * This class generates some nice Meshes for different geometries / distance functions.
+ *
+ * @author Benedikt Zoennchen
+ */
+public class EikMeshPlots {
+
+<span class="nc" id="L34">	private static final Logger log = Logger.getLogger(RunTimeCPU.class);</span>
+
+	/**
+	 * Each geometry is contained this bounding box.
+	 */
+<span class="nc" id="L39">	private static final VRectangle bbox = new VRectangle(-1.01, -1.01, 2.02, 2.02);</span>
+<span class="nc" id="L40">	private static IEdgeLengthFunction uniformEdgeLength = p -&gt; 1.0;</span>
+<span class="nc" id="L41">	private static IPointConstructor&lt;EikMeshPoint&gt; pointConstructor = (x, y) -&gt; new EikMeshPoint(x, y, false);</span>
+<span class="nc" id="L42">	private static double initialEdgeLength = 0.1;</span>
+
+	/**
+	 * A circle with radius 10.0 meshed using a uniform mesh.
+	 */
+	private static void uniformCircle(final double initialEdgeLength) {
+<span class="nc" id="L48">		IMeshSupplier&lt;AVertex, AHalfEdge, AFace&gt; supplier = () -&gt; new AMesh();</span>
+<span class="nc" id="L49">		IDistanceFunction distanceFunc = p -&gt; Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY()) - 1;</span>
+<span class="nc" id="L50">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L51">		IEdgeLengthFunction edgeLengthFunc = p -&gt; 1.0 + Math.abs(distanceFunc.apply(p)) * 2;</span>
+
+<span class="nc" id="L53">		GenEikMesh&lt;AVertex, AHalfEdge, AFace&gt; meshGenerator = new GenEikMesh&lt;&gt;(</span>
+				distanceFunc,
+				edgeLengthFunc,
+				initialEdgeLength,
+				bbox, obstacles,
+				supplier);
+
+<span class="nc" id="L60">		StopWatch overAllTime = new StopWatch();</span>
+<span class="nc" id="L61">		overAllTime.start();</span>
+<span class="nc" id="L62">		meshGenerator.generate();</span>
+<span class="nc" id="L63">		overAllTime.stop();</span>
+
+<span class="nc" id="L65">		log.info(&quot;#vertices:&quot; + meshGenerator.getMesh().getVertices().size());</span>
+<span class="nc" id="L66">		log.info(&quot;#edges:&quot; + meshGenerator.getMesh().getEdges().size());</span>
+<span class="nc" id="L67">		log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+<span class="nc" id="L68">		log.info(&quot;quality:&quot; + meshGenerator.getQuality());</span>
+<span class="nc" id="L69">		log.info(&quot;min-quality: &quot; + meshGenerator.getMinQuality());</span>
+
+<span class="nc bnc" id="L71" title="All 2 branches missed.">		Predicate&lt;AFace&gt; predicate = f -&gt;  meshGenerator.faceToQuality(f) &lt; 0.9;</span>
+<span class="nc" id="L72">		MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; distmeshPanel = new MeshPanel(meshGenerator.getMesh(),</span>
+				predicate, 1000, 800);
+<span class="nc" id="L74">		JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L75">		frame.setVisible(true);</span>
+<span class="nc" id="L76">		frame.setTitle(&quot;uniformCircle(&quot;+ initialEdgeLength +&quot;)&quot;);</span>
+<span class="nc" id="L77">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L78">		distmeshPanel.repaint();</span>
+
+<span class="nc" id="L80">		System.out.println();</span>
+<span class="nc" id="L81">		System.out.println();</span>
+		//System.out.println(TexGraphGenerator.toTikz(meshGenerator.getMesh()));
+<span class="nc" id="L83">	}</span>
+
+
+	/**
+	 * A ring innter radius 4.0 and outer radius 10.0 meshed using a uniform mesh.
+	 */
+	private static void uniformRing() {
+<span class="nc" id="L90">		IMeshSupplier&lt;AVertex, AHalfEdge, AFace&gt; supplier = () -&gt; new AMesh();</span>
+<span class="nc" id="L91">		IDistanceFunction distanceFunc = p -&gt; Math.abs(0.7 - Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY())) - 0.3;</span>
+<span class="nc" id="L92">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L93">		IEdgeLengthFunction edgeLengthFunc = uniformEdgeLength;</span>
+
+<span class="nc" id="L95">		GenEikMesh&lt;AVertex, AHalfEdge, AFace&gt; meshGenerator = new GenEikMesh&lt;&gt;(</span>
+				distanceFunc,
+				edgeLengthFunc,
+				initialEdgeLength,
+				bbox, obstacles,
+				supplier);
+
+<span class="nc" id="L102">		StopWatch overAllTime = new StopWatch();</span>
+<span class="nc" id="L103">		overAllTime.start();</span>
+<span class="nc" id="L104">		meshGenerator.generate();</span>
+<span class="nc" id="L105">		overAllTime.stop();</span>
+
+<span class="nc" id="L107">		log.info(&quot;#vertices:&quot; + meshGenerator.getMesh().getVertices().size());</span>
+<span class="nc" id="L108">		log.info(&quot;#edges:&quot; + meshGenerator.getMesh().getEdges().size());</span>
+<span class="nc" id="L109">		log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+<span class="nc" id="L110">		log.info(&quot;min-quality: &quot; + meshGenerator.getMinQuality());</span>
+
+<span class="nc" id="L112">		MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; distmeshPanel = new MeshPanel(meshGenerator.getMesh(), f -&gt; false, 1000, 800);</span>
+<span class="nc" id="L113">		JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L114">		frame.setVisible(true);</span>
+<span class="nc" id="L115">		frame.setTitle(&quot;uniformRing()&quot;);</span>
+<span class="nc" id="L116">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L117">		distmeshPanel.repaint();</span>
+
+<span class="nc" id="L119">		System.out.println();</span>
+<span class="nc" id="L120">		System.out.println();</span>
+<span class="nc" id="L121">		System.out.println(TexGraphGenerator.toTikz(meshGenerator.getMesh()));</span>
+<span class="nc" id="L122">	}</span>
+
+	/**
+	 * A circle with radius 10.0 meshed using a uniform mesh.
+	 */
+	private static void adaptiveRing(final double initialEdgeLength) {
+<span class="nc" id="L128">		IMeshSupplier&lt;AVertex, AHalfEdge, AFace&gt; supplier = () -&gt; new AMesh();</span>
+<span class="nc" id="L129">		IDistanceFunction distanceFunc = p -&gt; Math.abs(0.7 - Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY())) - 0.3;</span>
+<span class="nc" id="L130">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L131">		IEdgeLengthFunction edgeLengthFunc = p -&gt; initialEdgeLength + Math.abs(distanceFunc.apply(p));</span>
+
+<span class="nc" id="L133">		GenEikMesh&lt;AVertex, AHalfEdge, AFace&gt; meshGenerator = new GenEikMesh&lt;&gt;(</span>
+				distanceFunc,
+				edgeLengthFunc,
+				initialEdgeLength,
+				bbox, obstacles,
+				supplier);
+
+<span class="nc" id="L140">		StopWatch overAllTime = new StopWatch();</span>
+<span class="nc" id="L141">		overAllTime.start();</span>
+<span class="nc" id="L142">		meshGenerator.generate();</span>
+<span class="nc" id="L143">		overAllTime.stop();</span>
+
+<span class="nc" id="L145">		log.info(&quot;#vertices:&quot; + meshGenerator.getMesh().getVertices().size());</span>
+<span class="nc" id="L146">		log.info(&quot;#edges:&quot; + meshGenerator.getMesh().getEdges().size());</span>
+<span class="nc" id="L147">		log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+<span class="nc" id="L148">		log.info(&quot;min-quality: &quot; + meshGenerator.getMinQuality());</span>
+
+<span class="nc" id="L150">		MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; distmeshPanel = new MeshPanel(meshGenerator.getMesh(), f -&gt; false, 1000, 800);</span>
+<span class="nc" id="L151">		JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L152">		frame.setVisible(true);</span>
+<span class="nc" id="L153">		frame.setTitle(&quot;adaptiveCircle(&quot;+ initialEdgeLength + &quot;)&quot;);</span>
+<span class="nc" id="L154">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L155">		distmeshPanel.repaint();</span>
+
+<span class="nc" id="L157">		System.out.println();</span>
+<span class="nc" id="L158">		System.out.println();</span>
+		//System.out.println(TexGraphGenerator.toTikz(meshGenerator.getMesh()));
+<span class="nc" id="L160">	}</span>
+
+	/**
+	 * A a rectangular &quot;ring&quot;.
+	 */
+	private static void uniformRect() {
+<span class="nc" id="L166">		VRectangle rect = new VRectangle(-0.4, -0.4, 0.8, 0.8);</span>
+
+<span class="nc" id="L168">		IMeshSupplier&lt;AVertex, AHalfEdge, AFace&gt; supplier = () -&gt; new AMesh();</span>
+<span class="nc" id="L169">		IDistanceFunction distanceFunc = IDistanceFunction.intersect(p -&gt; Math.max(Math.abs(p.getX()), Math.abs(p.getY())) - 1.0, IDistanceFunction.create(bbox, rect));</span>
+<span class="nc" id="L170">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L171">		IEdgeLengthFunction edgeLengthFunc = uniformEdgeLength;</span>
+
+<span class="nc" id="L173">		obstacles.add(rect);</span>
+
+<span class="nc" id="L175">		GenEikMesh&lt;AVertex, AHalfEdge, AFace&gt; meshGenerator = new GenEikMesh&lt;&gt;(</span>
+				distanceFunc,
+				edgeLengthFunc,
+				initialEdgeLength,
+				bbox, obstacles,
+				supplier);
+
+		/*StopWatch overAllTime = new StopWatch();
+		overAllTime.start();
+		meshGenerator.generate();
+		overAllTime.stop();*/
+
+<span class="nc" id="L187">		log.info(&quot;#vertices:&quot; + meshGenerator.getMesh().getVertices().size());</span>
+<span class="nc" id="L188">		log.info(&quot;#edges:&quot; + meshGenerator.getMesh().getEdges().size());</span>
+		//log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);
+<span class="nc" id="L190">		log.info(&quot;min-quality: &quot; + meshGenerator.getMinQuality());</span>
+
+<span class="nc" id="L192">		MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; distmeshPanel = new MeshPanel(meshGenerator.getMesh(), f -&gt; false, 1000, 800);</span>
+<span class="nc" id="L193">		JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L194">		frame.setVisible(true);</span>
+<span class="nc" id="L195">		frame.setTitle(&quot;uniformRect()&quot;);</span>
+<span class="nc" id="L196">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L197">		distmeshPanel.repaint();</span>
+
+<span class="nc" id="L199">		StopWatch overAllTime = new StopWatch();</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">		while (!meshGenerator.isFinished()) {</span>
+			try {
+<span class="nc" id="L202">				Thread.sleep(100);</span>
+<span class="nc" id="L203">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L204">				e.printStackTrace();</span>
+<span class="nc" id="L205">			}</span>
+
+<span class="nc" id="L207">			meshGenerator.improve();</span>
+<span class="nc" id="L208">			distmeshPanel.repaint();</span>
+		}
+
+<span class="nc" id="L211">		distmeshPanel.repaint();</span>
+
+<span class="nc" id="L213">		System.out.println();</span>
+<span class="nc" id="L214">		System.out.println();</span>
+<span class="nc" id="L215">		System.out.println(TexGraphGenerator.toTikz(meshGenerator.getMesh()));</span>
+<span class="nc" id="L216">	}</span>
+
+	/**
+	 * A a rectangular &quot;ring&quot;.
+	 */
+	private static void uniformHex() {
+<span class="nc" id="L222">		VPolygon hex = VShape.generateHexagon(0.4);</span>
+
+<span class="nc" id="L224">		IMeshSupplier&lt;AVertex, AHalfEdge, AFace&gt; supplier = () -&gt; new AMesh();</span>
+<span class="nc" id="L225">		IDistanceFunction distanceFunc = IDistanceFunction.intersect(p -&gt; Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY()) - 1.0, IDistanceFunction.create(bbox, hex));</span>
+<span class="nc" id="L226">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L227">		IEdgeLengthFunction edgeLengthFunc = uniformEdgeLength;</span>
+
+<span class="nc" id="L229">		obstacles.add(hex);</span>
+
+<span class="nc" id="L231">		GenEikMesh&lt;AVertex, AHalfEdge, AFace&gt; meshGenerator = new GenEikMesh&lt;&gt;(</span>
+				distanceFunc,
+				edgeLengthFunc,
+				initialEdgeLength,
+				bbox, obstacles,
+				supplier);
+
+<span class="nc" id="L238">		StopWatch overAllTime = new StopWatch();</span>
+<span class="nc" id="L239">		overAllTime.start();</span>
+<span class="nc" id="L240">		meshGenerator.generate();</span>
+<span class="nc" id="L241">		overAllTime.stop();</span>
+
+<span class="nc" id="L243">		log.info(&quot;#vertices:&quot; + meshGenerator.getMesh().getVertices().size());</span>
+<span class="nc" id="L244">		log.info(&quot;#edges:&quot; + meshGenerator.getMesh().getEdges().size());</span>
+<span class="nc" id="L245">		log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+<span class="nc" id="L246">		log.info(&quot;min-quality: &quot; + meshGenerator.getMinQuality());</span>
+
+<span class="nc" id="L248">		MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; distmeshPanel = new MeshPanel(meshGenerator.getMesh(), f -&gt; false, 1000, 800);</span>
+<span class="nc" id="L249">		JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L250">		frame.setVisible(true);</span>
+<span class="nc" id="L251">		frame.setTitle(&quot;uniformHex()&quot;);</span>
+<span class="nc" id="L252">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L253">		distmeshPanel.repaint();</span>
+
+<span class="nc" id="L255">		System.out.println();</span>
+<span class="nc" id="L256">		System.out.println();</span>
+<span class="nc" id="L257">		System.out.println(TexGraphGenerator.toTikz(meshGenerator.getMesh()));</span>
+<span class="nc" id="L258">	}</span>
+
+	/**
+	 * A a rectangular &quot;ring&quot;.
+	 */
+	private static void adaptiveRect(final double initialEdgeLength) {
+<span class="nc" id="L264">		VPolygon hex = VShape.generateHexagon(0.4);</span>
+
+<span class="nc" id="L266">		IMeshSupplier&lt;AVertex, AHalfEdge, AFace&gt; supplier = () -&gt; new AMesh();</span>
+<span class="nc" id="L267">		IDistanceFunction distanceFunc = IDistanceFunction.intersect(p -&gt; Math.max(Math.abs(p.getX()), Math.abs(p.getY()))- 1.0, IDistanceFunction.create(bbox, hex));</span>
+<span class="nc" id="L268">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L269">		IEdgeLengthFunction edgeLengthFunction = p -&gt; 1.0 + Math.max(-distanceFunc.apply(p), 0) * 8.0;</span>
+
+<span class="nc" id="L271">		obstacles.add(hex);</span>
+<span class="nc" id="L272">		obstacles.add(new VRectangle(-1, -1, 2, 2));</span>
+
+<span class="nc" id="L274">		GenEikMesh&lt;AVertex, AHalfEdge, AFace&gt; meshGenerator = new GenEikMesh&lt;&gt;(</span>
+				distanceFunc,
+				edgeLengthFunction,
+				initialEdgeLength,
+				bbox, obstacles,
+				supplier);
+
+<span class="nc" id="L281">		StopWatch overAllTime = new StopWatch();</span>
+<span class="nc" id="L282">		overAllTime.start();</span>
+<span class="nc" id="L283">		meshGenerator.generate();</span>
+<span class="nc" id="L284">		overAllTime.stop();</span>
+
+<span class="nc" id="L286">		log.info(&quot;#vertices:&quot; + meshGenerator.getMesh().getVertices().size());</span>
+<span class="nc" id="L287">		log.info(&quot;#edges:&quot; + meshGenerator.getMesh().getEdges().size());</span>
+<span class="nc" id="L288">		log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+<span class="nc" id="L289">		log.info(&quot;min-quality: &quot; + meshGenerator.getMinQuality());</span>
+
+<span class="nc" id="L291">		MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; distmeshPanel = new MeshPanel(meshGenerator.getMesh(), f -&gt; false, 1000, 800);</span>
+<span class="nc" id="L292">		JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L293">		frame.setVisible(true);</span>
+<span class="nc" id="L294">		frame.setTitle(&quot;uniformHex()&quot;);</span>
+<span class="nc" id="L295">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L296">		distmeshPanel.repaint();</span>
+
+<span class="nc" id="L298">		System.out.println();</span>
+<span class="nc" id="L299">		System.out.println();</span>
+<span class="nc" id="L300">		System.out.println(TexGraphGenerator.toTikz(meshGenerator.getMesh()));</span>
+<span class="nc" id="L301">	}</span>
+
+	private EikMeshPlots() {
+
+	}
+
+	public static void main(String[] args) {
+<span class="nc" id="L308">		adaptiveRect(0.05);</span>
+<span class="nc" id="L309">		adaptiveRing(0.2);</span>
+<span class="nc" id="L310">		uniformCircle(initialEdgeLength);</span>
+<span class="nc" id="L311">		uniformCircle(initialEdgeLength / 2.0);</span>
+<span class="nc" id="L312">		uniformRing();</span>
+<span class="nc" id="L313">		uniformRect();</span>
+<span class="nc" id="L314">		uniformHex();</span>
+<span class="nc" id="L315">		adaptiveRing(initialEdgeLength / 2.0);</span>
+<span class="nc" id="L316">	}</span>
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

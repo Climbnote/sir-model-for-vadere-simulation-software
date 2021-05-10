@@ -1,0 +1,32 @@
+<h1> StimulusInfoStore</h1>
+
+<p>
+This class bundles multiple @see StimulusInfo objects.
+
+This class is just a wrapper to get a convenient JSON de-/serialization.
+The JSON serialization should look like this:
+
+"stimulusInfos": [
+{
+"timeframe": {
+"startTime":...,
+"endTime":...,
+"repeat":...,
+"waitTimeBetweenRepetition":...
+},
+"stimuli": [
+{"type":"ElapsedTime" },
+{"type":"WaitInArea", "area": ... },
+...
+]
+},
+{
+...
+}
+]
+</p>
+
+<hr>
+<h2> Field: stimulusInfos</h2>
+<p>---</p>
+

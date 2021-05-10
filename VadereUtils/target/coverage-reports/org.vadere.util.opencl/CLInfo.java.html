@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CLInfo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.opencl</a> &gt; <span class="el_source">CLInfo.java</span></div><h1>CLInfo.java</h1><pre class="source lang-java linenums">package org.vadere.util.opencl;
+
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.system.MemoryStack;
+import org.vadere.util.opencl.OpenCLException;
+
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+
+import static org.lwjgl.opencl.CL10.*;
+import static org.lwjgl.system.MemoryStack.stackPush;
+import static org.lwjgl.system.MemoryUtil.memASCII;
+import static org.lwjgl.system.MemoryUtil.memUTF8;
+
+/**
+ * Utility-class without a state. This class offers method to read OpenCL debug-information.
+ *
+ * @author Benedikt Zoennchen
+ */
+public final class CLInfo {
+
+    private CLInfo() {}
+
+    public static String getPlatformInfoStringASCII(long cl_platform_id, int param_name) throws OpenCLException {
+<span class="nc" id="L26">        try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L27">            PointerBuffer pp = stack.mallocPointer(1);</span>
+<span class="nc" id="L28">            checkCLError(clGetPlatformInfo(cl_platform_id, param_name, (ByteBuffer)null, pp));</span>
+<span class="nc" id="L29">            int bytes = (int)pp.get(0);</span>
+
+<span class="nc" id="L31">            ByteBuffer buffer = stack.malloc(bytes);</span>
+<span class="nc" id="L32">            checkCLError(clGetPlatformInfo(cl_platform_id, param_name, buffer, null));</span>
+
+<span class="nc" id="L34">            return memASCII(buffer, bytes - 1);</span>
+        }
+    }
+
+    public static String getPlatformInfoStringUTF8(long cl_platform_id, int param_name) throws OpenCLException {
+<span class="nc" id="L39">        try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L40">            PointerBuffer pp = stack.mallocPointer(1);</span>
+<span class="nc" id="L41">            checkCLError(clGetPlatformInfo(cl_platform_id, param_name, (ByteBuffer)null, pp));</span>
+<span class="nc" id="L42">            int bytes = (int)pp.get(0);</span>
+
+<span class="nc" id="L44">            ByteBuffer buffer = stack.malloc(bytes);</span>
+<span class="nc" id="L45">            checkCLError(clGetPlatformInfo(cl_platform_id, param_name, buffer, null));</span>
+
+<span class="nc" id="L47">            return memUTF8(buffer, bytes - 1);</span>
+        }
+    }
+
+    public static int getDeviceInfoInt(long cl_device_id, int param_name) throws OpenCLException {
+<span class="nc" id="L52">        try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L53">            IntBuffer pl = stack.mallocInt(1);</span>
+<span class="nc" id="L54">            checkCLError(clGetDeviceInfo(cl_device_id, param_name, pl, null));</span>
+<span class="nc" id="L55">            return pl.get(0);</span>
+        }
+    }
+
+    public static long getDeviceInfoLong(long cl_device_id, int param_name) throws OpenCLException {
+<span class="nc" id="L60">        try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L61">            LongBuffer pl = stack.mallocLong(1);</span>
+<span class="nc" id="L62">            checkCLError(clGetDeviceInfo(cl_device_id, param_name, pl, null));</span>
+<span class="nc" id="L63">            return pl.get(0);</span>
+        }
+    }
+
+    public static long getDeviceInfoPointer(long cl_device_id, int param_name) throws OpenCLException {
+<span class="nc" id="L68">        try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L69">            PointerBuffer pp = stack.mallocPointer(1);</span>
+<span class="nc" id="L70">            checkCLError(clGetDeviceInfo(cl_device_id, param_name, pp, null));</span>
+<span class="nc" id="L71">            return pp.get(0);</span>
+        }
+    }
+
+    public static String getDeviceInfoStringUTF8(long cl_device_id, int param_name) throws OpenCLException {
+<span class="fc" id="L76">        try (MemoryStack stack = stackPush()) {</span>
+<span class="fc" id="L77">            PointerBuffer pp = stack.mallocPointer(1);</span>
+<span class="fc" id="L78">            checkCLError(clGetDeviceInfo(cl_device_id, param_name, (ByteBuffer)null, pp));</span>
+<span class="fc" id="L79">            int bytes = (int)pp.get(0);</span>
+
+<span class="fc" id="L81">            ByteBuffer buffer = stack.malloc(bytes);</span>
+<span class="fc" id="L82">            checkCLError(clGetDeviceInfo(cl_device_id, param_name, buffer, null));</span>
+
+<span class="fc" id="L84">            return memUTF8(buffer, bytes - 1);</span>
+        }
+    }
+
+    public static long getMemObjectInfoPointer(long cl_mem, int param_name) throws OpenCLException {
+<span class="nc" id="L89">        try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L90">            PointerBuffer pp = stack.mallocPointer(1);</span>
+<span class="nc" id="L91">            checkCLError(clGetMemObjectInfo(cl_mem, param_name, pp, null));</span>
+<span class="nc" id="L92">            return pp.get(0);</span>
+        }
+    }
+
+    public static long getMemObjectInfoInt(long cl_mem, int param_name) throws OpenCLException {
+<span class="nc" id="L97">        try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L98">            IntBuffer pi = stack.mallocInt(1);</span>
+<span class="nc" id="L99">            checkCLError(clGetMemObjectInfo(cl_mem, param_name, pi, null));</span>
+<span class="nc" id="L100">            return pi.get(0);</span>
+        }
+    }
+
+    public static int getProgramBuildInfoInt(long cl_program_id, long cl_device_id, int param_name) throws OpenCLException {
+<span class="fc" id="L105">        try (MemoryStack stack = stackPush()) {</span>
+<span class="fc" id="L106">            IntBuffer pl = stack.mallocInt(1);</span>
+<span class="fc" id="L107">            checkCLError(clGetProgramBuildInfo(cl_program_id, cl_device_id, param_name, pl, null));</span>
+<span class="fc" id="L108">            return pl.get(0);</span>
+        }
+    }
+
+    public static String getProgramBuildInfoStringASCII(long cl_program_id, long cl_device_id, int param_name) throws OpenCLException {
+<span class="nc" id="L113">        try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L114">            PointerBuffer pp = stack.mallocPointer(1);</span>
+<span class="nc" id="L115">            checkCLError(clGetProgramBuildInfo(cl_program_id, cl_device_id, param_name, (ByteBuffer)null, pp));</span>
+<span class="nc" id="L116">            int bytes = (int)pp.get(0);</span>
+
+<span class="nc" id="L118">            ByteBuffer buffer = stack.malloc(bytes);</span>
+<span class="nc" id="L119">            checkCLError(clGetProgramBuildInfo(cl_program_id, cl_device_id, param_name, buffer, null));</span>
+
+<span class="nc" id="L121">            return memASCII(buffer, bytes - 1);</span>
+        }
+    }
+
+    public static void checkCLError(IntBuffer errcode) throws OpenCLException {
+<span class="fc" id="L126">        checkCLError(errcode.get(errcode.position()));</span>
+<span class="fc" id="L127">    }</span>
+
+    public static void checkCLError(int errcode) throws OpenCLException {
+<span class="pc bpc" id="L130" title="1 of 2 branches missed.">        if (errcode != CL_SUCCESS) {</span>
+<span class="nc" id="L131">            throw new OpenCLException(String.format(&quot;OpenCL error [0x%X, %d]&quot;, errcode, errcode));</span>
+        }
+<span class="fc" id="L133">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

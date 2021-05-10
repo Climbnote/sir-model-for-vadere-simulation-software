@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProcessorFactoryObject.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.factory.processors</a> &gt; <span class="el_source">ProcessorFactoryObject.java</span></div><h1>ProcessorFactoryObject.java</h1><pre class="source lang-java linenums">package org.vadere.util.factory.processors;
+
+import org.vadere.util.factory.FactoryObject;
+
+import java.util.ArrayList;
+import java.util.function.Supplier;
+
+public class ProcessorFactoryObject&lt;T&gt; extends FactoryObject&lt;T&gt; {
+
+	private final String label;
+	private final String description;
+	private final ArrayList&lt;Flag&gt; flags;
+
+	public ProcessorFactoryObject(Supplier&lt;T&gt; supplier, String label, String description, Class clazz, String... flags){
+<span class="nc" id="L15">		super(clazz, supplier);</span>
+<span class="nc" id="L16">		this.label = label;</span>
+<span class="nc" id="L17">		this.description = description;</span>
+<span class="nc" id="L18">		this.flags = Flag.getFlags(flags);</span>
+<span class="nc" id="L19">	}</span>
+
+	public String getLabel() {
+<span class="nc" id="L22">		return label;</span>
+	}
+
+	//todo: this should be locale with Messages.
+	public String getDescription() {
+<span class="nc" id="L27">		return description;</span>
+	}
+
+	public ArrayList&lt;Flag&gt; getFlags(){
+<span class="nc" id="L31">		return flags;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,23 @@
+<h1> FloorGradientProviderDiscrete</h1>
+
+<p>
+Provides a floor gradient given the geometry of a scenario. This class uses
+the Fast Marching algorithm (Sethian 1999) to compute a solution to
+G(x)||grad T(x)|| = 1, the Eikonal equation. G(x) must not be equal to one,
+like in FloorGradientProviderContinuous, however, the solution of
+FloorGradientProviderDiscrete is only present on a discrete grid. CAREFUL:
+this destroys (= resets to 1) the convergence rates of many higher order
+integrators if mollification of the gradient is done improperly!
+
+</p>
+
+<hr>
+<h2> Field: grids</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: gradientMollifierRadius</h2>
+<p>
+Radius of the mollifier.
+</p>
+

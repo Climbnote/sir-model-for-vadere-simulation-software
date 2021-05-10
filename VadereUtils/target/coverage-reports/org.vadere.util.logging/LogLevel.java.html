@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogLevel.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.logging</a> &gt; <span class="el_source">LogLevel.java</span></div><h1>LogLevel.java</h1><pre class="source lang-java linenums">package org.vadere.util.logging;
+
+public class LogLevel {
+
+	public static final String OFF_STR = &quot;OFF&quot;;
+	public static final String FATAL_STR = &quot;FATAL&quot;;
+	public static final String ERROR_STR = &quot;ERROR&quot;;
+	public static final String WARN_STR = &quot;WARN&quot;;
+	public static final String INFO_STR = &quot;INFO&quot;;
+	public static final String DEBUG_STR = &quot;DEBUG&quot;;
+	public static final String ALL_STR = &quot;ALL&quot;;
+
+<span class="nc" id="L13">	public static final LogLevel OFF = new LogLevel(OFF_STR);</span>
+<span class="nc" id="L14">	public static final LogLevel FATAL = new LogLevel(FATAL_STR);</span>
+<span class="nc" id="L15">	public static final LogLevel ERROR = new LogLevel(ERROR_STR);</span>
+<span class="nc" id="L16">	public static final LogLevel WARN = new LogLevel(WARN_STR);</span>
+<span class="nc" id="L17">	public static final LogLevel INFO = new LogLevel(INFO_STR);</span>
+<span class="nc" id="L18">	public static final LogLevel DEBUG = new LogLevel(DEBUG_STR);</span>
+<span class="nc" id="L19">	public static final LogLevel ALL = new LogLevel(ALL_STR);</span>
+
+
+	private String levelStr;
+
+<span class="nc" id="L24">	private LogLevel(String levelStr) {</span>
+<span class="nc" id="L25">		this.levelStr = levelStr;</span>
+<span class="nc" id="L26">	}</span>
+
+	public String getLevelStr() {
+<span class="nc" id="L29">		return levelStr;</span>
+	}
+
+	public static LogLevel toLogLevel(String levelStr){
+		LogLevel logLevel;
+<span class="nc bnc" id="L34" title="All 8 branches missed.">		switch (levelStr) {</span>
+<span class="nc" id="L35">			case OFF_STR: logLevel = OFF;</span>
+<span class="nc" id="L36">			break;</span>
+<span class="nc" id="L37">			case FATAL_STR: logLevel = FATAL;</span>
+<span class="nc" id="L38">			break;</span>
+<span class="nc" id="L39">			case ERROR_STR: logLevel = ERROR;</span>
+<span class="nc" id="L40">			break;</span>
+<span class="nc" id="L41">			case WARN_STR: logLevel = WARN;</span>
+<span class="nc" id="L42">			break;</span>
+<span class="nc" id="L43">			case INFO_STR: logLevel = INFO;</span>
+<span class="nc" id="L44">			break;</span>
+<span class="nc" id="L45">			case DEBUG_STR: logLevel = DEBUG;</span>
+<span class="nc" id="L46">			break;</span>
+<span class="nc" id="L47">			case ALL_STR: logLevel = ALL;</span>
+<span class="nc" id="L48">			default: logLevel = INFO;</span>
+		}
+<span class="nc" id="L50">		return logLevel;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,17 @@
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/factories/models/ModelFactoryProcessor.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/factories/dataprocessors/DataProcessorFactoryProcessor.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/traci/client/TraCIApi.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/factories/dataprocessors/DataProcessorClass.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/factories/models/ModelClass.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/factories/FactoryType.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/traci/client/ClientAnnotationProcessor.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/helptext/HelpTextAnnotationProcessor.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/factories/migrationassistant/JoltTransformationFactoryProcessor.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/factories/migrationassistant/MigrationTransformation.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/factories/attributes/ModelAttributeClass.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/factories/outputfiles/OutputFileFactoryProcessor.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/ImportScanner.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/factories/BaseFactoryProcessor.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/factories/attributes/BaseAttributeFactoryProcessor.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/factories/AbstractFactoryProcessor.java
+/Users/kilian/IdeaProjects/vadere/VadereAnnotation/src/org/vadere/annotation/factories/outputfiles/OutputFileClass.java

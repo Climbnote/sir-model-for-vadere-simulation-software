@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GenUniformTriangulator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">GenUniformTriangulator.java</span></div><h1>GenUniformTriangulator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.ITriangulator;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VRectangle;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+/**
+ * This triangulator triangulates a whole bounding box by a uniform triangulation of a specific side length.
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;P&gt; the type of the points (containers)
+ * @param &lt;CE&gt; the type of container of the half-edges
+ * @param &lt;CF&gt; the type of the container of the faces
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public class GenUniformTriangulator&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements ITriangulator&lt;V, E, F&gt; {
+
+	private double left;
+	private double top;
+	private double width;
+	private double height;
+	private double minTriangleSideLength;
+	private VRectangle bound;
+	private final IIncrementalTriangulation&lt;V, E, F&gt; triangulation;
+
+	/**
+	 * The default constructor.
+	 *
+	 * @param bound                 the bounding box
+	 * @param minTriangleSideLength the minimal side length
+	 * @param triangulation         the triangulation i.e. the algorithm inserting points
+	 */
+	public GenUniformTriangulator(final VRectangle bound,
+	                              final double minTriangleSideLength,
+<span class="nc" id="L47">	                              final IIncrementalTriangulation&lt;V, E, F&gt; triangulation) {</span>
+<span class="nc" id="L48">		this.bound = bound;</span>
+<span class="nc" id="L49">		this.triangulation = triangulation;</span>
+<span class="nc" id="L50">		this.left = bound.getMinX();</span>
+<span class="nc" id="L51">		this.top = bound.getMinY();</span>
+<span class="nc" id="L52">		this.width = bound.getWidth();</span>
+<span class="nc" id="L53">		this.height = bound.getHeight();</span>
+<span class="nc" id="L54">		this.minTriangleSideLength = minTriangleSideLength;</span>
+<span class="nc" id="L55">	}</span>
+
+    @Override
+    public IIncrementalTriangulation&lt;V, E, F&gt; generate() {
+<span class="nc" id="L59">        return generate(true);</span>
+    }
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate(boolean finalize) {
+
+<span class="nc" id="L65">		triangulation.init();</span>
+
+<span class="nc" id="L67">		List&lt;IPoint&gt; pointList = new ArrayList&lt;&gt;(generatePointSet());</span>
+		//Collections.shuffle(pointList);
+
+<span class="nc bnc" id="L70" title="All 2 branches missed.">		for(IPoint point : pointList) {</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">			if(bound.contains(point)) {</span>
+<span class="nc" id="L72">				triangulation.insert(point);</span>
+			}
+<span class="nc" id="L74">		}</span>
+
+<span class="nc bnc" id="L76" title="All 2 branches missed.">		if(finalize) {</span>
+<span class="nc" id="L77">			triangulation.finish();</span>
+		}
+<span class="nc" id="L79">		return triangulation;</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; getTriangulation() {
+<span class="nc" id="L84">		return triangulation;</span>
+	}
+
+	@Override
+	public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="nc" id="L89">        return triangulation.getMesh();</span>
+	}
+
+	private Collection&lt;IPoint&gt; generatePointSet() {
+		// height of a triangle with 60 deg everywhere
+<span class="nc" id="L94">		List&lt;IPoint&gt; pointSet = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L95">		double s = minTriangleSideLength;</span>
+<span class="nc" id="L96">		double h = minTriangleSideLength * Math.sqrt(3) / 2.0;</span>
+		// create stencil with four triangle which can be used to triangulate
+		// the whole rectangle seamlessly
+<span class="nc" id="L99">		IPoint add1 = getMesh().createPoint(-s / 2, h);</span>
+<span class="nc" id="L100">		IPoint add2 = getMesh().createPoint(s / 2, h);</span>
+<span class="nc" id="L101">		IPoint add3 = getMesh().createPoint(s, 0);</span>
+<span class="nc" id="L102">		IPoint add4 = getMesh().createPoint(0, 2 * h);</span>
+<span class="nc" id="L103">		IPoint add5 = getMesh().createPoint(s, 2 * h);</span>
+
+<span class="nc bnc" id="L105" title="All 2 branches missed.">		for (int row = 0; row &lt; (int) Math.ceil(height / h) + 1; row += 2) {</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">			for (int col = 0; col &lt; (int) Math.ceil(width</span>
+<span class="nc" id="L107">					/ minTriangleSideLength); col++) {</span>
+<span class="nc" id="L108">				IPoint p1 = getMesh().createPoint(left + col * minTriangleSideLength, top + row * h);</span>
+
+<span class="nc" id="L110">				IPoint p2 = getMesh().createPoint(p1.getX() + add1.getX(), p1.getY() + add1.getY());</span>
+<span class="nc" id="L111">				IPoint p3 = getMesh().createPoint(p1.getX() + add2.getX(), p1.getY() + add2.getY());</span>
+<span class="nc" id="L112">				IPoint p4 = getMesh().createPoint(p1.getX() + add3.getX(), p1.getY() + add3.getY());</span>
+<span class="nc" id="L113">				IPoint p5 = getMesh().createPoint(p1.getX() + add4.getX(), p1.getY() + add4.getY());</span>
+<span class="nc" id="L114">				IPoint p6 = getMesh().createPoint(p1.getX() + add5.getX(), p1.getY() + add5.getY());</span>
+
+<span class="nc" id="L116">				pointSet.add(p1);</span>
+<span class="nc" id="L117">				pointSet.add(p2);</span>
+<span class="nc" id="L118">				pointSet.add(p3);</span>
+<span class="nc" id="L119">				pointSet.add(p4);</span>
+<span class="nc" id="L120">				pointSet.add(p5);</span>
+<span class="nc" id="L121">				pointSet.add(p6);</span>
+			}
+		}
+<span class="nc" id="L124">		return pointSet;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PMeshPanel.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.impl</a> &gt; <span class="el_source">PMeshPanel.java</span></div><h1>PMeshPanel.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.impl;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.gen.MeshPanel;
+import org.vadere.meshing.mesh.gen.MeshRenderer;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PVertex;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.util.geometry.shapes.IPoint;
+
+import java.awt.*;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
+public class PMeshPanel extends MeshPanel&lt;PVertex, PHalfEdge, PFace&gt; {
+
+	public PMeshPanel(
+			@NotNull MeshRenderer&lt;PVertex, PHalfEdge, PFace&gt; meshRenderer,
+			double width,
+			double height) {
+<span class="nc" id="L22">		super(meshRenderer, width, height);</span>
+<span class="nc" id="L23">	}</span>
+
+	public PMeshPanel(
+			@NotNull final IMesh&lt;PVertex, PHalfEdge, PFace&gt; mesh,
+			double width,
+			double height) {
+<span class="nc" id="L29">		super(mesh, width, height);</span>
+<span class="nc" id="L30">	}</span>
+
+	public PMeshPanel(
+			@NotNull final IMesh&lt;PVertex, PHalfEdge, PFace&gt; mesh,
+			double width,
+			double height,
+			@NotNull final Function&lt;PFace, Color&gt; colorFunction) {
+<span class="nc" id="L37">		super(mesh, f -&gt; false, width, height, colorFunction);</span>
+<span class="nc" id="L38">	}</span>
+
+	public PMeshPanel(
+			@NotNull final IMesh&lt;PVertex, PHalfEdge, PFace&gt; mesh,
+			double width,
+			double height,
+			@NotNull final Function&lt;PFace, Color&gt; faceColorFunction,
+			@NotNull final Function&lt;PHalfEdge, Color&gt; edgeColorFunction) {
+<span class="nc" id="L46">		super(mesh, f -&gt; false, width, height, faceColorFunction, edgeColorFunction);</span>
+<span class="nc" id="L47">	}</span>
+
+	public PMeshPanel(
+			@NotNull final IMesh&lt;PVertex, PHalfEdge, PFace&gt; mesh,
+			double width,
+			double height,
+			@NotNull final Function&lt;PFace, Color&gt; faceColorFunction,
+			@NotNull final Function&lt;PHalfEdge, Color&gt; edgeColorFunction,
+			@NotNull final Function&lt;PVertex, Color&gt; vertexColorFunction) {
+<span class="nc" id="L56">		super(mesh, f -&gt; false, width, height, faceColorFunction, edgeColorFunction, vertexColorFunction);</span>
+<span class="nc" id="L57">	}</span>
+
+	public PMeshPanel(
+			@NotNull final IMesh&lt;PVertex, PHalfEdge, PFace&gt; mesh,
+			@NotNull Predicate&lt;PFace&gt; predicate,
+			double width,
+			double height) {
+<span class="nc" id="L64">		super(mesh, predicate, width, height);</span>
+<span class="nc" id="L65">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

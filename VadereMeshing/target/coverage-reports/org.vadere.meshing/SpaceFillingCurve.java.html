@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SpaceFillingCurve.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing</a> &gt; <span class="el_source">SpaceFillingCurve.java</span></div><h1>SpaceFillingCurve.java</h1><pre class="source lang-java linenums">package org.vadere.meshing;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VRectangle;
+
+/**
+ * @author Benedikt Zoennchen
+ */
+<span class="nc bnc" id="L11" title="All 2 branches missed.">public class SpaceFillingCurve {</span>
+
+    private final VRectangle bbox;
+    private static final int precision = 10;
+
+<span class="nc" id="L16">    private enum State {</span>
+<span class="nc" id="L17">        TopLeft, TopRight, BottomLeft, BottomRight;</span>
+    }
+
+<span class="nc" id="L20">    public SpaceFillingCurve(final VRectangle bbox) {</span>
+<span class="nc" id="L21">        this.bbox = bbox;</span>
+<span class="nc" id="L22">    }</span>
+
+    public double compute(final IPoint point) {
+        // normalize to [0,1] x [0,1]
+<span class="nc" id="L26">        double x = (point.getX() - bbox.getMinX()) / bbox.getWidth();</span>
+<span class="nc" id="L27">        double y = (point.getY() - bbox.getMinY()) / bbox.getHeight();</span>
+
+<span class="nc" id="L29">        String xCode = toBinary(x);</span>
+<span class="nc" id="L30">        String yCode = toBinary(y);</span>
+
+        // run the automaton
+<span class="nc bnc" id="L33" title="All 4 branches missed.">        assert xCode.length() == yCode.length();</span>
+
+<span class="nc" id="L35">        State currentState = State.TopLeft;</span>
+<span class="nc" id="L36">        byte[] result = new byte[xCode.length()];</span>
+<span class="nc bnc" id="L37" title="All 2 branches missed.">        for(int i = 0; i &lt; xCode.length(); i++) {</span>
+            // TODO improve the conversion
+<span class="nc" id="L39">            Pair&lt;State, Byte&gt; pair = nextState(currentState, Byte.parseByte(xCode.charAt(i)+&quot;&quot;), Byte.parseByte(yCode.charAt(i)+&quot;&quot;));</span>
+<span class="nc" id="L40">            result[i] = pair.getRight();</span>
+<span class="nc" id="L41">            currentState = pair.getLeft();</span>
+        }
+
+<span class="nc" id="L44">        return byteCodeToDouble(result);</span>
+    }
+
+  /*  public &lt;T&gt; void sort(final List&lt;T&gt; list, Function&lt;T, IPoint&gt; f) {
+        List&lt;State&gt; bucketStates = new ArrayList&lt;&gt;();
+        List&lt;String&gt; xStrings = list.stream().map(object -&gt; toBinary(f.apply(object).getX())).collect(Collectors.);
+        List&lt;String&gt; yStrings = list.stream().map(object -&gt; toBinary(f.apply(object).getY())).collect(Collectors.toList());
+
+        List&lt;Integer&gt; bucketSizes = new ArrayList&lt;&gt;();
+        bucketSizes.add(list.size());
+
+        int nBuckets = 1;
+        for(Integer bSize : bucketSizes) {
+
+        }
+
+    }
+*/
+
+    private double byteCodeToDouble(final byte[] code) {
+<span class="nc" id="L64">        double sum = 0.0;</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        for(int i = 0; i &lt; code.length; i++) {</span>
+<span class="nc" id="L66">            sum += code[i] * (1.0/(4&lt;&lt;(2*i)));</span>
+        }
+<span class="nc" id="L68">        return sum;</span>
+    }
+
+    public String toBinary(double decimal) {
+<span class="nc" id="L72">        double tmp = decimal;</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        for (int i = 0; i &lt; precision; i++) {</span>
+<span class="nc" id="L74">            tmp *= 2;</span>
+        }
+
+<span class="nc" id="L77">        String binaryString =  Long.toBinaryString((long)tmp);</span>
+
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        for(int i = binaryString.length(); i &lt; precision; i++) {</span>
+<span class="nc" id="L80">            binaryString = &quot;0&quot;+binaryString;</span>
+        }
+
+<span class="nc" id="L83">        return binaryString.substring(0, precision);</span>
+    }
+
+    public Pair&lt;State, Byte&gt; nextState(final State current, Byte x, Byte y) {
+<span class="nc" id="L87">        byte zero = 0;</span>
+<span class="nc" id="L88">        byte one = 1;</span>
+<span class="nc" id="L89">        byte two = 2;</span>
+<span class="nc" id="L90">        byte three = 3;</span>
+
+<span class="nc bnc" id="L92" title="All 5 branches missed.">        switch (current) {</span>
+            case TopLeft:
+<span class="nc bnc" id="L94" title="All 4 branches missed.">                if(x == 0 &amp;&amp; y == 1)</span>
+<span class="nc" id="L95">                    return Pair.of(State.TopLeft, one);</span>
+<span class="nc bnc" id="L96" title="All 4 branches missed.">                else if (x == 1 &amp;&amp; y == 1)</span>
+<span class="nc" id="L97">                    return Pair.of(State.TopLeft, two);</span>
+<span class="nc bnc" id="L98" title="All 4 branches missed.">                else if (x == 0 &amp;&amp; y == 0)</span>
+<span class="nc" id="L99">                    return Pair.of(State.TopRight, zero);</span>
+                else
+<span class="nc" id="L101">                    return Pair.of(State.BottomLeft, three);</span>
+            case TopRight:
+<span class="nc bnc" id="L103" title="All 4 branches missed.">                if(x == 0 &amp;&amp; y == 1)</span>
+<span class="nc" id="L104">                    return Pair.of(State.BottomRight, three);</span>
+<span class="nc bnc" id="L105" title="All 4 branches missed.">                else if (x == 1 &amp;&amp; y == 1)</span>
+<span class="nc" id="L106">                    return Pair.of(State.TopRight, one);</span>
+<span class="nc bnc" id="L107" title="All 4 branches missed.">                else if (x == 0 &amp;&amp; y == 0)</span>
+<span class="nc" id="L108">                    return Pair.of(State.TopLeft, zero);</span>
+                else
+<span class="nc" id="L110">                    return Pair.of(State.TopRight, two);</span>
+            case BottomLeft:
+<span class="nc bnc" id="L112" title="All 4 branches missed.">                if(x == 0 &amp;&amp; y == 1)</span>
+<span class="nc" id="L113">                    return Pair.of(State.BottomLeft, one);</span>
+<span class="nc bnc" id="L114" title="All 4 branches missed.">                else if (x == 1 &amp;&amp; y == 1)</span>
+<span class="nc" id="L115">                    return Pair.of(State.BottomRight, zero);</span>
+<span class="nc bnc" id="L116" title="All 4 branches missed.">                else if (x == 0 &amp;&amp; y == 0)</span>
+<span class="nc" id="L117">                    return Pair.of(State.BottomLeft, two);</span>
+                else
+<span class="nc" id="L119">                    return Pair.of(State.TopLeft, three);</span>
+            case BottomRight:
+<span class="nc bnc" id="L121" title="All 4 branches missed.">                if(x == 0 &amp;&amp; y == 1)</span>
+<span class="nc" id="L122">                    return Pair.of(State.TopRight, three);</span>
+<span class="nc bnc" id="L123" title="All 4 branches missed.">                else if (x == 1 &amp;&amp; y == 1)</span>
+<span class="nc" id="L124">                    return Pair.of(State.BottomLeft, zero);</span>
+<span class="nc bnc" id="L125" title="All 4 branches missed.">                else if (x == 0 &amp;&amp; y == 0)</span>
+<span class="nc" id="L126">                    return Pair.of(State.BottomRight, two);</span>
+                else
+<span class="nc" id="L128">                    return Pair.of(State.BottomRight, one);</span>
+        }
+
+<span class="nc" id="L131">        throw new IllegalArgumentException(&quot;illegal state (&quot; + current + &quot;,&quot; + x + &quot;,&quot; + y + &quot;)&quot;);</span>
+    }
+
+
+    public static void main(String... args) {
+<span class="nc" id="L136">        SpaceFillingCurve curve = new SpaceFillingCurve(new VRectangle(0,0,1,1));</span>
+<span class="nc" id="L137">        double positionOnCurve = curve.compute(new VPoint(13.0/16.0, 7.0 / 16.0));</span>
+<span class="nc" id="L138">        System.out.println(positionOnCurve);</span>
+<span class="nc" id="L139">    }</span>
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

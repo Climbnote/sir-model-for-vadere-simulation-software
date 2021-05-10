@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CLOperation.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.opencl</a> &gt; <span class="el_source">CLOperation.java</span></div><h1>CLOperation.java</h1><pre class="source lang-java linenums">package org.vadere.util.opencl;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.opencl.CLContextCallback;
+import org.lwjgl.opencl.CLProgramCallback;
+import org.lwjgl.system.MemoryStack;
+import org.vadere.util.logging.Logger;
+
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+import java.util.Optional;
+
+import static org.lwjgl.opencl.CL10.CL_CONTEXT_PLATFORM;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_NAME;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_TYPE_ALL;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_TYPE_DEFAULT;
+import static org.lwjgl.opencl.CL10.CL_PROFILING_COMMAND_END;
+import static org.lwjgl.opencl.CL10.CL_PROFILING_COMMAND_START;
+import static org.lwjgl.opencl.CL10.CL_PROGRAM_BUILD_STATUS;
+import static org.lwjgl.opencl.CL10.CL_QUEUE_PROFILING_ENABLE;
+import static org.lwjgl.opencl.CL10.CL_SUCCESS;
+import static org.lwjgl.opencl.CL10.clCreateCommandQueue;
+import static org.lwjgl.opencl.CL10.clCreateContext;
+import static org.lwjgl.opencl.CL10.clEnqueueNDRangeKernel;
+import static org.lwjgl.opencl.CL10.clGetEventProfilingInfo;
+import static org.lwjgl.opencl.CL10.clGetPlatformIDs;
+import static org.lwjgl.opencl.CL10.clReleaseCommandQueue;
+import static org.lwjgl.opencl.CL10.clReleaseContext;
+import static org.lwjgl.opencl.CL10.clReleaseProgram;
+import static org.lwjgl.opencl.CL10.clWaitForEvents;
+import static org.lwjgl.system.MemoryStack.stackPush;
+import static org.lwjgl.system.MemoryUtil.NULL;
+import static org.lwjgl.system.MemoryUtil.memUTF8;
+
+/**
+ * This class implements operation to set up and to destroy an OpenCL context which
+ * every OpenCL class requires.
+ */
+public abstract class CLOperation {
+<span class="fc" id="L41">	private static Logger log = Logger.getLogger(CLOperation.class);</span>
+
+	protected long clPlatform;
+	protected long clDevice;
+	protected long clContext;
+	protected long clQueue;
+	protected boolean profiling;
+	protected int deviceType;
+	protected long clProgram;
+
+	protected CLContextCallback contextCB;
+	protected CLProgramCallback programCB;
+
+	protected CLOperation() {
+<span class="fc" id="L55">		this(CL_DEVICE_TYPE_ALL);</span>
+<span class="fc" id="L56">	}</span>
+
+<span class="fc" id="L58">	protected CLOperation(final int deviceType) {</span>
+<span class="fc" id="L59">		profiling = false;</span>
+<span class="fc" id="L60">		this.deviceType = deviceType;</span>
+<span class="fc" id="L61">	}</span>
+
+	protected void initCL() throws OpenCLException {
+<span class="fc" id="L64">		try (MemoryStack stack = stackPush()) {</span>
+<span class="fc" id="L65">			IntBuffer errcode_ret = stack.callocInt(1);</span>
+<span class="fc" id="L66">			IntBuffer numberOfPlatforms = stack.mallocInt(1);</span>
+
+<span class="fc" id="L68">			CLInfo.checkCLError(clGetPlatformIDs(null, numberOfPlatforms));</span>
+
+			// if all, find the possibly best
+			Optional&lt;Pair&lt;Long, Long&gt;&gt; platformAndDevice;
+<span class="fc bfc" id="L72" title="All 2 branches covered.">			if(deviceType == CL_DEVICE_TYPE_ALL) {</span>
+<span class="fc" id="L73">				platformAndDevice = CLUtils.getFirstSupportedPlatformAndDevice(CL_DEVICE_TYPE_DEFAULT);</span>
+<span class="pc bpc" id="L74" title="1 of 2 branches missed.">				if(!platformAndDevice.isPresent()) {</span>
+<span class="nc" id="L75">					platformAndDevice = CLUtils.getFirstSupportedPlatformAndDevice(CL_DEVICE_TYPE_ALL);</span>
+				}
+			}
+			else {
+<span class="fc" id="L79">				platformAndDevice = CLUtils.getFirstSupportedPlatformAndDevice(deviceType);</span>
+			}
+
+
+<span class="pc bpc" id="L83" title="1 of 2 branches missed.">			if(!platformAndDevice.isPresent()) {</span>
+<span class="nc" id="L84">				log.debug(&quot;No support for OpenCl found.&quot;);</span>
+<span class="nc" id="L85">				throw new UnsupportedOpenCLException(&quot;No support for OpenCl found.&quot;);</span>
+			}
+
+<span class="fc" id="L88">			clPlatform = platformAndDevice.get().getLeft();</span>
+<span class="fc" id="L89">			clDevice = platformAndDevice.get().getRight();</span>
+
+<span class="fc" id="L91">			log.debug(&quot;CL_DEVICE_NAME = &quot; + CLInfo.getDeviceInfoStringUTF8(clDevice, CL_DEVICE_NAME));</span>
+
+<span class="fc" id="L93">			PointerBuffer ctxProps = stack.mallocPointer(3);</span>
+<span class="fc" id="L94">			ctxProps.put(CL_CONTEXT_PLATFORM)</span>
+<span class="fc" id="L95">					.put(clPlatform)</span>
+<span class="fc" id="L96">					.put(NULL)</span>
+<span class="fc" id="L97">					.flip();</span>
+
+<span class="fc" id="L99">			clContext = clCreateContext(ctxProps, clDevice, contextCB, NULL, errcode_ret);</span>
+<span class="fc" id="L100">			CLInfo.checkCLError(errcode_ret);</span>
+
+<span class="pc bpc" id="L102" title="1 of 2 branches missed.">			if(profiling) {</span>
+<span class="nc" id="L103">				clQueue = clCreateCommandQueue(clContext, clDevice, CL_QUEUE_PROFILING_ENABLE, errcode_ret);</span>
+			}
+			else {
+<span class="fc" id="L106">				clQueue = clCreateCommandQueue(clContext, clDevice, 0, errcode_ret);</span>
+			}
+
+<span class="fc" id="L109">			CLInfo.checkCLError(errcode_ret);</span>
+		}
+<span class="fc" id="L111">	}</span>
+
+	protected void initCallbacks() {
+<span class="fc" id="L114">		contextCB = CLContextCallback.create((errinfo, private_info, cb, user_data) -&gt;</span>
+		{
+<span class="nc" id="L116">			log.debug(&quot;[LWJGL] cl_context_callback&quot; + &quot;\tInfo: &quot; + memUTF8(errinfo));</span>
+<span class="nc" id="L117">		});</span>
+
+<span class="fc" id="L119">		programCB = CLProgramCallback.create((program, user_data) -&gt;</span>
+		{
+			try {
+<span class="pc bpc" id="L122" title="1 of 2 branches missed.">				log.debug(&quot;The cl_program [0x&quot;+program+&quot;] was built &quot; + (CLInfo.getProgramBuildInfoInt(program, clDevice, CL_PROGRAM_BUILD_STATUS) == CL_SUCCESS ? &quot;successfully&quot; : &quot;unsuccessfully&quot;));</span>
+<span class="nc" id="L123">			} catch (OpenCLException e) {</span>
+<span class="nc" id="L124">				e.printStackTrace();</span>
+<span class="fc" id="L125">			}</span>
+<span class="fc" id="L126">		});</span>
+<span class="fc" id="L127">	}</span>
+
+	protected long enqueueNDRangeKernel(final String name, long command_queue, long kernel, int work_dim, PointerBuffer global_work_offset, PointerBuffer global_work_size, PointerBuffer local_work_size, PointerBuffer event_wait_list, PointerBuffer event) throws OpenCLException {
+<span class="pc bpc" id="L130" title="1 of 2 branches missed.">		if(profiling) {</span>
+<span class="nc" id="L131">			try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L132">				PointerBuffer clEvent = stack.mallocPointer(1);</span>
+<span class="nc" id="L133">				LongBuffer startTime = stack.mallocLong(1);</span>
+<span class="nc" id="L134">				LongBuffer endTime = stack.mallocLong(1);</span>
+<span class="nc" id="L135">				long result = clEnqueueNDRangeKernel(command_queue, kernel, work_dim, global_work_offset, global_work_size, local_work_size, event_wait_list, clEvent);</span>
+<span class="nc" id="L136">				clWaitForEvents(clEvent);</span>
+<span class="nc" id="L137">				long eventAddr = clEvent.get();</span>
+<span class="nc" id="L138">				CLInfo.checkCLError(clGetEventProfilingInfo(eventAddr, CL_PROFILING_COMMAND_START, startTime, null));</span>
+<span class="nc" id="L139">				CLInfo.checkCLError(clGetEventProfilingInfo(eventAddr, CL_PROFILING_COMMAND_END, endTime, null));</span>
+<span class="nc" id="L140">				clEvent.clear();</span>
+				// in nanaSec
+<span class="nc" id="L142">				log.info(name + &quot; event time &quot; + &quot;0x&quot;+eventAddr + &quot;: &quot; + ((double)endTime.get() - startTime.get()) / 1_000_000.0 + &quot; [ms]&quot;);</span>
+<span class="nc" id="L143">				endTime.clear();</span>
+<span class="nc" id="L144">				startTime.clear();</span>
+<span class="nc" id="L145">				return result;</span>
+			}
+		}
+		else {
+<span class="fc" id="L149">			return clEnqueueNDRangeKernel(command_queue, kernel, work_dim, global_work_offset, global_work_size, local_work_size, event_wait_list, event);</span>
+		}
+	}
+
+	protected void clearCL() throws OpenCLException {
+<span class="fc" id="L154">		CLInfo.checkCLError(clReleaseCommandQueue(clQueue));</span>
+<span class="fc" id="L155">		CLInfo.checkCLError(clReleaseProgram(clProgram));</span>
+<span class="fc" id="L156">		CLInfo.checkCLError(clReleaseContext(clContext));</span>
+<span class="fc" id="L157">		contextCB.free();</span>
+<span class="fc" id="L158">		programCB.free();</span>
+<span class="fc" id="L159">	}</span>
+
+	/**
+	 * Returns a long number n which is greater or equals &lt;tt&gt;value&lt;/tt&gt; such that n = k * &lt;tt&gt;multiple&lt;/tt&gt;
+	 * for some natural number k.
+	 *
+	 * @param value     the value
+	 * @param multiple  the multiple
+	 *
+	 * @return a long number n such that n = k * &lt;tt&gt;multiple&lt;/tt&gt;
+	 */
+	protected static long multipleOf(long value, long multiple) {
+<span class="fc" id="L171">		long result = multiple;</span>
+<span class="fc bfc" id="L172" title="All 2 branches covered.">		while (result &lt; value) {</span>
+<span class="fc" id="L173">			result += multiple;</span>
+		}
+<span class="fc" id="L175">		return result;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

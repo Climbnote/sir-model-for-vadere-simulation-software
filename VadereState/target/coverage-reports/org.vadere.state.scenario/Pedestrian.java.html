@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Pedestrian.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.scenario</a> &gt; <span class="el_source">Pedestrian.java</span></div><h1>Pedestrian.java</h1><pre class="source lang-java linenums">package org.vadere.state.scenario;
+
+import org.vadere.state.attributes.scenario.AttributesAgent;
+import org.vadere.state.psychology.KnowledgeBase;
+import org.vadere.state.psychology.PsychologyStatus;
+import org.vadere.state.psychology.cognition.GroupMembership;
+import org.vadere.state.psychology.cognition.SelfCategory;
+import org.vadere.state.psychology.perception.ThreatMemory;
+import org.vadere.state.psychology.perception.types.Stimulus;
+import org.vadere.state.simulation.FootStep;
+import org.vadere.state.simulation.FootstepHistory;
+import org.vadere.state.simulation.VTrajectory;
+import org.vadere.state.types.ScenarioElementType;
+import org.vadere.util.geometry.shapes.VPoint;
+
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Random;
+
+public class Pedestrian extends Agent {
+
+	// Constants
+<span class="fc" id="L24">	public static double PEDESTRIAN_MAX_SPEED_METER_PER_SECOND = 12.0;</span>
+	public static final double INVALID_NEXT_EVENT_TIME = -1.0;
+
+	// Variables
+	// TODO: All these variables belong to Isabella's &quot;social identity&quot; branch
+	//   which was never merged with &quot;master&quot;. On &quot;master&quot;, these variables should be unused.
+	//   Therefore, delete them.
+	private int idAsTarget; // TODO should actually be an attribute or a member of a subclass
+	private boolean isChild; // TODO should actually be an attribute or a member of a subclass
+	private boolean isLikelyInjured; // TODO should actually be an attribute or a member of a subclass
+
+	private PsychologyStatus psychologyStatus;
+
+	private LinkedList&lt;Integer&gt; groupIds; // TODO should actually be an attribute or a member of a subclass
+	private LinkedList&lt;Integer&gt; groupSizes;
+
+	/**
+	 * trajectory is a list of foot steps a pedestrian made during the duration of one time step.
+	 * For all non event driven models this is exactly one foot step. For the event driven update
+	 * one pedestrian can move multiple times during one time step. To save memory the list of foot steps
+	 * will be cleared after each completion of a time step. The output processor &lt;tt&gt;PedestrianStrideProcessor&lt;/tt&gt;
+	 * can write out those foot steps.
+	 */
+	private VTrajectory trajectory;
+	/** This list stores the last n footsteps. I.e., this list is NOT cleared after each simulation loop like &quot;trajectory&quot; variable. */
+	private transient FootstepHistory footstepHistory;
+
+	private Map&lt;Class&lt;? extends ModelPedestrian&gt;, ModelPedestrian&gt; modelPedestrianMap;
+<span class="pc" id="L52">	private ScenarioElementType type = ScenarioElementType.PEDESTRIAN; // TODO used at all? For JSON de-/serialization? Car does NOT have this field. remove if unused!</span>
+
+	// Constructors
+	private Pedestrian() {
+		// Default constructor required for JSON de-/serialization.
+<span class="nc" id="L57">		this(new AttributesAgent());</span>
+<span class="nc" id="L58">	}</span>
+
+	private Pedestrian(AttributesAgent attributesPedestrian) {
+<span class="nc" id="L61">		this(attributesPedestrian, new Random());</span>
+<span class="nc" id="L62">	}</span>
+
+	public Pedestrian(AttributesAgent attributesAgent, Random random) {
+<span class="fc" id="L65">		super(attributesAgent, random);</span>
+
+<span class="fc" id="L67">		idAsTarget = -1;</span>
+<span class="fc" id="L68">		isChild = false;</span>
+<span class="fc" id="L69">		isLikelyInjured = false;</span>
+<span class="fc" id="L70">		psychologyStatus = new PsychologyStatus(null, new ThreatMemory(), SelfCategory.TARGET_ORIENTED, GroupMembership.OUT_GROUP, new KnowledgeBase());</span>
+<span class="fc" id="L71">		groupIds = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L72">		groupSizes = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L73">		modelPedestrianMap = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L74">		trajectory = new VTrajectory();</span>
+<span class="fc" id="L75">		footstepHistory = new FootstepHistory(attributesAgent.getFootstepHistorySize());</span>
+<span class="fc" id="L76">	}</span>
+
+	protected Pedestrian(Pedestrian other) {
+<span class="nc" id="L79">		super(other);</span>
+
+<span class="nc" id="L81">		idAsTarget = other.idAsTarget;</span>
+<span class="nc" id="L82">		isChild = other.isChild;</span>
+<span class="nc" id="L83">		isLikelyInjured = other.isLikelyInjured;</span>
+
+<span class="nc" id="L85">		psychologyStatus = new PsychologyStatus(other.psychologyStatus);</span>
+
+<span class="nc bnc" id="L87" title="All 2 branches missed.">		if (other.groupIds != null) {</span>
+<span class="nc" id="L88">			groupIds = new LinkedList&lt;&gt;(other.groupIds);</span>
+<span class="nc" id="L89">			groupSizes = new LinkedList&lt;&gt;(other.groupSizes);</span>
+		} else {
+<span class="nc" id="L91">			groupIds = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L92">			groupSizes = new LinkedList&lt;&gt;();</span>
+		}
+
+<span class="nc" id="L95">		trajectory = new VTrajectory();</span>
+<span class="nc" id="L96">		trajectory = other.trajectory;</span>
+<span class="nc" id="L97">		footstepHistory = other.footstepHistory;</span>
+<span class="nc" id="L98">	}</span>
+
+	// Getter
+	public int getIdAsTarget() {
+<span class="nc" id="L102">		return this.idAsTarget;</span>
+	}
+	public boolean isChild() {
+<span class="nc" id="L105">		return isChild;</span>
+	}
+	public boolean isLikelyInjured() {
+<span class="nc" id="L108">		return isLikelyInjured;</span>
+	}
+<span class="nc" id="L110">	public Stimulus getMostImportantStimulus() { return psychologyStatus.getMostImportantStimulus(); }</span>
+<span class="nc" id="L111">	public ThreatMemory getThreatMemory() { return psychologyStatus.getThreatMemory(); }</span>
+<span class="fc" id="L112">	public SelfCategory getSelfCategory() { return psychologyStatus.getSelfCategory(); }</span>
+<span class="nc" id="L113">	public GroupMembership getGroupMembership() { return psychologyStatus.getGroupMembership(); }</span>
+<span class="nc" id="L114">	public KnowledgeBase getKnowledgeBase() {return psychologyStatus.getKnowledgeBase(); }</span>
+<span class="nc" id="L115">	public LinkedList&lt;Integer&gt; getGroupIds() { return groupIds; }</span>
+	public LinkedList&lt;Integer&gt; getGroupSizes() {
+<span class="nc" id="L117">		return groupSizes;</span>
+	}
+<span class="nc" id="L119">	public &lt;T extends ModelPedestrian&gt; T getModelPedestrian(Class&lt;? extends T&gt; modelType) { return (T) modelPedestrianMap.get(modelType); }</span>
+	@Override
+	public ScenarioElementType getType() {
+<span class="nc" id="L122">		return ScenarioElementType.PEDESTRIAN;</span>
+	}
+
+	public VTrajectory getTrajectory() {
+<span class="nc" id="L126">		return trajectory;</span>
+	}
+
+	public FootstepHistory getFootstepHistory() {
+<span class="nc" id="L130">		return footstepHistory;</span>
+	}
+
+    public VPoint getInterpolatedFootStepPosition(double time){
+<span class="nc bnc" id="L134" title="All 2 branches missed.">        if(this.footstepHistory.getCapacity() &lt;= 0){</span>
+<span class="nc" id="L135">            throw new IllegalArgumentException(&quot;Cannot interpolate foot steps if there is no capacity (larger than zero) &quot; +</span>
+                    &quot;for storing foot steps (see 'scenario.attributesPedestrian.footStepsToStore' field)&quot;);
+        }
+
+<span class="nc" id="L139">        FootStep currentFootStep = this.footstepHistory.getYoungestFootStep();</span>
+
+<span class="nc bnc" id="L141" title="All 2 branches missed.">        if(currentFootStep == null){</span>
+<span class="nc" id="L142">            return getPosition();</span>
+        }else{
+<span class="nc bnc" id="L144" title="All 2 branches missed.">            if(time &gt; currentFootStep.getEndTime()){</span>
+                // This happens for example if a pedestrian is waiting (see Events)
+<span class="nc" id="L146">                return currentFootStep.getEnd();</span>
+            }else{
+<span class="nc" id="L148">                return FootStep.interpolateFootStep(currentFootStep, time);</span>
+            }
+        }
+    }
+
+	// Setter
+<span class="nc" id="L154">	public void setIdAsTarget(int id) { this.idAsTarget = id; }</span>
+	public void setChild(boolean child) {
+<span class="nc" id="L156">		this.isChild = child;</span>
+<span class="nc" id="L157">	}</span>
+	public void setLikelyInjured(boolean likelyInjured) {
+<span class="nc" id="L159">		this.isLikelyInjured = likelyInjured;</span>
+<span class="nc" id="L160">	}</span>
+<span class="nc" id="L161">	public void setMostImportantStimulus(Stimulus mostImportantStimulus) { psychologyStatus.setMostImportantStimulus(mostImportantStimulus); }</span>
+<span class="nc" id="L162">	public void setThreatMemory(ThreatMemory threatMemory) { psychologyStatus.setThreatMemory(threatMemory); }</span>
+<span class="fc" id="L163">	public void setSelfCategory(SelfCategory selfCategory) { psychologyStatus.setSelfCategory(selfCategory); }</span>
+<span class="nc" id="L164">	public void setGroupMembership(GroupMembership groupMembership) { psychologyStatus.setGroupMembership(groupMembership); }</span>
+	public void setGroupIds(LinkedList&lt;Integer&gt; groupIds) {
+<span class="nc" id="L166">		this.groupIds = groupIds;</span>
+<span class="nc" id="L167">	}</span>
+	public void setGroupSizes(LinkedList&lt;Integer&gt; groupSizes) {
+<span class="nc" id="L169">		this.groupSizes = groupSizes;</span>
+<span class="nc" id="L170">	}</span>
+	public &lt;T extends ModelPedestrian&gt; ModelPedestrian setModelPedestrian(T modelPedestrian) {
+<span class="nc" id="L172">		return modelPedestrianMap.put(modelPedestrian.getClass(), modelPedestrian);</span>
+	}
+
+	// Methods
+	public boolean isTarget() {
+<span class="nc bnc" id="L177" title="All 2 branches missed.">		return this.idAsTarget != -1;</span>
+	}
+
+	public void addGroupId(int groupId, int size){
+<span class="nc" id="L181">		groupIds.add(groupId);</span>
+<span class="nc" id="L182">		groupSizes.add(size);</span>
+<span class="nc" id="L183">	}</span>
+
+	public void addFootStepToTrajectory(FootStep footStep){
+<span class="nc" id="L186">		this.trajectory = this.trajectory.add(footStep);</span>
+<span class="nc" id="L187">	}</span>
+
+	public void clearFootSteps() {
+<span class="nc bnc" id="L190" title="All 2 branches missed.">		if (!trajectory.isEmpty()){</span>
+<span class="nc" id="L191">			trajectory.clear();</span>
+		}
+<span class="nc" id="L193">	}</span>
+
+	// Overridden Methods
+
+	@Override
+	public Pedestrian clone() {
+<span class="nc" id="L199">		return new Pedestrian(this);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

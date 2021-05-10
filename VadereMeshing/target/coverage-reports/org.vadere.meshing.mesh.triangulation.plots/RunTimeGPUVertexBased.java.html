@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RunTimeGPUVertexBased.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.plots</a> &gt; <span class="el_source">RunTimeGPUVertexBased.java</span></div><h1>RunTimeGPUVertexBased.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.plots;
+
+import org.apache.commons.lang3.time.StopWatch;
+import org.vadere.meshing.mesh.gen.AFace;
+import org.vadere.meshing.mesh.gen.AHalfEdge;
+import org.vadere.meshing.mesh.gen.AMesh;
+import org.vadere.meshing.mesh.gen.AVertex;
+import org.vadere.meshing.mesh.gen.MeshPanel;
+import org.vadere.meshing.mesh.inter.IMeshSupplier;
+import org.vadere.meshing.mesh.inter.IPointConstructor;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.EikMeshPoint;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.opencl.CLEikMeshHE;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.math.IDistanceFunction;
+import org.vadere.util.opencl.OpenCLException;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.*;
+
+/**
+ * @author Benedikt Zoennchen
+ */
+<span class="nc" id="L28">public class RunTimeGPUVertexBased extends JFrame {</span>
+
+<span class="nc" id="L30">	private static final Logger log = Logger.getLogger(RunTimeGPUEdgeBased.class);</span>
+
+<span class="nc" id="L32">	private static final VRectangle bbox = new VRectangle(-11, -11, 22, 22);</span>
+<span class="nc" id="L33">	private static final IEdgeLengthFunction uniformEdgeLength = p -&gt; 1.0;</span>
+<span class="nc" id="L34">	private static final IPointConstructor&lt;EikMeshPoint&gt; pointConstructor = (x, y) -&gt; new EikMeshPoint(x, y, false);</span>
+	private static final double initialEdgeLength = 1.5;
+
+	private static void overallUniformRing() {
+
+<span class="nc" id="L39">		IMeshSupplier&lt;AVertex, AHalfEdge, AFace&gt; supplier = () -&gt; new AMesh();</span>
+<span class="nc" id="L40">		IDistanceFunction distanceFunc = p -&gt; Math.abs(7 - Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY())) - 3;</span>
+<span class="nc" id="L41">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L43">		double initialEdgeLength = 2.0;</span>
+<span class="nc" id="L44">		double minInitialEdgeLength = 0.7;</span>
+
+
+<span class="nc bnc" id="L47" title="All 2 branches missed.">		while (initialEdgeLength &gt;= minInitialEdgeLength) {</span>
+<span class="nc" id="L48">			CLEikMeshHE meshGenerator = new CLEikMeshHE(distanceFunc, uniformEdgeLength, initialEdgeLength, bbox, new ArrayList&lt;&gt;(), supplier);</span>
+
+<span class="nc" id="L50">			StopWatch overAllTime = new StopWatch();</span>
+<span class="nc" id="L51">			overAllTime.start();</span>
+<span class="nc" id="L52">			meshGenerator.generate();</span>
+<span class="nc" id="L53">			overAllTime.stop();</span>
+<span class="nc" id="L54">			meshGenerator.refresh();</span>
+
+<span class="nc" id="L56">			log.info(&quot;#vertices: &quot; + meshGenerator.getMesh().getVertices().size());</span>
+<span class="nc" id="L57">			log.info(&quot;#edges: &quot; + meshGenerator.getMesh().getEdges().size());</span>
+<span class="nc" id="L58">			log.info(&quot;#faces: &quot; + meshGenerator.getMesh().getFaces().size());</span>
+<span class="nc" id="L59">			log.info(&quot;quality&quot; + meshGenerator.getQuality());</span>
+<span class="nc" id="L60">			log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+
+<span class="nc" id="L62">			MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; distmeshPanel = new MeshPanel(meshGenerator.getMesh(), f -&gt; false, 1000, 800);</span>
+<span class="nc" id="L63">			JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L64">			frame.setVisible(true);</span>
+<span class="nc" id="L65">			frame.setTitle(&quot;uniformRing()&quot;);</span>
+<span class="nc" id="L66">			frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L67">			distmeshPanel.repaint();</span>
+
+<span class="nc" id="L69">			initialEdgeLength = initialEdgeLength - 0.05;</span>
+<span class="nc" id="L70">		}</span>
+<span class="nc" id="L71">	}</span>
+
+	private static void stepUniformRing(double startLen, double endLen, double stepLen) throws OpenCLException {
+<span class="nc" id="L74">		IMeshSupplier&lt;AVertex, AHalfEdge, AFace&gt; supplier = () -&gt; new AMesh();</span>
+<span class="nc" id="L75">		IDistanceFunction distanceFunc = p -&gt; Math.abs(7 - Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY())) - 3;</span>
+<span class="nc" id="L76">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+
+		//double initialEdgeLength = 0.125;
+		//double minInitialEdgeLength = 0.05;
+
+<span class="nc" id="L81">		double initialEdgeLength = startLen;</span>
+<span class="nc" id="L82">		double minInitialEdgeLength = endLen;</span>
+
+<span class="nc" id="L84">		List&lt;Integer&gt; nVertices = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L85">		List&lt;Long&gt; runTimes = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L86">		List&lt;Double&gt; initlialEdgeLengths = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L88" title="All 2 branches missed.">		while (initialEdgeLength &gt;= minInitialEdgeLength) {</span>
+<span class="nc" id="L89">			initlialEdgeLengths.add(initialEdgeLength);</span>
+<span class="nc" id="L90">			CLEikMeshHE meshGenerator = new CLEikMeshHE(distanceFunc, uniformEdgeLength, initialEdgeLength, bbox, new ArrayList&lt;&gt;(), supplier);</span>
+<span class="nc" id="L91">			meshGenerator.initialize();</span>
+
+<span class="nc" id="L93">			StopWatch overAllTime = new StopWatch();</span>
+
+<span class="nc" id="L95">			int steps = 0;</span>
+<span class="nc" id="L96">			overAllTime.start();</span>
+<span class="nc" id="L97">			overAllTime.suspend();</span>
+			do {
+<span class="nc" id="L99">				overAllTime.resume();</span>
+<span class="nc" id="L100">				meshGenerator.improve();</span>
+<span class="nc" id="L101">				overAllTime.suspend();</span>
+				try {
+<span class="nc" id="L103">					Thread.sleep(10);</span>
+<span class="nc" id="L104">				} catch (InterruptedException e) {</span>
+<span class="nc" id="L105">					e.printStackTrace();</span>
+<span class="nc" id="L106">				}</span>
+<span class="nc" id="L107">				steps++;</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">			} while (!meshGenerator.isFinished());</span>
+<span class="nc" id="L109">			meshGenerator.finish();</span>
+
+<span class="nc" id="L111">			log.info(&quot;initial edge length: &quot; + initialEdgeLength);</span>
+<span class="nc" id="L112">			log.info(&quot;#vertices: &quot; + meshGenerator.getMesh().getVertices().size());</span>
+<span class="nc" id="L113">			log.info(&quot;#edges: &quot; + meshGenerator.getMesh().getEdges().size());</span>
+<span class="nc" id="L114">			log.info(&quot;#faces: &quot; + meshGenerator.getMesh().getFaces().size());</span>
+<span class="nc" id="L115">			log.info(&quot;quality: &quot; + meshGenerator.getQuality());</span>
+<span class="nc" id="L116">			log.info(&quot;#step: &quot; + steps);</span>
+<span class="nc" id="L117">			log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+<span class="nc" id="L118">			log.info(&quot;step avg time: &quot; + (double)overAllTime.getNanoTime() / steps + &quot;[ns]&quot;);</span>
+<span class="nc" id="L119">			log.info(&quot;step avg time: &quot; + (double)overAllTime.getTime() / steps + &quot;[ms]&quot;);</span>
+
+<span class="nc" id="L121">			nVertices.add(meshGenerator.getMesh().getVertices().size());</span>
+<span class="nc" id="L122">			runTimes.add( overAllTime.getTime());</span>
+
+<span class="nc" id="L124">			MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; distmeshPanel = new MeshPanel(meshGenerator.getMesh(), f -&gt; false, 1000, 800);</span>
+<span class="nc" id="L125">			JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L126">			frame.setVisible(true);</span>
+<span class="nc" id="L127">			frame.setTitle(&quot;uniformRing()&quot;);</span>
+<span class="nc" id="L128">			frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L129">			distmeshPanel.repaint();</span>
+
+			//initialEdgeLength = initialEdgeLength - 0.05;
+<span class="nc" id="L132">			initialEdgeLength = initialEdgeLength - stepLen;</span>
+<span class="nc" id="L133">		}</span>
+
+<span class="nc" id="L135">		System.out.println(&quot;print result for vertex based GPU version&quot;);</span>
+<span class="nc" id="L136">		System.out.println(&quot;#vertices: [&quot; + nVertices.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L137">		System.out.println(&quot;runtime in ms: [&quot; + runTimes.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L138">		System.out.println(&quot;init edge lengths: [&quot; + initlialEdgeLengths.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L139">	}</span>
+
+	public static void main(String[] args) throws OpenCLException {
+<span class="nc" id="L142">		stepUniformRing(0.05, 0.05, 0.05);</span>
+<span class="nc" id="L143">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

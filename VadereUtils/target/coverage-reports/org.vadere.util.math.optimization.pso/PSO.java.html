@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PSO.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.math.optimization.pso</a> &gt; <span class="el_source">PSO.java</span></div><h1>PSO.java</h1><pre class="source lang-java linenums">package org.vadere.util.math.optimization.pso;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.ICircleSector;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.logging.Logger;
+
+import java.util.List;
+import java.util.Random;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+/**
+ * @author Benedikt Zoennchen
+ */
+<span class="nc bnc" id="L17" title="All 2 branches missed.">public class PSO {</span>
+<span class="nc" id="L18">	private AttributesPSO attributesPSO = new AttributesPSO();</span>
+	private Random random;
+	private final List&lt;Particle&gt; particles;
+	private final ICircleSector circle;
+<span class="nc" id="L22">	private final double errorToleranz = 0.0001;</span>
+	private double gBest;
+	private double gLastBest;
+	private VPoint gBestLocation;
+	private final Function&lt;VPoint, Double&gt; evaluationFunction;
+	private int iterationCounter;
+	private final double maxVelocity;
+	private final double minAngle;
+	private final double maxAngle;
+	private int improvementIterations;
+<span class="nc" id="L32">	private static Logger logger = Logger.getLogger(PSO.class);</span>
+<span class="nc" id="L33">	private static int evaluationCounter = 0;</span>
+
+	public PSO(
+			@NotNull final Function&lt;VPoint, Double&gt; f,
+			@NotNull final ICircleSector circle,
+			final double minAngle,
+			final double maxAngle,
+			@NotNull final Random random,
+			@NotNull final double maxVelocity,
+<span class="nc" id="L42">			@NotNull final List&lt;VPoint&gt; swarmPositions) {</span>
+<span class="nc" id="L43">		this.evaluationFunction = f;</span>
+<span class="nc" id="L44">		this.random = random;</span>
+<span class="nc" id="L45">		this.circle = circle;</span>
+<span class="nc" id="L46">		this.gBest = Double.MAX_VALUE;</span>
+<span class="nc" id="L47">		this.gBestLocation = circle.getCenter();</span>
+<span class="nc" id="L48">		this.iterationCounter = 0;</span>
+<span class="nc" id="L49">		this.maxVelocity = maxVelocity;</span>
+<span class="nc" id="L50">		this.minAngle = minAngle;</span>
+<span class="nc" id="L51">		this.maxAngle = maxAngle;</span>
+<span class="nc bnc" id="L52" title="All 6 branches missed.">		assert swarmPositions.stream().allMatch(p -&gt; circle.getCenter().distance(p) &lt; circle.getRadius() + GeometryUtils.DOUBLE_EPS);</span>
+<span class="nc" id="L53">		this.particles = initialSwarm(swarmPositions);</span>
+<span class="nc" id="L54">		this.improvementIterations = 0;</span>
+<span class="nc" id="L55">	}</span>
+
+	public VPoint getOptimumArg() {
+<span class="nc bnc" id="L58" title="All 2 branches missed.">		while (!hasFinished()) {</span>
+<span class="nc" id="L59">			update();</span>
+		}
+<span class="nc" id="L61">		return getBestLocation();</span>
+	}
+
+	public double getOptimum() {
+<span class="nc bnc" id="L65" title="All 2 branches missed.">		while (!hasFinished()) {</span>
+<span class="nc" id="L66">			update();</span>
+		}
+<span class="nc" id="L68">		return getBestValue();</span>
+	}
+
+	private VPoint getBestLocation() {
+<span class="nc" id="L72">		return gBestLocation;</span>
+	}
+
+	private double getBestValue() {
+<span class="nc" id="L76">		return gBest;</span>
+	}
+
+	public boolean hasFinished() {
+<span class="nc bnc" id="L80" title="All 6 branches missed.">		return iterationCounter &gt;= attributesPSO.maxIteration || (iterationCounter &gt;= attributesPSO.minIteration &amp;&amp; hasConverged());</span>
+	}
+
+	public boolean hasConverged() {
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		return improvementIterations &gt;= attributesPSO.maxNoUpdate;</span>
+	}
+
+	public void update() {
+<span class="nc bnc" id="L88" title="All 2 branches missed.">		if (!hasFinished()) {</span>
+<span class="nc" id="L89">			iterationCounter++;</span>
+<span class="nc" id="L90">			updateLocalBest();</span>
+<span class="nc" id="L91">			updateGlobalBest();</span>
+
+<span class="nc" id="L93">			double omega = attributesPSO.wUpperBound - (iterationCounter / attributesPSO.minIteration) * (attributesPSO.wUpperBound - attributesPSO.wLowerBound);</span>
+
+<span class="nc" id="L95">			particles.forEach(particle -&gt; updateParticle(particle, omega));</span>
+		}
+<span class="nc" id="L97">	}</span>
+
+	private void updateParticle(@NotNull final Particle particle, final double omega) {
+<span class="nc" id="L100">		double rLocal = random();</span>
+<span class="nc" id="L101">		double rGlobal = random();</span>
+
+<span class="nc" id="L103">		VPoint dirLocalBest = particle.getLocalBestLocation().subtract(particle.getLocation());</span>
+<span class="nc" id="L104">		VPoint dirGlobalBest = particle.getGlobalBestLocation().subtract(particle.getLocation());</span>
+
+<span class="nc" id="L106">		VPoint velocity = particle.getVelocity().scalarMultiply(omega)</span>
+<span class="nc" id="L107">				.add(dirLocalBest.scalarMultiply(rLocal * attributesPSO.c1))</span>
+<span class="nc" id="L108">				.add(dirGlobalBest.scalarMultiply(rGlobal * attributesPSO.c2))</span>
+<span class="nc" id="L109">				.limit(maxVelocity);</span>
+
+<span class="nc" id="L111">		VPoint currentLocation = particle.getLocation();</span>
+<span class="nc" id="L112">		particle.setVelocity(velocity);</span>
+<span class="nc" id="L113">		particle.setLocation(particle.getLocation().add(particle.getVelocity()));</span>
+
+<span class="nc bnc" id="L115" title="All 4 branches missed.">		if (!circle.contains(particle.getLocation()) &amp;&amp; particle.getLocation().distance(currentLocation) &gt; GeometryUtils.DOUBLE_EPS) {</span>
+<span class="nc" id="L116">			particle.setVelocity(particle.getVelocity().scalarMultiply(-0.5));</span>
+<span class="nc" id="L117">			particle.setLocation(circle.getClosestIntersectionPoint(currentLocation, particle.getLocation(), particle.getLocation()).orElse(particle.getLocation()));</span>
+		}
+<span class="nc" id="L119">		particle.setFitnessValue(evaluationFunction.apply(particle.getLocation()));</span>
+<span class="nc" id="L120">		evaluationCounter++;</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		if(evaluationCounter % 100 == 0) {</span>
+<span class="nc" id="L122">			logger.debugf(&quot;#evaluations: &quot; + evaluationCounter);</span>
+		}
+<span class="nc" id="L124">	}</span>
+
+	/**
+	 * updates the best local value of each particle
+	 */
+	private void updateLocalBest() {
+<span class="nc" id="L130">		particles.parallelStream().forEach(particle -&gt; {</span>
+
+<span class="nc bnc" id="L132" title="All 2 branches missed.">			if (particle.getFitnessValue() &lt; particle.getLocalBestFitnessValue()) {</span>
+<span class="nc" id="L133">				particle.setLocalBestFitnessValue(particle.getFitnessValue());</span>
+<span class="nc" id="L134">				particle.setLocalBestLocation(particle.getLocation());</span>
+			}
+
+<span class="nc bnc" id="L137" title="All 2 branches missed.">			if (particle.getLocalBestFitnessValue() &lt; particle.getGlobalBestFitnessValue()) {</span>
+<span class="nc" id="L138">				particle.setGlobalBestFitnessValue(particle.getLocalBestFitnessValue());</span>
+<span class="nc" id="L139">				particle.setGlobalBestLocation(particle.getLocalBestLocation());</span>
+			}
+
+<span class="nc" id="L142">		});</span>
+<span class="nc" id="L143">	}</span>
+
+	/**
+	 * 1) updates the best overall value of the PSO. 2) if the new best overall value is smaller
+	 * than the old one, particles inform each other about their best values and locations.
+	 */
+	private void updateGlobalBest() {
+<span class="nc" id="L150">		gLastBest = gBest;</span>
+
+<span class="nc bnc" id="L152" title="All 2 branches missed.">		for (Particle particle : particles) {</span>
+<span class="nc" id="L153">			double globalBest = particle.getGlobalBestFitnessValue();</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">			if (globalBest &lt; gBest) {</span>
+<span class="nc" id="L155">				gBest = globalBest;</span>
+<span class="nc" id="L156">				gBestLocation = particle.getGlobalBestLocation();</span>
+			}
+<span class="nc" id="L158">		}</span>
+
+		// no or small improvement
+<span class="nc bnc" id="L161" title="All 4 branches missed.">		if (gBest &gt;= gLastBest || Math.abs(gBest-gLastBest) &lt; 0.001) {</span>
+<span class="nc" id="L162">			improvementIterations++;</span>
+		}
+		else {
+<span class="nc" id="L165">			improvementIterations = 0;</span>
+		}
+
+		// no global improvement
+<span class="nc bnc" id="L169" title="All 2 branches missed.">		if (gBest &gt;= gLastBest) {</span>
+<span class="nc" id="L170">			informAllParticles();</span>
+		}
+<span class="nc" id="L172">	}</span>
+
+	private void informParticles(@NotNull final Particle particle, @NotNull final Particle otherParticle) {
+<span class="nc" id="L175">		double globalBest = particle.getGlobalBestFitnessValue();</span>
+<span class="nc" id="L176">		double otherGlobalBest = otherParticle.getGlobalBestFitnessValue();</span>
+
+<span class="nc bnc" id="L178" title="All 2 branches missed.">		if (globalBest &lt; otherGlobalBest) {</span>
+<span class="nc" id="L179">			otherParticle.setGlobalBestFitnessValue(globalBest);</span>
+<span class="nc" id="L180">			otherParticle.setGlobalBestLocation(particle.getGlobalBestLocation());</span>
+		}
+<span class="nc" id="L182">	}</span>
+
+	private void informKParticle() {
+<span class="nc bnc" id="L185" title="All 2 branches missed.">		for (Particle particle : particles) {</span>
+<span class="nc bnc" id="L186" title="All 2 branches missed.">			for (int i = 0; i &lt; attributesPSO.numberOfInformedParticles; i++) {</span>
+<span class="nc" id="L187">				int index = (int) Math.floor(random() * particles.size());</span>
+<span class="nc" id="L188">				Particle otherParticle = particles.get(index);</span>
+<span class="nc" id="L189">				informParticles(particle, otherParticle);</span>
+			}
+<span class="nc" id="L191">		}</span>
+<span class="nc" id="L192">	}</span>
+
+	private double random() {
+<span class="nc" id="L195">		return random.nextDouble();</span>
+	}
+
+	private double quickRandom() {
+<span class="nc" id="L199">		int id = 1;</span>
+		int n;
+<span class="nc" id="L201">		n = (int)(System.currentTimeMillis() + System.currentTimeMillis() * id);</span>
+		//n = 1;
+<span class="nc" id="L203">		n = n^(n &lt;&lt; 21);</span>
+<span class="nc" id="L204">		n = n^(n &gt;&gt; 35);</span>
+<span class="nc" id="L205">		n = n^(n &lt;&lt; 4);</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">		if (n &lt; 0)</span>
+<span class="nc" id="L207">			n = -n;</span>
+<span class="nc" id="L208">		return (double)n / Integer.MAX_VALUE;</span>
+	}
+
+	private void informAllParticles() {
+<span class="nc bnc" id="L212" title="All 2 branches missed.">		for (Particle particle : particles) {</span>
+<span class="nc" id="L213">			double globalBest = particle.getGlobalBestFitnessValue();</span>
+
+<span class="nc bnc" id="L215" title="All 4 branches missed.">			assert globalBest &gt;= gBest;</span>
+
+<span class="nc" id="L217">			particle.setGlobalBestFitnessValue(gBest);</span>
+<span class="nc" id="L218">			particle.setGlobalBestLocation(gBestLocation);</span>
+<span class="nc" id="L219">		}</span>
+<span class="nc" id="L220">	}</span>
+
+	private List&lt;Particle&gt; initialSwarm(@NotNull List&lt;VPoint&gt; swarmPositions) {
+<span class="nc" id="L223">		return swarmPositions.stream().map(location -&gt; locationToParticle(location)).collect(Collectors.toList());</span>
+	}
+
+	/*private Particle locationToParticle(@NotNull final VPoint location) {
+		double vMag = random.nextDouble() * maxVelocity;
+		VPoint velocity = location.subtract(circle.getCenter()).setMagnitude(vMag).limit(maxVelocity);
+		double fitnessValue = evaluationFunction.apply(location);
+		return new Particle(location, velocity, fitnessValue);
+	}*/
+
+	private Particle locationToParticle(@NotNull final VPoint location) {
+<span class="nc" id="L234">		double vDelta = random() * (maxAngle - minAngle);</span>
+<span class="nc" id="L235">		double vMag = Math.sqrt(random()) * maxVelocity;</span>
+<span class="nc" id="L236">		VPoint v = new VPoint(Math.cos(vDelta), Math.sin(vDelta)).setMagnitude(vMag);</span>
+<span class="nc" id="L237">		VPoint velocity = v.subtract(location).scalarMultiply(0.5).limit(maxVelocity);</span>
+
+<span class="nc" id="L239">		double fitnessValue = evaluationFunction.apply(location);</span>
+<span class="nc" id="L240">		evaluationCounter++;</span>
+		/*if(evaluationCounter % 100 == 0) {
+			logger.debugf(&quot;#evaluations: &quot; + evaluationCounter);
+		}*/
+<span class="nc" id="L244">		return new Particle(location, velocity, fitnessValue);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

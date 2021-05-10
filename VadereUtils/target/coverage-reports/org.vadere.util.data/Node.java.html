@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Node.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.data</a> &gt; <span class="el_source">Node.java</span></div><h1>Node.java</h1><pre class="source lang-java linenums">package org.vadere.util.data;
+
+import java.util.Iterator;
+import java.util.function.Predicate;
+
+/**
+ * A pointer of MyLinkedList.
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;E&gt; the type of the element this pointer pointing at
+ */
+public class Node&lt;E&gt; {
+
+    /**
+     * The element the pointer point to.
+     */
+    private E element;
+
+    private boolean alive;
+
+    /**
+     * The pointer right to this pointer (possibly null).
+     */
+    Node&lt;E&gt; next;
+
+    /**
+     * The pointer left to this pointer (possibly null).
+     */
+    Node&lt;E&gt; prev;
+
+    /**
+     * The Linked List, this pointer is part of.
+     */
+    private final NodeLinkedList list;
+
+    /**
+     * Initialize a new pointer that will be part of the list and point to element
+     *
+     * @param list      the Linked List this pointer is part of
+     * @param element   the element the pointer pointing at
+     */
+<span class="nc" id="L43">    Node(final NodeLinkedList list, final E element) {</span>
+<span class="nc" id="L44">        this.element = element;</span>
+<span class="nc" id="L45">        this.list = list;</span>
+<span class="nc" id="L46">        this.alive = true;</span>
+<span class="nc" id="L47">    }</span>
+
+    /**
+     * Returns the element the pointer pointing at.
+     *
+     * @return the element the pointer pointing at
+     */
+    public E getElement() {
+<span class="nc" id="L55">        return element;</span>
+    }
+
+    /**
+     * Replaces the current element the pointer pointing at by element.
+     *
+     * @param element the element that replaces the element the pointer pointing at
+     */
+    public void setElement(final E element) {
+<span class="nc" id="L64">        this.element = element;</span>
+<span class="nc" id="L65">    }</span>
+
+    /**
+     * Removes the pointer from its list (and the element).
+     */
+    public void remove() {
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        if(prev != null) {</span>
+<span class="nc" id="L72">            prev.next = next;</span>
+        }
+        else {
+<span class="nc" id="L75">            list.head = next;</span>
+        }
+
+<span class="nc bnc" id="L78" title="All 2 branches missed.">        if(next != null) {</span>
+<span class="nc" id="L79">            next.prev = prev;</span>
+        }
+        else {
+<span class="nc" id="L82">            list.tail = prev;</span>
+        }
+<span class="nc" id="L84">        disconnect();</span>
+<span class="nc" id="L85">        alive = false;</span>
+<span class="nc" id="L86">    }</span>
+
+    /**
+     * Removes the first next element satisfying the predicate condition.
+     *
+     * @param predicate the predicate condition
+     */
+    public void removeNext(final Predicate&lt;E&gt; predicate) {
+<span class="nc" id="L94">        Node&lt;E&gt; current = this;</span>
+<span class="nc bnc" id="L95" title="All 4 branches missed.">        while(current != null &amp;&amp; predicate.test(current.getElement())) {</span>
+<span class="nc" id="L96">            Node&lt;E&gt; next = current.getNext();</span>
+<span class="nc" id="L97">            current.remove();</span>
+<span class="nc" id="L98">            current = next;</span>
+<span class="nc" id="L99">        }</span>
+<span class="nc" id="L100">    }</span>
+
+	public boolean isAlive() {
+<span class="nc" id="L103">		return alive;</span>
+	}
+
+	/**
+     * Inserts an element to the left of the pointer.
+     *
+     * @param element the element that will be inserted
+     */
+    public void insertPrevious(final E element) {
+<span class="nc" id="L112">        list.insertPrevious(element, this);</span>
+<span class="nc" id="L113">    }</span>
+
+    /**
+     * Inserts a whole MyLinkedList of elements before the node i.e.
+     * assume elements = [A,B,C] and the Linked list of the node = [D,E,F]
+     * and the node = E the result will be [D,A,B,C,E,F].
+     *
+     * @param elements the list that will be suspend to this list.
+     */
+    public void insertPrevious(final NodeLinkedList&lt;E&gt; elements) {
+<span class="nc" id="L123">        Iterator&lt;Node&lt;E&gt;&gt; iterator = elements.iterator();</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">        while (iterator.hasNext()) {</span>
+<span class="nc" id="L125">            insertPrevious(iterator.next().getElement());</span>
+        }
+<span class="nc" id="L127">    }</span>
+
+    /**
+     * Insert an element next to the pointer.
+     *
+     * @param element the element that will be inserted
+     */
+    public void insertNext(final E element) {
+<span class="nc" id="L135">        list.insertNext(element, this);</span>
+<span class="nc" id="L136">    }</span>
+
+    /**
+     * Inserts a whole MyLinkedList of elements after the node i.e.
+     * assume elements = [A,B,C] and the Linked list of the node = [D,E,F]
+     * and the node = E the result will be [D,E,A,B,C,F].
+     *
+     * @param elements the list that will be suspend to this list.
+     */
+    public void insertNext(final NodeLinkedList&lt;E&gt; elements) {
+<span class="nc" id="L146">        Iterator&lt;Node&lt;E&gt;&gt; descendingIterator = elements.descendingIterator();</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">        while (descendingIterator.hasNext()) {</span>
+<span class="nc" id="L148">            insertNext(descendingIterator.next().getElement());</span>
+        }
+<span class="nc" id="L150">    }</span>
+
+    /**
+     * Returns the pointer next to this pointer.
+     *
+     * @return the pointer next to this pointer
+     */
+    public Node&lt;E&gt; getNext() {
+<span class="nc" id="L158">        return next;</span>
+    }
+
+    /**
+     * Returns the pointer left to this pointer.
+     *
+     * @return the pointer left to this pointer
+     */
+    public Node&lt;E&gt; getPrev() {
+<span class="nc" id="L167">        return prev;</span>
+    }
+
+    /**
+     * Returns true if there is a pointer next to this pointer.
+     *
+     * @return true if there is a pointer next to this pointer, otherwise false
+     */
+    public boolean hasNext() {
+<span class="nc bnc" id="L176" title="All 2 branches missed.">        return next != null;</span>
+    }
+
+    /**
+     * Returns true if there is a pointer left to this pointer.
+     *
+     * @return true if there is a pointer left to this pointer, otherwise false
+     */
+    public boolean hasPrev() {
+<span class="nc bnc" id="L185" title="All 2 branches missed.">        return prev != null;</span>
+    }
+
+    /**
+     * Removes the pointer from its Linked List.
+     */
+    private void disconnect() {
+<span class="nc" id="L192">        this.next = null;</span>
+<span class="nc" id="L193">        this.prev = null;</span>
+<span class="nc" id="L194">    }</span>
+
+    @Override
+    public String toString() {
+<span class="nc bnc" id="L198" title="All 4 branches missed.">        return (hasPrev() ? &quot;&lt;-&gt;&quot; : &quot;&quot;) + getElement().toString() + (hasNext() ? &quot;&lt;-&gt;&quot; : &quot;&quot;);</span>
+    }
+
+    /**
+     * Returns true if the reference of the pointer is equal to the reference of the object.
+     *
+     * @param object the object we compare this pointer with.
+     * @return true if the reference of the pointer is equal to the reference of the object
+     */
+    public boolean identical(final Object object) {
+<span class="nc bnc" id="L208" title="All 2 branches missed.">        return object == this;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L213" title="All 2 branches missed.">        if(obj == null) {</span>
+<span class="nc" id="L214">            return false;</span>
+        }
+<span class="nc bnc" id="L216" title="All 2 branches missed.">        else if(obj.getClass() != getClass()) {</span>
+<span class="nc" id="L217">            return false;</span>
+        }
+        else {
+<span class="nc" id="L220">            Node node = (Node)obj;</span>
+<span class="nc bnc" id="L221" title="All 8 branches missed.">            return this.getElement() == null &amp;&amp; node.getElement() == null || (this.getElement() != null &amp;&amp; this.getElement().equals(node.getElement()));</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IVertex.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.inter</a> &gt; <span class="el_source">IVertex.java</span></div><h1>IVertex.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.inter;
+
+import org.vadere.util.geometry.shapes.IPoint;
+
+/**
+ *
+ * A vertex {@link IVertex} can be the end of multiple half-edges {@link IHalfEdge}.
+ * It is itself is a {@link IPoint}.
+ *
+ * @author Benedikt Zoennchen
+ *
+ */
+public interface IVertex extends IPoint {
+
+	IPoint getPoint();
+
+	@Override
+	default double getX() {
+<span class="fc" id="L19">		return getPoint().getX();</span>
+	}
+
+	@Override
+	default double getY() {
+<span class="fc" id="L24">		return getPoint().getY();</span>
+	}
+
+	@Override
+	default IPoint add(final IPoint point) {
+<span class="nc" id="L29">		return getPoint().add(point);</span>
+	}
+
+	@Override
+	default IPoint addPrecise(IPoint point) {
+<span class="nc" id="L34">		return getPoint().addPrecise(point);</span>
+	}
+
+	@Override
+	default IPoint subtract(IPoint point) {
+<span class="nc" id="L39">		return getPoint().subtract(point);</span>
+	}
+
+	@Override
+	default IPoint multiply(IPoint point) {
+<span class="nc" id="L44">		return getPoint().multiply(point);</span>
+	}
+
+	@Override
+	default IPoint scalarMultiply(double factor) {
+<span class="nc" id="L49">		return getPoint().scalarMultiply(factor);</span>
+	}
+
+	@Override
+	default IPoint rotate(double radAngle) {
+<span class="nc" id="L54">		return getPoint().rotate(radAngle);</span>
+	}
+
+	@Override
+	default double scalarProduct(IPoint point) {
+<span class="nc" id="L59">		return getPoint().scalarProduct(point);</span>
+	}
+
+	@Override
+	default IPoint norm() {
+<span class="nc" id="L64">		return getPoint().norm();</span>
+	}
+
+	@Override
+	default IPoint normZeroSafe() {
+<span class="nc" id="L69">		return getPoint().normZeroSafe();</span>
+	}
+
+	@Override
+	default double distance(final IPoint other) {
+<span class="nc" id="L74">		return getPoint().distance(other);</span>
+	}
+
+	@Override
+	default double distance(double x, double y) {
+<span class="nc" id="L79">		return getPoint().distance(x, y);</span>
+	}
+
+	@Override
+	default double distanceToOrigin() {
+<span class="nc" id="L84">		return getPoint().distanceToOrigin();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

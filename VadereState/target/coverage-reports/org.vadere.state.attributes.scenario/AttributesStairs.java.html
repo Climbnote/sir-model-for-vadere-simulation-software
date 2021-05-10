@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesStairs.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.scenario</a> &gt; <span class="el_source">AttributesStairs.java</span></div><h1>AttributesStairs.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.scenario;
+
+import org.vadere.state.attributes.AttributesEmbedShape;
+import org.vadere.state.scenario.Stairs;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.util.geometry.shapes.Vector2D;
+import org.vadere.util.logging.Logger;
+
+/**
+ * Attributes of {@link Stairs} objects.
+ * The attributes &quot;treads&quot; specifies how many treads the stair should be comprised of, counting only
+ * the small platforms that are NOT on the ground or on the next floor.
+ * Upward direction specifies in which direction the treads should head toward. This way a polygon
+ * can also be used.
+ * Upward direction must not be normalized (it will be normalized to 1.0 in the constructor).
+ * 
+ *
+ */
+public class AttributesStairs extends AttributesEmbedShape {
+
+<span class="pc" id="L21">	private VShape shape = null;</span>
+<span class="pc" id="L22">	private int id = ID_NOT_SET;</span>
+<span class="pc" id="L23">	private int treadCount = 1;</span>
+<span class="pc" id="L24">	private Vector2D upwardDirection = new Vector2D(1.0, 0.0);</span>
+
+<span class="fc" id="L26">	public AttributesStairs() { }</span>
+
+<span class="nc" id="L28">	public AttributesStairs(int id) {</span>
+<span class="nc" id="L29">		this.id = id;</span>
+<span class="nc" id="L30">		this.treadCount = 1;</span>
+<span class="nc" id="L31">		upwardDirection = new Vector2D(1.0, 0.0);</span>
+<span class="nc" id="L32">	}</span>
+
+	public AttributesStairs(int id, VShape shape, int treadCount, Vector2D upwardDirection) {
+<span class="nc" id="L35">		this(id);</span>
+<span class="nc" id="L36">		this.shape = shape;</span>
+<span class="nc" id="L37">		this.treadCount = Math.max(1, treadCount);</span>
+<span class="nc" id="L38">		this.upwardDirection = upwardDirection.normalize(1.0);</span>
+
+<span class="nc bnc" id="L40" title="All 2 branches missed.">		if (treadCount &lt; 1) {</span>
+<span class="nc" id="L41">			Logger.getLogger(getClass()).error(&quot;Tread count too small (&quot; + treadCount + &quot;). Setting it to one.&quot;);</span>
+		}
+<span class="nc" id="L43">	}</span>
+
+	@Override
+	public void setShape(VShape shape) {
+<span class="nc" id="L47">		this.shape = shape;</span>
+<span class="nc" id="L48">	}</span>
+
+	@Override
+	public VShape getShape() {
+<span class="fc" id="L52">		return shape;</span>
+	}
+
+	public int getId() {
+<span class="nc" id="L56">		return id;</span>
+	}
+
+	public int getTreadCount() {
+<span class="fc" id="L60">		return treadCount;</span>
+	}
+
+	public Vector2D getUpwardDirection() {
+<span class="fc" id="L64">		return upwardDirection;</span>
+	}
+
+	public void setId(int id) {
+<span class="nc" id="L68">		checkSealed();</span>
+<span class="nc" id="L69">		this.id = id;</span>
+<span class="nc" id="L70">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

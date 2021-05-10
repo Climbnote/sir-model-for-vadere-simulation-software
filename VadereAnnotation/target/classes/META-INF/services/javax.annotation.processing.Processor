@@ -1,0 +1,7 @@
+org.vadere.annotation.factories.attributes.BaseAttributeFactoryProcessor
+org.vadere.annotation.factories.dataprocessors.DataProcessorFactoryProcessor
+org.vadere.annotation.factories.migrationassistant.JoltTransformationFactoryProcessor
+org.vadere.annotation.factories.models.ModelFactoryProcessor
+org.vadere.annotation.factories.outputfiles.OutputFileFactoryProcessor
+org.vadere.annotation.helptext.HelpTextAnnotationProcessor
+org.vadere.annotation.traci.client.ClientAnnotationProcessor

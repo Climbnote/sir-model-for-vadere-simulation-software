@@ -1,0 +1,85 @@
+<h1> SelfCatThreatModel</h1>
+
+<p>
+This class models how agents react to a perceived threat (e.g., a loud bang) while considering the
+self-categorization theory ("reicher-2010").
+
+Please, note:
+<ul>
+<li>A <a href='/helpText/org.vadere.state.psychology.perception.types.Threat.html' class='class_link'>Threat</a> has a loudness and a radius.</li>
+<li>We use the self-categorization theory to divide the agents into in- and out-group members.
+In-group members imitate the behavior of other in-group members. Out-group members ignore the
+behavior of in-group members.</li>
+</ul>
+
+Implement following behavior:
+
+<ol>
+<li>If agent A is within the threat radius, escape (i.e., first maximize distance to the threat and then
+go to a safe zone).</li>
+<li>If agent A is outside threat radius, check if "searchRadius" contains an escaping in-group member.
+If yes, escape also. Otherwise, go to original target.</li>
+<li>Out-group members use the locomotion layer to go to a target (i.e., keep their original behavior).</li>
+</ol>
+</p>
+
+<hr>
+<h2> Field: updateSchemeEventDriven</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: domain</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: potentialFieldPedestrian</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: BINOMIAL_DISTRIBUTION_SUCCESS_VALUE</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: binomialDistribution</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: logger</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: random</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: attributesPedestrian</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: lastSimTimeInSec</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: stepCircleOptimizer</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: attributesSelfCatThreat</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: attributesLocomotion</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: potentialFieldTarget</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: potentialFieldObstacle</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: models</h2>
+<p>---</p>
+

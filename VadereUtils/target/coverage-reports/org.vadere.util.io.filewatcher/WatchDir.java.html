@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WatchDir.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.io.filewatcher</a> &gt; <span class="el_source">WatchDir.java</span></div><h1>WatchDir.java</h1><pre class="source lang-java linenums">package org.vadere.util.io.filewatcher;
+
+/*
+ * Copyright (c) 2008, 2010, Oracle and/or its affiliates. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * - Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * - Neither the name of Oracle nor the names of its
+ * contributors may be used to endorse or promote products derived
+ * from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &quot;AS
+ * IS&quot; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+import java.nio.file.*;
+
+import static java.nio.file.StandardWatchEventKinds.*;
+import static java.nio.file.LinkOption.*;
+
+import java.nio.file.attribute.*;
+import java.io.*;
+import java.util.*;
+
+import org.vadere.util.io.filewatcher.LockFileHandler.LockInfo;
+
+/**
+ * Example to watch a directory (or tree) for changes to files.
+ */
+
+public class WatchDir {
+
+	private final WatchService watcher;
+	private final Map&lt;WatchKey, Path&gt; keys;
+	private final boolean recursive;
+<span class="nc" id="L54">	private boolean trace = false;</span>
+
+	@SuppressWarnings(&quot;unchecked&quot;)
+	static &lt;T&gt; WatchEvent&lt;T&gt; cast(WatchEvent&lt;?&gt; event) {
+<span class="nc" id="L58">		return (WatchEvent&lt;T&gt;) event;</span>
+	}
+
+	/**
+	 * Register the given directory with the WatchService
+	 */
+	private void register(Path dir) throws IOException {
+<span class="nc" id="L65">		WatchKey key = dir.register(watcher, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY);</span>
+<span class="nc bnc" id="L66" title="All 2 branches missed.">		if (trace) {</span>
+<span class="nc" id="L67">			Path prev = keys.get(key);</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">			if (prev == null) {</span>
+<span class="nc" id="L69">				System.out.format(&quot;register: %s\n&quot;, dir);</span>
+			} else {
+<span class="nc bnc" id="L71" title="All 2 branches missed.">				if (!dir.equals(prev)) {</span>
+<span class="nc" id="L72">					System.out.format(&quot;update: %s -&gt; %s\n&quot;, prev, dir);</span>
+				}
+			}
+		}
+<span class="nc" id="L76">		keys.put(key, dir);</span>
+<span class="nc" id="L77">	}</span>
+
+	/**
+	 * Register the given directory, and all its sub-directories, with the
+	 * WatchService.
+	 */
+	private void registerAll(final Path start) throws IOException {
+		// register directory and sub-directories
+<span class="nc" id="L85">		Files.walkFileTree(start, new SimpleFileVisitor&lt;Path&gt;() {</span>
+			@Override
+			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+					throws IOException {
+<span class="nc" id="L89">				register(dir);</span>
+<span class="nc" id="L90">				return FileVisitResult.CONTINUE;</span>
+			}
+		});
+<span class="nc" id="L93">	}</span>
+
+	/**
+	 * Creates a WatchService and registers the given directory
+	 */
+<span class="nc" id="L98">	WatchDir(Path dir, boolean recursive) throws IOException {</span>
+<span class="nc" id="L99">		this.watcher = FileSystems.getDefault().newWatchService();</span>
+<span class="nc" id="L100">		this.keys = new HashMap&lt;WatchKey, Path&gt;();</span>
+<span class="nc" id="L101">		this.recursive = recursive;</span>
+
+<span class="nc bnc" id="L103" title="All 2 branches missed.">		if (recursive) {</span>
+<span class="nc" id="L104">			System.out.format(&quot;Scanning %s ...\n&quot;, dir);</span>
+<span class="nc" id="L105">			registerAll(dir);</span>
+<span class="nc" id="L106">			System.out.println(&quot;Done.&quot;);</span>
+		} else {
+<span class="nc" id="L108">			register(dir);</span>
+		}
+
+		// enable trace after initial registration
+<span class="nc" id="L112">		this.trace = true;</span>
+<span class="nc" id="L113">	}</span>
+
+	/**
+	 * Process all events for keys queued to the watcher
+	 */
+	public LockInfo processEvents() {
+
+<span class="nc" id="L120">		boolean deleted = false;</span>
+<span class="nc" id="L121">		boolean created = false;</span>
+
+		for (;;) {
+
+			// wait for key to be signalled
+			WatchKey key;
+			try {
+<span class="nc" id="L128">				key = watcher.take();</span>
+<span class="nc" id="L129">			} catch (InterruptedException x) {</span>
+<span class="nc" id="L130">				return LockInfo.Error;</span>
+<span class="nc" id="L131">			}</span>
+
+<span class="nc" id="L133">			Path dir = keys.get(key);</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">			if (dir == null) {</span>
+<span class="nc" id="L135">				System.err.println(&quot;WatchKey not recognized!!&quot;);</span>
+<span class="nc" id="L136">				continue;</span>
+			}
+
+<span class="nc bnc" id="L139" title="All 2 branches missed.">			for (WatchEvent&lt;?&gt; event : key.pollEvents()) {</span>
+				@SuppressWarnings(&quot;rawtypes&quot;)
+<span class="nc" id="L141">				WatchEvent.Kind kind = event.kind();</span>
+
+				// TBD - provide example of how OVERFLOW event is handled
+<span class="nc bnc" id="L144" title="All 2 branches missed.">				if (kind == OVERFLOW) {</span>
+<span class="nc" id="L145">					continue;</span>
+				}
+
+				// Context for directory entry event is the file name of entry
+<span class="nc" id="L149">				WatchEvent&lt;Path&gt; ev = cast(event);</span>
+<span class="nc" id="L150">				Path name = ev.context();</span>
+<span class="nc" id="L151">				Path child = dir.resolve(name);</span>
+
+				// print out event
+
+				// System.out.format(&quot;%s: %s\n&quot;, event.kind().name(), child);
+
+<span class="nc bnc" id="L157" title="All 2 branches missed.">				if (kind == ENTRY_CREATE) {</span>
+<span class="nc" id="L158">					created = true;</span>
+				}
+
+<span class="nc bnc" id="L161" title="All 2 branches missed.">				if (kind == ENTRY_DELETE) {</span>
+<span class="nc" id="L162">					deleted = true;</span>
+				}
+
+				// if directory is created, and watching recursively, then
+				// register it and its sub-directories
+<span class="nc bnc" id="L167" title="All 4 branches missed.">				if (recursive &amp;&amp; (kind == ENTRY_CREATE)) {</span>
+					try {
+<span class="nc bnc" id="L169" title="All 2 branches missed.">						if (Files.isDirectory(child, NOFOLLOW_LINKS)) {</span>
+<span class="nc" id="L170">							registerAll(child);</span>
+						}
+<span class="nc" id="L172">					} catch (IOException x) {</span>
+						// ignore to keep sample readbale
+<span class="nc" id="L174">					}</span>
+				}
+<span class="nc" id="L176">			}</span>
+
+			// reset key and remove from set if directory no longer accessible
+<span class="nc" id="L179">			boolean valid = key.reset();</span>
+<span class="nc bnc" id="L180" title="All 2 branches missed.">			if (!valid) {</span>
+<span class="nc" id="L181">				keys.remove(key);</span>
+
+				// all directories are inaccessible
+<span class="nc bnc" id="L184" title="All 2 branches missed.">				if (keys.isEmpty()) {</span>
+<span class="nc" id="L185">					break;</span>
+				}
+			}
+
+<span class="nc bnc" id="L189" title="All 4 branches missed.">			if (deleted || created) {</span>
+<span class="nc" id="L190">				break;</span>
+			}
+<span class="nc" id="L192">		}</span>
+
+<span class="nc bnc" id="L194" title="All 4 branches missed.">		if (deleted &amp;&amp; created) {</span>
+
+<span class="nc" id="L196">			return LockInfo.Created;</span>
+<span class="nc bnc" id="L197" title="All 2 branches missed.">		} else if (deleted) {</span>
+
+<span class="nc" id="L199">			return LockInfo.Deleted;</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">		} else if (created) {</span>
+
+<span class="nc" id="L202">			return LockInfo.Created;</span>
+		} else {
+
+<span class="nc" id="L205">			return LockInfo.Error;</span>
+		}
+	}
+
+	static void usage() {
+<span class="nc" id="L210">		System.err.println(&quot;usage: java WatchDir [-r] dir&quot;);</span>
+<span class="nc" id="L211">		System.exit(-1);</span>
+<span class="nc" id="L212">	}</span>
+
+	public static void main(String[] args) throws IOException {
+		// parse arguments
+<span class="nc bnc" id="L216" title="All 4 branches missed.">		if (args.length == 0 || args.length &gt; 2)</span>
+<span class="nc" id="L217">			usage();</span>
+<span class="nc" id="L218">		boolean recursive = false;</span>
+<span class="nc" id="L219">		int dirArg = 0;</span>
+<span class="nc bnc" id="L220" title="All 2 branches missed.">		if (args[0].equals(&quot;-r&quot;)) {</span>
+<span class="nc bnc" id="L221" title="All 2 branches missed.">			if (args.length &lt; 2)</span>
+<span class="nc" id="L222">				usage();</span>
+<span class="nc" id="L223">			recursive = true;</span>
+<span class="nc" id="L224">			dirArg++;</span>
+		}
+
+		// register directory and process its events
+<span class="nc" id="L228">		Path dir = Paths.get(args[dirArg]);</span>
+<span class="nc" id="L229">		new WatchDir(dir, recursive).processEvents();</span>
+<span class="nc" id="L230">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

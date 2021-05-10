@@ -1,0 +1,512 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Distmesh.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.improver.distmesh</a> &gt; <span class="el_source">Distmesh.java</span></div><h1>Distmesh.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.improver.distmesh;
+
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.triangulate.DelaunayTriangulationBuilder;
+
+import org.apache.commons.lang3.tuple.Triple;
+import org.vadere.meshing.ConstantLineIterator;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.EikMeshPoint;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.MLine;
+import org.vadere.util.geometry.shapes.MPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.math.IDistanceFunction;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * The original DistMesh algorithm
+ *
+ * @see &lt;a href=&quot;http://persson.berkeley.edu/distmesh/&quot;&gt;DistMesh&lt;/a&gt;
+ */
+public class Distmesh {
+<span class="nc" id="L41">	private static final Logger log = Logger.getLogger(Distmesh.class);</span>
+<span class="nc" id="L42">	private Set&lt;EikMeshPoint&gt; points = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L43">	private Set&lt;MLine&lt;EikMeshPoint&gt;&gt; lines = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L44">	private List&lt;VTriangle&gt; triangles = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L45">	private List&lt;Triple&lt;MPoint, MPoint, MPoint&gt;&gt; triangleT = new ArrayList&lt;&gt;();</span>
+	private final IDistanceFunction distanceFunc;
+	private final IEdgeLengthFunction relativeDesiredEdgeLengthFunc;
+	private VRectangle regionBoundingBox;
+	private Collection&lt;? extends VShape&gt; obstacles;
+	private int steps;
+	private DelaunayTriangulationBuilder builder;
+	private GeometryFactory fact;
+	private int nTriangulations;
+	private Set&lt;EikMeshPoint&gt; fixPoints;
+<span class="nc" id="L55">	private Random random = new Random(0);</span>
+
+	// Parameters
+	private double initialEdgeLen;
+	private double geps;
+	private double deps;
+<span class="nc" id="L61">	private boolean firstStep = true;</span>
+<span class="nc" id="L62">	private boolean runParallel = false;</span>
+<span class="nc" id="L63">	private double maxMovementLen = 0;</span>
+	private boolean hasChanged;
+
+
+	public Distmesh(final IDistanceFunction distanceFunc,
+	                final IEdgeLengthFunction edgeLengthFunc,
+	                final double initialEdgeLen,
+	                final VRectangle bound,
+<span class="nc" id="L71">	                final Collection&lt;? extends VShape&gt; obstacleShapes) {</span>
+
+<span class="nc" id="L73">		this.distanceFunc = distanceFunc;</span>
+<span class="nc" id="L74">		this.relativeDesiredEdgeLengthFunc = edgeLengthFunc;</span>
+<span class="nc" id="L75">		this.regionBoundingBox = bound;</span>
+<span class="nc" id="L76">		this.obstacles = obstacleShapes;</span>
+<span class="nc" id="L77">		this.initialEdgeLen = initialEdgeLen;</span>
+
+<span class="nc" id="L79">		this.geps = .001 * initialEdgeLen;</span>
+<span class="nc" id="L80">		this.deps = 1.4901e-13 * initialEdgeLen;</span>
+<span class="nc" id="L81">		this.steps = 0;</span>
+<span class="nc" id="L82">		this.nTriangulations = 0;</span>
+
+<span class="nc" id="L84">		this.fact = null;</span>
+<span class="nc" id="L85">		this.builder = null;</span>
+<span class="nc" id="L86">		this.hasChanged = true;</span>
+
+		// initialize points.
+<span class="nc" id="L89">		this.points = generatePoints();</span>
+<span class="nc" id="L90">	}</span>
+
+	public void execute() {
+<span class="nc bnc" id="L93" title="All 6 branches missed.">		while(firstStep || maxMovementLen &gt; Parameters.DPTOL &amp;&amp; !hasMaximalSteps()) {</span>
+			//log.debug(&quot;quality: &quot; + getQuality());
+<span class="nc" id="L95">			step();</span>
+<span class="nc" id="L96">			log.info(&quot;quality:&quot; + getQuality());</span>
+<span class="nc" id="L97">			log.info(&quot;min-quality: &quot; + getMinQuality());</span>
+		}
+<span class="nc" id="L99">	}</span>
+
+	public boolean isFinished() {
+		//log.debug(&quot;quality: &quot; + test);
+<span class="nc bnc" id="L103" title="All 4 branches missed.">		return maxMovementLen &gt; Parameters.DPTOL &amp;&amp; !hasMaximalSteps();</span>
+	}
+
+	public boolean hasMaximalSteps() {
+<span class="nc bnc" id="L107" title="All 2 branches missed.">		return steps &gt;= Parameters.MAX_NUMBER_OF_STEPS;</span>
+	}
+
+	public void reTriangulate() {
+<span class="nc" id="L111">		reTriangulate(false);</span>
+<span class="nc" id="L112">	}</span>
+
+	public void reTriangulate(boolean force) {
+<span class="nc bnc" id="L115" title="All 6 branches missed.">		if(force || firstStep || maxMovementLen / initialEdgeLen &gt; Parameters.TOL) {</span>
+<span class="nc" id="L116">			firstStep = false;</span>
+<span class="nc" id="L117">			nTriangulations++;</span>
+
+			//log.debug(&quot;triangulation started&quot;);
+<span class="nc" id="L120">			Collection&lt;Coordinate&gt; coords = points.stream().map(p -&gt; new Coordinate(p.getX(), p.getY())).collect(Collectors.toList());</span>
+<span class="nc" id="L121">			fact = new GeometryFactory();</span>
+<span class="nc" id="L122">			builder = new DelaunayTriangulationBuilder();</span>
+
+<span class="nc" id="L124">			synchronized (this) {</span>
+<span class="nc" id="L125">				builder.setSites(coords);</span>
+<span class="nc" id="L126">				com.vividsolutions.jts.geom.GeometryCollection multiTris = (com.vividsolutions.jts.geom.GeometryCollection) builder.getTriangles(fact);</span>
+
+<span class="nc" id="L128">				HashMap&lt;EikMeshPoint, EikMeshPoint&gt; meshPoints = new HashMap();</span>
+<span class="nc" id="L129">				triangles = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L130">				triangleT = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L131">				lines = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">				for (int i = 0; i &lt; multiTris.getNumGeometries(); i++) {</span>
+<span class="nc" id="L133">					Polygon tri = (Polygon) multiTris.getGeometryN(i);</span>
+<span class="nc" id="L134">					Coordinate[] coordinates = tri.getCoordinates();</span>
+
+<span class="nc" id="L136">					EikMeshPoint p1 = new EikMeshPoint(coordinates[0].x, coordinates[0].y, false);</span>
+<span class="nc" id="L137">					EikMeshPoint p2 = new EikMeshPoint(coordinates[1].x, coordinates[1].y, false);</span>
+<span class="nc" id="L138">					EikMeshPoint p3 = new EikMeshPoint(coordinates[2].x, coordinates[2].y, false);</span>
+<span class="nc" id="L139">					p1.setFixPoint(fixPoints.contains(p1));</span>
+<span class="nc" id="L140">					p2.setFixPoint(fixPoints.contains(p2));</span>
+<span class="nc" id="L141">					p3.setFixPoint(fixPoints.contains(p3));</span>
+
+<span class="nc" id="L143">					VTriangle triangle = new VTriangle(new VPoint(p1.getX(), p1.getY()), new VPoint(p2.getX(), p2.getY()), new VPoint(p3.getX(), p3.getY()));</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">					if(distanceFunc.apply(triangle.midPoint()) &lt; -geps) {</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">						if(meshPoints.containsKey(p1)) {</span>
+<span class="nc" id="L146">							p1 = meshPoints.get(p1);</span>
+						}
+						else {
+<span class="nc" id="L149">							meshPoints.put(p1, p1);</span>
+						}
+
+<span class="nc bnc" id="L152" title="All 2 branches missed.">						if(meshPoints.containsKey(p2)) {</span>
+<span class="nc" id="L153">							p2 = meshPoints.get(p2);</span>
+						}
+						else {
+<span class="nc" id="L156">							meshPoints.put(p2, p2);</span>
+						}
+
+<span class="nc bnc" id="L159" title="All 2 branches missed.">						if(meshPoints.containsKey(p3)) {</span>
+<span class="nc" id="L160">							p3 = meshPoints.get(p3);</span>
+						}
+						else {
+<span class="nc" id="L163">							meshPoints.put(p3, p3);</span>
+						}
+
+<span class="nc" id="L166">						triangles.add(triangle);</span>
+<span class="nc" id="L167">						triangleT.add(Triple.of(p1, p2, p3));</span>
+<span class="nc" id="L168">						lines.add(new MLine&lt;&gt;(p1, p2));</span>
+<span class="nc" id="L169">						lines.add(new MLine&lt;&gt;(p2, p3));</span>
+<span class="nc" id="L170">						lines.add(new MLine&lt;&gt;(p3, p1));</span>
+					}
+				}
+<span class="nc" id="L173">				points = meshPoints.keySet();</span>
+<span class="nc" id="L174">			}</span>
+
+			//log.debug(&quot;triangulation finished&quot;);
+			//log.debug(&quot;#edges: &quot; + lines.size());
+			//log.debug(&quot;#points: &quot; + points.size());
+		}
+<span class="nc" id="L180">	}</span>
+
+	public int getNumberOfIllegalTriangles() {
+<span class="nc" id="L183">		int count = 0;</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">		for(Triple&lt;MPoint, MPoint, MPoint&gt; triangle1 : triangleT) {</span>
+<span class="nc" id="L185">			MPoint p1 = triangle1.getLeft();</span>
+<span class="nc" id="L186">			MPoint p2 = triangle1.getMiddle();</span>
+<span class="nc" id="L187">			MPoint p3 = triangle1.getRight();</span>
+
+<span class="nc bnc" id="L189" title="All 2 branches missed.">			for(MPoint point : points) {</span>
+<span class="nc bnc" id="L190" title="All 6 branches missed.">				if(!point.equals(p1) &amp;&amp; !point.equals(p2) &amp;&amp; !point.equals(p3)) {</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">					if(GeometryUtils.isInsideCircle(p1, p2, p3, point.getX(), point.getY(), GeometryUtils.DOUBLE_EPS)) {</span>
+<span class="nc" id="L192">						count++;</span>
+<span class="nc" id="L193">						break;</span>
+					}
+				}
+<span class="nc" id="L196">			}</span>
+<span class="nc" id="L197">		}</span>
+<span class="nc" id="L198">		return count;</span>
+	}
+
+	public void improve() {
+<span class="nc" id="L202">		step();</span>
+<span class="nc" id="L203">	}</span>
+
+	/*
+	Stellt den Verlauf der Iterationen dar. Innerhalb der while(true) passiert eine Iteration des Algorithmus
+	 */
+	public void step()
+	{
+<span class="nc" id="L210">		hasChanged = true;</span>
+<span class="nc" id="L211">		steps++;</span>
+<span class="nc" id="L212">		reTriangulate();</span>
+
+		/*
+		 double len = Math.sqrt((p1.getX() - p2.getX()) * (p1.getX() - p2.getX()) + (p1.getY() - p2.getY()) * (p1.getY() - p2.getY()));
+        double desiredLen = edgeLengthFunc.apply(new VPoint((p1.getX() + p2.getX()) * 0.5, (p1.getY() + p2.getY()) * 0.5)) * Parameters.FSCALE * scalingFactor;
+
+		double lenDiff = Math.max(desiredLen - len, 0);
+        p1.increaseVelocity(new VPoint((p1.getX() - p2.getX()) * (lenDiff / len), (p1.getY() - p2.getY()) * (lenDiff / len)));
+		 */
+
+		// compute the forces / velocities for each line
+<span class="nc" id="L223">		double scalingFactor = computeScalingFactor(lines);</span>
+		//log.debug(&quot;scaling factor: &quot; + scalingFactor);
+
+<span class="nc bnc" id="L226" title="All 2 branches missed.">		Stream&lt;MLine&lt;EikMeshPoint&gt;&gt; lineStream = runParallel ? lines.parallelStream() : lines.stream();</span>
+<span class="nc" id="L227">		lineStream.forEach(line -&gt; {</span>
+<span class="nc" id="L228">			double len = line.length();</span>
+<span class="nc" id="L229">			double desiredLen = relativeDesiredEdgeLengthFunc.apply(line.midPoint()) * Parameters.FSCALE * scalingFactor;</span>
+			//double desiredLen = 10.4 * 1.2;
+			//len = 10;
+<span class="nc" id="L232">			double lenDiff = Math.max(desiredLen - len, 0);</span>
+			//double lenDiff = desiredLen - len;
+			//double force = desiredLen - len;
+<span class="nc" id="L235">			IPoint forceDirection = new VPoint(line.getP1()).subtract(new VPoint(line.getP2())).norm();</span>
+<span class="nc" id="L236">			VPoint directedForce = new VPoint(forceDirection.scalarMultiply(lenDiff));</span>
+
+			//VPoint directedForce = new VPoint((lenDiff / len) * (line.getX1() - line.getX2()), (lenDiff / len) * (line.getY1() - line.getY2()));
+			//VPoint directedForce = new VPoint(3, 3);
+<span class="nc" id="L240">			line.setVelocity(directedForce);</span>
+			//line.setVelocity(line.getVelocity().add(new VPoint(Math.random(), Math.random())));
+			//System.out.println(&quot;directed: &quot; + directedForce);
+<span class="nc" id="L243">		});</span>
+
+
+<span class="nc bnc" id="L246" title="All 2 branches missed.">		lineStream = runParallel ? lines.parallelStream() : lines.stream();</span>
+
+<span class="nc" id="L248">		lineStream.forEach(line -&gt; {</span>
+<span class="nc bnc" id="L249" title="All 2 branches missed.">			if(!line.p1.isFixPoint()) {</span>
+<span class="nc" id="L250">				synchronized (line.p1) {</span>
+<span class="nc" id="L251">					line.p1.increaseVelocity(line.getVelocity());</span>
+<span class="nc" id="L252">				}</span>
+			}
+
+<span class="nc bnc" id="L255" title="All 2 branches missed.">			if(!line.p2.isFixPoint()) {</span>
+<span class="nc" id="L256">				synchronized (line.p2) {</span>
+<span class="nc" id="L257">					line.p2.decreaseVelocity(line.getVelocity());</span>
+<span class="nc" id="L258">				}</span>
+			}
+<span class="nc" id="L260">		});</span>
+
+		// do the euler step, we change the mutable point, this may destroy there unquieness.
+<span class="nc" id="L263">		maxMovementLen = 0.0;</span>
+
+<span class="nc bnc" id="L265" title="All 2 branches missed.">		Stream&lt;EikMeshPoint&gt; pointStream = runParallel ? points.parallelStream() : points.stream();</span>
+
+<span class="nc" id="L267">		pointStream.forEach(point -&gt; {</span>
+<span class="nc bnc" id="L268" title="All 2 branches missed.">			if(!point.isFixPoint()) {</span>
+				//log.info(&quot;vel:&quot; + point.getVelocity().distanceToOrigin());
+<span class="nc" id="L270">				VPoint pOld = new VPoint(point.getX(), point.getY());</span>
+<span class="nc" id="L271">				IPoint movement = point.getVelocity().scalarMultiply(Parameters.DELTAT);</span>
+
+				//System.out.println(&quot;movement=&quot;+movementLen);
+
+<span class="nc" id="L275">				point.add(movement);</span>
+<span class="nc" id="L276">				point.setVelocity(new VPoint(0, 0));</span>
+
+				// back projection
+<span class="nc" id="L279">				double distance = distanceFunc.apply(point);</span>
+<span class="nc bnc" id="L280" title="All 2 branches missed.">				if(distance &gt; 0) {</span>
+<span class="nc" id="L281">					VPoint dx = new VPoint(point.getX(), point.getY()).add(new VPoint(deps,0));</span>
+<span class="nc" id="L282">					VPoint dy = new VPoint(point.getX(), point.getY()).add(new VPoint(0,deps));</span>
+<span class="nc" id="L283">					double dGradPX = (distanceFunc.apply(dx) - distance) / deps;</span>
+<span class="nc" id="L284">					double dGradPY = (distanceFunc.apply(dy) - distance) / deps;</span>
+<span class="nc" id="L285">					point.subtract(new VPoint(dGradPX * distance,  dGradPY * distance));</span>
+					// extension
+					//double dGrad2 = dGradPX * dGradPX + dGradPY * dGradPY;
+					//point.subtract(new VPoint(initialEdgeLen * distance * dGradPX / dGrad2, initialEdgeLen * distance * dGradPY / dGrad2));
+				}
+				else {
+
+				}
+
+<span class="nc" id="L294">				double movementLen = pOld.subtract(point).distanceToOrigin();</span>
+<span class="nc" id="L295">				synchronized (this) {</span>
+<span class="nc bnc" id="L296" title="All 2 branches missed.">					if(maxMovementLen &lt; movementLen) {</span>
+<span class="nc" id="L297">						maxMovementLen = movementLen;</span>
+					}
+<span class="nc" id="L299">				}</span>
+			}
+<span class="nc" id="L301">		});</span>
+
+		//log.debug(&quot;maxmove: &quot; + maxMovementLen / initialEdgeLen);
+		//log.debug(&quot;scale: &quot; + scalingFactor);
+
+<span class="nc" id="L306">		firstStep = false;</span>
+<span class="nc" id="L307">	}</span>
+	/*
+	d=feval(fd,p,varargin{:}); ix=d&gt;0;                 % Find points outside (d&gt;0)
+  dgradx=(feval(fd,[p(ix,1)+deps,p(ix,2)],varargin{:})-d(ix))/deps; % Numerical
+  dgrady=(feval(fd,[p(ix,1),p(ix,2)+deps],varargin{:})-d(ix))/deps; %    gradient
+  dgrad2=dgradx.^2+dgrady.^2;
+  p(ix,:)=p(ix,:)-[d(ix).*dgradx./dgrad2,d(ix).*dgrady./dgrad2];    % Project
+	 */
+
+	/*
+	Berechnet die durchschnittliche Qualität aller erzeugten Dreiecke
+	 */
+	public double getQuality()
+	{
+<span class="nc" id="L321">		Collection&lt;VTriangle&gt; triangles = getCurrentTriangles();</span>
+<span class="nc" id="L322">		double aveSum = 0;</span>
+<span class="nc bnc" id="L323" title="All 2 branches missed.">		for(VTriangle triangle : triangles) {</span>
+<span class="nc" id="L324">			VLine[] lines = triangle.getLines();</span>
+<span class="nc" id="L325">			double a = lines[0].length();</span>
+<span class="nc" id="L326">			double b = lines[1].length();</span>
+<span class="nc" id="L327">			double c = lines[2].length();</span>
+<span class="nc" id="L328">			double part = 0.0;</span>
+<span class="nc bnc" id="L329" title="All 6 branches missed.">			if(a != 0.0 &amp;&amp; b != 0.0 &amp;&amp; c != 0.0) {</span>
+<span class="nc" id="L330">				part = ((b + c - a) * (c + a - b) * (a + b - c)) / (a * b * c);</span>
+			}
+<span class="nc" id="L332">			aveSum += part;</span>
+<span class="nc bnc" id="L333" title="All 4 branches missed.">			if(Double.isNaN(part) || Double.isNaN(aveSum)) {</span>
+<span class="nc" id="L334">				throw new IllegalArgumentException(triangle + &quot; is not a feasible triangle!&quot;);</span>
+			}
+<span class="nc" id="L336">		}</span>
+
+<span class="nc" id="L338">		return aveSum / triangles.size();</span>
+	}
+
+	public int getNumberOfReTriangulations() {
+<span class="nc" id="L342">		return nTriangulations;</span>
+	}
+
+	public double getQuality(final VTriangle triangle) {
+<span class="nc" id="L346">		VLine[] lines = triangle.getLines();</span>
+<span class="nc" id="L347">		double a = lines[0].length();</span>
+<span class="nc" id="L348">		double b = lines[1].length();</span>
+<span class="nc" id="L349">		double c = lines[2].length();</span>
+<span class="nc" id="L350">		double part = 0.0;</span>
+<span class="nc bnc" id="L351" title="All 6 branches missed.">		if(a != 0.0 &amp;&amp; b != 0.0 &amp;&amp; c != 0.0) {</span>
+<span class="nc" id="L352">			part = ((b + c - a) * (c + a - b) * (a + b - c)) / (a * b * c);</span>
+		}
+
+<span class="nc bnc" id="L355" title="All 2 branches missed.">		if(Double.isNaN(part)) {</span>
+<span class="nc" id="L356">			throw new IllegalArgumentException(triangle + &quot; is not a feasible triangle!&quot;);</span>
+		}
+
+<span class="nc" id="L359">		return part;</span>
+	}
+
+	public double getMinQuality()
+	{
+<span class="nc" id="L364">		double minQuality = 100000;</span>
+<span class="nc" id="L365">		Collection&lt;VTriangle&gt; triangles = getCurrentTriangles();</span>
+<span class="nc bnc" id="L366" title="All 2 branches missed.">		for(VTriangle triangle : triangles) {</span>
+<span class="nc" id="L367">			VLine[] lines = triangle.getLines();</span>
+<span class="nc" id="L368">			double a = lines[0].length();</span>
+<span class="nc" id="L369">			double b = lines[1].length();</span>
+<span class="nc" id="L370">			double c = lines[2].length();</span>
+<span class="nc" id="L371">			double part = 0.0;</span>
+<span class="nc bnc" id="L372" title="All 6 branches missed.">			if(a != 0.0 &amp;&amp; b != 0.0 &amp;&amp; c != 0.0) {</span>
+<span class="nc" id="L373">				part = ((b + c - a) * (c + a - b) * (a + b - c)) / (a * b * c);</span>
+			}
+<span class="nc bnc" id="L375" title="All 2 branches missed.">			if(part &lt; minQuality) {</span>
+<span class="nc" id="L376">				minQuality = part;</span>
+			}
+
+<span class="nc bnc" id="L379" title="All 2 branches missed.">			if(Double.isNaN(part)) {</span>
+<span class="nc" id="L380">				throw new IllegalArgumentException(triangle + &quot; is not a feasible triangle!&quot;);</span>
+			}
+<span class="nc" id="L382">		}</span>
+
+<span class="nc" id="L384">		return minQuality;</span>
+	}
+
+	/**
+	 * Formula 2.6
+	 * @param lines
+	 * @return
+	 */
+	private double computeScalingFactor(final Collection&lt;MLine&lt;EikMeshPoint&gt;&gt; lines) {
+<span class="nc" id="L393">		double sumOfqDesiredEdgeLength = 0;</span>
+<span class="nc" id="L394">		double sumOfqLengths = 0;</span>
+<span class="nc bnc" id="L395" title="All 2 branches missed.">		for(MLine line : lines) {</span>
+<span class="nc" id="L396">			VPoint midPoint = line.midPoint();</span>
+<span class="nc" id="L397">			double desiredEdgeLength = relativeDesiredEdgeLengthFunc.apply(midPoint);</span>
+<span class="nc" id="L398">			sumOfqDesiredEdgeLength += (desiredEdgeLength * desiredEdgeLength);</span>
+<span class="nc" id="L399">			sumOfqLengths += (line.length() * line.length());</span>
+<span class="nc" id="L400">		}</span>
+<span class="nc" id="L401">		return Math.sqrt(sumOfqLengths/sumOfqDesiredEdgeLength);</span>
+	}
+
+
+	private Set&lt;EikMeshPoint&gt; generatePoints() {
+<span class="nc" id="L406">		Set&lt;EikMeshPoint&gt; gridPoints = generateGridPoints();</span>
+		//Set&lt;MeshPoint&gt; fixPoints = generateFixPoints();
+
+		// point density function 1 / (desiredLen^2)
+<span class="nc" id="L410">		Function&lt;IPoint, Double&gt; pointDensityFunc = vertex -&gt; 1 / (relativeDesiredEdgeLengthFunc.apply(vertex) * relativeDesiredEdgeLengthFunc.apply(vertex));</span>
+
+		// bound point density
+<span class="nc" id="L413">		double max = gridPoints.stream()</span>
+<span class="nc" id="L414">				.mapToDouble(vertex -&gt; pointDensityFunc.apply(vertex))</span>
+<span class="nc" id="L415">				.max()</span>
+<span class="nc" id="L416">				.getAsDouble();</span>
+
+		/*
+		 * Reject points with a certain probability which depends on the relative desired edge length.
+		 * The probability for the rejection increases for large desired edge length!
+		 */
+<span class="nc" id="L422">		Set&lt;EikMeshPoint&gt; generatedPoints = gridPoints.stream()</span>
+<span class="nc bnc" id="L423" title="All 2 branches missed.">				.filter(vertex -&gt; random.nextDouble() &lt; pointDensityFunc.apply(vertex) / max)</span>
+<span class="nc" id="L424">				.collect(Collectors.toSet());</span>
+
+<span class="nc" id="L426">		fixPoints = getFixPoints();</span>
+
+		// remove points with equal coords but not fix
+<span class="nc" id="L429">		generatedPoints.removeAll(fixPoints);</span>
+
+		// add fix points
+<span class="nc" id="L432">		generatedPoints.addAll(fixPoints);</span>
+
+<span class="nc" id="L434">		return generatedPoints;</span>
+	}
+
+	/**
+	 * Generates the starting points of the algorithm.
+	 * @param
+	 * @return
+	 */
+	private Set&lt;EikMeshPoint&gt; generateGridPoints() {
+<span class="nc" id="L443">		int elementsInCol = (int) Math.ceil((regionBoundingBox.getWidth()) / initialEdgeLen + 1);</span>
+<span class="nc" id="L444">		int elementsInRow = (int) Math.ceil((regionBoundingBox.getHeight()) / (initialEdgeLen * Math.sqrt(3)/2));</span>
+<span class="nc" id="L445">		double startX = regionBoundingBox.getX();</span>
+<span class="nc" id="L446">		double startY = regionBoundingBox.getY();</span>
+<span class="nc" id="L447">		Set&lt;EikMeshPoint&gt; generatedPoints = new HashSet&lt;&gt;(elementsInRow * elementsInCol);</span>
+<span class="nc" id="L448">		double sqrt3 = Math.sqrt(3);</span>
+
+<span class="nc bnc" id="L450" title="All 2 branches missed.">		for(int j = 0; j &lt; elementsInRow; j++) {</span>
+<span class="nc bnc" id="L451" title="All 2 branches missed.">			for(int i = 0; i &lt; elementsInCol; i++) {</span>
+				EikMeshPoint point;
+<span class="nc bnc" id="L453" title="All 4 branches missed.">				if( j != 0 &amp;&amp; j%2 != 0) {</span>
+<span class="nc" id="L454">					point = new EikMeshPoint(startX+i* initialEdgeLen + initialEdgeLen /2, startY+j* initialEdgeLen *sqrt3/2, false);</span>
+				} else {
+<span class="nc" id="L456">					point = new EikMeshPoint(startX+i* initialEdgeLen, startY+j* initialEdgeLen *sqrt3/2, false);</span>
+				}
+
+				//p -&gt; fd.apply(p) &lt; geps
+<span class="nc bnc" id="L460" title="All 2 branches missed.">				if(distanceFunc.apply(point) &lt; -geps) {</span>
+<span class="nc" id="L461">					generatedPoints.add(point);</span>
+				}
+			}
+		}
+<span class="nc" id="L465">		return generatedPoints;</span>
+	}
+
+	private Set&lt;EikMeshPoint&gt; getFixPoints() {
+<span class="nc" id="L469">		Set&lt;EikMeshPoint&gt; pointSet = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L470" title="All 2 branches missed.">		for(VShape shape : obstacles) {</span>
+<span class="nc" id="L471">			pointSet.addAll(shape.getPath().stream().map(p -&gt;  new EikMeshPoint(p.getX(), p.getY(), true)).collect(Collectors.toList()));</span>
+<span class="nc" id="L472">		}</span>
+<span class="nc" id="L473">		return pointSet;</span>
+	}
+
+
+	/*
+	Unterteilt eine Linie eines Objekts in Fixpunkte
+	 */
+	private List&lt;EikMeshPoint&gt; divLine(double x1, double y1, double x2, double y2, int segments) {
+<span class="nc" id="L481">		ConstantLineIterator lineIterator = new ConstantLineIterator(new VLine(x1, y1, x2, y2), initialEdgeLen);</span>
+<span class="nc" id="L482">		List&lt;EikMeshPoint&gt; points = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L483" title="All 2 branches missed.">		while (lineIterator.hasNext()) {</span>
+<span class="nc" id="L484">			IPoint iPoint = lineIterator.next();</span>
+<span class="nc" id="L485">			points.add(new EikMeshPoint(iPoint.getX(), iPoint.getY(), true));</span>
+<span class="nc" id="L486">		}</span>
+
+<span class="nc" id="L488">		return points;</span>
+	}
+
+	public Collection&lt;EikMeshPoint&gt; getPoints() {
+<span class="nc" id="L492">		return points;</span>
+	}
+
+	private VTriangle tripleToTriangle(final Triple&lt;EikMeshPoint, EikMeshPoint, EikMeshPoint&gt; triple) {
+<span class="nc" id="L496">		return new VTriangle(triple.getLeft().toVPoint(), triple.getMiddle().toVPoint(), triple.getRight().toVPoint());</span>
+	}
+
+	private Collection&lt;VTriangle&gt; getCurrentTriangles() {
+<span class="nc" id="L500">		return triangles;</span>
+	}
+
+	public Collection&lt;VTriangle&gt; getTriangles() {
+<span class="nc bnc" id="L504" title="All 2 branches missed.">		if(builder == null) {</span>
+<span class="nc" id="L505">			return new ArrayList();</span>
+		}
+<span class="nc" id="L507">		synchronized (this) {</span>
+<span class="nc" id="L508">			return triangleT.stream().map(triple -&gt; new VTriangle(new VPoint(triple.getLeft()), new VPoint(triple.getMiddle()), new VPoint(triple.getRight()))).collect(Collectors.toList());</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

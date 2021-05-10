@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BeachLine.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.voronoi</a> &gt; <span class="el_source">BeachLine.java</span></div><h1>BeachLine.java</h1><pre class="source lang-java linenums">package org.vadere.util.voronoi;
+
+import java.util.LinkedList;
+import java.util.List;
+
+import org.vadere.util.geometry.shapes.VPoint;
+
+public class BeachLine {
+<span class="nc" id="L9">	private BeachLineNode root = null;</span>
+	private final RectangleLimits limits;
+
+<span class="nc" id="L12">	public BeachLine(RectangleLimits limits) {</span>
+<span class="nc" id="L13">		this.limits = limits;</span>
+<span class="nc" id="L14">	}</span>
+
+	boolean isEmpty() {
+<span class="nc bnc" id="L17" title="All 2 branches missed.">		return root == null;</span>
+	}
+
+	void setRoot(int id, VPoint site, List&lt;Face&gt; faces) {
+<span class="nc bnc" id="L21" title="All 2 branches missed.">		if (root == null) {</span>
+<span class="nc" id="L22">			Face f = new Face(id, site, limits);</span>
+<span class="nc" id="L23">			root = new BeachLineLeaf(site, f);</span>
+<span class="nc" id="L24">			faces.add(f);</span>
+<span class="nc" id="L25">		} else {</span>
+<span class="nc" id="L26">			throw new IllegalArgumentException();</span>
+		}
+<span class="nc" id="L28">	}</span>
+
+	BeachLineLeaf getArcAboveSite(VPoint site) {
+<span class="nc" id="L31">		BeachLineNode current = root;</span>
+<span class="nc" id="L32">		double yCoordinate = site.y;</span>
+<span class="nc" id="L33">		double xCoordinate = site.x;</span>
+
+<span class="nc bnc" id="L35" title="All 2 branches missed.">		while (current.getClass() == BeachLineInternal.class) {</span>
+<span class="nc" id="L36">			BeachLineInternal internal = (BeachLineInternal) current;</span>
+
+<span class="nc bnc" id="L38" title="All 2 branches missed.">			if (internal.getBreakPoint(yCoordinate) &lt; xCoordinate) {</span>
+<span class="nc" id="L39">				current = internal.getRightChild();</span>
+			} else {
+<span class="nc" id="L41">				current = internal.getLeftChild();</span>
+			}
+<span class="nc" id="L43">		}</span>
+
+<span class="nc" id="L45">		return (BeachLineLeaf) current;</span>
+	}
+
+	BeachLineLeaf addSite(int id, VPoint site, BeachLineLeaf arc,
+			List&lt;Face&gt; faces, boolean siteOnHorizontalLine) {
+
+		BeachLineInternal parent;
+		BeachLineLeaf centerLeaf;
+		BeachLineInternal upperNode;
+
+<span class="nc bnc" id="L55" title="All 2 branches missed.">		if (!siteOnHorizontalLine) {</span>
+<span class="nc" id="L56">			parent = arc.getParent();</span>
+
+<span class="nc" id="L58">			BeachLineLeaf leftLeaf = new BeachLineLeaf(arc.getSite(),</span>
+<span class="nc" id="L59">					arc.getFace());</span>
+<span class="nc" id="L60">			BeachLineLeaf rightLeaf = new BeachLineLeaf(arc.getSite(),</span>
+<span class="nc" id="L61">					arc.getFace());</span>
+<span class="nc" id="L62">			centerLeaf = new BeachLineLeaf(site, new Face(id, site, faces,</span>
+					limits));
+
+<span class="nc" id="L65">			BeachLineLeaf predecessor = arc.getPredecessor();</span>
+<span class="nc" id="L66">			BeachLineLeaf successor = arc.getSuccessor();</span>
+
+<span class="nc bnc" id="L68" title="All 2 branches missed.">			if (predecessor != null) {</span>
+<span class="nc" id="L69">				predecessor.setSuccessor(leftLeaf);</span>
+			}
+<span class="nc bnc" id="L71" title="All 2 branches missed.">			if (successor != null) {</span>
+<span class="nc" id="L72">				successor.setPredecessor(rightLeaf);</span>
+			}
+
+<span class="nc" id="L75">			leftLeaf.setPredecessor(predecessor);</span>
+<span class="nc" id="L76">			leftLeaf.setSuccessor(centerLeaf);</span>
+<span class="nc" id="L77">			rightLeaf.setPredecessor(centerLeaf);</span>
+<span class="nc" id="L78">			rightLeaf.setSuccessor(successor);</span>
+<span class="nc" id="L79">			centerLeaf.setPredecessor(leftLeaf);</span>
+<span class="nc" id="L80">			centerLeaf.setSuccessor(rightLeaf);</span>
+
+<span class="nc" id="L82">			BeachLineInternal lowerNode = new BeachLineInternal(centerLeaf,</span>
+<span class="nc" id="L83">					rightLeaf, site, arc.getSite());</span>
+<span class="nc" id="L84">			upperNode = new BeachLineInternal(leftLeaf, lowerNode,</span>
+<span class="nc" id="L85">					arc.getSite(), site);</span>
+
+<span class="nc" id="L87">			upperNode.setParent(parent);</span>
+<span class="nc" id="L88">			lowerNode.setParent(upperNode);</span>
+<span class="nc" id="L89">			centerLeaf.setParent(lowerNode);</span>
+<span class="nc" id="L90">			rightLeaf.setParent(lowerNode);</span>
+<span class="nc" id="L91">			leftLeaf.setParent(upperNode);</span>
+<span class="nc" id="L92">		} else {</span>
+<span class="nc" id="L93">			parent = arc.getParent();</span>
+
+<span class="nc" id="L95">			BeachLineLeaf leftLeaf = new BeachLineLeaf(arc.getSite(),</span>
+<span class="nc" id="L96">					arc.getFace());</span>
+<span class="nc" id="L97">			centerLeaf = new BeachLineLeaf(site, new Face(id, site, faces,</span>
+					limits));
+
+<span class="nc" id="L100">			BeachLineLeaf predecessor = arc.getPredecessor();</span>
+<span class="nc" id="L101">			BeachLineLeaf successor = arc.getSuccessor();</span>
+
+<span class="nc bnc" id="L103" title="All 2 branches missed.">			if (predecessor != null) {</span>
+<span class="nc" id="L104">				predecessor.setSuccessor(leftLeaf);</span>
+			}
+<span class="nc bnc" id="L106" title="All 2 branches missed.">			if (successor != null) {</span>
+<span class="nc" id="L107">				successor.setPredecessor(centerLeaf);</span>
+			}
+
+<span class="nc" id="L110">			leftLeaf.setPredecessor(predecessor);</span>
+<span class="nc" id="L111">			leftLeaf.setSuccessor(centerLeaf);</span>
+<span class="nc" id="L112">			centerLeaf.setPredecessor(leftLeaf);</span>
+<span class="nc" id="L113">			centerLeaf.setSuccessor(successor);</span>
+
+<span class="nc" id="L115">			upperNode = new BeachLineInternal(leftLeaf, centerLeaf,</span>
+<span class="nc" id="L116">					arc.getSite(), site);</span>
+
+<span class="nc" id="L118">			upperNode.setParent(parent);</span>
+<span class="nc" id="L119">			centerLeaf.setParent(upperNode);</span>
+<span class="nc" id="L120">			leftLeaf.setParent(upperNode);</span>
+		}
+
+<span class="nc bnc" id="L123" title="All 2 branches missed.">		if (parent != null) {</span>
+<span class="nc" id="L124">			parent.replaceNode(arc, upperNode);</span>
+		} else {
+<span class="nc" id="L126">			root = upperNode;</span>
+		}
+
+<span class="nc" id="L129">		return centerLeaf;</span>
+	}
+
+	BeachLineInternal deleteLeaf(BeachLineLeaf leaf) {
+		BeachLineInternal breakPoint;
+
+<span class="nc" id="L135">		BeachLineInternal parent = leaf.getParent();</span>
+		BeachLineNode siblingNode;
+		VPoint siblingSite;
+
+<span class="nc" id="L139">		leaf.getPredecessor().setSuccessor(leaf.getSuccessor());</span>
+<span class="nc" id="L140">		leaf.getSuccessor().setPredecessor(leaf.getPredecessor());</span>
+
+<span class="nc bnc" id="L142" title="All 2 branches missed.">		if (parent.getLeftChild() == leaf) {</span>
+<span class="nc" id="L143">			siblingNode = parent.getRightChild();</span>
+<span class="nc" id="L144">			siblingSite = parent.getRightSite();</span>
+<span class="nc" id="L145">			replace(parent, siblingNode);</span>
+
+<span class="nc" id="L147">			breakPoint = getLeftBreakPoint(siblingNode);</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">			if (breakPoint != null) {</span>
+<span class="nc" id="L149">				breakPoint.setRightSite(siblingSite);</span>
+			}
+<span class="nc bnc" id="L151" title="All 2 branches missed.">		} else if (parent.getRightChild() == leaf) {</span>
+<span class="nc" id="L152">			siblingNode = parent.getLeftChild();</span>
+<span class="nc" id="L153">			siblingSite = parent.getLeftSite();</span>
+<span class="nc" id="L154">			replace(parent, siblingNode);</span>
+
+<span class="nc" id="L156">			breakPoint = getRightBreakPoint(siblingNode);</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">			if (breakPoint != null) {</span>
+<span class="nc" id="L158">				breakPoint.setLeftSite(siblingSite);</span>
+			}
+		} else {
+<span class="nc" id="L161">			throw new IllegalArgumentException();</span>
+		}
+
+<span class="nc" id="L164">		return breakPoint;</span>
+	}
+
+	BeachLineInternal getLeftBreakPoint(BeachLineNode node) {
+<span class="nc" id="L168">		BeachLineInternal parent = node.getParent();</span>
+
+<span class="nc bnc" id="L170" title="All 2 branches missed.">		if (parent == null) {</span>
+<span class="nc" id="L171">			return null;</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">		} else if (parent.getLeftChild() != node) {</span>
+<span class="nc" id="L173">			return parent;</span>
+		} else {
+<span class="nc" id="L175">			return getLeftBreakPoint(parent);</span>
+		}
+	}
+
+	BeachLineInternal getRightBreakPoint(BeachLineNode node) {
+<span class="nc" id="L180">		BeachLineInternal parent = node.getParent();</span>
+
+<span class="nc bnc" id="L182" title="All 2 branches missed.">		if (parent == null) {</span>
+<span class="nc" id="L183">			return null;</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">		} else if (parent.getRightChild() != node) {</span>
+<span class="nc" id="L185">			return parent;</span>
+		} else {
+<span class="nc" id="L187">			return getRightBreakPoint(parent);</span>
+		}
+	}
+
+	private void replace(BeachLineNode toReplace, BeachLineNode replacement) {
+<span class="nc" id="L192">		BeachLineInternal parent = toReplace.getParent();</span>
+
+<span class="nc" id="L194">		replacement.setParent(parent);</span>
+
+<span class="nc bnc" id="L196" title="All 2 branches missed.">		if (root == toReplace) {</span>
+<span class="nc" id="L197">			root = replacement;</span>
+		} else {
+<span class="nc bnc" id="L199" title="All 2 branches missed.">			if (parent.getLeftChild() == toReplace) {</span>
+<span class="nc" id="L200">				parent.setLeftChild(replacement);</span>
+<span class="nc bnc" id="L201" title="All 2 branches missed.">			} else if (parent.getRightChild() == toReplace) {</span>
+<span class="nc" id="L202">				parent.setRightChild(replacement);</span>
+			} else {
+<span class="nc" id="L204">				throw new IllegalStateException();</span>
+			}
+		}
+<span class="nc" id="L207">	}</span>
+
+	BeachLineInternal getLeftInternal() {
+<span class="nc" id="L210">		BeachLineNode node = root;</span>
+
+<span class="nc bnc" id="L212" title="All 2 branches missed.">		while (node.getClass() == BeachLineInternal.class) {</span>
+<span class="nc" id="L213">			node = node.getParent();</span>
+		}
+
+<span class="nc" id="L216">		return node.getParent();</span>
+	}
+
+	// DEBUG
+	void printTree() {
+
+<span class="nc" id="L222">		List&lt;BeachLineNode&gt; nodes = new LinkedList&lt;BeachLineNode&gt;();</span>
+<span class="nc" id="L223">		List&lt;BeachLineNode&gt; nextNodes = new LinkedList&lt;BeachLineNode&gt;();</span>
+<span class="nc" id="L224">		nodes.add(root);</span>
+		BeachLineNode left, right;
+
+<span class="nc" id="L227">		System.out.println();</span>
+
+<span class="nc bnc" id="L229" title="All 2 branches missed.">		while (!nodes.isEmpty()) {</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">			for (BeachLineNode n : nodes) {</span>
+<span class="nc" id="L231">				System.out.print(n.hashCode() + &quot; &quot;);</span>
+
+<span class="nc bnc" id="L233" title="All 2 branches missed.">				if (n.getClass() == BeachLineInternal.class) {</span>
+<span class="nc" id="L234">					BeachLineInternal internal = (BeachLineInternal) n;</span>
+<span class="nc" id="L235">					left = internal.getLeftChild();</span>
+<span class="nc" id="L236">					right = internal.getRightChild();</span>
+<span class="nc" id="L237">					nextNodes.add(left);</span>
+<span class="nc" id="L238">					nextNodes.add(right);</span>
+				}
+<span class="nc" id="L240">			}</span>
+<span class="nc" id="L241">			System.out.println();</span>
+
+<span class="nc" id="L243">			nodes = nextNodes;</span>
+<span class="nc" id="L244">			nextNodes = new LinkedList&lt;BeachLineNode&gt;();</span>
+		}
+
+<span class="nc" id="L247">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

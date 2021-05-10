@@ -1,0 +1,41 @@
+<h1> MainPanel</h1>
+
+<p>
+Main panel of the visualization window, used to display the simulation
+results. This includes the visualization of the observation area along with
+obstacles and pedestrians etc. The panel holds several lists for thread-safe
+simulation data exchange between main and draw thread. The access to these
+lists is controlled by a synchronization object (drawDataSynchronizer) to
+avoid threading issues. While the simulation (main thread) pushes data at the
+end of the lists, the draw list pops the first element and displays the data.
+Currently the lists store only one -the last generated data- element which is
+replaced by the main thread when new data is available. As the exchanged data
+must not be shared between main and draw thread, the data exchanged is just a
+(incomplete) copy of the original simulation data.
+
+</p>
+
+<hr>
+<h2> Field: rendererChangeListeners</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: serialVersionUID</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: renderer</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: resources</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: model</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: selectionMode</h2>
+<p>---</p>
+

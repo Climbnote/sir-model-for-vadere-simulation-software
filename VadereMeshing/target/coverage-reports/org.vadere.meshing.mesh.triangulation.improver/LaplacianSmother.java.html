@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LaplacianSmother.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.improver</a> &gt; <span class="el_source">LaplacianSmother.java</span></div><h1>LaplacianSmother.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.improver;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PMesh;
+import org.vadere.meshing.mesh.gen.PVertex;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IPointLocator;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.EikMeshPoint;
+import org.vadere.meshing.mesh.triangulation.triangulator.gen.GenRandomPointsSetTriangulator;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.math.IDistanceFunction;
+import org.vadere.util.geometry.shapes.*;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+/**
+ * @author Benedikt Zoennchen
+ */
+public class LaplacianSmother implements IPMeshImprover {
+<span class="nc" id="L29">    private static final Logger log = Logger.getLogger(LaplacianSmother.class);</span>
+
+    private IDistanceFunction distanceFunc;
+    private IEdgeLengthFunction edgeLengthFunc;
+    private IIncrementalTriangulation&lt;PVertex, PHalfEdge, PFace&gt; triangulation;
+    private Collection&lt;? extends VShape&gt; obstacleShapes;
+    private ArrayList&lt;Pair&lt;EikMeshPoint, EikMeshPoint&gt;&gt; edges;
+    private final VRectangle bound;
+    private final double initialEdgeLen;
+    private final double deps;
+
+<span class="nc" id="L40">    private double delta = 0.5;</span>
+<span class="nc" id="L41">    private boolean runParallel = false;</span>
+
+<span class="nc" id="L43">    private Object gobalAcessSynchronizer = new Object();</span>
+
+    public LaplacianSmother(final IDistanceFunction distanceFunc,
+                            final IEdgeLengthFunction edgeLengthFunc,
+                            final double initialEdgeLen,
+                            final VRectangle bound,
+<span class="nc" id="L49">                            final Collection&lt;? extends VShape&gt; obstacleShapes) {</span>
+
+<span class="nc" id="L51">        this.bound = bound;</span>
+<span class="nc" id="L52">        this.distanceFunc = distanceFunc;</span>
+<span class="nc" id="L53">        this.edgeLengthFunc = edgeLengthFunc;</span>
+<span class="nc" id="L54">        this.deps = 1.4901e-8 * initialEdgeLen;</span>
+<span class="nc" id="L55">        this.initialEdgeLen = initialEdgeLen;</span>
+<span class="nc" id="L56">        this.obstacleShapes = obstacleShapes;</span>
+
+<span class="nc" id="L58">        PMesh mesh = new PMesh();</span>
+        /**
+         * Start with a uniform refined triangulation
+         */
+<span class="nc" id="L62">        log.info(&quot;##### (start) generate a uniform refined triangulation #####&quot;);</span>
+        //UniformRefinementTriangulator uniformRefinementTriangulator = new UniformRefinementTriangulator(triangulation, bound, obstacleShapes, p -&gt; edgeLengthFunc.apply(p) * initialEdgeLen, distanceFunc);
+        //uniformRefinementTriangulator.generate();
+
+<span class="nc" id="L66">        GenRandomPointsSetTriangulator randomTriangulator = new GenRandomPointsSetTriangulator(mesh, 3000, bound, distanceFunc);</span>
+<span class="nc" id="L67">	    triangulation = randomTriangulator.generate();</span>
+<span class="nc" id="L68">        removeTrianglesInsideObstacles();</span>
+<span class="nc" id="L69">        log.info(&quot;##### (end) generate a uniform refined triangulation #####&quot;);</span>
+<span class="nc" id="L70">    }</span>
+
+
+    @Override
+    public Collection&lt;VTriangle&gt; getTriangles() {
+<span class="nc" id="L75">        return triangulation.streamTriangles().collect(Collectors.toList());</span>
+    }
+
+    @Override
+    public void improve() {
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        streamVertices().filter(v -&gt; !getMesh().isAtBoundary(v)).forEach(v -&gt; shrinkForce(v));</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        streamVertices().filter(v -&gt; !getMesh().isAtBoundary(v)).forEach(v -&gt; applyLaplacian(v));</span>
+        //streamVertices().filter(v -&gt; !getMesh().isAtBoundary(v)).forEach(v -&gt; inflateForce(v));
+        //streamVertices().filter(v -&gt; !getMesh().isAtBoundary(v)).forEach(v -&gt; applyLaplacian(v));
+<span class="nc" id="L84">        retriangulate();</span>
+        //streamVertices().filter(v -&gt; !getMesh().isAtBoundary(v)).forEach(v -&gt; projectBackVertex(v));
+<span class="nc" id="L86">    }</span>
+
+	@Override
+	public IIncrementalTriangulation&lt;PVertex, PHalfEdge, PFace&gt; getTriangulation() {
+<span class="nc" id="L90">		return triangulation;</span>
+	}
+
+	private IPoint laplacian(final PVertex vertex) {
+<span class="nc" id="L94">        IPoint p = getMesh().getPoint(vertex);</span>
+<span class="nc" id="L95">        long numberOfNeighbours = StreamSupport.stream(getMesh().getAdjacentVertexIt(vertex).spliterator(), false).count();</span>
+
+<span class="nc" id="L97">        double weightsSum = StreamSupport.stream(getMesh().getAdjacentVertexIt(vertex).spliterator(), false)</span>
+<span class="nc" id="L98">                .map(v -&gt; getMesh().getPoint(v))</span>
+<span class="nc" id="L99">                .mapToDouble(m -&gt; 1.0 / m.distance(p)).sum();</span>
+
+<span class="nc" id="L101">        IPoint laplacian = StreamSupport.stream(getMesh().getAdjacentVertexIt(vertex).spliterator(), false)</span>
+<span class="nc" id="L102">                .map(v -&gt; getMesh().getPoint(v))</span>
+<span class="nc" id="L103">                .map(m -&gt; m.scalarMultiply(1.0 / m.distance(p)))</span>
+<span class="nc" id="L104">                .reduce(new VPoint(0,0), (p1, p2) -&gt; p1.add(p2))</span>
+<span class="nc" id="L105">                .scalarMultiply(1.0 / weightsSum);</span>
+
+<span class="nc" id="L107">        return laplacian;</span>
+    }
+
+    private IPoint laplacianSquare(final PVertex vertex) {
+<span class="nc" id="L111">	    IPoint laplacian = laplacian(vertex);</span>
+
+<span class="nc" id="L113">        long numberOfNeighbours = StreamSupport.stream(getMesh().getAdjacentVertexIt(vertex).spliterator(), false).count();</span>
+<span class="nc" id="L114">	    IPoint laplacianSquare = StreamSupport.stream(getMesh().getAdjacentVertexIt(vertex).spliterator(), false)</span>
+<span class="nc" id="L115">                .map(v -&gt; laplacian(v).subtract(laplacian))</span>
+<span class="nc" id="L116">                .reduce(new VPoint(0, 0), (p1, p2) -&gt; p1.add(p2))</span>
+<span class="nc" id="L117">                .scalarMultiply(1.0 / numberOfNeighbours);</span>
+
+<span class="nc" id="L119">        return laplacianSquare;</span>
+    }
+
+    private void shrinkForce(final PVertex vertex) {
+<span class="nc" id="L123">	    IPoint p = getMesh().getPoint(vertex);</span>
+
+
+<span class="nc" id="L126">        double alpha = 0.05;</span>
+<span class="nc" id="L127">        double beta = 0.5;</span>
+
+<span class="nc" id="L129">	    IPoint shrink = laplacian(vertex).subtract(p).scalarMultiply(alpha);</span>
+<span class="nc" id="L130">	    IPoint inflate = laplacian(vertex).subtract(p).scalarMultiply(-beta);</span>
+
+        //getMesh().getPoint(vertex).setVelocity(p.add(shrink.add(inflate)));
+<span class="nc" id="L133">	    getMesh().setData(vertex, &quot;velocity&quot;, p.add(shrink));</span>
+<span class="nc" id="L134">    }</span>
+
+    private void inflateForce(final PVertex vertex) {
+<span class="nc" id="L137">	    IPoint p = getMesh().getPoint(vertex);</span>
+
+
+<span class="nc" id="L140">        double alpha = 1;</span>
+<span class="nc" id="L141">        double beta = 0.5;</span>
+
+<span class="nc" id="L143">	    IPoint shrink = laplacian(vertex).subtract(p).scalarMultiply(alpha);</span>
+<span class="nc" id="L144">	    IPoint inflate = laplacian(vertex).subtract(p).scalarMultiply(-beta);</span>
+
+        //getMesh().getPoint(vertex).setVelocity(p.add(shrink.add(inflate)));
+<span class="nc" id="L147">	    getMesh().setData(vertex, &quot;velocity&quot;, p.add(inflate));</span>
+<span class="nc" id="L148">    }</span>
+
+    private void applyLaplacian(final PVertex vertex) {
+<span class="nc" id="L151">        IPoint force = getMesh().getData(vertex, &quot;velocity&quot;, IPoint.class).get();</span>
+<span class="nc" id="L152">        getMesh().setCoords(vertex, force.getX(), force.getY());</span>
+<span class="nc" id="L153">    }</span>
+
+    private void removeTrianglesInsideObstacles() {
+<span class="nc" id="L156">        List&lt;PFace&gt; faces = triangulation.getMesh().getFaces();</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        for(PFace face : faces) {</span>
+<span class="nc bnc" id="L158" title="All 4 branches missed.">            if(!triangulation.getMesh().isDestroyed(face) &amp;&amp; distanceFunc.apply(triangulation.getMesh().toTriangle(face).midPoint()) &gt; 0) {</span>
+<span class="nc" id="L159">                triangulation.removeFaceAtBorder(face, true);</span>
+            }
+<span class="nc" id="L161">        }</span>
+<span class="nc" id="L162">    }</span>
+
+    // helper methods
+    private Stream&lt;PHalfEdge&gt; streamEdges() {
+<span class="nc bnc" id="L166" title="All 2 branches missed.">        return runParallel ? getMesh().streamEdgesParallel() : getMesh().streamEdges();</span>
+    }
+
+    private Stream&lt;PVertex&gt; streamVertices() {
+<span class="nc bnc" id="L170" title="All 2 branches missed.">        return runParallel ? getMesh().streamVerticesParallel() : getMesh().streamVertices();</span>
+    }
+
+    @Override
+    public IMesh&lt;PVertex, PHalfEdge, PFace&gt; getMesh() {
+<span class="nc" id="L175">        return triangulation.getMesh();</span>
+    }
+
+    // TODO: parallize the whole triangulation
+    public void retriangulate() {
+<span class="nc" id="L180">        triangulation = IIncrementalTriangulation.createPTriangulation(IPointLocator.Type.DELAUNAY_HIERARCHY, getMesh().getPoints());</span>
+<span class="nc" id="L181">        removeTrianglesInsideObstacles();</span>
+<span class="nc" id="L182">        triangulation.finish();</span>
+<span class="nc" id="L183">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

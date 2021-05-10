@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ITriEventListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.inter</a> &gt; <span class="el_source">ITriEventListener.java</span></div><h1>ITriEventListener.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.inter;
+
+/**
+ * A {@link ITriEventListener} listens to events that change the topography of the triangulation.
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public interface ITriEventListener&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; {
+
+	/**
+	 * This method is triggered after a triangle is split into 3 new faces by inserting a
+	 * point into the triangle.
+	 *
+	 * @param original  the original triangle / face
+	 * @param f1        the first new triangle / face
+	 * @param f2        the second new triangle / face
+	 * @param f3        the third new triangle / face
+	 * @param v         the new vertex
+	 */
+<span class="nc" id="L24">	default void postSplitTriangleEvent(F original, F f1, F f2, F f3, V v) {}</span>
+
+	/**
+	 * This method is triggered after an half-edge is split. Note that if the half-edge is not
+	 * at the boundary, one split of an edge will result in two splits of an half-edge. The original
+	 * face might be reused for one of the new faces f1 or f2.
+	 *
+	 * @param originalEdge  original  the face of the half-edge
+	 * @param original      the face of the half-edge
+	 * @param f1            one of the new face, which might be the original
+	 * @param f2            one of the new face, which might be the original
+	 * @param v             the new vertex
+	 */
+<span class="nc" id="L37">	default void postSplitHalfEdgeEvent(E originalEdge, F original, F f1, F f2, V v) {}</span>
+
+	/**
+	 * This method is triggered after an edge e with neighbouring faces f1, f2 is flipped.
+	 *
+	 * @param f1    the first face of the edge
+	 * @param f2    the second face of the edge
+	 */
+<span class="nc" id="L45">	default void postFlipEdgeEvent(F f1, F f2) {}</span>
+
+	/**
+	 * This method is triggered after a point is inserted into the triangulation.
+	 *
+	 * @param vertex the vertex of the point which was inserted
+	 */
+<span class="nc" id="L52">	default void postInsertEvent(V vertex) {}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

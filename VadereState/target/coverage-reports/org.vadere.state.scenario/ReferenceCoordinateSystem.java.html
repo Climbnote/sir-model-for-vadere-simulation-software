@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReferenceCoordinateSystem.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.scenario</a> &gt; <span class="el_source">ReferenceCoordinateSystem.java</span></div><h1>ReferenceCoordinateSystem.java</h1><pre class="source lang-java linenums">package org.vadere.state.scenario;
+
+import org.apache.sis.geometry.DirectPosition2D;
+import org.apache.sis.referencing.CRS;
+import org.apache.sis.referencing.CommonCRS;
+import org.apache.sis.referencing.crs.DefaultProjectedCRS;
+import org.opengis.geometry.DirectPosition;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.opengis.referencing.operation.CoordinateOperation;
+import org.opengis.referencing.operation.TransformException;
+import org.opengis.util.FactoryException;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.logging.Logger;
+
+import java.util.Objects;
+
+public class ReferenceCoordinateSystem {
+
+<span class="fc" id="L19">	private static Logger logger = Logger.getLogger(ReferenceCoordinateSystem.class);</span>
+
+	/**
+	 * international identifier for the base coordinate reference system (CRS) which was used
+	 * to build this topography.
+	 * e.g.
+	 *
+	 * EPSG:4326 = WGS-84 (lon/lat from GPS systems, used in OpenStreetMap)
+	 * EPSG:25832 = ETRS89 / UTM Zone 32N (UTM Zone System) zone 32 contains most of germany.
+	 *
+	 * see
+	 * https://de.wikipedia.org/wiki/European_Petroleum_Survey_Group_Geodesy#EPSG-Codes
+	 * https://de.wikipedia.org/wiki/UTM-Koordinatensystem#Aufbau
+	 * for references
+	 */
+<span class="pc" id="L34">	private String epsgCode = &quot;&quot;;</span>
+	/**
+	 * short description of epsgCode. e.g. &quot;WGS-84 OpenStreetMap (OSM)&quot; for none GIS nerds ;)
+	 */
+<span class="pc" id="L38">	private String description = &quot;&quot;;</span>
+
+	transient private CoordinateReferenceSystem geoCRS;
+	transient private CoordinateReferenceSystem utmCRS;
+	transient private CoordinateOperation geoToUtm;
+	transient private CoordinateOperation utmToGeo;
+	transient private boolean initialized;
+
+	/**
+	 * Translation vector used to move topography to origin (0,0)
+	 */
+<span class="pc" id="L49">	private VPoint translation = new VPoint(0.0,0.0);</span>
+
+<span class="nc" id="L51">	public ReferenceCoordinateSystem() {</span>
+<span class="nc" id="L52">		this.initialized = false;</span>
+<span class="nc" id="L53">	}</span>
+
+<span class="fc" id="L55">	public ReferenceCoordinateSystem(String epsgCode, String description, VPoint translation) {</span>
+<span class="fc" id="L56">		this.epsgCode = epsgCode;</span>
+<span class="fc" id="L57">		this.description = description;</span>
+<span class="fc" id="L58">		this.translation = translation;</span>
+<span class="fc" id="L59">		this.initialized = false;</span>
+<span class="fc" id="L60">	}</span>
+
+	public void initialize(){
+<span class="pc bpc" id="L63" title="1 of 2 branches missed.">		if (initialized)</span>
+<span class="nc" id="L64">			return;</span>
+
+		try {
+<span class="fc" id="L67">			utmCRS = CRS.forCode(epsgCode);</span>
+<span class="fc" id="L68">			geoCRS = ((DefaultProjectedCRS) utmCRS).getBaseCRS();</span>
+<span class="fc" id="L69">			geoToUtm = CRS.findOperation(geoCRS, utmCRS, null);</span>
+<span class="fc" id="L70">			utmToGeo = CRS.findOperation(utmCRS, geoCRS, null);</span>
+<span class="nc" id="L71">		} catch (FactoryException e) {</span>
+<span class="nc" id="L72">			logger.errorf(e.getMessage());</span>
+<span class="nc" id="L73">			throw new RuntimeException(e);</span>
+<span class="fc" id="L74">		}</span>
+
+<span class="fc" id="L76">		initialized = true;</span>
+<span class="fc" id="L77">	}</span>
+
+	public String getEpsgCode() {
+<span class="nc" id="L80">		return epsgCode;</span>
+	}
+
+	public void setEpsgCode(String epsgCode) {
+<span class="nc" id="L84">		this.epsgCode = epsgCode;</span>
+<span class="nc" id="L85">	}</span>
+
+	public String getDescription() {
+<span class="nc" id="L88">		return description;</span>
+	}
+
+	public void setDescription(String description) {
+<span class="nc" id="L92">		this.description = description;</span>
+<span class="nc" id="L93">	}</span>
+
+	public VPoint getTranslation() {
+<span class="nc" id="L96">		return translation;</span>
+	}
+
+	public void setTranslation(VPoint translation) {
+<span class="nc" id="L100">		this.translation = translation;</span>
+<span class="nc" id="L101">	}</span>
+
+	public boolean supportsConversion(){
+<span class="nc bnc" id="L104" title="All 4 branches missed.">		return geoToUtm != null &amp;&amp; utmToGeo != null;</span>
+	}
+
+	public VPoint convertToGeo(VPoint cartesian){
+<span class="pc bpc" id="L108" title="1 of 2 branches missed.">		if (!initialized)</span>
+<span class="fc" id="L109">			initialize();</span>
+
+<span class="fc" id="L111">		VPoint translated  = cartesian.add(translation);</span>
+<span class="fc" id="L112">		DirectPosition ptSrc = new DirectPosition2D(translated.x, translated.y);</span>
+		try {
+<span class="fc" id="L114">			DirectPosition ptDst = utmToGeo.getMathTransform().transform(ptSrc, null);</span>
+<span class="fc" id="L115">			return new VPoint(ptDst.getCoordinate()[0], ptDst.getCoordinate()[1]);</span>
+<span class="nc" id="L116">		} catch (TransformException e) {</span>
+<span class="nc" id="L117">			logger.errorf(e.getMessage());</span>
+<span class="nc" id="L118">			throw new RuntimeException(e);</span>
+		}
+	}
+
+	public VPoint convertToCartesian(double latitude, double longitude ){
+<span class="pc bpc" id="L123" title="1 of 2 branches missed.">		if (!initialized)</span>
+<span class="fc" id="L124">			initialize();</span>
+		//  geographic CRS, the (latitude, longitude) axis order!
+<span class="fc" id="L126">		DirectPosition ptSrc = new DirectPosition2D(latitude, longitude);</span>
+		try {
+<span class="fc" id="L128">			DirectPosition ptDst = geoToUtm.getMathTransform().transform(ptSrc, null);</span>
+<span class="fc" id="L129">			VPoint ret =  new VPoint(ptDst.getCoordinate()[0], ptDst.getCoordinate()[1]);</span>
+<span class="fc" id="L130">			return ret.subtract(this.translation);</span>
+<span class="nc" id="L131">		} catch (TransformException e) {</span>
+<span class="nc" id="L132">			logger.errorf(e.getMessage());</span>
+<span class="nc" id="L133">			throw new RuntimeException(e);</span>
+		}
+	}
+
+	@Override
+	public boolean equals(Object o) {
+<span class="nc bnc" id="L139" title="All 2 branches missed.">		if (this == o) return true;</span>
+<span class="nc bnc" id="L140" title="All 4 branches missed.">		if (o == null || getClass() != o.getClass()) return false;</span>
+<span class="nc" id="L141">		ReferenceCoordinateSystem that = (ReferenceCoordinateSystem) o;</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">		return Objects.equals(epsgCode, that.epsgCode) &amp;&amp;</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">				Objects.equals(description, that.description) &amp;&amp;</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">				Objects.equals(translation, that.translation);</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L149">		return Objects.hash(epsgCode, description, translation);</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L154">		return &quot;ReferenceCoordinateSystem{&quot; +</span>
+				&quot;epsgCode='&quot; + epsgCode + '\'' +
+				&quot;, description='&quot; + description + '\'' +
+				&quot;, translation=&quot; + translation +
+				'}';
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

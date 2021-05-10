@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CellStateFD.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.data.cellgrid</a> &gt; <span class="el_source">CellStateFD.java</span></div><h1>CellStateFD.java</h1><pre class="source lang-java linenums">package org.vadere.util.data.cellgrid;
+
+/**
+ * The state of one cell. Can be EMPTY(' '), PERSON('p'), OBSTACLE('#'),
+ * SOURCE('s') and TARGET('t').
+ * 
+ */
+<span class="nc" id="L8">public enum CellStateFD {</span>
+<span class="nc" id="L9">	EMPTY(' '), PERSON('p'), OBSTACLE('#'), SOURCE('s'), TARGET('t');</span>
+	final private char shortForm;
+
+<span class="nc" id="L12">	CellStateFD(char c) {</span>
+<span class="nc" id="L13">		shortForm = c;</span>
+<span class="nc" id="L14">	}</span>
+
+	public static CellStateFD valueOf(char c) {
+<span class="nc bnc" id="L17" title="All 5 branches missed.">		switch (c) {</span>
+			case ' ':
+<span class="nc" id="L19">				return CellStateFD.EMPTY;</span>
+			case 'p':
+<span class="nc" id="L21">				return CellStateFD.PERSON;</span>
+			case 't':
+<span class="nc" id="L23">				return CellStateFD.TARGET;</span>
+			case '#':
+<span class="nc" id="L25">				return CellStateFD.OBSTACLE;</span>
+		}
+<span class="nc" id="L27">		return CellStateFD.EMPTY;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L32">		StringBuilder result = new StringBuilder();</span>
+<span class="nc" id="L33">		result.append(shortForm);</span>
+
+<span class="nc" id="L35">		return result.toString();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,43 @@
+<h1> GroupSpawnArray</h1>
+
+<p>
+<h1>Groups</h1>
+
+Groups are spawn as a rectangle (axb) with the smallest possible deviation of a and b.  The
+groupNumber is zero-based index counting possible spawn point for a group (see below). The spawn
+positions (groupNumbers) will overlap. Depending on the selected Attributes the algorithm will
+test in advance if the groupNumber is free (not occupied).
+
+(0)    (1)    (2)    (3)    (4)    (5)    (6)    (7)    (8)   <-- groupNumber-------------- |
+**00 | 0**0 | 00** | 0000 | 0000 | 0000 | 0000 | 0000 | 0000 |----------------------------- |
+**00 | 0**0 | 00** | **00 | 0**0 | 00** | 0000 | 0000 | 0000 |----------------------------- |
+0000 | 0000 | 0000 | **00 | 0**0 | 00** | **00 | 0**0 | 00** |----------------------------- |
+0000 | 0000 | 0000 | 0000 | 0000 | 0000 | **00 | 0**0 | 00** |-----------------------------
+
+<h2><span class='local_link'>getNextGroup(int, List)</span>  (without Random Object)</h2>
+Iterate through the groupNumbers in order (0-->8) but remember the last used groupNumber for each
+groupSize in the HashMap nextGroupPos. The Iteration order is generated with lambada expressions.
+Also getNextGroup allows overlapping spawning a complete overlap is not allowed due to numerical
+problems in OE-Solvers which would loop forever.
+
+<h2><span class='local_link'>getNextGroup(int, Random, List)</span> (with Random Object)</h2>
+Same as before with the distinction that the groupNumbers as iterated in a random order. This
+function will update the the HashMap nextGroupPos but this is not a problem because in this case
+the nextGroupPos is not used.
+
+<h2><span class='local_link'>getNextFreeGroup(int, List)</span> (without Random Object)</h2>
+This function will always iterate in order order (0-->8) and will use the first free groupNumber
+available. This function ignores  the nextGroupPos HashMap.
+
+<h2><span class='local_link'>getNextFreeGroup(int, Random, List)</span> (with Random Object)</h2>
+same as above but it will use a Randomize groupNumber Iterator.
+</p>
+
+<hr>
+<h2> Field: nextGroupPos</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: groupPlacementHelpers</h2>
+<p>---</p>
+

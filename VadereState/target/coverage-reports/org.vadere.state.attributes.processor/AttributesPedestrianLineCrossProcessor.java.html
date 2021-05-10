@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesPedestrianLineCrossProcessor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.processor</a> &gt; <span class="el_source">AttributesPedestrianLineCrossProcessor.java</span></div><h1>AttributesPedestrianLineCrossProcessor.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.processor;
+
+import org.vadere.util.geometry.shapes.VPoint;
+
+<span class="nc" id="L5">public class AttributesPedestrianLineCrossProcessor extends AttributesProcessor {</span>
+<span class="nc" id="L6">	private VPoint p1 = new VPoint(0,0);</span>
+<span class="nc" id="L7">	private VPoint p2 = new VPoint(1, 0);</span>
+
+	public VPoint getP1() {
+<span class="nc" id="L10">		return p1;</span>
+	}
+
+	public VPoint getP2() {
+<span class="nc" id="L14">		return p2;</span>
+	}
+
+	public void setP1(VPoint p1) {
+<span class="nc" id="L18">		checkSealed();</span>
+<span class="nc" id="L19">		this.p1 = p1;</span>
+<span class="nc" id="L20">	}</span>
+
+	public void setP2(VPoint p2) {
+<span class="nc" id="L23">		checkSealed();</span>
+<span class="nc" id="L24">		this.p2 = p2;</span>
+<span class="nc" id="L25">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

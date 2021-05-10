@@ -1,0 +1,34 @@
+<h1> TraCIGetCommand</h1>
+
+<p>
+Sub class of <a href='/helpText/org.vadere.manager.traci.commands.TraCICommand.html' class='class_link'>TraCICommand</a> which represents a get request to some API.
+
+An API in this context is for instance the Person(GET/SET), Simulation(GET/SET/SUB)
+
+Command Structure
+
+[ cmdIdentifier(based on API) ] [ variableId ] [ elementId]
+
+- cmdIdentifier(based on API): see <a href='/helpText/org.vadere.manager.traci.TraCICmd.html' class='class_link'>TraCICmd</a> enum GET_**** - variableId: Id for the var.
+The numbers may be the same between different APIs see <a href='/helpText/org.vadere.manager.traci.commandHandler.variables.PersonVar.html' class='class_link'>PersonVar</a> enum - elementId: String
+based id for the object (i.e. a pedestrianId)
+
+see <a href='/helpText/org.vadere.manager.traci.commandHandler.PersonCommandHandler.html' class='class_link'>org.vadere.manager.traci.commandHandler.PersonCommandHandler</a> for execution handing.
+</p>
+
+<hr>
+<h2> Field: variableIdentifier</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: elementIdentifier</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: cmdBuffer</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: response</h2>
+<p>---</p>
+

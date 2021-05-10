@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesPotentialOSM.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.models</a> &gt; <span class="el_source">AttributesPotentialOSM.java</span></div><h1>AttributesPotentialOSM.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.models;
+
+import org.vadere.annotation.factories.attributes.ModelAttributeClass;
+import org.vadere.state.attributes.Attributes;
+
+/**
+ * Provides potential attributes for pedestrians and obstacles in the Gradient Navigation Model.
+ * 
+ */
+@ModelAttributeClass
+<span class="nc" id="L11">public class AttributesPotentialOSM extends Attributes {</span>
+
+	// seitz-2012 u_p = 1000
+<span class="nc" id="L14">	private double pedestrianBodyPotential = 1000;</span>
+
+	// seitz-2012 h_p = 1.0
+<span class="nc" id="L17">	private double pedestrianRepulsionWidth = 1.0;</span>
+
+	// seitz-2012 v_p = 0.4
+<span class="nc" id="L20">	private double pedestrianRepulsionStrength = 0.4;</span>
+
+	// seitz-2012 a_p = 1.0
+<span class="nc" id="L23">	private double aPedOSM = 3.5;</span>
+
+	// seitz-2012 b_p = 0.2
+<span class="nc" id="L26">	private double bPedOSM = 0.6;</span>
+
+	//
+<span class="nc" id="L29">	private double pedestrianRecognitionDistance = 1.5;</span>
+
+	//
+<span class="nc" id="L32">	private double personalDensityFactor = 1.2;</span>
+
+	// seitz-2012 u_o = 10000
+<span class="nc" id="L35">	private double obstacleBodyPotential = 10000;</span>
+
+	// seitz-2012 h_o = 6.0
+<span class="nc" id="L38">	private double obstacleRepulsionWidth = 6;</span>
+
+	// seitz-2012 v_o = 0.2
+<span class="nc" id="L41">	private double obstacleRepulsionStrength = 0.2;</span>
+
+	// seitz-2012 a_o = 3.0
+<span class="nc" id="L44">	private double aObsOSM = 3.5;</span>
+
+	// seitz-2012 b_0 = 2.0
+<span class="nc" id="L47">	private double bObsOSM = 0.2;</span>
+
+	// Getters...
+
+	public double getPedestrianBodyPotential() {
+<span class="nc" id="L52">		return pedestrianBodyPotential;</span>
+	}
+
+	public double getPedestrianRepulsionWidth() {
+<span class="nc" id="L56">		return pedestrianRepulsionWidth;</span>
+	}
+
+	public double getPedestrianRepulsionStrength() {
+<span class="nc" id="L60">		return pedestrianRepulsionStrength;</span>
+	}
+
+	public double getPedestrianRecognitionDistance() {
+<span class="nc" id="L64">		return pedestrianRecognitionDistance;</span>
+	}
+
+	public double getPersonalDensityFactor() {
+<span class="nc" id="L68">		return personalDensityFactor;</span>
+	}
+
+	public double getObstacleBodyPotential() {
+<span class="nc" id="L72">		return obstacleBodyPotential;</span>
+	}
+
+	public double getObstacleRepulsionWidth() {
+<span class="nc" id="L76">		return obstacleRepulsionWidth;</span>
+	}
+
+	public double getObstacleRepulsionStrength() {
+<span class="nc" id="L80">		return obstacleRepulsionStrength;</span>
+	}
+
+	public double getAPedOSM() {
+<span class="nc" id="L84">		return aPedOSM;</span>
+	}
+
+	public double getBPedOSM() {
+<span class="nc" id="L88">		return bPedOSM;</span>
+	}
+
+	public double getAObsOSM() {
+<span class="nc" id="L92">		return aObsOSM;</span>
+	}
+
+	public double getBObsOSM() {
+<span class="nc" id="L96">		return bObsOSM;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

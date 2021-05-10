@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GenDelaunayTriangulator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">GenDelaunayTriangulator.java</span></div><h1>GenDelaunayTriangulator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.gen.IncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.ITriangulator;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VRectangle;
+
+import java.util.Collection;
+
+public class GenDelaunayTriangulator&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements ITriangulator&lt;V, E, F&gt; {
+
+	private final Collection&lt;? extends IPoint&gt; pointSet;
+	private IIncrementalTriangulation&lt;V, E, F&gt; triangulation;
+	private boolean generated;
+
+	public GenDelaunayTriangulator(@NotNull final IMesh&lt;V, E, F&gt; mesh,
+	                               @NotNull final VRectangle bound,
+<span class="nc" id="L25">	                               @NotNull final Collection&lt;? extends IPoint&gt; pointSet) {</span>
+<span class="nc" id="L26">		this.pointSet = pointSet;</span>
+<span class="nc" id="L27">		this.triangulation = new IncrementalTriangulation&lt;&gt;(mesh, bound, halfEdge -&gt; true);</span>
+<span class="nc" id="L28">		this.generated = false;</span>
+<span class="nc" id="L29">	}</span>
+
+	public GenDelaunayTriangulator(@NotNull final IMesh&lt;V, E, F&gt; mesh,
+<span class="fc" id="L32">	                               @NotNull final Collection&lt;? extends IPoint&gt; pointSet) {</span>
+<span class="fc" id="L33">		this.pointSet = pointSet;</span>
+<span class="fc" id="L34">		this.triangulation = new IncrementalTriangulation&lt;&gt;(mesh, GeometryUtils.boundRelative(pointSet), halfEdge -&gt; true);</span>
+<span class="fc" id="L35">		this.generated = false;</span>
+<span class="fc" id="L36">	}</span>
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate() {
+<span class="fc" id="L40">		return generate(true);</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate(boolean finalize) {
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">		if(!generated) {</span>
+<span class="fc" id="L46">			triangulation.init();</span>
+<span class="fc" id="L47">			triangulation.insert(pointSet);</span>
+
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">			if(finalize) {</span>
+<span class="fc" id="L50">				triangulation.finish();</span>
+			}
+<span class="fc" id="L52">			generated = true;</span>
+		}
+<span class="fc" id="L54">		return triangulation;</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; getTriangulation() {
+<span class="nc" id="L59">		return triangulation;</span>
+	}
+
+	@Override
+	public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="fc" id="L64">		return triangulation.getMesh();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

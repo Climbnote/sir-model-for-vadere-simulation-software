@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MeshPolyReader.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.utils.io.poly</a> &gt; <span class="el_source">MeshPolyReader.java</span></div><h1>MeshPolyReader.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.utils.io.poly;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+/**
+ * The {@link MeshPolyReader} reads a ascii-poly file and transforms it into a {@link IMesh}.
+ * It is the counterpart to {@link MeshPolyWriter}.
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+<span class="pc bpc" id="L30" title="1 of 2 branches missed.">public class MeshPolyReader&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; {</span>
+
+	private final static String SPLITTER = &quot;\\s+&quot;;
+	private final static String COMMENT_MARKER = &quot;#&quot;;
+
+	/**
+	 * a Functions id -&gt; vertex which gives for a specific vertex id the correct vertex
+	 */
+	private final Map&lt;Integer, V&gt; vertices;
+
+	/**
+	 * a Function (startVertexId, endVertexId) -&gt; halfEdge which gives for a specific pair of ids the correct half-edge
+	 */
+	private final Map&lt;Pair&lt;Integer, Integer&gt;, E&gt; edges;
+
+	/**
+	 * the mesh for which the face will be added
+	 */
+	private IMesh&lt;V, E, F&gt; mesh;
+
+	private final Supplier&lt;IMesh&lt;V, E, F&gt;&gt; meshSupplier;
+
+<span class="fc" id="L52">	public MeshPolyReader(@NotNull final Supplier&lt;IMesh&lt;V, E, F&gt;&gt; meshSupplier) {</span>
+<span class="fc" id="L53">		this.meshSupplier = meshSupplier;</span>
+<span class="fc" id="L54">		this.edges = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L55">		this.vertices = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L56">	}</span>
+
+	/**
+	 * Adds a face to the mesh by parsing the String &lt;tt&gt;line&lt;/tt&gt; which should represent a face.
+	 *
+	 * @param line a String that represents the face
+	 * @param face the face object which was already be added
+	 */
+	private void addFace(@NotNull final String line, @NotNull final F face) {
+
+<span class="fc" id="L66">		String[] split = line.split(SPLITTER);</span>
+<span class="fc" id="L67">		int nVertices = Integer.parseInt(split[0].strip());</span>
+<span class="pc bpc" id="L68" title="2 of 4 branches missed.">		assert nVertices == split.length-1;</span>
+<span class="fc" id="L69">		List&lt;Integer&gt; vertexIds = new ArrayList&lt;&gt;(nVertices);</span>
+<span class="fc bfc" id="L70" title="All 2 branches covered.">		for(int i = 0; i &lt; nVertices; i++) {</span>
+<span class="fc" id="L71">			vertexIds.add(Integer.parseInt(split[i+1].strip()));</span>
+		}
+
+<span class="fc" id="L74">		List&lt;E&gt; ccwEdges = new ArrayList&lt;&gt;(nVertices);</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">		for(int i = 0; i &lt; nVertices; i++) {</span>
+<span class="fc" id="L76">			int i1 = vertexIds.get(i);</span>
+<span class="fc" id="L77">			int i2 = vertexIds.get((i+1) % nVertices);</span>
+<span class="fc" id="L78">			V v1 = vertices.get(i1);</span>
+<span class="fc" id="L79">			V v2 = vertices.get(i2);</span>
+<span class="fc" id="L80">			E edge = mesh.createEdge(v2);</span>
+<span class="fc" id="L81">			mesh.setFace(edge, face);</span>
+<span class="fc" id="L82">			mesh.setEdge(face, edge);</span>
+
+<span class="fc bfc" id="L84" title="All 4 branches covered.">			if(mesh.getEdge(v2) == null || !mesh.isBoundary(mesh.getEdge(v2))) {</span>
+<span class="fc" id="L85">				mesh.setEdge(v2, edge);</span>
+			}
+
+<span class="fc" id="L88">			edges.put(Pair.of(i1, i2), edge);</span>
+
+<span class="fc bfc" id="L90" title="All 2 branches covered.">			if(edges.containsKey(Pair.of(i2, i1))) {</span>
+<span class="fc" id="L91">				E twin = edges.get(Pair.of(i2, i1));</span>
+<span class="fc" id="L92">				mesh.setTwin(edge, twin);</span>
+			}
+
+<span class="fc" id="L95">			ccwEdges.add(edge);</span>
+		}
+
+<span class="fc bfc" id="L98" title="All 2 branches covered.">		for(int i = 0; i &lt; nVertices; i++) {</span>
+<span class="fc" id="L99">			E edge = ccwEdges.get(i);</span>
+<span class="fc" id="L100">			E next = ccwEdges.get((i+1)%nVertices);</span>
+<span class="fc" id="L101">			mesh.setNext(edge, next);</span>
+		}
+<span class="fc" id="L103">	}</span>
+
+	/**
+	 * Reads a PSLG (.poly) from an {@link InputStream} and converts the file into a {@link IMesh}.
+	 *
+	 * @param inputStream   the input stream
+	 *
+	 * @return a {@link Math} containing all segments and holes of the PSLG
+	 *
+	 * @throws IOException
+	 */
+	public IMesh&lt;V, E, F&gt; readMesh(@NotNull final InputStream inputStream) throws IOException {
+<span class="fc" id="L115">		return toMesh(inputStream, null);</span>
+	}
+
+
+	public IMesh&lt;V, E, F&gt; readMesh(@NotNull final InputStream inputStream, @NotNull final Function&lt;Integer, String&gt; attrNameFunc) throws IOException {
+<span class="nc" id="L120">		return toMesh(inputStream, attrNameFunc);</span>
+	}
+
+	/**
+	 * Reads a PSLG (.poly) from an {@link InputStream} and converts the file into a {@link IMesh}.
+	 *
+	 * @param inputStream   the input stream
+	 * @return a {@link Math} containing all segments and holes of the PSLG
+	 *
+	 * @throws IOException
+	 */
+	private IMesh&lt;V, E, F&gt; toMesh(
+			@NotNull final InputStream inputStream,
+			@Nullable final Function&lt;Integer, String&gt; attrNameFunc) throws IOException {
+<span class="fc" id="L134">		mesh = meshSupplier.get();</span>
+<span class="fc" id="L135">		BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));</span>
+
+<span class="fc" id="L137">		String line = readLine(reader);</span>
+<span class="fc" id="L138">		String[] split = line.split(SPLITTER);</span>
+<span class="fc" id="L139">		int nVertex = Integer.parseInt(split[0].strip());</span>
+<span class="fc" id="L140">		int dimension = Integer.parseInt(split[1].strip());</span>
+<span class="fc" id="L141">		int boundaryMarker = Integer.parseInt(split[2].strip());</span>
+<span class="fc" id="L142">		int targetMarker = Integer.parseInt(split[3].strip());</span>
+<span class="fc" id="L143">		int nAttributes = Integer.parseInt(split[4].strip());</span>
+
+<span class="pc bpc" id="L145" title="1 of 2 branches missed.">		if(nAttributes &gt; 1) {</span>
+<span class="nc" id="L146">			throw new IOException(&quot;number of attributes &gt; 1, is not jet supported.&quot;);</span>
+		}
+
+<span class="fc bfc" id="L149" title="All 2 branches covered.">		for(int i = 0; i &lt; nVertex; i++) {</span>
+<span class="fc" id="L150">			String vertexLine = readLine(reader);</span>
+<span class="fc" id="L151">			split = vertexLine.split(SPLITTER);</span>
+<span class="fc" id="L152">			int id = Integer.parseInt(split[0].strip());</span>
+<span class="fc" id="L153">			int boundaryMark = Integer.parseInt(split[1].strip());</span>
+<span class="fc" id="L154">			int targetMark = Integer.parseInt(split[2].strip());</span>
+<span class="fc" id="L155">			double x = Double.parseDouble(split[3].strip());</span>
+<span class="fc" id="L156">			double y = Double.parseDouble(split[4].strip());</span>
+
+<span class="fc" id="L158">			V vertex = mesh.insertVertex(x, y);</span>
+<span class="fc" id="L159">			vertices.put(id, vertex);</span>
+			// TODO: ? boundaryMark?
+<span class="pc bpc" id="L161" title="1 of 2 branches missed.">			if(attrNameFunc != null) {</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">				for(int j = 1; j &lt;= nAttributes; j++) {</span>
+<span class="nc" id="L163">					mesh.setDoubleData(vertex, attrNameFunc.apply(j), Double.parseDouble(split[4+j]));</span>
+				}
+			}
+		}
+
+		// border
+		// this is always 1
+<span class="fc" id="L170">		String nBorderString = readLine(reader);</span>
+<span class="pc bpc" id="L171" title="2 of 4 branches missed.">		assert Integer.parseInt(nBorderString.strip()) == 1;</span>
+<span class="fc" id="L172">		String borderVertices = readLine(reader);</span>
+<span class="fc" id="L173">		addFace(borderVertices, mesh.getBorder());</span>
+
+		// triangles
+<span class="fc" id="L176">		Integer nTriangles = Integer.parseInt(readLine(reader).strip());</span>
+<span class="fc bfc" id="L177" title="All 2 branches covered.">		for(int i = 0; i &lt; nTriangles; i++) {</span>
+<span class="fc" id="L178">			F face = mesh.createFace();</span>
+<span class="fc" id="L179">			addFace(readLine(reader), face);</span>
+		}
+
+		// holes
+<span class="fc" id="L183">		Integer nHoles = Integer.parseInt(readLine(reader).strip());</span>
+<span class="fc bfc" id="L184" title="All 2 branches covered.">		for(int i = 0; i &lt; nHoles; i++) {</span>
+<span class="fc" id="L185">			F face = mesh.createFace(true);</span>
+<span class="fc" id="L186">			addFace(readLine(reader), face);</span>
+		}
+
+<span class="fc" id="L189">		edges.clear();</span>
+<span class="fc" id="L190">		vertices.clear();</span>
+
+<span class="pc bpc" id="L192" title="2 of 4 branches missed.">		assert mesh.isValid();</span>
+<span class="fc" id="L193">		return mesh;</span>
+	}
+
+	private static String readLine(@NotNull final BufferedReader reader) throws IOException {
+		String st;
+<span class="pc bpc" id="L198" title="1 of 2 branches missed.">		while ((st = reader.readLine()) != null) {</span>
+<span class="fc" id="L199">			st = st.strip();</span>
+<span class="pc bpc" id="L200" title="1 of 4 branches missed.">			if(!st.startsWith(COMMENT_MARKER) || st.strip().equals(&quot;&quot;)) {</span>
+<span class="nc" id="L201">				break;</span>
+			}
+		}
+<span class="fc" id="L204">		return st.strip();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

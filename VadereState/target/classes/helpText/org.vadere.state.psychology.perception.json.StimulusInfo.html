@@ -1,0 +1,32 @@
+<h1> StimulusInfo</h1>
+
+<p>
+This class bundles one <a href='/helpText/org.vadere.state.psychology.perception.types.Timeframe.html' class='class_link'>Timeframe</a> and a list of <a href='/helpText/org.vadere.state.psychology.perception.types.Stimulus.html' class='class_link'>Stimulus</a> objects.
+I.e., multiple stimuli can occur in a specified timeframe.
+
+This class is just a wrapper to get a convenient JSON de-/serialization.
+The JSON serialization should look like this:
+
+{
+"timeframe": {
+"startTime":...,
+"endTime":...,
+"repeat":...,
+"waitTimeBetweenRepetition":...
+},
+"stimuli": [
+{ "type":"ElapsedTime" },
+{"type":"WaitInArea", "area": ... },
+...
+]
+}
+</p>
+
+<hr>
+<h2> Field: timeframe</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: stimuli</h2>
+<p>---</p>
+

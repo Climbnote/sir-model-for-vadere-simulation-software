@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VPoint.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry.shapes</a> &gt; <span class="el_source">VPoint.java</span></div><h1>VPoint.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry.shapes;
+
+import java.awt.*;
+import java.awt.geom.Point2D;
+import java.math.BigDecimal;
+
+import org.vadere.util.geometry.GeometryUtils;
+
+import static org.junit.Assert.assertEquals;
+
+/**
+ * Immutable point.
+ * TODO: this class should be final
+ * 
+ */
+<span class="pc bpc" id="L16" title="1 of 2 branches missed.">public class VPoint implements Cloneable, IPoint {</span>
+
+<span class="fc" id="L18">	public static final VPoint ZERO = new VPoint(0, 0);</span>
+
+	public double x;
+	public double y;
+
+<span class="nc" id="L23">	public VPoint() {}</span>
+
+	public VPoint(final IPoint point) {
+<span class="fc" id="L26">		this(point.getX(), point.getY());</span>
+<span class="fc" id="L27">	}</span>
+
+<span class="fc" id="L29">	public VPoint(double x, double y) {</span>
+<span class="fc" id="L30">		this.x = x;</span>
+<span class="fc" id="L31">		this.y = y;</span>
+<span class="pc bpc" id="L32" title="5 of 10 branches missed.">		assert !Double.isNaN(x) &amp;&amp; !Double.isNaN(y) &amp;&amp; Double.isFinite(x) &amp;&amp; Double.isFinite(y);</span>
+<span class="fc" id="L33">    }</span>
+
+<span class="nc" id="L35">	public VPoint(Point2D.Double copy) {</span>
+<span class="nc" id="L36">		this.x = copy.x;</span>
+<span class="nc" id="L37">		this.y = copy.y;</span>
+<span class="nc bnc" id="L38" title="All 10 branches missed.">		assert !Double.isNaN(x) &amp;&amp; !Double.isNaN(y) &amp;&amp; Double.isFinite(x) &amp;&amp; Double.isFinite(y);</span>
+<span class="nc" id="L39">	}</span>
+
+<span class="nc" id="L41">	public VPoint(Point2D copy) {</span>
+<span class="nc" id="L42">		this.x = copy.getX();</span>
+<span class="nc" id="L43">		this.y = copy.getY();</span>
+<span class="nc bnc" id="L44" title="All 10 branches missed.">		assert !Double.isNaN(x) &amp;&amp; !Double.isNaN(y) &amp;&amp; Double.isFinite(x) &amp;&amp; Double.isFinite(y);</span>
+<span class="nc" id="L45">	}</span>
+
+<span class="nc" id="L47">	public VPoint(Point copy) {</span>
+<span class="nc" id="L48">		this.x = copy.x;</span>
+<span class="nc" id="L49">		this.y = copy.y;</span>
+<span class="nc bnc" id="L50" title="All 10 branches missed.">		assert !Double.isNaN(x) &amp;&amp; !Double.isNaN(y) &amp;&amp; Double.isFinite(x) &amp;&amp; Double.isFinite(y);</span>
+<span class="nc" id="L51">	}</span>
+
+	@Override
+	public double distance(IPoint other) {
+<span class="fc" id="L55">		return distance(other.getX(), other.getY());</span>
+	}
+
+	@Override
+	public double distance(final double x, final double y) {
+<span class="fc" id="L60">		return Point2D.distance(this.x, this.y, x, y);</span>
+	}
+
+	public double distance(final Point2D other) {
+<span class="nc" id="L64">		return distance(other.getX(), other.getY());</span>
+	}
+
+	public double distanceSq(final double x, final double y) {
+<span class="nc" id="L68">		return Point2D.distanceSq(this.x, this.y, x, y);</span>
+	}
+
+	public double distanceSq(final IPoint other) {
+<span class="fc" id="L72">		return Point2D.distanceSq(other.getX(), other.getY(), x, y);</span>
+	}
+
+	@Override
+	public VPoint clone() {
+<span class="nc" id="L77">		return new VPoint(x, y);</span>
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+<span class="pc bpc" id="L82" title="1 of 2 branches missed.">		if (this == obj) {</span>
+<span class="nc" id="L83">			return true;</span>
+		}
+<span class="pc bpc" id="L85" title="1 of 2 branches missed.">		if (obj == null) {</span>
+<span class="nc" id="L86">			return false;</span>
+		}
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">		if (!(obj instanceof VPoint))</span>
+<span class="nc" id="L89">			return false;</span>
+
+<span class="fc" id="L91">		VPoint other = (VPoint) obj;</span>
+
+<span class="fc bfc" id="L93" title="All 2 branches covered.">		if (this.x != other.x)</span>
+<span class="fc" id="L94">			return false;</span>
+<span class="fc bfc" id="L95" title="All 2 branches covered.">		if (this.y != other.y)</span>
+<span class="fc" id="L96">			return false;</span>
+
+<span class="fc" id="L98">		return true;</span>
+	}
+
+	@Override
+	public int hashCode() {
+		// hashCode of java.awt.geom.Point2D
+<span class="fc" id="L104">		long bits = java.lang.Double.doubleToLongBits(getX());</span>
+<span class="fc" id="L105">		bits ^= java.lang.Double.doubleToLongBits(getY()) * 31;</span>
+<span class="fc" id="L106">		return (((int) bits) ^ ((int) (bits &gt;&gt; 32)));</span>
+	}
+
+	public boolean equals(final VPoint point, double tolerance) {
+<span class="pc bpc" id="L110" title="1 of 2 branches missed.">		if (point == null) {</span>
+<span class="nc" id="L111">			return false;</span>
+		}
+
+<span class="fc bfc" id="L114" title="All 2 branches covered.">		if (Math.abs(this.x - point.x) &gt; tolerance)</span>
+<span class="fc" id="L115">			return false;</span>
+<span class="pc bpc" id="L116" title="1 of 2 branches missed.">		if (Math.abs(this.y - point.y) &gt; tolerance)</span>
+<span class="nc" id="L117">			return false;</span>
+
+<span class="fc" id="L119">		return true;</span>
+	}
+
+	@Override
+	public double getX() {
+<span class="fc" id="L124">		return x;</span>
+	}
+
+	@Override
+	public double getY() {
+<span class="fc" id="L129">		return y;</span>
+	}
+
+	public VPoint rotate(final double radAngle) {
+<span class="fc" id="L133">		return new VPoint(x * Math.cos(radAngle) - y * Math.sin(radAngle),</span>
+<span class="fc" id="L134">				x * Math.sin(radAngle) + y * Math.cos(radAngle));</span>
+	}
+
+	@Override
+	public VPoint add(final IPoint point) {
+<span class="fc" id="L139">		return new VPoint(x + point.getX(), y + point.getY());</span>
+	}
+
+	@Override
+	public VPoint add(double x, double y) {
+<span class="nc" id="L144">		return new VPoint(this.x + x, this.y + y);</span>
+	}
+
+	@Override
+	public VPoint addPrecise(final IPoint point) {
+<span class="nc" id="L149">		return VPoint.addPrecise(this, point);</span>
+	}
+
+	@Override
+	public VPoint subtract(final IPoint point) {
+<span class="fc" id="L154">		return new VPoint(x - point.getX(), y - point.getY());</span>
+	}
+
+	@Override
+	public VPoint multiply(final IPoint point) {
+<span class="nc" id="L159">		return new VPoint(x * point.getX(), y * point.getY());</span>
+	}
+
+	@Override
+	public VPoint scalarMultiply(final double factor) {
+<span class="fc" id="L164">		return new VPoint(x * factor, y * factor);</span>
+	}
+
+	@Override
+	public double scalarProduct(IPoint point) {
+<span class="fc" id="L169">		return x * point.getX() + y * point.getY();</span>
+	}
+
+
+
+	@Override
+	public VPoint norm() {
+<span class="fc" id="L176">		return norm(distanceToOrigin());</span>
+	}
+
+	@Override
+	public VPoint norm(double len) {
+<span class="fc" id="L181">		return new VPoint(x / len, y / len);</span>
+	}
+
+	@Override
+	public VPoint setMagnitude(double len) {
+<span class="nc" id="L186">		double length = distanceToOrigin();</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">		if(length &lt;= 0) {</span>
+<span class="nc bnc" id="L188" title="All 2 branches missed.">			if(len != 0.0) {</span>
+<span class="nc" id="L189">				throw new IllegalArgumentException(&quot;a vector with zero length can not be set to a specific magnitude != 0.&quot;);</span>
+			}
+			else {
+<span class="nc" id="L192">				return this;</span>
+			}
+		}
+<span class="nc" id="L195">		return scalarMultiply(len / distanceToOrigin());</span>
+	}
+
+	@Override
+	public VPoint limit(double len) {
+<span class="nc bnc" id="L200" title="All 4 branches missed.">		assert len &gt;= 0;</span>
+<span class="nc" id="L201">		double length = distanceToOrigin();</span>
+<span class="nc bnc" id="L202" title="All 2 branches missed.">		if(length &gt; len) {</span>
+<span class="nc" id="L203">			return setMagnitude(len);</span>
+		}
+		else {
+<span class="nc" id="L206">			return this;</span>
+		}
+	}
+
+	@Override
+	public VPoint normZeroSafe() {
+
+		VPoint result;
+<span class="nc" id="L214">		double abs = distanceToOrigin();</span>
+
+<span class="nc bnc" id="L216" title="All 2 branches missed.">		if (abs &lt; GeometryUtils.DOUBLE_EPS) {</span>
+<span class="nc" id="L217">			result = new VPoint(0, 0);</span>
+		} else {
+<span class="nc" id="L219">			result = new VPoint(x / abs, y / abs);</span>
+		}
+
+<span class="nc" id="L222">		return result;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="fc" id="L227">		return &quot;[&quot; + x + &quot;,&quot; + y + &quot;]&quot;;</span>
+	}
+
+	public static VPoint addPrecise(final IPoint p1, final IPoint p2) {
+<span class="nc" id="L231">		BigDecimal p1X = BigDecimal.valueOf(p1.getX());</span>
+<span class="nc" id="L232">		BigDecimal p2X = BigDecimal.valueOf(p2.getX());</span>
+
+<span class="nc" id="L234">		BigDecimal p1Y = BigDecimal.valueOf(p1.getY());</span>
+<span class="nc" id="L235">		BigDecimal p2Y = BigDecimal.valueOf(p2.getY());</span>
+
+<span class="nc" id="L237">		return new VPoint(p1X.add(p2X).doubleValue(), p1Y.add(p2Y).doubleValue());</span>
+	}
+
+	@Override
+	public double distanceToOrigin() {
+<span class="fc" id="L242">		return Math.sqrt(x * x + y * y);</span>
+	}
+
+	public Point2D.Double asPoint2D() {
+<span class="nc" id="L246">		return new Point2D.Double(x, y);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GeometryUtilsMesh.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.utils.math</a> &gt; <span class="el_source">GeometryUtilsMesh.java</span></div><h1>GeometryUtilsMesh.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.utils.math;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.math.InterpolationUtil;
+
+import java.util.function.Function;
+import java.util.function.Predicate;
+
+<span class="nc" id="L14">public class GeometryUtilsMesh {</span>
+
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; double[] curvature(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final V v, Function&lt;V, Double&gt; f) {
+<span class="nc" id="L19">		return GeometryUtilsMesh.curvature(mesh, v, f, u -&gt; true);</span>
+	}
+
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; double getArea(
+			@NotNull final F face,
+			@NotNull final IMesh&lt;V, E, F&gt; mesh) {
+<span class="nc" id="L25">		return GeometryUtils.areaOfPolygon(mesh.getVertices(face));</span>
+	}
+
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; double barycentricInterpolation(
+			@NotNull final F face,
+	        @NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final Function&lt;V, Double&gt; function,
+			final double x,
+			final double y) {
+
+<span class="nc" id="L35">		E edge = mesh.getEdge(face);</span>
+<span class="nc" id="L36">		V v1 = mesh.getVertex(edge);</span>
+<span class="nc" id="L37">		V v2 = mesh.getVertex(mesh.getNext(edge));</span>
+<span class="nc" id="L38">		V v3 = mesh.getVertex(mesh.getPrev(edge));</span>
+
+<span class="nc" id="L40">		return InterpolationUtil.barycentricInterpolation(v1, v2, v3, function, x, y);</span>
+	}
+
+	/**
+	 * Computes and returns the mean and gaussian curvature.
+	 *
+	 * @param mesh
+	 * @param v
+	 * @param f
+	 * @param valid
+	 * @param &lt;V&gt;
+	 * @param &lt;E&gt;
+	 * @param &lt;F&gt;
+	 * @return
+	 */
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; double[] curvature(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final V v,
+			Function&lt;V, Double&gt; f,
+			@NotNull final Predicate&lt;V&gt; valid) {
+
+<span class="nc" id="L61">		double vx = mesh.getX(v);</span>
+<span class="nc" id="L62">		double vy = mesh.getY(v);</span>
+<span class="nc" id="L63">		double vz = f.apply(v);</span>
+<span class="nc" id="L64">		double alpha = 0;</span>
+<span class="nc" id="L65">		double beta = 0;</span>
+<span class="nc" id="L66">		double area = 0;</span>
+
+
+<span class="nc bnc" id="L69" title="All 2 branches missed.">		for(E edge : mesh.getEdgeIt(v)) {</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">			if(!mesh.isAtBoundary(edge)) {</span>
+<span class="nc" id="L71">				V vi = mesh.getTwinVertex(edge);</span>
+<span class="nc" id="L72">				V vj = mesh.getTwinVertex(mesh.getTwin(mesh.getNext(edge)));</span>
+<span class="nc" id="L73">				V vk = mesh.getTwinVertex(mesh.getPrev(mesh.getTwin(edge)));</span>
+
+<span class="nc" id="L75">				double vix = mesh.getX(vi);</span>
+<span class="nc" id="L76">				double viy = mesh.getY(vi);</span>
+<span class="nc" id="L77">				double viz = f.apply(vi);</span>
+
+<span class="nc" id="L79">				double vjx = mesh.getX(vj);</span>
+<span class="nc" id="L80">				double vjy = mesh.getY(vj);</span>
+<span class="nc" id="L81">				double vjz = f.apply(vj);</span>
+
+<span class="nc bnc" id="L83" title="All 6 branches missed.">				if(valid.test(vi) &amp;&amp; valid.test(vj) &amp;&amp; valid.test(vk)) {</span>
+<span class="nc" id="L84">					double eix = vix - vx;</span>
+<span class="nc" id="L85">					double eiy = viy - vy;</span>
+<span class="nc" id="L86">					double eiz = viz - vz;</span>
+
+<span class="nc" id="L88">					double ejx = vjx - vx;</span>
+<span class="nc" id="L89">					double ejy = vjy - vy;</span>
+<span class="nc" id="L90">					double ejz = vjz - vz;</span>
+
+<span class="nc" id="L92">					double ekx = mesh.getX(vk) - vx;</span>
+<span class="nc" id="L93">					double eky = mesh.getY(vk) - vy;</span>
+<span class="nc" id="L94">					double ekz = f.apply(vk) - vz;</span>
+
+<span class="nc" id="L96">					double alphai = GeometryUtils.angle3D(eix, eiy, eiz, ejx, ejy, ejz);</span>
+<span class="nc" id="L97">					double[] ni = new double[]{ 0, 0, 0 };</span>
+<span class="nc" id="L98">					double[] nk = new double[]{ 0, 0, 0 };</span>
+
+<span class="nc" id="L100">					GeometryUtils.cross(new double[]{ eix, eiy, eiz}, new double[]{ ejx, ejy, ejz}, ni);</span>
+<span class="nc" id="L101">					GeometryUtils.cross(new double[]{ ekx, eky, ekz }, new double[]{ eix, eiy, eiz}, nk);</span>
+<span class="nc" id="L102">					GeometryUtils.norm3D(ni);</span>
+<span class="nc" id="L103">					GeometryUtils.norm3D(nk);</span>
+
+<span class="nc" id="L105">					double betai = GeometryUtils.angle3D(nk[0], nk[1], nk[2], ni[0], ni[1], ni[2]);</span>
+
+<span class="nc" id="L107">					alpha += alphai;</span>
+<span class="nc" id="L108">					beta += Math.sqrt(eix * eix + eiy * eiy) * betai;</span>
+				}
+			}
+<span class="nc" id="L111">		}</span>
+
+<span class="nc" id="L113">		double gaussianCurvature = 2*Math.PI - alpha;</span>
+<span class="nc" id="L114">		double curvature = 1.0/2.0 * beta;</span>
+
+		//double meanGaussianCurvature = gaussianCurvature / area;
+		//double meanMurvature = curvature / area;
+
+<span class="nc" id="L119">		return new double[]{curvature, gaussianCurvature};</span>
+	}
+
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; double[] curvature(@NotNull final IMesh&lt;V, E, F&gt; mesh,
+	                                                                                           @NotNull final Function&lt;V, Double&gt; f,
+	                                                                                           @NotNull final Predicate&lt;V&gt; valid,
+	                                                                                           @NotNull final E edge) {
+<span class="nc" id="L126">		double alpha = 0;</span>
+<span class="nc" id="L127">		double beta = 0;</span>
+<span class="nc" id="L128">		V v = mesh.getVertex(edge);</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">		if(valid.test(v)) {</span>
+<span class="nc" id="L130">			double vx = mesh.getX(v);</span>
+<span class="nc" id="L131">			double vy = mesh.getY(v);</span>
+<span class="nc" id="L132">			double vz = f.apply(v);</span>
+
+<span class="nc bnc" id="L134" title="All 2 branches missed.">			if(!mesh.isAtBoundary(edge)) {</span>
+<span class="nc" id="L135">				V vi = mesh.getTwinVertex(edge);</span>
+<span class="nc" id="L136">				V vj = mesh.getTwinVertex(mesh.getTwin(mesh.getNext(edge)));</span>
+<span class="nc" id="L137">				V vk = mesh.getTwinVertex(mesh.getPrev(mesh.getTwin(edge)));</span>
+
+<span class="nc" id="L139">				double vix = mesh.getX(vi);</span>
+<span class="nc" id="L140">				double viy = mesh.getY(vi);</span>
+<span class="nc" id="L141">				double viz = f.apply(vi);</span>
+
+<span class="nc" id="L143">				double vjx = mesh.getX(vj);</span>
+<span class="nc" id="L144">				double vjy = mesh.getY(vj);</span>
+<span class="nc" id="L145">				double vjz = f.apply(vj);</span>
+
+<span class="nc bnc" id="L147" title="All 6 branches missed.">				if(valid.test(vi) &amp;&amp; valid.test(vj) &amp;&amp; valid.test(vk)) {</span>
+<span class="nc" id="L148">					double eix = vix - vx;</span>
+<span class="nc" id="L149">					double eiy = viy - vy;</span>
+<span class="nc" id="L150">					double eiz = viz - vz;</span>
+
+<span class="nc" id="L152">					double ejx = vjx - vx;</span>
+<span class="nc" id="L153">					double ejy = vjy - vy;</span>
+<span class="nc" id="L154">					double ejz = vjz - vz;</span>
+
+<span class="nc" id="L156">					double ekx = mesh.getX(vk) - vx;</span>
+<span class="nc" id="L157">					double eky = mesh.getY(vk) - vy;</span>
+<span class="nc" id="L158">					double ekz = f.apply(vk) - vz;</span>
+
+<span class="nc" id="L160">					alpha = GeometryUtils.angle3D(eix, eiy, eiz, ejx, ejy, ejz);</span>
+<span class="nc" id="L161">					double[] ni = new double[]{ 0, 0, 0 };</span>
+<span class="nc" id="L162">					double[] nk = new double[]{ 0, 0, 0 };</span>
+
+<span class="nc" id="L164">					GeometryUtils.cross(new double[]{ eix, eiy, eiz}, new double[]{ ejx, ejy, ejz}, ni);</span>
+<span class="nc" id="L165">					GeometryUtils.cross(new double[]{ ekx, eky, ekz }, new double[]{ eix, eiy, eiz}, nk);</span>
+<span class="nc" id="L166">					GeometryUtils.norm3D(ni);</span>
+<span class="nc" id="L167">					GeometryUtils.norm3D(nk);</span>
+
+<span class="nc" id="L169">					double betai = GeometryUtils.angle3D(nk[0], nk[1], nk[2], ni[0], ni[1], ni[2]);</span>
+<span class="nc" id="L170">					beta = 1/2 * Math.sqrt(eix * eix + eiy * eiy) * betai;</span>
+				}
+			}
+		}
+
+<span class="nc" id="L175">		return new double[]{alpha, beta};</span>
+	}
+
+	/*
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; double[] curvature(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final V v, Function&lt;V, Double&gt; f,
+			@NotNull final Predicate&lt;V&gt; valid) {
+
+		double vx = mesh.getX(v);
+		double vy = mesh.getY(v);
+		double vz = f.apply(v);
+		double alpha = 0;
+		double beta = 0;
+		double area = 0;
+
+
+		for(E edge : mesh.getEdgeIt(v)) {
+			if(!mesh.isAtBoundary(edge)) {
+				V vi = mesh.getTwinVertex(edge);
+				V vj = mesh.getTwinVertex(mesh.getTwin(mesh.getNext(edge)));
+				V vk = mesh.getTwinVertex(mesh.getPrev(mesh.getTwin(edge)));
+				V vn = mesh.getVertex(mesh.getNext(edge));
+
+				double vix = mesh.getX(vi);
+				double viy = mesh.getY(vi);
+				double viz = f.apply(vi);
+
+				double vjx = mesh.getX(vj);
+				double vjy = mesh.getY(vj);
+				double vjz = f.apply(vj);
+
+				double vnx = mesh.getX(vn);
+				double vny = mesh.getY(vn);
+				double vnz = f.apply(vn);
+
+				if(valid.test(vi) &amp;&amp; valid.test(vj) &amp;&amp; valid.test()) {
+					double eix = vix - vx;
+					double eiy = viy - vy;
+					double eiz = viz - vz;
+
+					double ejx = vjx - vx;
+					double ejy = vjy - vy;
+					double ejz = vjz - vz;
+
+					double ekx = mesh.getX(vk) - vx;
+					double eky = mesh.getY(vk) - vy;
+					double ekz = f.apply(vk) - vz;
+
+					double enx = vnx - vx;
+					double eny = vny - vy;
+					double enz = vnz - vz;
+
+					double bx = enx / 3.0 + eix / 3.0 + vx / 3.0;
+					double by = eny / 3.0 + eiy / 3.0 + vy / 3.0;
+					double bz = enz / 3.0 + eiz / 3.0 + vz / 3.0;
+
+					double areai = GeometryUtils.areaOfPolygon(new double[]{vnx, vix, bx, vjx}, new double[]{vny, viy, by, vjy}, new double[]{vnz, viz, bz, vjz});
+
+					double alphai = GeometryUtils.angle3D(eix, eiy, eiz, ejx, ejy, ejz);
+					double[] ni = new double[]{ 0, 0, 0 };
+					double[] nk = new double[]{ 0, 0, 0 };
+
+					GeometryUtils.cross(new double[]{ eix, eiy, eiz}, new double[]{ ejx, ejy, ejz}, ni);
+					GeometryUtils.cross(new double[]{ ekx, eky, ekz }, new double[]{ eix, eiy, eiz}, nk);
+					GeometryUtils.norm3D(ni);
+					GeometryUtils.norm3D(nk);
+
+					double betai = GeometryUtils.angle3D(nk[0], nk[1], nk[2], ni[0], ni[1], ni[2]);
+
+					alpha += alphai;
+					beta += Math.sqrt(eix * eix + eiy * eiy) * betai;
+					area += areai;
+				}
+			}
+		}
+
+		double gaussianCurvature = 2*Math.PI - alpha;
+		double curvature = 1.0/4.0 * beta;
+
+		//double meanGaussianCurvature = gaussianCurvature / area;
+		//double meanMurvature = curvature / area;
+
+		return new double[]{curvature, gaussianCurvature};
+	}
+	 */
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VCone.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry.shapes</a> &gt; <span class="el_source">VCone.java</span></div><h1>VCone.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry.shapes;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.geometry.GeometryUtils;
+
+/**
+ * @author Benedikt Zoennchen
+ */
+<span class="pc bpc" id="L9" title="1 of 2 branches missed.">public class VCone {</span>
+	private VPoint rayDirection1;
+	private VPoint rayDirection2;
+	private VPoint position;
+	private VPoint rayPosition1;
+	private VPoint rayPosition2;
+	private VPoint direction;
+	private double angle;
+
+<span class="fc" id="L18">	public VCone(@NotNull final VPoint position, @NotNull final VPoint direction, double angle) {</span>
+<span class="pc bpc" id="L19" title="2 of 4 branches missed.">		if(angle &lt;= 0 || angle &gt;= Math.PI) {</span>
+<span class="nc" id="L20">			throw new IllegalArgumentException(&quot;angle3D of a cone has to be greater than 0 and smaller than pi.&quot;);</span>
+		}
+
+<span class="fc" id="L23">		this.position = position;</span>
+<span class="fc" id="L24">		this.direction = direction.norm();</span>
+<span class="fc" id="L25">		this.rayDirection1 = direction.rotate(angle/2).norm();</span>
+<span class="fc" id="L26">		this.rayDirection2 = direction.rotate(-angle/2).norm();</span>
+<span class="fc" id="L27">		this.angle = angle;</span>
+
+<span class="fc" id="L29">	}</span>
+
+	public boolean contains(final VPoint point) {
+<span class="fc" id="L32">		double angle1 = GeometryUtils.angleTo(point.subtract(position));</span>
+<span class="fc" id="L33">		double angle2 = GeometryUtils.angleTo(direction);</span>
+<span class="fc bfc" id="L34" title="All 2 branches covered.">		return Math.abs(angle1 - angle2) &lt; angle / 2;</span>
+	}
+
+	/*public boolean intersect(final VTriangle triangle) {
+		double bound = triangle.maxCoordinate();
+		this.rayPosition1 = position.add(rayDirection1.scalarMultiply(bound));
+		this.rayPosition2 = position.add(rayDirection2.scalarMultiply(bound));
+		if(rayPosition1.equals(rayPosition2)) {
+			System.out.println(&quot;ww&quot;);
+		}
+		return new VTriangle(position, rayPosition1, rayPosition2).intersect(triangle);
+	}*/
+
+	/*
+	 * TODO: test
+	 */
+	public boolean overlapLineSegment(final VLine line) {
+<span class="nc" id="L51">		VPoint a = new VPoint(line.getX1(), line.getY1());</span>
+<span class="nc" id="L52">		VPoint b = new VPoint(line.getX2(), line.getY2());</span>
+
+<span class="nc bnc" id="L54" title="All 4 branches missed.">		if(contains(a) || contains(b)) {</span>
+<span class="nc" id="L55">			return false;</span>
+		}
+
+<span class="nc" id="L58">		VPoint v1 = position.subtract(a);</span>
+<span class="nc" id="L59">		VPoint v2 = b.subtract(a);</span>
+<span class="nc" id="L60">		VPoint v3 = new VPoint(-direction.getY(), direction.getX());</span>
+<span class="nc" id="L61">		double t1 = v2.crossProduct(v1) / v2.scalarProduct(v3);</span>
+<span class="nc" id="L62">		double t2 = v1.scalarProduct(v3) / v2.scalarProduct(v3);</span>
+<span class="nc bnc" id="L63" title="All 6 branches missed.">		assert Double.isFinite(t1) &amp;&amp; Double.isFinite(t2);</span>
+
+		// the line segment from a to b intersect the cone?
+<span class="nc bnc" id="L66" title="All 6 branches missed.">		return t1 &gt;= 0 &amp;&amp; t2 &lt;= 1 &amp;&amp; t2 &gt;= 0;</span>
+	}
+
+	private boolean isLeft(IPoint a, IPoint b, IPoint c) {
+<span class="nc bnc" id="L70" title="All 2 branches missed.">		return ((b.getY() - a.getX())*(c.getY() - a.getY()) - (b.getY() - a.getY())*(c.getX() - a.getX())) &gt; 0;</span>
+	}
+
+	private boolean isRight(IPoint a, IPoint b, IPoint c) {
+<span class="nc bnc" id="L74" title="All 2 branches missed.">		return ((b.getY() - a.getX())*(c.getY() - a.getY()) - (b.getY() - a.getY())*(c.getX() - a.getX())) &lt; 0;</span>
+	}
+
+	private boolean isOn(IPoint a, IPoint b, IPoint c) {
+<span class="nc bnc" id="L78" title="All 2 branches missed.">		return ((b.getY() - a.getX())*(c.getY() - a.getY()) - (b.getY() - a.getY())*(c.getX() - a.getX())) == 0;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

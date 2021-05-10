@@ -1,0 +1,32 @@
+<h1> TrajectoryReader</h1>
+
+<p>
+A TrajectoryReader is the counterpart of the <a href='/helpText/rel_/FootStepProcessor.html' class='class_link'>FootStepProcessor</a>.
+
+Output file assumptions:
+The TrajectoryReader assumes that the first row of the output is the headline and
+that there exist certain columns named:
+(id or pedestrianId) [mandatory],
+simTime [mandatory],
+startX [mandatory],
+startY [mandatory],
+endX [mandatory],
+endY [mandatory],
+targetId [optional] and
+groupId [optional].
+The order of the rows (expect for the first row / header) can be arbitrary.
+Columns has to be separated by <a href='/helpText/rel_/TrajectoryReader#SPLITTER.html' class='class_link'>TrajectoryReader#SPLITTER</a> and <a href='/helpText/rel_/OutputFile#headerProcSep.html' class='class_link'>OutputFile#headerProcSep</a>.
+</p>
+
+<hr>
+<h2> Field: SPLITTER</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: trajectoryFilePath</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: dataFrame</h2>
+<p>---</p>
+

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PEikMesh.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.improver.eikmesh.impl</a> &gt; <span class="el_source">PEikMesh.java</span></div><h1>PEikMesh.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.improver.eikmesh.impl;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PMesh;
+import org.vadere.meshing.mesh.gen.PVertex;
+import org.vadere.meshing.mesh.impl.PTriangulation;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.gen.GenEikMesh;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.util.math.IDistanceFunction;
+
+import java.util.Collection;
+import java.util.Collections;
+
+public class PEikMesh extends GenEikMesh&lt;PVertex, PHalfEdge, PFace&gt; {
+
+	public PEikMesh(@NotNull final IEdgeLengthFunction edgeLengthFunc,
+	                @NotNull final IIncrementalTriangulation&lt;PVertex, PHalfEdge, PFace&gt; triangulation) {
+<span class="nc" id="L25">		super(edgeLengthFunc, triangulation);</span>
+<span class="nc" id="L26">	}</span>
+
+	public PEikMesh(@NotNull final IEdgeLengthFunction edgeLengthFunc,
+	                @NotNull final IIncrementalTriangulation&lt;PVertex, PHalfEdge, PFace&gt; triangulation,
+	                boolean refine) {
+<span class="nc" id="L31">		super(edgeLengthFunc, triangulation, refine);</span>
+<span class="nc" id="L32">	}</span>
+
+
+
+	public PEikMesh(@NotNull final IDistanceFunction distanceFunc,
+	                @NotNull final IEdgeLengthFunction edgeLengthFunc,
+	                @NotNull final IIncrementalTriangulation&lt;PVertex, PHalfEdge, PFace&gt; triangulation,
+	                final boolean refine) {
+<span class="nc" id="L40">		super(distanceFunc, edgeLengthFunc, triangulation, refine);</span>
+<span class="nc" id="L41">	}</span>
+
+	public PEikMesh(
+			@NotNull IDistanceFunction distanceFunc,
+			@NotNull IEdgeLengthFunction edgeLengthFunc,
+			@NotNull PTriangulation triangulation,
+			final boolean refine) {
+
+<span class="nc" id="L49">		super(distanceFunc, edgeLengthFunc, triangulation, refine);</span>
+<span class="nc" id="L50">	}</span>
+
+	public PEikMesh(
+			@NotNull IDistanceFunction distanceFunc,
+			@NotNull IEdgeLengthFunction edgeLengthFunc,
+			double initialEdgeLen,
+			@NotNull VRectangle bound,
+			@NotNull Collection&lt;? extends VShape&gt; obstacleShapes) {
+
+<span class="nc" id="L59">		super(distanceFunc, edgeLengthFunc, initialEdgeLen, bound, obstacleShapes, () -&gt; new PMesh());</span>
+<span class="nc" id="L60">	}</span>
+
+	public PEikMesh(
+			@NotNull IDistanceFunction distanceFunc,
+			@NotNull IEdgeLengthFunction edgeLengthFunc,
+			@NotNull Collection&lt;VPoint&gt; fixPoints,
+			double initialEdgeLen,
+			@NotNull VRectangle bound
+	) {
+<span class="nc" id="L69">		super(distanceFunc, edgeLengthFunc, fixPoints, initialEdgeLen, bound, Collections.EMPTY_LIST,() -&gt; new PMesh());</span>
+<span class="nc" id="L70">	}</span>
+
+
+	public PEikMesh(
+			@NotNull IDistanceFunction distanceFunc,
+			@NotNull IEdgeLengthFunction edgeLengthFunc,
+			double initialEdgeLen,
+			@NotNull VRectangle bound) {
+
+<span class="nc" id="L79">		super(distanceFunc, edgeLengthFunc, initialEdgeLen, bound,</span>
+<span class="nc" id="L80">				() -&gt; new PMesh());</span>
+<span class="nc" id="L81">	}</span>
+
+	public PEikMesh(
+			@NotNull IDistanceFunction distanceFunc,
+			double initialEdgeLen,
+			@NotNull VRectangle bound) {
+
+<span class="nc" id="L88">		super(distanceFunc, e -&gt; 1.0, initialEdgeLen, bound, () -&gt; new PMesh());</span>
+<span class="nc" id="L89">	}</span>
+
+	public PEikMesh(
+			double initialEdgeLen,
+			@NotNull VRectangle bound) {
+
+<span class="nc" id="L95">		super(p -&gt; 1.0, e -&gt; 1.0, initialEdgeLen, bound, () -&gt; new PMesh());</span>
+<span class="nc" id="L96">	}</span>
+
+	public PEikMesh(
+			@NotNull VPolygon polygon,
+			double initialEdgeLen,
+			@NotNull Collection&lt;? extends VShape&gt; obstacleShapes) {
+<span class="nc" id="L102">		super(polygon, initialEdgeLen, obstacleShapes, () -&gt; new PMesh());</span>
+<span class="nc" id="L103">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

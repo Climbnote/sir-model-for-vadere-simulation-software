@@ -1,0 +1,578 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Table.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.data</a> &gt; <span class="el_source">Table.java</span></div><h1>Table.java</h1><pre class="source lang-java linenums">package org.vadere.util.data;
+
+import org.vadere.util.logging.Logger;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
+
+/**
+ * The {@link Table} is an abstract data type with a fixed column size (fixed numbers of columns and
+ * fixed column names).
+ * Null entries are not allowed. If you try to get an value from an entry outside the range this may
+ * result
+ * in an {@link IllegalArgumentException}. Column names are unique. It is possible to merge a table
+ * in an
+ * existing table, if they both has the same number of rows. One can only insert values at the end
+ * of the table.
+ * You have to complete a whole row before you can insert another one. The only possibility to
+ * delete manipulate
+ * existing rows is to use the iterators {@link RowIterator} or {@link RowArrayIterator}. The reason
+ * is that it
+ * is inefficient to reference via index since the implementation is based on {@link LinkedList}.
+ * 
+ * Note: The column size difference is maximal +-1, if the row is not complete. This implementation
+ * is not synchronized.
+ * 
+ *
+ */
+public class Table implements Iterable&lt;Row&gt; {
+	private Map&lt;String, LinkedList&lt;Object&gt;&gt; table;
+	private String[] columnNames;
+	private Set&lt;String&gt; columnNamesSet;
+	private int size;
+
+<span class="fc" id="L41">	private static Logger logger = Logger.getLogger(Table.class);</span>
+
+	/**
+	 * Construct a new fixed column sized {@link org.vadere.util.data.Table}.
+	 * 
+	 * @param columnNames immutable columnNames
+	 */
+<span class="fc" id="L48">	public Table(final String... columnNames) {</span>
+<span class="fc" id="L49">		this.columnNamesSet = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L50">		this.table = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L51">		clear(columnNames);</span>
+
+<span class="fc" id="L53">	}</span>
+
+	public Table(final List&lt;String&gt; columnNames) {
+<span class="nc" id="L56">		this(columnNames.toArray(new String[] {}));</span>
+<span class="nc" id="L57">	}</span>
+
+	public Table(final String[] columnNames, final Object[] values, final int size) {
+<span class="nc" id="L60">		this(columnNames);</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">		if (columnNames.length != values.length) {</span>
+<span class="nc" id="L62">			throw new IllegalArgumentException(&quot;values and columnNames array has not the same length: &quot;</span>
+					+ columnNames.length + &quot; != &quot; + values.length);
+		}
+
+<span class="nc bnc" id="L66" title="All 2 branches missed.">		for (int row = 0; row &lt; size; row++) {</span>
+<span class="nc" id="L67">			addRow();</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">			for (int col = 0; col &lt; columnNames.length; col++) {</span>
+<span class="nc" id="L69">				addColumnEntry(columnNames[col], values[col]);</span>
+			}
+		}
+<span class="nc" id="L72">	}</span>
+
+	/**
+	 * Returns the a copy of all column names of this table.
+	 * 
+	 * @return a copy of all column names of this table
+	 */
+	public String[] getColumnNames() {
+<span class="nc" id="L80">		return columnNames.clone();</span>
+	}
+
+	/**
+	 * Clears the table, so after this call the table will be empty.
+	 */
+	public void clear() {
+<span class="nc" id="L87">		this.size = 0;</span>
+<span class="nc" id="L88">		table = new HashMap&lt;&gt;();</span>
+
+<span class="nc bnc" id="L90" title="All 2 branches missed.">		for (String fieldName : getColumnNames()) {</span>
+<span class="nc" id="L91">			table.put(fieldName, new LinkedList&lt;&gt;());</span>
+		}
+
+<span class="nc" id="L94">	}</span>
+
+	public void clear(final String... columnNames) {
+<span class="fc" id="L97">		this.size = 0;</span>
+<span class="fc" id="L98">		this.table.clear();</span>
+<span class="fc" id="L99">		this.columnNamesSet.clear();</span>
+
+<span class="fc bfc" id="L101" title="All 2 branches covered.">		for (String columnName : columnNames) {</span>
+<span class="pc bpc" id="L102" title="1 of 2 branches missed.">			if (!this.columnNamesSet.add(columnName)) {</span>
+<span class="nc" id="L103">				throw new IllegalArgumentException(&quot;duplicated column names &quot; + columnName + &quot;.&quot;);</span>
+			}
+<span class="fc" id="L105">			this.table.put(columnName, new LinkedList&lt;&gt;());</span>
+		}
+
+<span class="fc" id="L108">		this.columnNames = columnNames.clone();</span>
+<span class="fc" id="L109">	}</span>
+
+	/**
+	 * Adds a value to the specific column of the current row identified by a column name.
+	 * Note that one has to fill a whole row before add a new row. After a row is complete
+	 * one has to call addRow(). If the column does not exist an {@link IllegalArgumentException}
+	 * will be thrown. If one try to add an entry to a full column an
+	 * {@link IndexOutOfBoundsException}
+	 * will be thrown.
+	 * 
+	 * @param columnName name of the column
+	 * @param value the value that will be inserted
+	 * @throws IllegalArgumentException if the column does not exist
+	 * @throws IndexOutOfBoundsException if the column is full before the call is happened
+	 */
+	public void addColumnEntry(final String columnName, final Object value) {
+<span class="fc" id="L125">		LinkedList&lt;Object&gt; column = table.get(columnName);</span>
+<span class="pc bpc" id="L126" title="1 of 2 branches missed.">		if (column == null) {</span>
+<span class="nc" id="L127">			column = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L128">			table.put(columnName, column);</span>
+<span class="nc" id="L129">			throw new IllegalArgumentException(&quot;column &quot; + columnName + &quot; does not exist.&quot;);</span>
+		}
+
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">		if (column.size() != size - 1) {</span>
+<span class="nc" id="L133">			throw new IndexOutOfBoundsException(column.size() + &quot; != &quot; + (size - 1));</span>
+		} else {
+			// this is cheap!
+<span class="fc" id="L136">			column.add(value);</span>
+		}
+<span class="fc" id="L138">	}</span>
+
+	public void addColumnEntries(final Row row) {
+<span class="nc bnc" id="L141" title="All 2 branches missed.">		for (String columnName : row.getColumnNames()) {</span>
+<span class="nc" id="L142">			addColumnEntry(columnName, row.getEntry(columnName));</span>
+<span class="nc" id="L143">		}</span>
+<span class="nc" id="L144">	}</span>
+
+	public boolean containsColumn(final String columnName) {
+<span class="nc" id="L147">		return columnNamesSet.contains(columnName);</span>
+	}
+
+
+	/**
+	 * Adds a new empty row to this table. After one complete a row
+	 * this method has to be called to continue insert elements.
+	 */
+	public void addRow() {
+<span class="fc" id="L156">		size++;</span>
+<span class="fc" id="L157">	}</span>
+
+	public void addRow(final Row row) {
+<span class="fc" id="L160">		addRow();</span>
+<span class="fc bfc" id="L161" title="All 2 branches covered.">		for (String colNames : row.getColumnNames()) {</span>
+<span class="fc" id="L162">			addColumnEntry(colNames, row.getEntry(colNames));</span>
+<span class="fc" id="L163">		}</span>
+<span class="fc" id="L164">	}</span>
+
+	/**
+	 * Merges a table into this table by add each column to this table. Both
+	 * tables has to be of the same size. If there a duplicated column names
+	 * this table will stay with its column. Futhermore the columns of the other table
+	 * will be added behind the this table.
+	 * 
+	 * @param table the table that will be merged into this table
+	 */
+	public void merge(final Table table) {
+<span class="nc bnc" id="L175" title="All 2 branches missed.">		if (size() != table.size) {</span>
+<span class="nc" id="L176">			throw new IndexOutOfBoundsException(table.size() + &quot; != &quot; + (this.size()));</span>
+		}
+		// merge content
+<span class="nc bnc" id="L179" title="All 2 branches missed.">		for (String columnName : table.columnNames) {</span>
+<span class="nc bnc" id="L180" title="All 4 branches missed.">			if (!this.columnNamesSet.contains(columnName) || this.table.get(columnName) == null</span>
+<span class="nc bnc" id="L181" title="All 2 branches missed.">					|| this.table.get(columnName).isEmpty()) {</span>
+<span class="nc" id="L182">				this.table.put(columnName, table.getColumn(columnName));</span>
+<span class="nc" id="L183">				this.columnNamesSet.add(columnName);</span>
+			}
+		}
+
+<span class="nc" id="L187">		Set&lt;String&gt; columnNameSetCopy = new HashSet&lt;&gt;(columnNamesSet);</span>
+
+		// merge column names
+<span class="nc" id="L190">		String[] columnNames = new String[columnNamesSet.size()];</span>
+<span class="nc" id="L191">		int columnCounter = 0;</span>
+<span class="nc bnc" id="L192" title="All 2 branches missed.">		for (int i = 0; i &lt; this.columnNames.length; i++) {</span>
+<span class="nc bnc" id="L193" title="All 2 branches missed.">			if (columnNameSetCopy.contains(this.columnNames[i])) {</span>
+<span class="nc" id="L194">				columnNameSetCopy.remove(this.columnNames[i]);</span>
+<span class="nc" id="L195">				columnNames[columnCounter] = this.columnNames[i];</span>
+<span class="nc" id="L196">				columnCounter++;</span>
+			}
+		}
+<span class="nc bnc" id="L199" title="All 2 branches missed.">		for (int i = 0; i &lt; table.columnNames.length; i++) {</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">			if (columnNameSetCopy.contains(table.columnNames[i])) {</span>
+<span class="nc" id="L201">				columnNameSetCopy.remove(table.columnNames[i]);</span>
+<span class="nc" id="L202">				columnNames[columnCounter] = table.columnNames[i];</span>
+<span class="nc" id="L203">				columnCounter++;</span>
+			}
+		}
+<span class="nc" id="L206">		this.columnNames = columnNames;</span>
+<span class="nc" id="L207">	}</span>
+
+	/**
+	 * Returns a single value of this table. This is a expensive call
+	 * since the data structure use LinkedLists. You should use the iterator.
+	 * 
+	 * @param columnName the column of the entry
+	 * @param row the row of the entry
+	 * @return a single value of this table
+	 */
+	public Object getEntry(final String columnName, final int row) {
+<span class="pc bpc" id="L218" title="1 of 2 branches missed.">		if (getColumn(columnName).size() == 0) {</span>
+<span class="nc" id="L219">			return null;</span>
+		}
+<span class="fc" id="L221">		return getColumn(columnName).get(row);</span>
+	}
+
+	/**
+	 * Returns a whole column if it exist, otherwise it will return null.
+	 * 
+	 * @param columnName the name of the column
+	 * @return a whole column if it exist, null otherwise
+	 */
+	@SuppressWarnings(&quot;unchecked&quot;)
+	public LinkedList&lt;Object&gt; getColumn(final String columnName) {
+<span class="fc" id="L232">		return (LinkedList&lt;Object&gt;) table.get(columnName).clone();</span>
+	}
+
+	/**
+	 * Returns the number of filled rows in this table.
+	 * 
+	 * @return the number of filled rows in this table
+	 */
+	public int size() {
+<span class="fc" id="L241">		return size;</span>
+	}
+
+	/**
+	 * Returns the column capacity of this table.
+	 * 
+	 * @return the column capacity of this table
+	 */
+	public int columns() {
+<span class="nc" id="L250">		return columnNamesSet.size();</span>
+	}
+
+	/**
+	 * Returns true if this table triangleContains no elements.
+	 * 
+	 * @return true if this table triangleContains no elements
+	 */
+	public boolean isEmpty() {
+<span class="nc bnc" id="L259" title="All 6 branches missed.">		return columns() == 0 || size() == 0 || getEntry(getColumnNames()[0], 0) == null;</span>
+	}
+
+	@Override
+	public Iterator&lt;Row&gt; iterator() {
+<span class="nc" id="L264">		return new RowIterator(getColumnNames());</span>
+	}
+
+	public ListIterator&lt;Row&gt; listMapIterator() {
+<span class="nc" id="L268">		return new RowIterator(getColumnNames());</span>
+	}
+
+	public ListIterator&lt;Object[]&gt; listArrayIterator() {
+<span class="nc" id="L272">		return new RowArrayIterator(getColumnNames());</span>
+	}
+
+	public ListIterator&lt;Object[]&gt; listArrayIterator(final String... columnNames) {
+<span class="nc" id="L276">		return new RowArrayIterator(columnNames);</span>
+	}
+
+	/*
+	 * Too expensive!
+	 * 
+	 * @Override
+	 * public boolean equals(final Object obj) {
+	 * if(obj == null || !getClass().equals(obj.getClass())) {
+	 * return false;
+	 * }
+	 * 
+	 * Table other = (Table)obj;
+	 * 
+	 * if(size() != other.size() || columnNames.length != other.columnNames.length ||
+	 * !columnNamesSet.equals(other.columnNamesSet)) {
+	 * return false;
+	 * }
+	 * 
+	 * for(int i = 0; i &lt; columnNames.length; i++) {
+	 * if(!columnNames[i].equals(other.columnNames[i])) {
+	 * return false;
+	 * }
+	 * }
+	 * 
+	 * for(Map.Entry&lt;String, LinkedList&lt;Object&gt;&gt; entry : table.entrySet()) {
+	 * LinkedList&lt;Object&gt; otherList = other.table.get(entry.getKey());
+	 * if(otherList == null) {
+	 * return false;
+	 * }
+	 * else {
+	 * 
+	 * }
+	 * }
+	 * 
+	 * 
+	 * return super.equals(obj);
+	 * }
+	 */
+
+	/**
+	 * A {@link ListIterator} for manipulate the Table (remove, and update rows).
+	 * 
+	 *
+	 */
+	private class RowIterator implements ListIterator&lt;Row&gt; {
+
+		private int row;
+		private Map&lt;String, ListIterator&lt;Object&gt;&gt; iteratorList;
+		private String[] columnNames;
+
+<span class="nc" id="L327">		private RowIterator(final String... columnNames) {</span>
+<span class="nc" id="L328">			this.columnNames = columnNames;</span>
+<span class="nc" id="L329">			this.iteratorList = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L330" title="All 2 branches missed.">			for (String columnName : columnNames) {</span>
+<span class="nc" id="L331">				iteratorList.put(columnName, table.get(columnName).listIterator());</span>
+			}
+<span class="nc" id="L333">		}</span>
+
+		@Override
+		public boolean hasNext() {
+<span class="nc bnc" id="L337" title="All 2 branches missed.">			for (ListIterator&lt;Object&gt; iterator : iteratorList.values()) {</span>
+<span class="nc bnc" id="L338" title="All 2 branches missed.">				if (iterator.hasNext()) {</span>
+<span class="nc" id="L339">					return true;</span>
+				}
+<span class="nc" id="L341">			}</span>
+<span class="nc" id="L342">			return false;</span>
+		}
+
+		@Override
+		public Row next() {
+<span class="nc" id="L347">			Row resultMap = new Row();</span>
+
+<span class="nc bnc" id="L349" title="All 2 branches missed.">			for (String columnName : columnNames) {</span>
+<span class="nc bnc" id="L350" title="All 2 branches missed.">				if (iteratorList.get(columnName).hasNext()) {</span>
+<span class="nc" id="L351">					resultMap.setEntry(columnName, iteratorList.get(columnName).next());</span>
+				}
+			}
+
+<span class="nc" id="L355">			row++;</span>
+<span class="nc" id="L356">			return resultMap;</span>
+		}
+
+		@Override
+		public boolean hasPrevious() {
+<span class="nc bnc" id="L361" title="All 2 branches missed.">			for (ListIterator&lt;Object&gt; iterator : iteratorList.values()) {</span>
+<span class="nc bnc" id="L362" title="All 2 branches missed.">				if (!iterator.hasPrevious()) {</span>
+<span class="nc" id="L363">					return false;</span>
+				}
+<span class="nc" id="L365">			}</span>
+<span class="nc" id="L366">			return true;</span>
+		}
+
+		@Override
+		public Row previous() {
+<span class="nc" id="L371">			Row resultMap = new Row();</span>
+
+<span class="nc bnc" id="L373" title="All 2 branches missed.">			for (String columnName : columnNames) {</span>
+<span class="nc bnc" id="L374" title="All 2 branches missed.">				if (iteratorList.get(columnName).hasPrevious()) {</span>
+<span class="nc" id="L375">					resultMap.setEntry(columnName, iteratorList.get(columnName).previous());</span>
+				}
+			}
+
+<span class="nc" id="L379">			row--;</span>
+<span class="nc" id="L380">			return resultMap;</span>
+		}
+
+		@Override
+		public int nextIndex() {
+<span class="nc" id="L385">			return (row + 1);</span>
+		}
+
+		@Override
+		public int previousIndex() {
+<span class="nc" id="L390">			return (row - 1);</span>
+		}
+
+		@Override
+		public void remove() {
+<span class="nc bnc" id="L395" title="All 2 branches missed.">			for (String columnName : columnNames) {</span>
+<span class="nc" id="L396">				iteratorList.get(columnName).remove();</span>
+			}
+<span class="nc" id="L398">			size--;</span>
+<span class="nc" id="L399">		}</span>
+
+		@Override
+		public void set(Row e) {
+<span class="nc bnc" id="L403" title="All 2 branches missed.">			for (String columnName : columnNames) {</span>
+<span class="nc" id="L404">				iteratorList.get(columnName).set(e);</span>
+			}
+<span class="nc" id="L406">		}</span>
+
+		@Override
+		public void add(Row e) {
+<span class="nc bnc" id="L410" title="All 2 branches missed.">			for (String columnName : columnNames) {</span>
+<span class="nc" id="L411">				iteratorList.get(columnName).add(e);</span>
+			}
+<span class="nc" id="L413">			size++;</span>
+<span class="nc" id="L414">		}</span>
+
+	}
+
+	/**
+	 * A {@link ListIterator} for manipulate the Table (remove, and update rows).
+	 * 
+	 *
+	 */
+	private class RowArrayIterator implements ListIterator&lt;Object[]&gt; {
+
+		private int row;
+		private List&lt;ListIterator&lt;Object&gt;&gt; iteratorList;
+
+<span class="nc" id="L428">		private RowArrayIterator(final String... columnNames) {</span>
+<span class="nc" id="L429">			this.iteratorList = new LinkedList&lt;&gt;();</span>
+<span class="nc bnc" id="L430" title="All 2 branches missed.">			for (String columnName : columnNames) {</span>
+				try {
+<span class="nc" id="L432">					iteratorList.add(table.get(columnName).listIterator());</span>
+<span class="nc" id="L433">				} catch (NullPointerException e) {</span>
+					// throw new NullPointerException(columnName + &quot; is not in the table.&quot;);
+<span class="nc" id="L435">					logger.error(columnName + &quot; is not in the table. Creating NaN-column.&quot;);</span>
+<span class="nc" id="L436">					final int fakeIteratorLength = table.size();</span>
+<span class="nc" id="L437">					iteratorList.add(new ListIterator&lt;Object&gt;() {</span>
+<span class="nc" id="L438">						int index = 0;</span>
+
+						@Override
+<span class="nc" id="L441">						public void set(Object e) {}</span>
+
+						@Override
+<span class="nc" id="L444">						public void remove() {}</span>
+
+						@Override
+						public int previousIndex() {
+<span class="nc" id="L448">							return index - 1;</span>
+						}
+
+						@Override
+						public Object previous() {
+<span class="nc bnc" id="L453" title="All 2 branches missed.">							if (!hasPrevious())</span>
+<span class="nc" id="L454">								throw new NoSuchElementException();</span>
+<span class="nc" id="L455">							index--;</span>
+<span class="nc" id="L456">							return &quot;&lt;NaN&gt;&quot;;</span>
+						}
+
+						@Override
+						public int nextIndex() {
+<span class="nc" id="L461">							return index + 1;</span>
+						}
+
+						@Override
+						public Object next() {
+<span class="nc bnc" id="L466" title="All 2 branches missed.">							if (!hasNext())</span>
+<span class="nc" id="L467">								throw new NoSuchElementException();</span>
+<span class="nc" id="L468">							index++;</span>
+<span class="nc" id="L469">							return &quot;&lt;NaN&gt;&quot;;</span>
+						}
+
+						@Override
+						public boolean hasPrevious() {
+<span class="nc bnc" id="L474" title="All 2 branches missed.">							return index &gt;= 0;</span>
+						}
+
+						@Override
+						public boolean hasNext() {
+<span class="nc bnc" id="L479" title="All 2 branches missed.">							return index &lt; fakeIteratorLength;</span>
+						}
+
+						@Override
+<span class="nc" id="L483">						public void add(Object e) {}</span>
+					});
+<span class="nc" id="L485">				}</span>
+
+			}
+<span class="nc" id="L488">		}</span>
+
+		@Override
+		public boolean hasNext() {
+<span class="nc bnc" id="L492" title="All 2 branches missed.">			for (ListIterator&lt;Object&gt; iterator : iteratorList) {</span>
+<span class="nc bnc" id="L493" title="All 2 branches missed.">				if (iterator.hasNext()) {</span>
+<span class="nc" id="L494">					return true;</span>
+				}
+<span class="nc" id="L496">			}</span>
+<span class="nc" id="L497">			return false;</span>
+		}
+
+		@Override
+		public Object[] next() {
+<span class="nc" id="L502">			Object[] result = new Object[iteratorList.size()];</span>
+<span class="nc" id="L503">			int col = 0;</span>
+<span class="nc bnc" id="L504" title="All 2 branches missed.">			for (ListIterator&lt;Object&gt; iterator : iteratorList) {</span>
+<span class="nc bnc" id="L505" title="All 2 branches missed.">				if (iterator.hasNext()) {</span>
+<span class="nc" id="L506">					result[col] = iterator.next();</span>
+				} else {
+<span class="nc" id="L508">					result[col] = null;</span>
+				}
+<span class="nc" id="L510">				col++;</span>
+<span class="nc" id="L511">			}</span>
+<span class="nc" id="L512">			row++;</span>
+<span class="nc" id="L513">			return result;</span>
+		}
+
+		@Override
+		public boolean hasPrevious() {
+<span class="nc bnc" id="L518" title="All 2 branches missed.">			for (ListIterator&lt;Object&gt; iterator : iteratorList) {</span>
+<span class="nc bnc" id="L519" title="All 2 branches missed.">				if (iterator.hasPrevious()) {</span>
+<span class="nc" id="L520">					return true;</span>
+				}
+<span class="nc" id="L522">			}</span>
+<span class="nc" id="L523">			return false;</span>
+		}
+
+		@Override
+		public Object[] previous() {
+<span class="nc" id="L528">			Object[] result = new Object[iteratorList.size()];</span>
+<span class="nc" id="L529">			int col = 0;</span>
+<span class="nc bnc" id="L530" title="All 2 branches missed.">			for (ListIterator&lt;Object&gt; iterator : iteratorList) {</span>
+
+<span class="nc bnc" id="L532" title="All 2 branches missed.">				if (iterator.hasPrevious()) {</span>
+<span class="nc" id="L533">					result[col] = iterator.previous();</span>
+				} else {
+<span class="nc" id="L535">					result[col] = null;</span>
+				}
+<span class="nc" id="L537">				col++;</span>
+
+<span class="nc" id="L539">			}</span>
+<span class="nc" id="L540">			row--;</span>
+<span class="nc" id="L541">			return result;</span>
+		}
+
+		@Override
+		public int nextIndex() {
+<span class="nc" id="L546">			return (row + 1);</span>
+		}
+
+		@Override
+		public int previousIndex() {
+<span class="nc" id="L551">			return (row - 1);</span>
+		}
+
+		@Override
+		public void remove() {
+<span class="nc bnc" id="L556" title="All 2 branches missed.">			for (ListIterator&lt;Object&gt; iterator : iteratorList) {</span>
+<span class="nc" id="L557">				iterator.remove();;</span>
+<span class="nc" id="L558">			}</span>
+<span class="nc" id="L559">			size--;</span>
+<span class="nc" id="L560">		}</span>
+
+		@Override
+		public void set(final Object[] e) {
+<span class="nc bnc" id="L564" title="All 2 branches missed.">			for (ListIterator&lt;Object&gt; iterator : iteratorList) {</span>
+<span class="nc" id="L565">				iterator.set(e);</span>
+<span class="nc" id="L566">			}</span>
+<span class="nc" id="L567">		}</span>
+
+		@Override
+		public void add(final Object[] e) {
+<span class="nc bnc" id="L571" title="All 2 branches missed.">			for (ListIterator&lt;Object&gt; iterator : iteratorList) {</span>
+<span class="nc" id="L572">				iterator.add(e);</span>
+<span class="nc" id="L573">			}</span>
+<span class="nc" id="L574">			size++;</span>
+<span class="nc" id="L575">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

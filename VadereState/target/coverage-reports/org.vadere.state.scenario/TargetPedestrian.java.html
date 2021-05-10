@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TargetPedestrian.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.scenario</a> &gt; <span class="el_source">TargetPedestrian.java</span></div><h1>TargetPedestrian.java</h1><pre class="source lang-java linenums">package org.vadere.state.scenario;
+
+import org.vadere.state.attributes.scenario.AttributesTarget;
+import org.vadere.util.geometry.shapes.VShape;
+
+public class TargetPedestrian extends Target implements DynamicElementRemoveListener&lt;Pedestrian&gt; {
+
+	// Static Variables
+	/**
+	 * {@link Target}s and {@link TargetPedestrian}s share the same address space for ids!
+	 * This can cause conflicts when the target potential is retrieved
+	 * in &quot;PotentialFieldTarget.getPotential()&quot;. &quot;PotentialFieldTarget&quot;
+	 * stores potentials in a map&lt;targetId, potentials&gt;. Therefore, use
+	 * a fixed offset to discriminate {@link Target}s and {@link TargetPedestrian}s.
+	 */
+	public static final int UNIQUE_ID_OFFSET = 100000;
+
+	// Member Variables
+	private final Pedestrian pedestrian;
+	private boolean isDeleted;
+
+	// Constructors
+	public TargetPedestrian(Pedestrian pedestrian) {
+<span class="nc" id="L24">		super(new AttributesTarget(pedestrian));</span>
+<span class="nc" id="L25">		this.pedestrian = pedestrian;</span>
+<span class="nc" id="L26">		this.isDeleted = false;</span>
+<span class="nc" id="L27">	}</span>
+
+	// Getters
+	@Override
+	public int getId() {
+<span class="nc" id="L32">		int targetId = pedestrian.getId() + TargetPedestrian.UNIQUE_ID_OFFSET;</span>
+<span class="nc" id="L33">		return targetId;</span>
+	}
+
+	@Override
+	public VShape getShape() {
+<span class="nc" id="L38">		return pedestrian.getShape();</span>
+	}
+
+	@Override
+	public boolean isTargetPedestrian() {
+<span class="nc" id="L43">		return true;</span>
+	}
+
+	public Pedestrian getPedestrian() {
+<span class="nc" id="L47">		return this.pedestrian;</span>
+	}
+
+	public boolean isDeleted() {
+<span class="nc" id="L51">		return isDeleted;</span>
+	}
+
+	@Override
+	public void elementRemoved(Pedestrian pedestrian) {
+<span class="nc" id="L56">		isDeleted = true;</span>
+<span class="nc" id="L57">	}</span>
+
+	// Setters
+	@Override
+	public void setShape(VShape newShape) {
+<span class="nc" id="L62">		pedestrian.setShape(newShape);</span>
+<span class="nc" id="L63">	}</span>
+
+	// Methods
+	@Override
+	public boolean equals(Object o) {
+<span class="nc bnc" id="L68" title="All 2 branches missed.">		if (this == o)</span>
+<span class="nc" id="L69">			return true;</span>
+<span class="nc bnc" id="L70" title="All 4 branches missed.">		if (o == null || getClass() != o.getClass())</span>
+<span class="nc" id="L71">			return false;</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">		if (!super.equals(o))</span>
+<span class="nc" id="L73">			return false;</span>
+
+<span class="nc" id="L75">		TargetPedestrian that = (TargetPedestrian) o;</span>
+
+<span class="nc bnc" id="L77" title="All 2 branches missed.">		if (isDeleted != that.isDeleted)</span>
+<span class="nc" id="L78">			return false;</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		if (!pedestrian.equals(that.pedestrian))</span>
+<span class="nc" id="L80">			return false;</span>
+
+<span class="nc" id="L82">		return true;</span>
+	}
+	
+	@Override
+	public TargetPedestrian clone() {
+<span class="nc" id="L87">		return  new TargetPedestrian(pedestrian.clone());</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CLGatherer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">CLGatherer.java</span></div><h1>CLGatherer.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.lwjgl.system.MemoryUtil;
+import org.vadere.util.geometry.shapes.IPoint;
+
+import java.nio.Buffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.util.Collection;
+import java.util.List;
+
+/**
+ * The {@link CLGatherer} gathers and scatters data between a {@link AMesh}
+ * and the heap memory represented by buffers ({@link Buffer}) such that one
+ * can transfer the {@link Buffer} and therefore the elements of {@link AMesh}
+ * to the Graphical Processing Unit (GPU) via OpenCL.
+ *
+ * @author Benedikt Zoennchen
+ */
+<span class="nc bnc" id="L22" title="All 2 branches missed.">public class CLGatherer {</span>
+
+	/**
+	 * &lt;p&gt;Writes all coordinates of vertices / points p1 = (x1, y1), p2 = (x2, y2), ... pn = (xn, yn) successively,
+	 * i.e. (x1,y1,x2,y2,...,xn,yn) into the {@link DoubleBuffer}.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: The {@link DoubleBuffer} vertexBuffer is correctly sized,
+	 * i.e. 2*n where n is the number of vertices of the mesh.&lt;/p&gt;
+	 *
+	 * @param mesh          the mesh which contains the points.
+	 * @param vertexBuffer  the memory in which the coordinates of the vertices / points will be written.
+	 *
+	 * @return the heap memory {@link DoubleBuffer} containing all coordinates of all all vertices / points in a successive order
+	 */
+    public static DoubleBuffer getVerticesD(@NotNull final AMesh mesh, @NotNull final DoubleBuffer vertexBuffer) {
+<span class="nc" id="L37">        Collection&lt;AVertex&gt; vertices = mesh.getVertices();</span>
+<span class="nc" id="L38">        int index = 0;</span>
+<span class="nc bnc" id="L39" title="All 2 branches missed.">        for(AVertex vertex : vertices) {</span>
+<span class="nc bnc" id="L40" title="All 4 branches missed.">            assert index/2.0 == vertex.getId();</span>
+<span class="nc" id="L41">            vertexBuffer.put(index, vertex.getX());</span>
+<span class="nc" id="L42">            index++;</span>
+<span class="nc" id="L43">            vertexBuffer.put(index, vertex.getY());</span>
+<span class="nc" id="L44">            index++;</span>
+<span class="nc" id="L45">        }</span>
+<span class="nc" id="L46">        return vertexBuffer;</span>
+    }
+
+	/**
+	 * &lt;p&gt;Writes all coordinates of vertices / points p1 = (x1, y1), p2 = (x2, y2), ... pn = (xn, yn) successively,
+	 * i.e. (x1,y1,x2,y2,...,xn,yn) into the {@link DoubleBuffer}.&lt;/p&gt;
+	 *
+	 * @param mesh the mesh which contains the points.
+	 *
+	 * @return the heap memory {@link DoubleBuffer} containing all coordinates of all all vertices / points in a successive order
+	 */
+	public static DoubleBuffer getVerticesD(@NotNull final AMesh mesh) {
+<span class="nc" id="L58">        Collection&lt;AVertex&gt; vertices = mesh.getVertices();</span>
+<span class="nc" id="L59">        return getVerticesD(mesh, MemoryUtil.memAllocDouble(vertices.size()*2));</span>
+    }
+
+	/**
+	 * &lt;p&gt;Writes all coordinates of vertices / points p1 = (x1, y1), p2 = (x2, y2), ... pn = (xn, yn) successively,
+	 * i.e. (x1,y1,x2,y2,...,xn,yn) into the {@link FloatBuffer} by casting double to float&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: The {@link FloatBuffer} vertexBuffer is correctly sized,
+	 * i.e. 2*n where n is the number of vertices of the mesh.&lt;/p&gt;
+	 *
+	 * @param mesh          the mesh which contains the points.
+	 * @param vertexBuffer  the memory in which the coordinates of the vertices / points will be written.
+	 *
+	 * @return the heap memory {@link FloatBuffer} containing all coordinates of all all vertices / points in a successive order
+	 */
+    public static FloatBuffer getVerticesF(@NotNull final AMesh mesh, @NotNull final FloatBuffer vertexBuffer) {
+<span class="nc" id="L75">        Collection&lt;AVertex&gt; vertices = mesh.getVertices();</span>
+<span class="nc" id="L76">        int index = 0;</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">        for(AVertex vertex : vertices) {</span>
+<span class="nc bnc" id="L78" title="All 4 branches missed.">            assert index/2.0 == vertex.getId();</span>
+<span class="nc" id="L79">            vertexBuffer.put(index, (float)vertex.getX());</span>
+<span class="nc" id="L80">            index++;</span>
+<span class="nc" id="L81">            vertexBuffer.put(index, (float)vertex.getY());</span>
+<span class="nc" id="L82">            index++;</span>
+<span class="nc" id="L83">        }</span>
+<span class="nc" id="L84">        return vertexBuffer;</span>
+    }
+
+	/**
+	 * &lt;p&gt;Writes all coordinates of vertices / points p1 = (x1, y1), p2 = (x2, y2), ... pn = (xn, yn) successively,
+	 * i.e. (x1,y1,x2,y2,...,xn,yn) into the {@link FloatBuffer} by casting double to float&lt;/p&gt;
+	 *
+	 * @param mesh  the mesh which contains the points.
+	 *
+	 * @return the heap memory {@link FloatBuffer} containing all coordinates of all all vertices / points in a successive order
+	 */
+    public static FloatBuffer getVerticesF(@NotNull final AMesh mesh) {
+<span class="nc" id="L96">        Collection&lt;AVertex&gt; vertices = mesh.getVertices();</span>
+<span class="nc" id="L97">        return getVerticesF(mesh, MemoryUtil.memAllocFloat(vertices.size()*2));</span>
+    }
+
+	/**
+	 * &lt;p&gt;Scatters / writes / sets the array-indices of half-edges ({@link AHalfEdge}) at the heap memory {@link IntBuffer}
+	 * to the mesh in order of the mesh-ordering. This is the reverse operation of {@link CLGatherer#getHalfEdges(AMesh)}&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: The i-th half-edge in the heap memory represents the i-th half-edge of the {@link AMesh}. The heap memory
+	 * has to look like (edgeId1, vertexId1, nextId1, twinId1, faceId1, edgeId2, vertexId2, nextId2, twinId2, faceId2,
+	 * ..., edgeIdn, vertexIdn, nextIdn, twinIdn, faceIdn), where n is the number of half-edges of the mesh.&lt;/p&gt;
+	 *
+	 * @param mesh          the mesh receiving the indices
+	 * @param edgeBuffer    the heap memory from which the indices will be read
+	 */
+	public static void scatterHalfEdges(@NotNull final AMesh mesh, @NotNull final IntBuffer edgeBuffer) {
+<span class="nc" id="L112">        List&lt;AHalfEdge&gt; edges = mesh.getEdges();</span>
+
+<span class="nc" id="L114">        int index = 0;</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">        for(AHalfEdge edge : edges) {</span>
+<span class="nc" id="L116">            int edgeId = index / 4;</span>
+<span class="nc" id="L117">            int vertexId = edgeBuffer.get(index);</span>
+<span class="nc" id="L118">            int nextId = edgeBuffer.get(index+1);</span>
+<span class="nc" id="L119">            int twinId = edgeBuffer.get(index+2);</span>
+<span class="nc" id="L120">            int faceId = edgeBuffer.get(index+3);</span>
+
+<span class="nc" id="L122">            edge.setEnd(vertexId);</span>
+<span class="nc" id="L123">            edge.setNext(nextId);</span>
+<span class="nc" id="L124">            edge.setTwin(twinId);</span>
+<span class="nc" id="L125">            edge.setFace(faceId);</span>
+
+<span class="nc" id="L127">            edges.get(nextId).setPrevious(edgeId);</span>
+<span class="nc" id="L128">            index += 4;</span>
+<span class="nc" id="L129">        }</span>
+<span class="nc" id="L130">    }</span>
+
+	/**
+	 * &lt;p&gt;Gathers / writes the indices of all half-edges ({@link AHalfEdge}) of a {@link AMesh} to the heap memory {@link IntBuffer}
+	 * in order of the mesh-ordering. This is the reverse operation of {@link CLGatherer#scatterHalfEdges(AMesh, IntBuffer)}&lt;/p&gt;
+	 *
+	 * @param mesh  the mesh from which the indices will be received
+	 * @return the heap memory {@link IntBuffer} containing all indices of all half-edges
+	 */
+	public static IntBuffer getHalfEdges(@NotNull final AMesh mesh) {
+<span class="nc" id="L140">        Collection&lt;AHalfEdge&gt; edges = mesh.getEdges();</span>
+<span class="nc" id="L141">        IntBuffer edgeBuffer =  MemoryUtil.memAllocInt(edges.size()*4);</span>
+
+<span class="nc" id="L143">        int index = 0;</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">        for(AHalfEdge edge : edges) {</span>
+<span class="nc" id="L145">            edgeBuffer.put(index, edge.getEnd());</span>
+<span class="nc" id="L146">            edgeBuffer.put(index+1, edge.getNext());</span>
+<span class="nc" id="L147">            edgeBuffer.put(index+2, edge.getTwin());</span>
+<span class="nc" id="L148">            edgeBuffer.put(index+3, edge.getFace());</span>
+            /*if(edge.getFace()==-1){
+                System.out.println(&quot;border edge&quot; + (index / 4));
+            }*/
+<span class="nc" id="L152">            index += 4;</span>
+<span class="nc" id="L153">        }</span>
+<span class="nc" id="L154">        return edgeBuffer;</span>
+    }
+
+	/**
+	 * &lt;p&gt;Scatters / writes / sets the array-indices of faces ({@link AFace}) at the heap memory {@link IntBuffer}
+	 * to the mesh in order of the mesh-ordering. This is the reverse operation of {@link CLGatherer#getFaces(AMesh)}&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: The i-th face in the heap memory represents the i-th face of the {@link AMesh}. The heap memory
+	 * has to look like (faceId1, border1, faceId2, border2 ... faceIdn), where n is the number of faces of the mesh.&lt;/p&gt;
+	 *
+	 * @param mesh          the mesh receiving the indices
+	 * @param faceBuffer    the heap memory from which the indices will be read
+	 */
+    public static void scatterFaces(@NotNull final AMesh mesh, @NotNull final IntBuffer faceBuffer) {
+<span class="nc" id="L168">        Collection&lt;AFace&gt; faces = mesh.getFaces();</span>
+
+<span class="nc" id="L170">        int index = 0;</span>
+<span class="nc bnc" id="L171" title="All 2 branches missed.">        for(AFace face : faces) {</span>
+<span class="nc" id="L172">            face.setEdge(faceBuffer.get(index));</span>
+            // TODO: why +2 instead of +1 here?
+<span class="nc" id="L174">            index += 2;</span>
+<span class="nc" id="L175">        }</span>
+<span class="nc" id="L176">    }</span>
+
+	/**
+	 * &lt;p&gt;Gathers / writes the indices of all faces ({@link AFace}) of a {@link AMesh} to the heap memory {@link IntBuffer}
+	 * in order of the mesh-ordering. This is the reverse operation of {@link CLGatherer#scatterFaces(AMesh, IntBuffer)},
+	 * except the border information is set to -1, i.e. ignored&lt;/p&gt;
+	 *
+	 * @param mesh  the mesh from which the indices will be received
+	 * @return the heap memory {@link IntBuffer} containing all indices of all faces
+	 */
+    public static IntBuffer getFaces(@NotNull final AMesh mesh) {
+<span class="nc" id="L187">        Collection&lt;AFace&gt; faces = mesh.getFaces();</span>
+<span class="nc" id="L188">        IntBuffer faceBuffer =  MemoryUtil.memAllocInt(faces.size()*2);</span>
+
+<span class="nc" id="L190">        int index = 0;</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">        for(AFace face : faces) {</span>
+<span class="nc" id="L192">            faceBuffer.put(index, face.getEdge());</span>
+            // TODO: why we set -1 here?
+<span class="nc" id="L194">            faceBuffer.put(index+1, -1);</span>
+<span class="nc" id="L195">            index += 2;</span>
+<span class="nc" id="L196">        }</span>
+<span class="nc" id="L197">        return faceBuffer;</span>
+    }
+
+	/**
+	 * &lt;p&gt;Scatters / writes / sets the array-indices of the edge of each vertex ({@link AVertex}) which is saved at heap memory {@link IntBuffer}
+	 * to the mesh in order of the mesh-ordering. This is the reverse operation of {@link CLGatherer#getEdgeOfVertex(AMesh)}&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: The i-th edge index in the heap memory represents the edge index of the edge of the i-th vertex of the {@link AMesh}.
+	 * The heap memory has to look like (edgeId1, edgeId2,..., edgeIdn), where n is the number of vertices of the mesh.&lt;/p&gt;
+	 *
+	 * @param mesh          the mesh receiving the indices
+	 * @param edgeOfVertex  the heap memory from which the indices will be read
+	 */
+    public static void scatterEdgeOfVertex(@NotNull final AMesh mesh, @NotNull final  IntBuffer edgeOfVertex) {
+<span class="nc" id="L211">        Collection&lt;AVertex&gt; vertices = mesh.getVertices();</span>
+
+<span class="nc" id="L213">        int index = 0;</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">        for(AVertex vertex : vertices) {</span>
+<span class="nc bnc" id="L215" title="All 4 branches missed.">            assert vertex.getId() == index;</span>
+<span class="nc" id="L216">            vertex.setEdge(edgeOfVertex.get(index));</span>
+<span class="nc" id="L217">            index++;</span>
+<span class="nc" id="L218">        }</span>
+<span class="nc" id="L219">    }</span>
+
+	/**
+	 * &lt;p&gt;Gathers / writes all edge-indices of all vertices ({@link AVertex}) of a {@link AMesh} to the heap memory {@link IntBuffer}
+	 * in order of the mesh-ordering. This is the reverse operation of {@link CLGatherer#scatterEdgeOfVertex(AMesh, IntBuffer)}&lt;/p&gt;
+	 *
+	 * @param mesh  the mesh from which the indices will be received
+	 * @return      the heap memory {@link IntBuffer} containing all edge-indices of all vertices
+	 */
+    public static IntBuffer getEdgeOfVertex(@NotNull final AMesh mesh) {
+<span class="nc" id="L229">        Collection&lt;AVertex&gt; vertices = mesh.getVertices();</span>
+<span class="nc" id="L230">        IntBuffer vertexBuffer =  MemoryUtil.memAllocInt(vertices.size());</span>
+
+<span class="nc" id="L232">        int index = 0;</span>
+<span class="nc bnc" id="L233" title="All 2 branches missed.">        for(AVertex vertex : vertices) {</span>
+<span class="nc bnc" id="L234" title="All 4 branches missed.">            assert vertex.getId() == index;</span>
+<span class="nc" id="L235">            vertexBuffer.put(index, vertex.getEdge());</span>
+<span class="nc" id="L236">            index++;</span>
+<span class="nc" id="L237">        }</span>
+<span class="nc" id="L238">        return vertexBuffer;</span>
+    }
+
+	/**
+	 * &lt;p&gt;Gathers / writes for each vertex a 1 if and only if the vertex ({@link AVertex}) is a boundary vertex and 0 otherwise to
+	 * to the heap memory {@link IntBuffer} in order of the mesh-ordering of {@link AMesh}.&lt;/p&gt;
+	 *
+	 * @param mesh  the mesh from which the boundary information is received
+	 *
+	 * @return      the heap memory {@link IntBuffer} containing the boundary vertex information (1 if the vertex is a boundary vertex and 0 otherwise)
+	 */
+	public static IntBuffer getBorderVertices(@NotNull final AMesh mesh) {
+<span class="nc" id="L250">        Collection&lt;AVertex&gt; vertices = mesh.getVertices();</span>
+<span class="nc" id="L251">        IntBuffer vertexBuffer =  MemoryUtil.memAllocInt(vertices.size());</span>
+
+<span class="nc" id="L253">        int index = 0;</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">        for(AVertex vertex : vertices) {</span>
+<span class="nc bnc" id="L255" title="All 4 branches missed.">            assert vertex.getId() == index;</span>
+<span class="nc bnc" id="L256" title="All 2 branches missed.">            vertexBuffer.put(index, mesh.isAtBoundary(vertex) ? 1 : 0);</span>
+<span class="nc" id="L257">            index++;</span>
+<span class="nc" id="L258">        }</span>
+<span class="nc" id="L259">        return vertexBuffer;</span>
+    }
+
+
+
+	/**
+	 * Gathers / writes for each half-edge {@link AHalfEdge}
+	 * &lt;ol&gt;
+	 *     &lt;li&gt;the index of the vertex the half-edge ends&lt;/li&gt;
+	 *     &lt;li&gt;the index of the vertex the half-edge starts, i.e. the previous ends&lt;/li&gt;
+	 *     &lt;li&gt;the index of the face of the half-edge or -1 if there is no face, i.e. the half-edge is a boundary edge&lt;/li&gt;
+	 *     &lt;li&gt;the index of the face of the twin of the half-edge or - if thre is no face, i.e. the half-edge is a boundary edge&lt;/li&gt;
+	 * &lt;/ol&gt;
+	 * to the heap memory {@link IntBuffer} in order of the mesh-ordering of {@link AMesh}.
+	 *
+	 * @param mesh  the mesh from which the boundary information is received
+	 * @return      the heap memory {@link IntBuffer} containing (endId, startId, faceId, twinFaceId, ....)
+	 * @see &lt;a href=&quot;https://www.dcc.uchile.cl/TR/2011/TR_DCC-20110228-002.pdf&quot;&gt;Data structure and its purpose&lt;/a&gt;
+	 */
+    public static IntBuffer getEdges(@NotNull final AMesh mesh) {
+	    // TODO: maybe remove duplicated edges
+<span class="nc" id="L280">    	Collection&lt;AHalfEdge&gt; edges = mesh.getEdges();</span>
+<span class="nc" id="L281">        IntBuffer edgeBuffer =  MemoryUtil.memAllocInt(edges.size()*4);</span>
+<span class="nc" id="L282">        int index = 0;</span>
+<span class="nc bnc" id="L283" title="All 2 branches missed.">        for(AHalfEdge edge : edges) {</span>
+<span class="nc" id="L284">            edgeBuffer.put(index, mesh.getPrev(edge).getEnd());</span>
+<span class="nc" id="L285">            index++;</span>
+<span class="nc" id="L286">            edgeBuffer.put(index, edge.getEnd());</span>
+<span class="nc" id="L287">            index++;</span>
+<span class="nc bnc" id="L288" title="All 2 branches missed.">            if(mesh.isBoundary(mesh.getFace(edge))) {</span>
+<span class="nc" id="L289">                edgeBuffer.put(index, -1);</span>
+<span class="nc" id="L290">                index++;</span>
+<span class="nc" id="L291">                edgeBuffer.put(index, mesh.getFace(mesh.getTwin(edge)).getId());</span>
+<span class="nc" id="L292">                index++;</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">                if(mesh.isBoundary(mesh.getFace(mesh.getTwin(edge)))) {</span>
+<span class="nc" id="L294">                    throw new IllegalArgumentException(&quot;invalid mesh!&quot;);</span>
+                }
+            }
+<span class="nc bnc" id="L297" title="All 2 branches missed.">            else if(mesh.isBoundary(mesh.getFace(mesh.getTwin(edge)))) {</span>
+<span class="nc" id="L298">                edgeBuffer.put(index, mesh.getFace(edge).getId());</span>
+<span class="nc" id="L299">                index++;</span>
+<span class="nc" id="L300">                edgeBuffer.put(index, -1);</span>
+<span class="nc" id="L301">                index++;</span>
+<span class="nc bnc" id="L302" title="All 2 branches missed.">                if(mesh.isBoundary(mesh.getFace(edge))) {</span>
+<span class="nc" id="L303">                    throw new IllegalArgumentException(&quot;invalid mesh!&quot;);</span>
+                }
+            }
+            else {
+<span class="nc" id="L307">                edgeBuffer.put(index, mesh.getFace(edge).getId());</span>
+<span class="nc" id="L308">                index++;</span>
+<span class="nc" id="L309">                edgeBuffer.put(index, mesh.getFace(mesh.getTwin(edge)).getId());</span>
+<span class="nc" id="L310">                index++;</span>
+            }
+<span class="nc" id="L312">        }</span>
+<span class="nc" id="L313">        return edgeBuffer;</span>
+    }
+
+	/**
+	 * &lt;p&gt;Gathers / writes all twin-indices of all half-edges ({@link AHalfEdge}) of a {@link AMesh} to the heap memory {@link IntBuffer}
+	 * in order of the mesh-ordering.&lt;/p&gt;
+	 *
+	 * @param mesh  the mesh from which the indices will be received
+	 * @return      the heap memory {@link IntBuffer} containing all twin-indices of all vertices
+	 */
+	public static IntBuffer getTwins(@NotNull final AMesh mesh) {
+<span class="nc" id="L324">        Collection&lt;AHalfEdge&gt; edges = mesh.getEdges();</span>
+<span class="nc" id="L325">        IntBuffer edgeBuffer =  MemoryUtil.memAllocInt(edges.size());</span>
+<span class="nc" id="L326">        int index = 0;</span>
+<span class="nc bnc" id="L327" title="All 2 branches missed.">        for(AHalfEdge edge : edges) {</span>
+<span class="nc" id="L328">            edgeBuffer.put(index, mesh.getTwin(edge).getId());</span>
+<span class="nc" id="L329">            index++;</span>
+<span class="nc" id="L330">        }</span>
+<span class="nc" id="L331">        return edgeBuffer;</span>
+    }
+
+	/**
+	 * &lt;p&gt;Gathers / writes the indices of all half-edges {@link AHalfEdge} of all faces ({@link AFace}) of a {@link AMesh}
+	 * to the heap memory {@link IntBuffer} padding it by one additional entry which is 0, i.e. the memory looks like
+	 * (e1f1, e2f1, e3f1, 0, e1f2, e2f2, e3fn, ..., e1fn, e2fn, e3fn).&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: All interior faces of the mesh are triangles.&lt;/p&gt;
+	 *
+	 * @param mesh  the mesh from which the indices will be received
+	 * @return      the heap memory {@link IntBuffer} containing all edge-indices of all faces
+	 */
+	public static IntBuffer getTriangles(@NotNull final AMesh mesh) {
+<span class="nc" id="L345">        Collection&lt;AFace&gt; faces = mesh.getFaces();</span>
+<span class="nc" id="L346">        IntBuffer faceBuffer = MemoryUtil.memAllocInt(faces.size()*4);</span>
+<span class="nc" id="L347">        int index = 0;</span>
+<span class="nc bnc" id="L348" title="All 2 branches missed.">        for(AFace face : faces) {</span>
+<span class="nc" id="L349">            AHalfEdge edge = mesh.getEdge(face);</span>
+<span class="nc" id="L350">            faceBuffer.put(index, edge.getEnd());</span>
+<span class="nc" id="L351">            index++;</span>
+<span class="nc" id="L352">            edge = mesh.getNext(edge);</span>
+<span class="nc" id="L353">            faceBuffer.put(index, edge.getEnd());</span>
+<span class="nc" id="L354">            index++;</span>
+<span class="nc" id="L355">            edge = mesh.getNext(edge);</span>
+<span class="nc" id="L356">            faceBuffer.put(index, edge.getEnd());</span>
+<span class="nc" id="L357">            index++;</span>
+<span class="nc" id="L358">            faceBuffer.put(index, 0);</span>
+<span class="nc" id="L359">            index++;</span>
+<span class="nc" id="L360">        }</span>
+<span class="nc" id="L361">        return faceBuffer;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SFCNode.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">SFCNode.java</span></div><h1>SFCNode.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IVertex;
+
+/**
+ * &lt;p&gt;A {@link SFCNode} is part of the {@link GenSpaceFillingCurve} containing a
+ * half-edge which refers to a specific face and a direction which indicate its traversal
+ * direction with respect to the direction of the half-edge, i.e. true means in direction of the
+ * half-edge, false means in the reverse direction of the half-edge.&lt;/p&gt;
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public class SFCNode&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; {
+	private final E edge;
+	private final SFCDirection direction;
+
+<span class="nc" id="L24">	SFCNode&lt;V, E, F&gt; next = null;</span>
+<span class="nc" id="L25">	SFCNode&lt;V, E, F&gt; prev = null;</span>
+
+<span class="nc" id="L27">	public SFCNode(@NotNull final E edge, @NotNull final SFCDirection direction) {</span>
+<span class="nc" id="L28">		this.edge = edge;</span>
+<span class="nc" id="L29">		this.direction = direction;</span>
+<span class="nc" id="L30">	}</span>
+
+	public E getEdge() {
+<span class="nc" id="L33">		return edge;</span>
+	}
+
+	public SFCDirection getDirection() {
+<span class="nc" id="L37">		return direction;</span>
+	}
+
+	void destroy() {
+<span class="nc" id="L41">		next = null;</span>
+<span class="nc" id="L42">		prev = null;</span>
+<span class="nc" id="L43">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L47">		return edge.toString();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

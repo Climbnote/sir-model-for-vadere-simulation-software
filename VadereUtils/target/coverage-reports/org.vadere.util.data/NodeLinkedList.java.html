@@ -1,0 +1,753 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NodeLinkedList.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.data</a> &gt; <span class="el_source">NodeLinkedList.java</span></div><h1>NodeLinkedList.java</h1><pre class="source lang-java linenums">package org.vadere.util.data;
+
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+/**
+ * A implementation of a Linked List that supports accessible pointers (i.e. Node) to the elements of the Linked List.
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;E&gt; the type of the elements contained in the list
+ */
+public class NodeLinkedList&lt;E&gt; implements Iterable&lt;Node&lt;E&gt;&gt; {
+
+    /**
+     * the head of the list
+     */
+    Node&lt;E&gt; head;
+
+    /**
+     * the tail of the list
+     */
+    Node&lt;E&gt; tail;
+
+    /**
+     * Default constructor, initialize a new empty list.
+     */
+<span class="nc" id="L32">    public NodeLinkedList() {}</span>
+
+    /**
+     * Construct a new Linked List, contain all elements in order.
+     *
+     * @param elements the elements
+     */
+    public NodeLinkedList(E[] elements) {
+<span class="nc" id="L40">        this();</span>
+<span class="nc bnc" id="L41" title="All 2 branches missed.">        for(E e : elements) {</span>
+<span class="nc" id="L42">            add(e);</span>
+        }
+<span class="nc" id="L44">    }</span>
+
+    /**
+     * Construct a new Linked List, contain all elements in order.
+     *
+     * @param elements the elements
+     */
+<span class="nc" id="L51">    public NodeLinkedList(Iterable&lt;E&gt; elements) {</span>
+<span class="nc bnc" id="L52" title="All 2 branches missed.">        for(E e : elements) {</span>
+<span class="nc" id="L53">            add(e);</span>
+<span class="nc" id="L54">        }</span>
+<span class="nc" id="L55">    }</span>
+
+    /**
+     * Converts the Linked List into a ArrayList.
+     *
+     * @return
+     */
+    public List&lt;E&gt; toList() {
+<span class="nc" id="L63">        List&lt;E&gt; list = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        for(Node&lt;E&gt; node : this) {</span>
+<span class="nc" id="L65">            list.add(node.getElement());</span>
+<span class="nc" id="L66">        }</span>
+<span class="nc" id="L67">        return list;</span>
+    }
+
+    /**
+     * Copy constructor.
+     *
+     * @param list the orignal Linked List.
+     */
+<span class="nc" id="L75">    private NodeLinkedList(final NodeLinkedList&lt;E&gt; list) {</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">        for(Node&lt;E&gt; node : list) {</span>
+<span class="nc" id="L77">            add(node.getElement());</span>
+<span class="nc" id="L78">        }</span>
+<span class="nc" id="L79">    }</span>
+
+    /**
+     * Appends all elements to the end Linked List.
+     *
+     * @param tailList the elements
+     */
+    public void append(final List&lt;E&gt; tailList) {
+<span class="nc bnc" id="L87" title="All 2 branches missed.">        for(E element : tailList) {</span>
+<span class="nc" id="L88">            add(element);</span>
+<span class="nc" id="L89">        }</span>
+<span class="nc" id="L90">    }</span>
+
+    /**
+     * Appends all elements to the end Linked List.
+     *
+     * @param tailList the elements
+     */
+    public void append(final NodeLinkedList&lt;E&gt; tailList) {
+<span class="nc bnc" id="L98" title="All 2 branches missed.">        for(Node&lt;E&gt; node : tailList) {</span>
+<span class="nc" id="L99">            add(node.getElement());</span>
+<span class="nc" id="L100">        }</span>
+<span class="nc" id="L101">    }</span>
+
+    /**
+     * Suspend all elements to the beginning of the Linked List, i.e.
+     * assume the headList = [A,B,C] and this = [E,F,D] the result is [A,B,C,E,F,D].
+     *
+     * @param headList the elements
+     */
+    public void suspend(final LinkedList&lt;E&gt; headList) {
+<span class="nc" id="L110">        Iterator&lt;E&gt; descendingIterator = headList.descendingIterator();</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        while (descendingIterator.hasNext()) {</span>
+<span class="nc" id="L112">            addFirst(descendingIterator.next());</span>
+        }
+<span class="nc" id="L114">    }</span>
+
+    /**
+     * Suspend all elements to the beginning of the Linked List, i.e.
+     * assume the headList = [A,B,C] and this = [E,F,D] the result is [A,B,C,E,F,D].
+     *
+     * @param headList the elements
+     */
+    public void suspend(final NodeLinkedList&lt;E&gt; headList) {
+<span class="nc" id="L123">        Iterator&lt;Node&lt;E&gt;&gt; descendingIterator = headList.descendingIterator();</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">        while (descendingIterator.hasNext()) {</span>
+<span class="nc" id="L125">            addFirst(descendingIterator.next().getElement());</span>
+        }
+<span class="nc" id="L127">    }</span>
+
+    /**
+     * Returns the pointer to the head of the Linked List.
+     *
+     * @return the pointer to the head of the Linked List
+     */
+    public Node&lt;E&gt; getHead() {
+<span class="nc" id="L135">        return head;</span>
+    }
+
+    /**
+     * Returns the pointer to the tail of the Linked List.
+     *
+     * @return the pointer to the tail of the Linked List
+     */
+    public Node&lt;E&gt; getTail() {
+<span class="nc" id="L144">        return tail;</span>
+    }
+
+    /**
+     * Returns true, if the Linked List is empty, otherwise false.
+     *
+     * @return true, if the Linked List is empty, otherwise false
+     */
+    public boolean isEmpty() {
+<span class="nc bnc" id="L153" title="All 2 branches missed.">        return head == null;</span>
+    }
+
+    /**
+     * Returns a pointer to the k^th element of the Linked List (from the left).
+     *
+     * @param k, the number of the element
+     * @return a pointer to the k^th element of the Linked List (from the left)
+     */
+    public Node&lt;E&gt; get(final int k) {
+<span class="nc bnc" id="L163" title="All 2 branches missed.">        if(k &lt; 0) {</span>
+<span class="nc" id="L164">           throw new IndexOutOfBoundsException(&quot;index &lt; 0.&quot;);</span>
+        }
+        else {
+<span class="nc" id="L167">            int i = 0;</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">            for(Node&lt;E&gt; node : this) {</span>
+<span class="nc bnc" id="L169" title="All 2 branches missed.">                if(i == k) {</span>
+<span class="nc" id="L170">                    return node;</span>
+                }
+<span class="nc" id="L172">                i++;</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">                if(i &gt; k) {</span>
+<span class="nc" id="L174">                    throw new IndexOutOfBoundsException(&quot;i &gt;= size of the list.&quot;);</span>
+                }
+<span class="nc" id="L176">            }</span>
+        }
+<span class="nc" id="L178">        throw new RuntimeException(&quot;this should never happen!&quot;);</span>
+    }
+
+    /**
+     * Inserts the element before the head of the Linked List. The element becomes the new head.
+     *
+     * @param element the element which will be inserted
+     */
+    public Node&lt;E&gt; addFirst(final E element) {
+<span class="nc bnc" id="L187" title="All 2 branches missed.">        if(head == null) {</span>
+<span class="nc" id="L188">            tail = new Node&lt;&gt;(this, element);</span>
+<span class="nc" id="L189">            head = tail;</span>
+        }
+        else {
+<span class="nc" id="L192">            head = insertPrevious(element, head);</span>
+        }
+<span class="nc" id="L194">	    return head;</span>
+    }
+
+    /**
+     * Inserts the element after the tail of the Linked List. The element becomes the new tail.
+     *
+     * @param element the element which will be inserted
+     */
+    public Node&lt;E&gt; addLast(E element) {
+<span class="nc bnc" id="L203" title="All 2 branches missed.">        if(head == null) {</span>
+<span class="nc" id="L204">            return addFirst(element);</span>
+        }
+        else {
+<span class="nc" id="L207">            tail = insertNext(element, tail);</span>
+<span class="nc" id="L208">            return tail;</span>
+        }
+    }
+
+    /**
+     * Inserts the element after the tail of the Linked List. The element becomes the new tail.
+     *
+     * @param element the element which will be inserted
+     */
+    public Node&lt;E&gt; add(E element) {
+<span class="nc" id="L218">        return addLast(element);</span>
+    }
+
+    /**
+     * Inserts an element next to the anchor. Note the anchor has to be part of this list,
+     * otherwise the resulting Linked List becomes invalid.
+     *
+     * @param element   the element to that will be inserted
+     * @param anchor    the pointer that points to the position at which the element will inserted (to the right)
+     * @return the pointer that points to the element
+     */
+    public Node&lt;E&gt; insertNext(final E element, final Node&lt;E&gt; anchor) {
+<span class="nc" id="L230">        Node&lt;E&gt; node = new Node&lt;&gt;(this, element);</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">        if(anchor.hasNext()) {</span>
+<span class="nc" id="L232">            anchor.next.prev = node;</span>
+        }
+
+<span class="nc" id="L235">        node.next = anchor.next;</span>
+<span class="nc" id="L236">        node.prev = anchor;</span>
+<span class="nc" id="L237">        anchor.next = node;</span>
+
+<span class="nc bnc" id="L239" title="All 2 branches missed.">        if(anchor.identical(tail)) {</span>
+<span class="nc" id="L240">            tail = node;</span>
+        }
+
+<span class="nc" id="L243">        return node;</span>
+    }
+
+    /**
+     * Inserts an element before the anchor. Note the anchor has to be part of this list,
+     * otherwise the resulting Linked List becomes invalid.
+     *
+     * @param element   the element to that will be inserted
+     * @param anchor    the pointer that points to the position at which the element will inserted (to the left)
+     * @return the pointer that points to the element
+     */
+    public Node&lt;E&gt; insertPrevious(final E element, final Node&lt;E&gt; anchor) {
+<span class="nc" id="L255">        Node&lt;E&gt; node = new Node&lt;&gt;(this, element);</span>
+<span class="nc bnc" id="L256" title="All 2 branches missed.">        if(anchor.hasPrev()) {</span>
+<span class="nc" id="L257">            anchor.prev.next = node;</span>
+        }
+
+<span class="nc" id="L260">        node.prev = anchor.prev;</span>
+<span class="nc" id="L261">        node.next = anchor;</span>
+<span class="nc" id="L262">        anchor.prev = node;</span>
+
+<span class="nc bnc" id="L264" title="All 2 branches missed.">        if(anchor.identical(head)) {</span>
+<span class="nc" id="L265">            head = node;</span>
+        }
+<span class="nc" id="L267">        return node;</span>
+    }
+
+    /**
+     * Splits the Linked List into two lists. The split takes part at the first element
+     * that satisfy the predicate. This element will be part of the first list.
+     * The first list will be returned and this list will be the remaining part.
+     *
+     * @param predicate the predicate the split element has to satisfy
+     * @return the first part of the split (a new Linked List)
+     */
+    public NodeLinkedList&lt;E&gt; split(final Predicate&lt;E&gt; predicate) {
+<span class="nc" id="L279">        NodeLinkedList&lt;E&gt; firstPart = new NodeLinkedList&lt;E&gt;();</span>
+<span class="nc" id="L280">        Optional&lt;Node&lt;E&gt;&gt; optFind = findFirst(predicate);</span>
+<span class="nc bnc" id="L281" title="All 2 branches missed.">        if(optFind.isPresent()) {</span>
+<span class="nc" id="L282">            firstPart.head = head;</span>
+<span class="nc" id="L283">            firstPart.tail = optFind.get();</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">            if(firstPart.tail.hasNext()) {</span>
+<span class="nc" id="L285">                head = firstPart.tail.getNext();</span>
+<span class="nc" id="L286">                firstPart.tail.next = null;</span>
+<span class="nc" id="L287">                head.prev = null;</span>
+            }
+            else {
+<span class="nc" id="L290">                head = null;</span>
+<span class="nc" id="L291">                tail = null;</span>
+            }
+        }
+<span class="nc" id="L294">        return firstPart;</span>
+    }
+
+    /**
+     * Returns the first element (from the left) that satisfy the predicate condition.
+     * @param predicate the predicate condition
+     * @return the first element (from the left) that satisfy the predicate condition
+     */
+    public Optional&lt;Node&lt;E&gt;&gt; findFirst(final Predicate&lt;E&gt; predicate) {
+<span class="nc bnc" id="L303" title="All 2 branches missed.">        for(Node&lt;E&gt; node : this) {</span>
+<span class="nc bnc" id="L304" title="All 2 branches missed.">            if(predicate.test(node.getElement())) {</span>
+<span class="nc" id="L305">                return Optional.of(node);</span>
+            }
+<span class="nc" id="L307">        }</span>
+<span class="nc" id="L308">        return Optional.empty();</span>
+    }
+
+    /**
+     * Returns the last element (from the left) that satisfy the predicate condition.
+     *
+     * @param predicate the predicate condition
+     * @return the first element (from the left) that satisfy the predicate condition
+     */
+    public Optional&lt;Node&lt;E&gt;&gt; findLast(final Predicate&lt;E&gt; predicate) {
+<span class="nc" id="L318">        Node&lt;E&gt; node = tail;</span>
+<span class="nc bnc" id="L319" title="All 2 branches missed.">        while(node != null) {</span>
+<span class="nc bnc" id="L320" title="All 2 branches missed.">            if(predicate.test(node.getElement())) {</span>
+<span class="nc" id="L321">                return Optional.of(node);</span>
+            }
+            else {
+<span class="nc" id="L324">                node = node.prev;</span>
+            }
+        }
+<span class="nc" id="L327">        return Optional.empty();</span>
+    }
+
+    /**
+     * Returns a set containing all elements satisfying the predicate.
+     *
+     * @param predicate the predicate condition
+     * @return a set containing all elements satisfying the predicate
+     */
+    public Set&lt;E&gt; findAllDistinct(final Predicate&lt;E&gt; predicate) {
+<span class="nc" id="L337">        Set&lt;E&gt; set = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L338" title="All 2 branches missed.">        for(Node&lt;E&gt; node : this) {</span>
+<span class="nc bnc" id="L339" title="All 2 branches missed.">            if(predicate.test(node.getElement())) {</span>
+<span class="nc" id="L340">                set.add(node.getElement());</span>
+            }
+<span class="nc" id="L342">        }</span>
+<span class="nc" id="L343">        return set;</span>
+    }
+
+    /**
+     * Returns a list containing all elements satisfying the predicate.
+     * The list may contain duplicated entries.
+     *
+     * @param predicate the predicate condition
+     * @return a list containing all elements satisfying the predicate
+     */
+    public List&lt;E&gt; findAll(final Predicate&lt;E&gt; predicate) {
+<span class="nc" id="L354">        List&lt;E&gt; list = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L355" title="All 2 branches missed.">        for(Node&lt;E&gt; node : this) {</span>
+<span class="nc bnc" id="L356" title="All 2 branches missed.">            if(predicate.test(node.getElement())) {</span>
+<span class="nc" id="L357">                list.add(node.getElement());</span>
+            }
+<span class="nc" id="L359">        }</span>
+<span class="nc" id="L360">        return list;</span>
+    }
+
+    /**
+     * Returns a list containing all pointers to elements satisfying the predicate.
+     *
+     * @param predicate the predicate condition
+     * @return a list containing all pointers to elements satisfying the predicate
+     */
+    public List&lt;Node&lt;E&gt;&gt; findAllPointers(final Predicate&lt;E&gt; predicate) {
+<span class="nc" id="L370">        List&lt;Node&lt;E&gt;&gt; list = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L371" title="All 2 branches missed.">        for(Node&lt;E&gt; node : this) {</span>
+<span class="nc bnc" id="L372" title="All 2 branches missed.">            if(predicate.test(node.getElement())) {</span>
+<span class="nc" id="L373">                list.add(node);</span>
+            }
+<span class="nc" id="L375">        }</span>
+<span class="nc" id="L376">        return list;</span>
+    }
+
+    /**
+     * Returns true if the Linked List contains an element satisfying the predicate, otherwise false.
+     *
+     * @param predicate the predicate condition
+     * @return true if the Linked List contains an element satisfying the predicate, otherwise false
+     */
+    public boolean contains(final Predicate&lt;E&gt; predicate) {
+<span class="nc" id="L386">        return findFirst(predicate).isPresent();</span>
+    }
+
+    /**
+     * Returns true if the Linked List contains the element.
+     *
+     * @param element the element we test for containment
+     * @return true if the Linked List contains the element, otherwise false
+     */
+    public boolean contains(final E element) {
+<span class="nc" id="L396">        return contains(e -&gt; e.equals(element));</span>
+    }
+
+    /**
+     * Removes all elements in the Linked List that satisfy the predicate condition.
+     *
+     * @param predicate the predicate condition
+     * @return the number of deleted elements
+     */
+    public int removeAll(final Predicate&lt;E&gt; predicate) {
+<span class="nc" id="L406">        Iterator&lt;Node&lt;E&gt;&gt; iterator = iterator();</span>
+<span class="nc" id="L407">        int count = 0;</span>
+<span class="nc bnc" id="L408" title="All 2 branches missed.">        while(iterator.hasNext()) {</span>
+<span class="nc" id="L409">            Node&lt;E&gt; node = iterator.next();</span>
+<span class="nc bnc" id="L410" title="All 2 branches missed.">            if(predicate.test(node.getElement())) {</span>
+<span class="nc" id="L411">                iterator.remove();</span>
+<span class="nc" id="L412">                count++;</span>
+            }
+<span class="nc" id="L414">        }</span>
+<span class="nc" id="L415">        return count;</span>
+    }
+
+    /**
+     * Replaces all elements in the Linked List that satisfy the predicate condition by an element.
+     *
+     * @param predicate     the predicate condition
+     * @param replacement   the element that will replace the elements
+     * @return a List of pointers pointing to the replaced (new) elements
+     */
+    public List&lt;Node&lt;E&gt;&gt; replaceAll(final Predicate&lt;E&gt; predicate, final E replacement) {
+<span class="nc" id="L426">        List&lt;Node&lt;E&gt;&gt; pointers = new LinkedList&lt;&gt;();</span>
+<span class="nc bnc" id="L427" title="All 2 branches missed.">        if(!isEmpty()) {</span>
+<span class="nc" id="L428">            Node&lt;E&gt; current = null;</span>
+<span class="nc bnc" id="L429" title="All 6 branches missed.">            while((!isEmpty() &amp;&amp; current == null) || current.hasNext()) {</span>
+<span class="nc bnc" id="L430" title="All 2 branches missed.">                if(current == null) {</span>
+<span class="nc" id="L431">                    current = head;</span>
+                }
+                else {
+<span class="nc" id="L434">                    current = current.getNext();</span>
+                }
+
+<span class="nc bnc" id="L437" title="All 2 branches missed.">                if(predicate.test(current.getElement())) {</span>
+<span class="nc" id="L438">                    current.setElement(replacement);</span>
+<span class="nc" id="L439">                    pointers.add(current);</span>
+                }
+            }
+        }
+<span class="nc" id="L443">        return pointers;</span>
+    }
+
+    /**
+     * Computes the prefix length of elements satisfying the predicate condition.
+     *
+     * @param predicate the predicate condition
+     * @param counter   the function that defines the counting of elements
+     * @return the length of the prefix defined by the Function counter
+     */
+    public long prefixLen(final Predicate&lt;E&gt; predicate, final Function&lt;E, Long&gt; counter) {
+<span class="nc" id="L454">        return prefixLen(predicate, iterator(), counter);</span>
+    }
+
+    /**
+     * Computes the suffix length of elements satisfying the predicate condition.
+     *
+     * @param predicate the predicate condition
+     * @param counter   the function that defines the counting of elements
+     * @return the length of the suffix defined by the Function counter
+     */
+    public long suffixLen(final Predicate&lt;E&gt; predicate, final Function&lt;E, Long&gt; counter) {
+<span class="nc" id="L465">        return prefixLen(predicate, descendingIterator(), counter);</span>
+    }
+
+    /**
+     * Computes the prefix length of elements satisfying the predicate condition and removes
+     * this prefix from the Linked List.
+     *
+     * @param predicate the predicate condition
+     * @param counter   the function that defines the counting of elements
+     * @return the length of the prefix defined by the Function counter
+     */
+    public long removePrefix(final Predicate&lt;E&gt; predicate, final Function&lt;E, Long&gt; counter) {
+<span class="nc" id="L477">        return removePrefix(predicate, iterator(), counter);</span>
+    }
+
+    /**
+     * Computes the suffix length of elements satisfying the predicate condition and removes
+     * this suffix from the Linked List.
+     *
+     * @param predicate the predicate condition
+     * @param counter   the function that defines the counting of elements
+     * @return the length of the suffix defined by the Function counter
+     */
+    public long removeSuffix(final Predicate&lt;E&gt; predicate, final Function&lt;E, Long&gt; counter) {
+<span class="nc" id="L489">        return removePrefix(predicate, descendingIterator(), counter);</span>
+    }
+
+    /**
+     * Removes the head of the list and return its value.
+     * @return the value/element of the head.
+     */
+    public E removeHead() {
+<span class="nc" id="L497">        E element = head.getElement();</span>
+<span class="nc" id="L498">        head.remove();</span>
+<span class="nc" id="L499">        return element;</span>
+    }
+
+    /**
+     * Removes the tail of the list and return its value.
+     * @return the value/element of the tail.
+     */
+    public E removeTail() {
+<span class="nc" id="L507">        E element = tail.getElement();</span>
+<span class="nc" id="L508">        tail.remove();</span>
+<span class="nc" id="L509">        return element;</span>
+    }
+
+    /**
+     * Computes and returns the size of the linked list.
+     * Complexity: O(|n|), where n is the numbers of elements inside the list.
+     *
+     * @return the size of the list, i.e. the numbers of elements contained in this list
+     */
+    public int size() {
+<span class="nc" id="L519">        int size = 0;</span>
+<span class="nc bnc" id="L520" title="All 2 branches missed.">        for(Node&lt;E&gt; node : this) {</span>
+<span class="nc" id="L521">            size++;</span>
+<span class="nc" id="L522">        }</span>
+<span class="nc" id="L523">        return size;</span>
+    }
+
+    /**
+     * Returns a stream of pointers that point to elements of the Linked List.
+     *
+     * @return a stream of pointers that point to elements of the Linked List
+     */
+    public Stream&lt;Node&lt;E&gt;&gt; stream() {
+<span class="nc" id="L532">        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator(), Spliterator.ORDERED), false);</span>
+    }
+
+    /**
+     * Returns a clone of the Linked List. Only the pointers will be cloned not th elements.
+     *
+     * @return a (soft) clone of the Linked List
+     */
+    public NodeLinkedList&lt;E&gt; clone() {
+<span class="nc" id="L541">        return new NodeLinkedList&lt;&gt;(this);</span>
+    }
+
+    /**
+     * Returns an Iterator of pointers that iterates pointers in descending order, i.e. from right to left.
+     * @return an Iterator of pointers that iterates pointers in descending order
+     */
+    public Iterator&lt;Node&lt;E&gt;&gt; descendingIterator () {
+<span class="nc" id="L549">        return new NodeDescendingIterator();</span>
+    }
+
+    /**
+     * Returns an Iterator of pointers that iterates pointers in ascending order, i.e. from left to right.
+     * @return an Iterator of pointers that iterates pointers in ascending order
+     */
+    public Iterator&lt;E&gt; elementIterator() {
+<span class="nc" id="L557">        return new ElementIterator();</span>
+    }
+
+    /**
+     * Returns an Iterable of pointers that iterates pointers in ascending order, i.e. from left to right.
+     * @return an Iterable of pointers that iterates pointers in ascending order
+     */
+    public Iterable&lt;E&gt; elementIterable() {
+<span class="nc" id="L565">        return () -&gt; new ElementIterator();</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L570">        StringBuilder builder = new StringBuilder();</span>
+<span class="nc bnc" id="L571" title="All 2 branches missed.">        for(Node&lt;E&gt; node : this) {</span>
+<span class="nc" id="L572">            builder.append(node.getElement());</span>
+<span class="nc" id="L573">        }</span>
+<span class="nc" id="L574">        return builder.toString();</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L579" title="All 2 branches missed.">        if(obj == null) {</span>
+<span class="nc" id="L580">            return false;</span>
+        }
+<span class="nc bnc" id="L582" title="All 2 branches missed.">        else if(obj.getClass() != this.getClass()) {</span>
+<span class="nc" id="L583">            return false;</span>
+        }
+        else {
+<span class="nc" id="L586">            NodeLinkedList other = (NodeLinkedList)obj;</span>
+<span class="nc" id="L587">            Iterator&lt;Node&lt;E&gt;&gt; it = this.iterator();</span>
+<span class="nc" id="L588">            Iterator&lt;Node&gt; otherIt = other.iterator();</span>
+
+<span class="nc bnc" id="L590" title="All 4 branches missed.">            while (it.hasNext() &amp;&amp; otherIt.hasNext()) {</span>
+<span class="nc" id="L591">                Node&lt;E&gt; node = it.next();</span>
+<span class="nc" id="L592">                Node otherNode = otherIt.next();</span>
+<span class="nc bnc" id="L593" title="All 2 branches missed.">                if(!node.equals(otherNode)) {</span>
+<span class="nc" id="L594">                    return false;</span>
+                }
+<span class="nc" id="L596">            }</span>
+
+<span class="nc bnc" id="L598" title="All 4 branches missed.">            return !it.hasNext() &amp;&amp; !otherIt.hasNext();</span>
+        }
+    }
+
+    @Override
+    public Iterator&lt;Node&lt;E&gt;&gt; iterator() {
+<span class="nc" id="L604">        return new NodeIterator();</span>
+    }
+
+    private long removePrefix(final Predicate&lt;E&gt; predicate, final Iterator&lt;Node&lt;E&gt;&gt; iterator) {
+<span class="nc" id="L608">        return removePrefix(predicate, iterator, e -&gt; 1L);</span>
+    }
+
+    private long removePrefix(final Predicate&lt;E&gt; predicate, final Iterator&lt;Node&lt;E&gt;&gt; iterator, final Function&lt;E, Long&gt; counter) {
+<span class="nc" id="L612">        return prefix(predicate, iterator, counter, it -&gt; it.remove());</span>
+    }
+
+    private long prefixLen(final Predicate&lt;E&gt; predicate, final Iterator&lt;Node&lt;E&gt;&gt; iterator, final Function&lt;E, Long&gt; counter) {
+<span class="nc" id="L616">        return prefix(predicate, iterator, counter, it -&gt; {</span>
+<span class="nc" id="L617">        });</span>
+    }
+
+    private long prefix(final Predicate&lt;E&gt; predicate, final Iterator&lt;Node&lt;E&gt;&gt; iterator, final Function&lt;E, Long&gt; counter, final Consumer&lt;Iterator&gt; consumer) {
+<span class="nc" id="L621">        long count = 0;</span>
+<span class="nc bnc" id="L622" title="All 2 branches missed.">        while(iterator.hasNext()) {</span>
+<span class="nc" id="L623">            Node&lt;E&gt; node = iterator.next();</span>
+<span class="nc bnc" id="L624" title="All 2 branches missed.">            if(predicate.test(node.getElement())) {</span>
+<span class="nc" id="L625">                consumer.accept(iterator);</span>
+                //iterator.remove();
+<span class="nc" id="L627">                count += counter.apply(node.getElement());</span>
+            }
+            else {
+                break;
+            }
+<span class="nc" id="L632">        }</span>
+<span class="nc" id="L633">        return count;</span>
+    }
+
+    /**
+     * Iterator iterating over all pointers of the Linked List from right to left.
+     */
+    private class NodeDescendingIterator implements Iterator&lt;Node&lt;E&gt;&gt; {
+        private Node&lt;E&gt; current;
+<span class="nc" id="L641">        private boolean started = false;</span>
+<span class="nc" id="L642">        private Node&lt;E&gt; prev = null;</span>
+
+<span class="nc" id="L644">        private NodeDescendingIterator() {</span>
+<span class="nc" id="L645">            current = null;</span>
+<span class="nc" id="L646">        }</span>
+
+        @Override
+        public void remove() {
+<span class="nc" id="L650">            prev = current.getPrev();;</span>
+<span class="nc" id="L651">            current.remove();</span>
+<span class="nc" id="L652">            current = null;</span>
+<span class="nc" id="L653">        }</span>
+
+        @Override
+        public boolean hasNext() {
+<span class="nc bnc" id="L657" title="All 2 branches missed.">            if(!started) {</span>
+<span class="nc bnc" id="L658" title="All 2 branches missed.">                return tail != null;</span>
+            }
+            else {
+<span class="nc bnc" id="L661" title="All 6 branches missed.">                return prev != null || (current != null &amp;&amp; current.hasPrev());</span>
+            }
+        }
+
+        @Override
+        public Node&lt;E&gt; next() {
+<span class="nc bnc" id="L667" title="All 2 branches missed.">            if(!started) {</span>
+<span class="nc" id="L668">                started = true;</span>
+<span class="nc" id="L669">                current = tail;</span>
+            }
+<span class="nc bnc" id="L671" title="All 2 branches missed.">            else if(prev != null) {</span>
+<span class="nc" id="L672">                current = prev;</span>
+<span class="nc" id="L673">                prev = null;</span>
+            }
+            else {
+<span class="nc" id="L676">                current = current.getPrev();</span>
+            }
+
+<span class="nc" id="L679">            return current;</span>
+        }
+    }
+
+    /**
+     * Iterator iterating over all elements of the Linked List from left to right.
+     */
+    private class ElementIterator implements Iterator&lt;E&gt; {
+
+        private Iterator&lt;Node&lt;E&gt;&gt; nodeIterator;
+
+<span class="nc" id="L690">        private ElementIterator() {</span>
+<span class="nc" id="L691">            nodeIterator = iterator();</span>
+<span class="nc" id="L692">        }</span>
+
+        @Override
+        public boolean hasNext() {
+<span class="nc" id="L696">            return nodeIterator.hasNext();</span>
+        }
+
+        @Override
+        public E next() {
+<span class="nc" id="L701">            return nodeIterator.next().getElement();</span>
+        }
+    }
+
+    /**
+     * Iterator iterating over all pointers of the Linked List from left to right.
+     */
+    private class NodeIterator implements Iterator&lt;Node&lt;E&gt;&gt; {
+
+        private Node&lt;E&gt; current;
+<span class="nc" id="L711">        private boolean started = false;</span>
+<span class="nc" id="L712">        private Node&lt;E&gt; next = null;</span>
+
+<span class="nc" id="L714">        private NodeIterator() {</span>
+<span class="nc" id="L715">            current = null;</span>
+<span class="nc" id="L716">        }</span>
+
+        @Override
+        public void remove() {
+<span class="nc" id="L720">            next = current.getNext();;</span>
+<span class="nc" id="L721">            current.remove();</span>
+<span class="nc" id="L722">            current = null;</span>
+<span class="nc" id="L723">        }</span>
+
+        @Override
+        public boolean hasNext() {
+<span class="nc bnc" id="L727" title="All 2 branches missed.">            if(!started) {</span>
+<span class="nc bnc" id="L728" title="All 2 branches missed.">                return head != null;</span>
+            }
+            else {
+<span class="nc bnc" id="L731" title="All 6 branches missed.">                return next != null || (current != null &amp;&amp; current.hasNext());</span>
+            }
+        }
+
+        @Override
+        public Node&lt;E&gt; next() {
+<span class="nc bnc" id="L737" title="All 2 branches missed.">            if(!started) {</span>
+<span class="nc" id="L738">                started = true;</span>
+<span class="nc" id="L739">                current = head;</span>
+            }
+<span class="nc bnc" id="L741" title="All 2 branches missed.">            else if(next != null) {</span>
+<span class="nc" id="L742">                current = next;</span>
+<span class="nc" id="L743">                next = null;</span>
+            }
+            else {
+<span class="nc" id="L746">                current = current.getNext();</span>
+            }
+
+<span class="nc" id="L749">            return current;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IOUtils.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.io</a> &gt; <span class="el_source">IOUtils.java</span></div><h1>IOUtils.java</h1><pre class="source lang-java linenums">package org.vadere.util.io;
+
+import javax.swing.*;
+import javax.swing.filechooser.FileFilter;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import java.io.*;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.StringJoiner;
+
+/**
+ * Contains utilities for input and output.
+ * 
+ */
+<span class="nc" id="L22">public class IOUtils {</span>
+
+<span class="fc" id="L24">	public static final String OS_NAME = System.getProperty(&quot;os.name&quot;).toLowerCase(Locale.US);</span>
+
+<span class="fc" id="L26">	public static final String OS_ARCH = System.getProperty(&quot;os.arch&quot;).toLowerCase(Locale.US);</span>
+
+<span class="fc" id="L28">	public static final String OS_VERSION = System.getProperty(&quot;os.version&quot;).toLowerCase(Locale.US);</span>
+
+	public static final String SCENARIO_FILE_EXTENSION = &quot;.scenario&quot;;
+
+	public static final String OUTPUT_DIR = &quot;output&quot;;
+
+	public static final String MESH_DIR = &quot;meshes&quot;;
+
+	public static final String BACKGROUND_MESH_ENDING = &quot;_background&quot;;
+
+	public static final String SCENARIO_DIR = &quot;scenarios&quot;;
+
+	public static final String CORRUPT_DIR = &quot;corrupt&quot;;
+
+	public static final String LEGACY_DIR = &quot;legacy&quot;;
+
+	public static final String VADERE_PROJECT_FILENAME = &quot;vadere.project&quot;;
+
+	public static final String SYSTEM_VARIABLE_PROJECT_PATH = &quot;VADERE_PROJECTS&quot;;
+
+	public static final String DATE_FORMAT = &quot;yyyy-MM-dd_HH-mm-ss.S&quot;;
+
+	public static final String OUTPUT_FILE_EXTENSION = &quot;.csv&quot;;
+
+	public static final String TRAJECTORY_FILE_EXTENSION = &quot;.traj&quot;;
+
+<span class="fc" id="L54">	public static final String PROJECT_PATH = System.getenv(SYSTEM_VARIABLE_PROJECT_PATH);</span>
+
+	public static Optional&lt;File&gt; getFirstFile(final File directory, final String fileExtension) {
+<span class="nc" id="L57">		final File[] files = getFileList(directory, fileExtension);</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">		if (files.length != 0) {</span>
+<span class="nc" id="L59">			return Optional.of(files[0]);</span>
+		} else {
+<span class="nc" id="L61">			return Optional.empty();</span>
+		}
+	}
+
+	public static File[] getFilesInScenarioDirectory(Path scenarioDirectory) {
+<span class="nc" id="L66">		return IOUtils.getFileList(scenarioDirectory.toFile(), IOUtils.SCENARIO_FILE_EXTENSION);</span>
+	}
+
+	public static File[] getFileList(final File directory, final String fileExtension) {
+<span class="nc" id="L70">		return directory.listFiles((d, name) -&gt; name.toLowerCase().endsWith(fileExtension));</span>
+	}
+
+	public static File[] getScenarioFilesInOutputDirectory(Path outputDir) throws IOException {
+<span class="nc" id="L74">		return Files.walk(outputDir)</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">				.filter(path -&gt; !path.toString().contains(&quot;corrupt&quot;)) // don't look into the corrupt-folder</span>
+<span class="nc" id="L76">				.filter(path -&gt; path.getFileName().toString().endsWith(&quot;.scenario&quot;))</span>
+<span class="nc" id="L77">				.map(path -&gt; new File(path.toString()))</span>
+<span class="nc" id="L78">				.toArray(File[]::new);</span>
+	}
+
+	/**
+	 * Prints a given string to a file with a given name.
+	 */
+	public static void printDataFile(Path filename, String data)
+			throws IOException {
+
+<span class="fc" id="L87">		Path filepath = Paths.get(System.getProperty(&quot;user.dir&quot;), filename.toString());</span>
+<span class="fc" id="L88">		createDirectoryIfNotExisting(filepath.getParent());</span>
+
+		// create, write and close the file
+<span class="fc" id="L91">		BufferedWriter bw = new BufferedWriter(new FileWriter(filepath.toFile()));</span>
+
+<span class="fc" id="L93">		bw.write(data);</span>
+<span class="fc" id="L94">		bw.close();</span>
+<span class="fc" id="L95">	}</span>
+
+	public static void createDirectoryIfNotExisting(Path path) throws IOException {
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">		if (!Files.exists(path)) {</span>
+<span class="nc" id="L99">			Files.createDirectories(path);</span>
+		}
+<span class="fc" id="L101">	}</span>
+
+	/**
+	 * Computes the path to the users home directory.
+	 * http://stackoverflow.com/questions
+	 * /3784657/what-is-the-best-way-to-save-user-settings-in-java-application
+	 * Works in Windows, iOS and Linux.
+	 * 
+	 * @return path to the user directory
+	 */
+	public static String getUserDataDirectory() {
+<span class="nc" id="L112">		return System.getProperty(&quot;user.home&quot;) + File.separator;</span>
+	}
+
+	/** Writes a given string to a given file. */
+	public static void writeTextFile(String filepath, String text) throws IOException {
+<span class="nc" id="L117">		Files.deleteIfExists(Paths.get(filepath));</span>
+<span class="nc" id="L118">		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filepath))) {</span>
+<span class="nc" id="L119">			writer.write(text);</span>
+		}
+<span class="nc" id="L121">	}</span>
+
+	/** add a suffix to a path. If beforeExtension first test extenion (i.e. filename&lt;suffix&gt;.txt*/
+	public static Path addSuffix(Path path, String suffix, boolean beforeExtension){
+<span class="nc" id="L125">		String filname = path.getFileName().toString();</span>
+<span class="nc" id="L126">		Path parent = path.getParent();</span>
+<span class="nc" id="L127">		int  startExtension = filname.lastIndexOf('.');</span>
+		Path ret;
+<span class="nc bnc" id="L129" title="All 4 branches missed.">		if (beforeExtension &amp;&amp; startExtension &gt; 0){ // if filename start with a point this is not an extension.</span>
+<span class="nc" id="L130">			String baseFilename = filname.substring(0, startExtension);</span>
+<span class="nc" id="L131">			String extension = filname.substring(startExtension);</span>
+<span class="nc" id="L132">			ret = parent.resolve(filname + suffix + extension);</span>
+<span class="nc" id="L133">		} else {</span>
+<span class="nc" id="L134">			ret = parent.resolve(filname + suffix);</span>
+		}
+<span class="nc" id="L136">		return ret;</span>
+	}
+
+	public static Path makeBackup(Path path, String backupSuffix, boolean overwrite) throws IOException {
+<span class="nc bnc" id="L140" title="All 2 branches missed.">		if (overwrite) {</span>
+<span class="nc" id="L141">			return Files.copy(path, addSuffix(path, backupSuffix, false), StandardCopyOption.REPLACE_EXISTING);</span>
+		} else {
+<span class="nc" id="L143">			return Files.copy(path, addSuffix(path, backupSuffix, false));</span>
+		}
+	}
+
+	public static BufferedReader defaultBufferedReader(Path filePath) throws FileNotFoundException {
+<span class="nc" id="L148">		return new BufferedReader(new InputStreamReader(</span>
+<span class="nc" id="L149">				new FileInputStream(filePath.toFile()), StandardCharsets.UTF_8), 8192);</span>
+	}
+
+	/** Reads all text of a given file and store it in a string. */
+	public static String readTextFile(Path filePath) throws IOException{
+<span class="nc" id="L154">		StringJoiner sb = new StringJoiner(System.lineSeparator());</span>
+<span class="nc" id="L155">		try(BufferedReader inputStream = IOUtils.defaultBufferedReader(filePath)){</span>
+				String line;
+<span class="nc bnc" id="L157" title="All 2 branches missed.">				while ((line = inputStream.readLine()) != null)</span>
+<span class="nc" id="L158">					sb.add(line);</span>
+<span class="nc" id="L159">				return sb.toString();</span>
+		}
+	}
+
+	public static String readTextFileFromResources(String resourcePath) throws IOException {
+<span class="nc" id="L164">		URL url = IOUtils.class.getResource(resourcePath);</span>
+		try {
+<span class="nc" id="L166">			return  readTextFile(Paths.get(url.toURI()));</span>
+<span class="nc" id="L167">		} catch (URISyntaxException e) {</span>
+<span class="nc" id="L168">			throw new IOException(&quot;Wrong URI Syntax for &quot; + url.toString(), e);</span>
+		}
+	}
+
+	public static String readTextFile(String filePath) throws IOException {
+<span class="nc" id="L173">		return readTextFile(Paths.get(filePath));</span>
+	}
+
+	/**
+	 * Runs file selector with given title using given subdirectory. If the
+	 * subdirectory is not an absolute path, it is combined with user.dir.
+	 */
+	public static String chooseFile(String title, String subdir,
+			FileFilter filter) {
+<span class="nc" id="L182">		JFileChooser fileChooser = new JFileChooser();</span>
+<span class="nc" id="L183">		fileChooser.setDialogTitle(title);</span>
+<span class="nc" id="L184">		fileChooser.addChoosableFileFilter(filter);</span>
+<span class="nc" id="L185">		fileChooser.setFileFilter(filter);</span>
+<span class="nc" id="L186">		setFileChooserDirectory(subdir, fileChooser);</span>
+<span class="nc" id="L187">		int returnState = fileChooser.showOpenDialog(null);</span>
+<span class="nc" id="L188">		return returnValueDependingOnReturnState(fileChooser, returnState);</span>
+	}
+
+	private static String returnValueDependingOnReturnState(JFileChooser fileChooser, int returnState) {
+<span class="nc bnc" id="L192" title="All 2 branches missed.">		if (returnState == JFileChooser.APPROVE_OPTION) {</span>
+<span class="nc" id="L193">			return fileChooser.getSelectedFile().getAbsolutePath();</span>
+		} else {
+<span class="nc" id="L195">			return null;</span>
+		}
+	}
+
+	public static String chooseFileSave(String title, String subdir, FileFilter filter) {
+<span class="nc" id="L200">		JFileChooser fileChooser = new JFileChooser();</span>
+<span class="nc" id="L201">		fileChooser.setDialogTitle(title);</span>
+<span class="nc" id="L202">		fileChooser.addChoosableFileFilter(filter);</span>
+<span class="nc" id="L203">		fileChooser.setFileFilter(filter);</span>
+<span class="nc" id="L204">		setFileChooserDirectory(subdir, fileChooser);</span>
+<span class="nc" id="L205">		int returnState = fileChooser.showSaveDialog(null);</span>
+<span class="nc" id="L206">		return returnValueDependingOnReturnState(fileChooser, returnState);</span>
+	}
+
+	public static String chooseFileOrDirSave(String title, String subdir,
+			FileFilter filter) {
+<span class="nc" id="L211">		JFileChooser fileChooser = new JFileChooser();</span>
+<span class="nc" id="L212">		fileChooser.setDialogTitle(title);</span>
+<span class="nc" id="L213">		fileChooser.addChoosableFileFilter(filter);</span>
+<span class="nc" id="L214">		fileChooser.setFileFilter(filter);</span>
+<span class="nc" id="L215">		fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);</span>
+<span class="nc" id="L216">		setFileChooserDirectory(subdir, fileChooser);</span>
+<span class="nc" id="L217">		int returnState = fileChooser.showSaveDialog(null);</span>
+<span class="nc" id="L218">		return returnValueDependingOnReturnState(fileChooser, returnState);</span>
+	}
+
+	private static void setFileChooserDirectory(String subdir, JFileChooser fileChooser) {
+<span class="nc bnc" id="L222" title="All 2 branches missed.">		if (subdir.startsWith(File.pathSeparator)) {</span>
+<span class="nc" id="L223">			fileChooser.setCurrentDirectory(new File(System</span>
+<span class="nc" id="L224">					.getProperty(&quot;user.dir&quot;) + subdir));</span>
+		} else {
+<span class="nc" id="L226">			fileChooser.setCurrentDirectory(new File(subdir));</span>
+		}
+<span class="nc" id="L228">	}</span>
+
+	/**
+	 * Runs file selector with given title using given subdirectory. If the
+	 * subdirectory is not an absolute path, it is combined with user.dir.
+	 * 
+	 * @param title
+	 *        title of the dialog
+	 * @param subdir
+	 *        subdirectory of the user.dir
+	 * @return the path chosen by the user
+	 */
+	public static String chooseJSONFileSave(String title, String subdir) {
+<span class="nc" id="L241">		String filetype = &quot;json&quot;;</span>
+<span class="nc" id="L242">		FileFilter filter = new FileNameExtensionFilter(&quot;JSON file&quot;, filetype);</span>
+<span class="nc" id="L243">		return chooseFileSave(title, subdir, filter);</span>
+	}
+
+	/** Shows an error box with given message and title. */
+	public static void errorBox(String infoMessage, String title) {
+<span class="nc" id="L248">		JOptionPane.showMessageDialog(null, infoMessage, title,</span>
+				JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L250">	}</span>
+
+	/** Shows an warn box with given message and title. */
+	public static void warnBox(String infoMessage, String title) {
+<span class="nc" id="L254">		JOptionPane.showMessageDialog(null, infoMessage, title,</span>
+				JOptionPane.WARNING_MESSAGE);
+<span class="nc" id="L256">	}</span>
+
+	/** Shows an info box with given message and title. */
+	public static void infoBox(String infoMessage, String title) {
+<span class="nc" id="L260">		JOptionPane.showMessageDialog(null, infoMessage, title,</span>
+				JOptionPane.INFORMATION_MESSAGE);
+<span class="nc" id="L262">	}</span>
+
+	/**
+	 * Opens a yes-no-cancel message box and returns its result (as
+	 * JOptionPane.OPTION, i.e. int)
+	 */
+	public static int chooseYesNoCancel(String infoMessage, String title) {
+<span class="nc" id="L269">		return JOptionPane.showConfirmDialog(null, infoMessage, title,</span>
+				JOptionPane.YES_NO_CANCEL_OPTION);
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

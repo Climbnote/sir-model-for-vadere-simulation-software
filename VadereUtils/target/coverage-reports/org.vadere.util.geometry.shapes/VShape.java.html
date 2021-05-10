@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VShape.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry.shapes</a> &gt; <span class="el_source">VShape.java</span></div><h1>VShape.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry.shapes;
+
+import com.github.davidmoten.rtree.geometry.Geometry;
+import com.github.davidmoten.rtree.geometry.internal.RectangleDouble;
+
+import java.awt.*;
+import java.awt.geom.Area;
+import java.awt.geom.Path2D;
+import java.awt.geom.Rectangle2D;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Geometric shape and position.
+ */
+public interface VShape extends Shape, Cloneable, Geometry {
+
+	double BORDER_TOLERANCE = 0.1;
+
+	double distance(IPoint point);
+
+	VPoint closestPoint(IPoint point);
+
+	Optional&lt;VPoint&gt; getClosestIntersectionPoint(VPoint q1, VPoint q2, VPoint r);
+
+	boolean contains(IPoint point);
+
+	VShape translate(final IPoint vector);
+
+	VShape translatePrecise(final IPoint vector);
+
+	VShape scale(final double scalar);
+
+	default boolean atBorder(final VPoint point){
+<span class="nc" id="L36">		VShape circle = new VCircle(new VPoint(point.getX(), point.getY()), BORDER_TOLERANCE);</span>
+<span class="nc bnc" id="L37" title="All 4 branches missed.">		return intersects(circle) &amp;&amp; !containsShape(circle);</span>
+	}
+
+	default VShape resize(final IPoint start, final IPoint end){
+<span class="nc" id="L41">		double startDistance = distanceToCenter(start);</span>
+<span class="nc" id="L42">		double endDistance = distanceToCenter(end);</span>
+<span class="nc" id="L43">		VPoint center = this.getCentroid();</span>
+<span class="nc" id="L44">		VShape scaled = this.scale(endDistance / startDistance);</span>
+<span class="nc" id="L45">		return scaled.translatePrecise(center.subtract(scaled.getCentroid()));</span>
+	}
+
+	default double distanceToCenter(final IPoint point){
+<span class="nc" id="L49">		final int squareExponent = 2;</span>
+<span class="nc" id="L50">		double deltaXSquared = Math.pow(point.getX() - this.getCentroid().getX(), squareExponent);</span>
+<span class="nc" id="L51">		double deltaYSquared = Math.pow(point.getY() - this.getCentroid().getY(), squareExponent);</span>
+<span class="nc" id="L52">		return Math.sqrt(deltaXSquared + deltaYSquared);</span>
+	}
+
+	boolean intersects(VLine intersectingLine);
+
+	VPoint getCentroid();
+
+	ShapeType getType();
+
+	/**
+	 * {@link VCircle} containing all points of underling shape. similar to bound but a circle
+	 * rather than a Rectangle.
+	 */
+	default VCircle getCircumCircle() {
+<span class="fc" id="L66">		Rectangle2D bound = getBounds2D();</span>
+<span class="fc" id="L67">		double radius =</span>
+<span class="fc" id="L68">				Math.sqrt(bound.getWidth() * bound.getWidth() + bound.getHeight() * bound.getHeight());</span>
+<span class="fc" id="L69">		return new VCircle(new VPoint(bound.getCenterX(), bound.getCenterY()), radius);</span>
+	}
+
+	default boolean sameArea(VShape shape){
+<span class="nc" id="L73">		Area thisShape = new Area(this);</span>
+<span class="nc" id="L74">		Area otherShape = new Area(shape);</span>
+<span class="nc" id="L75">		thisShape.subtract(otherShape);</span>
+<span class="nc" id="L76">		return thisShape.isEmpty();</span>
+	}
+
+	// numerical not stable for comparision with VCircle.
+	// use contains(VCircle otherShape)
+	default boolean containsShape(VShape otherShape) {
+<span class="pc bpc" id="L82" title="1 of 2 branches missed.">		if (otherShape instanceof  VCircle){</span>
+<span class="fc" id="L83">			return this.contains((VCircle)otherShape);</span>
+		}
+<span class="nc" id="L85">		Area thisArea = new Area(this);</span>
+<span class="nc" id="L86">		Area otherArea = new Area(otherShape);</span>
+<span class="nc" id="L87">		thisArea.intersect(otherArea);</span>
+<span class="nc" id="L88">		return thisArea.equals(otherArea);</span>
+
+	}
+
+	// todo: remove default implementation and implement specific performance optimized and numerical stable versions.
+	default boolean contains(VCircle otherShape){
+		// override in specific shapes for more performance optimized implementations
+<span class="fc" id="L95">		Area thisArea = new Area(this);</span>
+<span class="fc" id="L96">		Area otherArea = new Area(otherShape);</span>
+<span class="fc" id="L97">		thisArea.intersect(otherArea);</span>
+<span class="fc" id="L98">		return thisArea.equals(otherArea);</span>
+	}
+
+	/**
+	 * Returns a list of points (p1, p2, ..., pn) such that the line (p1,p2) is part of the boundary
+	 * of the approximation of this shape. p1 != pn i.e. it is not a closed path.
+	 *
+	 * @return the path which approximates the boundary of this shape
+	 */
+	List&lt;VPoint&gt; getPath();
+
+	List&lt;VLine&gt; lines();
+
+	static VPolygon generateHexagon(final double radius) {
+<span class="nc" id="L112">		List&lt;VPoint&gt; points = new ArrayList&lt;&gt;();</span>
+
+		// in cw-order
+<span class="nc" id="L115">		points.add(new VPoint(radius, 0));</span>
+<span class="nc" id="L116">		points.add(new VPoint(radius * Math.cos(1.0 / 3.0 * Math.PI), radius * Math.sin(1.0 / 3.0 * Math.PI)));</span>
+<span class="nc" id="L117">		points.add(new VPoint(radius * Math.cos(2.0 / 3.0 * Math.PI), radius * Math.sin(2.0 / 3.0 * Math.PI)));</span>
+<span class="nc" id="L118">		points.add(new VPoint(-radius, 0));</span>
+<span class="nc" id="L119">		points.add(new VPoint(radius * Math.cos(4.0 / 3.0 * Math.PI), radius * Math.sin(4.0 / 3.0 * Math.PI)));</span>
+<span class="nc" id="L120">		points.add(new VPoint(radius * Math.cos(5.0 / 3.0 * Math.PI), radius * Math.sin(5.0 / 3.0 * Math.PI)));</span>
+
+
+<span class="nc" id="L123">		Path2D path2D = new Path2D.Double();</span>
+
+<span class="nc" id="L125">		path2D.moveTo(points.get(0).getX(),points.get(0).getY());</span>
+<span class="nc" id="L126">		path2D.lineTo(points.get(0).getX(),points.get(0).getY());</span>
+
+<span class="nc bnc" id="L128" title="All 2 branches missed.">		for(int i = 1; i &lt; points.size(); i++) {</span>
+<span class="nc" id="L129">			path2D.lineTo(points.get(i).getX(),points.get(i).getY());</span>
+		}
+
+<span class="nc" id="L132">		path2D.lineTo(points.get(0).getX(),points.get(0).getY());</span>
+
+<span class="nc" id="L134">		return new VPolygon(path2D);</span>
+	}
+
+	default boolean intersects(VShape shape){
+<span class="fc" id="L138">		Area thisShape = new Area(this);</span>
+<span class="fc" id="L139">		Area otherShape = new Area(shape);</span>
+<span class="fc" id="L140">		Area thisShapeCpy = new Area(this);</span>
+<span class="fc" id="L141">		thisShape.subtract(otherShape);</span>
+<span class="pc bpc" id="L142" title="1 of 2 branches missed.">		return !thisShape.equals(thisShapeCpy);</span>
+	}
+
+	default int getDirectionalCode(Point startPoint, int directions) {
+<span class="nc" id="L146">		return getDirectionalCode(new VPoint(startPoint), directions);</span>
+	}
+
+	default int getDirectionalCode(IPoint startPoint, int directions) {
+<span class="nc" id="L150">		VPoint direction = new VPoint(startPoint).subtract(getCentroid());</span>
+<span class="nc" id="L151">		double angle = Math.atan(direction.getY() / direction.getX());</span>
+<span class="nc" id="L152">		angle += Math.PI + Math.PI / (directions);</span>
+<span class="nc" id="L153">		double indexRatio = (angle) / (2 * Math.PI);</span>
+<span class="nc" id="L154">		return (int)(indexRatio * directions);</span>
+	}
+
+
+	// Methods used by the R-Tree
+	@Override
+	default double distance(com.github.davidmoten.rtree.geometry.Rectangle rectangle) {
+<span class="nc" id="L161">		return mbr().distance(rectangle);</span>
+	}
+
+	@Override
+	default com.github.davidmoten.rtree.geometry.Rectangle mbr() {
+<span class="fc" id="L166">		Rectangle2D bound = getBounds2D();</span>
+<span class="fc" id="L167">		return RectangleDouble.create(bound.getMinX(), bound.getMinY(), bound.getMaxX(), bound.getMaxY());</span>
+	}
+
+	@Override
+	default boolean intersects(com.github.davidmoten.rtree.geometry.Rectangle rectangle) {
+<span class="fc" id="L172">		return mbr().intersects(rectangle);</span>
+	}
+
+	@Override
+	default boolean isDoublePrecision() {
+<span class="nc" id="L177">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

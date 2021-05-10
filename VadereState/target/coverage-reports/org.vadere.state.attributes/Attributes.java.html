@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Attributes.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes</a> &gt; <span class="el_source">Attributes.java</span></div><h1>Attributes.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes;
+
+/**
+ * Abstract base class for all static simulation attributes.
+ * 
+ * Implementations must provide a no-arg default contstructor (either implicitly
+ * or explicitly) to enable deserialization from JSON.
+ *
+ * Attributes are &quot;static&quot; parameters i.e. they are immutable while a simulation
+ * is running. This is implemented by deriving from the
+ * {@link org.apache.commons.attributes.Sealable} interface. Attributes can have
+ * setters, but the setters must call the {@code checkSealed()} method before
+ * changing a value! In addition, if an attributes class contains other
+ * attributes classes as fields, it must override {@link #seal()} to also seal
+ * these objects. All other fields must be immutable (e.g. String, Double,
+ * VPoint,...).
+ * 
+ * The standard clone method makes a flat copy. This is enough if the subclass
+ * only triangleContains immutable fields. If the subclass triangleContains other Attributes
+ * objects, it must implement a copy constructor and override {@link #clone()}
+ * to make a deep copy.
+ * 
+ */
+public abstract class Attributes extends DefaultSealable implements Cloneable {
+	/** Used for default ID values of some scenario elements. */
+	public static final int ID_NOT_SET = -1;
+
+<span class="fc" id="L28">	public Attributes() {}</span>
+	
+	/**
+	 * Standard flat copy of attributes. The flat copy is only sufficient (as
+	 * noted above) if all fields are immutable.
+	 */
+	@Override
+	public Attributes clone() {
+		try {
+<span class="fc" id="L37">			return (Attributes) super.clone();</span>
+<span class="nc" id="L38">		} catch (CloneNotSupportedException e) {</span>
+<span class="nc" id="L39">			throw new RuntimeException(&quot;This should never happen because the base class is Cloneable.&quot;, e);</span>
+		}
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

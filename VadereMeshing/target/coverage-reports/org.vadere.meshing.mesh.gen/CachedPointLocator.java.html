@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CachedPointLocator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">CachedPointLocator.java</span></div><h1>CachedPointLocator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IPointLocator;
+import org.vadere.meshing.mesh.inter.ITriConnectivity;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.shapes.IPoint;
+
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class CachedPointLocator&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements IPointLocator&lt;V, E, F&gt; {
+
+	private final IPointLocator&lt;V, E, F&gt; pointLocator;
+	private final ITriConnectivity&lt;V, E, F&gt; triConnectivity;
+	private final Map&lt;Object, F&gt; cache;
+
+<span class="nc" id="L21">	public CachedPointLocator(@NotNull final IPointLocator&lt;V, E, F&gt; pointLocator, @NotNull final ITriConnectivity&lt;V, E, F&gt; triConnectivity) {</span>
+<span class="nc" id="L22">		this.pointLocator = pointLocator;</span>
+<span class="nc" id="L23">		this.triConnectivity = triConnectivity;</span>
+<span class="nc" id="L24">		this.cache = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L25">	}</span>
+
+	@Override
+	public F locatePoint(@NotNull final IPoint point) {
+<span class="nc" id="L29">		return pointLocator.locatePoint(point);</span>
+	}
+
+	@Override
+	public F locatePoint(@NotNull final IPoint point, @NotNull final Object caller) {
+		F face;
+<span class="nc bnc" id="L35" title="All 4 branches missed.">		if(cache.containsKey(caller) &amp;&amp; !triConnectivity.getMesh().isDestroyed(cache.get(caller))) {</span>
+<span class="nc" id="L36">			face = triConnectivity.locateMarch(point.getX(), point.getY(), cache.get(caller)).orElse(null);</span>
+		} else {
+<span class="nc" id="L38">			face = pointLocator.locatePoint(point);</span>
+		}
+
+<span class="nc bnc" id="L41" title="All 4 branches missed.">		if(face != null &amp;&amp; !triConnectivity.getMesh().isBoundary(face)) {</span>
+<span class="nc" id="L42">			cache.put(caller, face);</span>
+		}
+
+<span class="nc" id="L45">		return face;</span>
+	}
+
+	@Override
+	public Optional&lt;F&gt; locate(@NotNull final IPoint point) {
+<span class="nc" id="L50">		return pointLocator.locate(point);</span>
+	}
+
+	@Override
+	public Optional&lt;F&gt; locate(@NotNull final IPoint point, final @NotNull Object caller) {
+		Optional&lt;F&gt; optFace;
+<span class="nc bnc" id="L56" title="All 4 branches missed.">		if(cache.containsKey(caller) &amp;&amp; !triConnectivity.getMesh().isDestroyed(cache.get(caller))) {</span>
+<span class="nc" id="L57">			optFace = triConnectivity.locateMarch(point.getX(), point.getY(), cache.get(caller));</span>
+		} else {
+<span class="nc" id="L59">			optFace = pointLocator.locate(point);</span>
+		}
+
+<span class="nc bnc" id="L62" title="All 4 branches missed.">		if(optFace.isPresent() &amp;&amp; !triConnectivity.getMesh().isBoundary(optFace.get())) {</span>
+<span class="nc" id="L63">			cache.put(caller, optFace.get());</span>
+		}
+
+<span class="nc" id="L66">		return optFace;</span>
+	}
+
+	@Override
+	public Optional&lt;F&gt; locate(double x, double y) {
+<span class="nc" id="L71">		return pointLocator.locate(x, y);</span>
+	}
+
+	@Override
+	public Optional&lt;F&gt; locate(double x, double y, Object caller) {
+		Optional&lt;F&gt; optFace;
+<span class="nc" id="L77">		boolean contains = cache.containsKey(caller);</span>
+<span class="nc" id="L78">		F starFace = null;</span>
+
+<span class="nc bnc" id="L80" title="All 2 branches missed.">		if(contains) {</span>
+<span class="nc" id="L81">			starFace = cache.get(caller);</span>
+		}
+
+<span class="nc bnc" id="L84" title="All 4 branches missed.">		if(contains &amp;&amp; !triConnectivity.getMesh().isDestroyed(starFace)) {</span>
+<span class="nc" id="L85">			optFace = triConnectivity.locateMarch(x, y, starFace);</span>
+		} else {
+<span class="nc" id="L87">			optFace = pointLocator.locate(x, y, false);</span>
+		}
+
+<span class="nc bnc" id="L90" title="All 6 branches missed.">		if(optFace.isPresent() &amp;&amp; !(contains &amp;&amp; optFace.get().equals(starFace)) &amp;&amp;</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">				!triConnectivity.getMesh().isBoundary(optFace.get())) {</span>
+<span class="nc" id="L92">			cache.put(caller, optFace.get());</span>
+		}
+
+<span class="nc" id="L95">		return optFace;</span>
+	}
+
+	@Override
+	public Type getType() {
+<span class="nc" id="L100">		return pointLocator.getType();</span>
+	}
+
+	@Override
+	public IPointLocator&lt;V, E, F&gt; getUncachedLocator() {
+<span class="nc" id="L105">		return pointLocator;</span>
+	}
+
+	@Override
+	public boolean isCached() {
+<span class="nc" id="L110">		return true;</span>
+	}
+
+	@Override
+<span class="nc" id="L114">	public void postSplitTriangleEvent(F original, F f1, F f2, F f3, V v) {}</span>
+
+	@Override
+<span class="nc" id="L117">	public void postSplitHalfEdgeEvent(E originalEdge, F original, F f1, F f2, V v) {}</span>
+
+	@Override
+<span class="nc" id="L120">	public void postFlipEdgeEvent(F f1, F f2) {}</span>
+
+	@Override
+<span class="nc" id="L123">	public void postInsertEvent(V vertex) {}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

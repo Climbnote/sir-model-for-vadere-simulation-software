@@ -1,0 +1,18 @@
+<h1> FootStepProcessor</h1>
+
+<p>
+<p>During one time step a pedestrian my move multiple times which is saved by <a href='/helpText/rel_/Pedestrian#getTrajectory().html' class='class_link'>Pedestrian#getTrajectory()</a>, i.e.
+the <a href='/helpText/org.vadere.state.simulation.VTrajectory.html' class='class_link'>VTrajectory</a> will be adjusted after each update(simTimeInSec) call such that it contains the foot steps
+which started at the lastSimTimeInSec!</p>
+
+<p>This processor writes out all those <a href='/helpText/rel_/FootStep.html' class='class_link'>FootStep</a>s. The index is the simulation time where the event occurred
+and the pedestrian id. The "endTime" of the foot step is part of the data. Each row corresponds to one foot step.
+</p>
+
+<p>This is especially useful if one uses the <a href='/helpText/org.vadere.simulator.models.osm.OptimalStepsModel.html' class='class_link'>org.vadere.simulator.models.osm.OptimalStepsModel</a> or any other
+<a href='/helpText/org.vadere.simulator.models.MainModel.html' class='class_link'>org.vadere.simulator.models.MainModel</a> for which pedestrians do multiple steps during a simulation time step.
+</p>
+
+@author Benedikt Zoennchen
+</p>
+

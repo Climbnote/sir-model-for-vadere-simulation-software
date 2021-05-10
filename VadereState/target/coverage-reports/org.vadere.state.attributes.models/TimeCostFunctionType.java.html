@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TimeCostFunctionType.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.models</a> &gt; <span class="el_source">TimeCostFunctionType.java</span></div><h1>TimeCostFunctionType.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.models;
+
+/**
+ * The different time cost function types that represents different scenario
+ * types.
+ *
+ * @author Benedikt Zoennchen
+ *
+ */
+<span class="fc" id="L10">public enum TimeCostFunctionType {</span>
+	/** a static middle scale navigation. */
+<span class="fc" id="L12">	UNIT,</span>
+	/** a dynamic middle scale navigation (navigation around groups). */
+<span class="fc" id="L14">	NAVIGATION,</span>
+
+	/** a dynamic middle scale navigation (queuing). */
+<span class="fc" id="L17">	QUEUEING,</span>
+
+	/** for the queueing game */
+<span class="fc" id="L20">	QUEUEING_GAME,</span>
+
+	/** for the queueing game */
+<span class="fc" id="L23">	NAVIGATION_GAME,</span>
+
+	/**
+	 * uses TimeCostObstacleDensity to get a smooth potential field around
+	 * obstacles
+	 */
+<span class="fc" id="L29">	OBSTACLES,</span>
+
+<span class="fc" id="L31">	DISTANCE_TO_OBSTACLES</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Parameters.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.improver.distmesh</a> &gt; <span class="el_source">Parameters.java</span></div><h1>Parameters.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.improver.distmesh;
+
+/**
+ * @author Matthias Laubinger
+ */
+<span class="nc" id="L6">public class Parameters {</span>
+	public final static double DPTOL = 0.001;
+    public final static double TOL = .1;
+    public final static double FSCALE = 1.2;
+    public final static double DELTAT = 0.2;
+    public final static double MIN_TRIANGLE_QUALITY = 0.1;
+    public final static double MIN_FORCE_RATIO = 0.3;
+    public final static double MIN_COLLAPSE_QUALITY = 0.5;
+	public final static double MIN_SPLIT_QUALITY = 0.7;
+	public final static double MAX_COLLAPSE_ANGLE = Math.PI * 0.5;
+	public final static double h0 = 0.15;
+	public final static boolean uniform = false;
+	public final static String method = &quot;Distmesh&quot;; // &quot;Distmesh&quot; or &quot;Density&quot;
+    public final static double qualityMeasurement = 0.95;
+	public final static double qualityConvergence = 0.0;
+    public final static double MINIMUM = 0.25;
+    public final static double DENSITYWEIGHT = 2;
+    public final static int NPOINTS = 100000;
+    public final static int SAMPLENUMBER = 10;
+    public final static int SAMPLEDIVISION = 10;
+    public final static int SEGMENTDIVISION = 0;
+    //TODO increase this
+    public final static int MAX_NUMBER_OF_STEPS = 200;
+	public final static int HIGHEST_LEGAL_TEST = Integer.MAX_VALUE;
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

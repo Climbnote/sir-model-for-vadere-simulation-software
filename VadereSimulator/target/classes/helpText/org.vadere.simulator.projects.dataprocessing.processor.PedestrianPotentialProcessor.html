@@ -1,0 +1,20 @@
+<h1> PedestrianPotentialProcessor</h1>
+
+<p>
+This processor computes potentials at the position of pedestrians if and only if the <a href='/helpText/org.vadere.simulator.models.MainModel.html' class='class_link'>org.vadere.simulator.models.MainModel</a>
+is in fact a <a href='/helpText/org.vadere.simulator.models.potential.PotentialFieldModel.html' class='class_link'>PotentialFieldModel</a>. The pedestrian position is determined by the registered <a href='/helpText/org.vadere.state.attributes.processor.AttributesPedestrianPositionProcessor.html' class='class_link'>PedestrianPositionProcessor</a>.
+Therefore, this can be, for example, the interpolated position.
+
+Note that computing the agent potential can be computational expensive.
+
+This processor can be used to compute the geodesic distance to a target if the target potential is a static potential using F(x) = 1 as
+the traveling speed of the wave in the eikonal equation! By this one can compute the distance between agent with respect to the target.
+If a targetId is specified i.e. it is not -1 then it will be used instead of the targetId of the agent's target.
+
+@author Benedikt Zoennchen
+</p>
+
+<hr>
+<h2> Field: pedestrianPositionProcessor</h2>
+<p>---</p>
+

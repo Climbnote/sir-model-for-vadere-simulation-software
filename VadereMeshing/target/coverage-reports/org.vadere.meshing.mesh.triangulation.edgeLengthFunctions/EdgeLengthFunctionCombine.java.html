@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EdgeLengthFunctionCombine.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.edgeLengthFunctions</a> &gt; <span class="el_source">EdgeLengthFunctionCombine.java</span></div><h1>EdgeLengthFunctionCombine.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.edgeLengthFunctions;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.geometry.shapes.IPoint;
+
+public class EdgeLengthFunctionCombine implements IEdgeLengthFunction {
+
+	private final IEdgeLengthFunction[] edgeLengthFunctions;
+
+<span class="nc" id="L10">	public EdgeLengthFunctionCombine(@NotNull final IEdgeLengthFunction... edgeLengthFunctions) {</span>
+<span class="nc" id="L11">		this.edgeLengthFunctions = edgeLengthFunctions;</span>
+<span class="nc" id="L12">	}</span>
+
+	@Override
+	public Double apply(IPoint point) {
+<span class="nc" id="L16">		double min = Double.POSITIVE_INFINITY;</span>
+<span class="nc bnc" id="L17" title="All 2 branches missed.">		for(IEdgeLengthFunction edgeLengthFunction : edgeLengthFunctions) {</span>
+<span class="nc" id="L18">			min = Math.min(min, edgeLengthFunction.apply(point));</span>
+		}
+<span class="nc" id="L20">		return min;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

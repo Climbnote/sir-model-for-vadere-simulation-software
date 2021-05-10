@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Stairs.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.scenario</a> &gt; <span class="el_source">Stairs.java</span></div><h1>Stairs.java</h1><pre class="source lang-java linenums">package org.vadere.state.scenario;
+
+import org.vadere.state.attributes.Attributes;
+import org.vadere.state.attributes.scenario.AttributesStairs;
+import org.vadere.state.types.ScenarioElementType;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.util.logging.Logger;
+
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Path2D;
+import java.awt.geom.PathIterator;
+import java.awt.geom.Rectangle2D;
+
+public class Stairs extends ScenarioElement {
+
+<span class="fc" id="L19">	private static Logger logger = Logger.getLogger(Stairs.class);</span>
+<span class="fc" id="L20">	public static double MIN_TREAD_DEPTH = 0.100;</span>
+<span class="fc" id="L21">	public static double MAX_TREAD_DEPTH = 0.350;</span>
+
+	public static class Tread {
+		public final VLine treadline;
+
+<span class="fc" id="L26">		public Tread(VLine treadline) {</span>
+<span class="fc" id="L27">			this.treadline = treadline;</span>
+<span class="fc" id="L28">		}</span>
+	}
+
+	private AttributesStairs attributes;
+	private Tread[] treads;
+	private double treadDepth;
+
+<span class="fc" id="L35">	public Stairs(AttributesStairs attributes) {</span>
+<span class="fc" id="L36">		setAttributes(attributes);</span>
+<span class="fc" id="L37">	}</span>
+
+	private Tread[] computeTreads() {
+		// tread count + 2 since the first and last treads must be placed outside of the shape and
+		// on the next floor.
+<span class="fc" id="L42">		Tread[] treadsResult = new Tread[this.getAttributes().getTreadCount() + 2];</span>
+
+<span class="fc" id="L44">		double angle = this.getAttributes().getUpwardDirection().angleToZero();</span>
+
+<span class="fc" id="L46">		PathIterator iterator = this.getShape().getPathIterator(AffineTransform.getRotateInstance(-angle));</span>
+<span class="fc" id="L47">		Path2D.Double p = new Path2D.Double();</span>
+<span class="fc" id="L48">		p.append(iterator, false);</span>
+
+<span class="fc" id="L50">		Rectangle2D rotatedBounds = new VPolygon(p).getBounds2D();</span>
+
+<span class="fc" id="L52">		treadDepth = rotatedBounds.getWidth() / this.getAttributes().getTreadCount();</span>
+
+<span class="fc bfc" id="L54" title="All 2 branches covered.">		for (int i = 0; i &lt; treadsResult.length; i++) {</span>
+<span class="fc" id="L55">			double factor = ((double) i) / treadsResult.length;</span>
+
+			// subtract one on the left and add one tread depth on the right so that the last and
+			// next floors gets one tread too
+
+			// by dividing treadDepth by 2 the lines are centered between the edges
+
+			// __________________________________ &lt;&lt; upper edge of tread
+			// ---------------------------------- &lt;&lt; line that pedestrians walk on (centered between edges)
+			// __________________________________ &lt;&lt; lower edge of (same) tread
+
+			// This is the assumption that pedestrians always step in the middle of a tread.
+
+<span class="fc" id="L68">			double x = rotatedBounds.getMinX() - treadDepth / 2 + factor * (rotatedBounds.getWidth() + treadDepth * 2);</span>
+<span class="fc" id="L69">			VPoint p1 = new VPoint(x, rotatedBounds.getMinY()).rotate(angle);</span>
+<span class="fc" id="L70">			VPoint p2 = new VPoint(x, rotatedBounds.getMaxY()).rotate(angle);</span>
+
+<span class="fc" id="L72">			VLine line = new VLine(p1, p2);</span>
+
+<span class="fc" id="L74">			treadsResult[i] = new Tread(line);</span>
+		}
+
+<span class="fc" id="L77">		return treadsResult;</span>
+	}
+
+	@Override
+	public void setAttributes(Attributes attributes) {
+<span class="fc" id="L82">		this.attributes = (AttributesStairs) attributes;</span>
+<span class="fc" id="L83">		treads = computeTreads();</span>
+<span class="fc" id="L84">	}</span>
+
+	@Override
+	public void setShape(VShape newShape) {
+<span class="nc" id="L88">		attributes.setShape(newShape);</span>
+<span class="nc" id="L89">	}</span>
+
+	@Override
+	public VShape getShape() {
+<span class="fc" id="L93">		return attributes.getShape();</span>
+	}
+
+	@Override
+	public int getId() {
+<span class="nc" id="L98">		return attributes.getId();</span>
+	}
+
+	@Override
+	public void setId(int id) {
+<span class="nc" id="L103">		attributes.setId(id);</span>
+<span class="nc" id="L104">	}</span>
+
+	public Tread[] getTreads() {
+<span class="fc" id="L107">		return this.treads;</span>
+	}
+
+	public double getTreadDepth() {
+<span class="nc" id="L111">		return treadDepth;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L116">		final int prime = 31;</span>
+<span class="nc" id="L117">		int result = 1;</span>
+<span class="nc bnc" id="L118" title="All 2 branches missed.">		result = prime * result + ((attributes == null) ? 0 : attributes.hashCode());</span>
+<span class="nc" id="L119">		return result;</span>
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+<span class="nc bnc" id="L124" title="All 2 branches missed.">		if (this == obj) {</span>
+<span class="nc" id="L125">			return true;</span>
+		}
+<span class="nc bnc" id="L127" title="All 2 branches missed.">		if (obj == null) {</span>
+<span class="nc" id="L128">			return false;</span>
+		}
+<span class="nc bnc" id="L130" title="All 2 branches missed.">		if (!(obj instanceof Stairs)) {</span>
+<span class="nc" id="L131">			return false;</span>
+		}
+<span class="nc" id="L133">		Stairs other = (Stairs) obj;</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">		if (attributes == null) {</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">			if (other.attributes != null) {</span>
+<span class="nc" id="L136">				return false;</span>
+			}
+<span class="nc bnc" id="L138" title="All 2 branches missed.">		} else if (!attributes.equals(other.attributes)) {</span>
+<span class="nc" id="L139">			return false;</span>
+		}
+<span class="nc" id="L141">		return true;</span>
+	}
+
+	@Override
+	public ScenarioElementType getType() {
+<span class="nc" id="L146">		return ScenarioElementType.STAIRS;</span>
+	}
+
+	@Override
+	public AttributesStairs getAttributes() {
+<span class="fc" id="L151">		return attributes;</span>
+	}
+
+	@Override
+	public Stairs clone() {
+<span class="nc" id="L156">		return new Stairs((AttributesStairs) attributes.clone());</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

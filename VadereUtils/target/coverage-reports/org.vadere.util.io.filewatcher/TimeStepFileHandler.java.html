@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TimeStepFileHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.io.filewatcher</a> &gt; <span class="el_source">TimeStepFileHandler.java</span></div><h1>TimeStepFileHandler.java</h1><pre class="source lang-java linenums">package org.vadere.util.io.filewatcher;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+
+public class TimeStepFileHandler {
+
+<span class="nc" id="L13">	private File timeStepFile = null;</span>
+
+<span class="nc" id="L15">	private static String ADirectiory = &quot;Time Step file path is a directory&quot;;</span>
+
+<span class="nc" id="L17">	public TimeStepFileHandler(String timeStepFilePath) throws Exception {</span>
+
+<span class="nc" id="L19">		timeStepFile = new File(timeStepFilePath);</span>
+
+<span class="nc bnc" id="L21" title="All 2 branches missed.">		if (timeStepFile.isDirectory()) {</span>
+
+<span class="nc" id="L23">			throw new Exception(ADirectiory);</span>
+		}
+<span class="nc" id="L25">	}</span>
+
+	public void writeTimeStepFile(ArrayList&lt;String&gt; states) throws IOException {
+
+<span class="nc" id="L29">		timeStepFile.delete();</span>
+<span class="nc" id="L30">		timeStepFile.createNewFile();</span>
+
+<span class="nc" id="L32">		FileWriter writer = new FileWriter(timeStepFile, false);</span>
+<span class="nc" id="L33">		BufferedWriter bufWriter = new BufferedWriter(writer);</span>
+
+<span class="nc bnc" id="L35" title="All 2 branches missed.">		for (int iter = 0; iter &lt; states.size(); iter++) {</span>
+
+<span class="nc bnc" id="L37" title="All 2 branches missed.">			if (iter == states.size() - 1) {</span>
+<span class="nc" id="L38">				bufWriter.write(states.get(iter));</span>
+			} else {
+<span class="nc" id="L40">				bufWriter.write(states.get(iter) + &quot;\n&quot;);</span>
+			}
+
+		}
+
+<span class="nc" id="L45">		bufWriter.close();</span>
+<span class="nc" id="L46">		writer.close();</span>
+<span class="nc" id="L47">	}</span>
+
+	public void deleteTimeStepFile() {
+
+<span class="nc" id="L51">		timeStepFile.delete();</span>
+<span class="nc" id="L52">	}</span>
+
+	public ArrayList&lt;String&gt; readTimeStepFile() throws IOException {
+
+<span class="nc" id="L56">		ArrayList&lt;String&gt; states = new ArrayList&lt;String&gt;();</span>
+
+		try {
+
+<span class="nc" id="L60">			FileReader reader = new FileReader(timeStepFile);</span>
+<span class="nc" id="L61">			BufferedReader bufferReader = new BufferedReader(reader);</span>
+
+<span class="nc" id="L63">			String state = null;</span>
+
+<span class="nc bnc" id="L65" title="All 2 branches missed.">			while ((state = bufferReader.readLine()) != null) {</span>
+
+<span class="nc" id="L67">				states.add(state);</span>
+			}
+
+<span class="nc" id="L70">			bufferReader.close();</span>
+<span class="nc" id="L71">			reader.close();</span>
+<span class="nc" id="L72">		} catch (IOException ex) {</span>
+
+<span class="nc" id="L74">		}</span>
+
+<span class="nc" id="L76">		return states;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

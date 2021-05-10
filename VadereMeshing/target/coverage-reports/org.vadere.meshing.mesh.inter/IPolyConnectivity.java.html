@@ -1,0 +1,1454 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IPolyConnectivity.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.inter</a> &gt; <span class="el_source">IPolyConnectivity.java</span></div><h1>IPolyConnectivity.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.inter;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.IllegalMeshException;
+import org.vadere.meshing.mesh.iterators.EdgeIterator;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.meshing.mesh.gen.IncrementalTriangulation;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.logging.Logger;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+/**
+ * &lt;p&gt;
+ * A poly-connectivity {@link IPolyConnectivity} is the connectivity of a mesh of non-intersecting connected polygons including holes.
+ * So it is more abstract than a tri-connectivity {@link ITriConnectivity}. The mesh {@link IMesh} stores all the
+ * date of the base elements, vertices {@link V}, half-edges {@link E} and faces {@link F}) and offers factory method
+ * to create new base elements. The connectivities, i.e. {@link IPolyConnectivity} and {@link ITriConnectivity}
+ * offers all the operations manipulating the connectivity of the mesh. The connectivity is the relation between vertices and edges which
+ * define faces which therefore define the mesh structure.
+ * &lt;/p&gt;
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ *
+ * @author Benedikt Zoennchen
+ */
+<span class="pc bpc" id="L36" title="1 of 2 branches missed.">public interface IPolyConnectivity&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; extends Iterable&lt;F&gt; {</span>
+
+	/**
+	 * A logger to debug some code.
+	 */
+<span class="fc" id="L41">	Logger log = Logger.getLogger(IPolyConnectivity.class);</span>
+
+
+	/**
+	 * &lt;p&gt;Returns the mesh of this poly-connectivity {@link IPolyConnectivity}.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @return the mesh of this IPolyConnectivity
+	 */
+	IMesh&lt;V, E, F&gt; getMesh();
+
+	default boolean isAtBoundary(@NotNull final E halfEdge) {
+<span class="nc" id="L54">		IMesh&lt;V, E, F&gt; mesh = getMesh();</span>
+<span class="nc bnc" id="L55" title="All 4 branches missed.">		return mesh.isBoundary(halfEdge) || mesh.isBoundary(mesh.getTwin(halfEdge));</span>
+	}
+
+	/**
+	 * &lt;p&gt;Searches and returns the face containing the point (x,y) in O(n),
+	 * where n is the number of faces of the mesh. For each polygon of the mesh
+	 * the contained method will be evaluated until it returns &lt;tt&gt;true&lt;/tt&gt; which
+	 * is rather time consuming.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param x x-coordinate of the location point
+	 * @param y y-coordinate of the location point
+	 * @return the face containing the point or empty() if there is none
+	 */
+	default Optional&lt;F&gt; locate(final double x, final double y) {
+<span class="nc" id="L71">		return getMesh().locate(x, y);</span>
+	}
+
+	default Optional&lt;F&gt; locate(final double x, final double y, final Object caller) {
+<span class="nc" id="L75">		return getMesh().locate(x, y);</span>
+	}
+
+	default Optional&lt;V&gt; locatePoint(final double x, final double y) {
+<span class="nc" id="L79">		Optional&lt;F&gt; optFace = locate(x, y);</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">		if(optFace.isPresent()) {</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">			for(V v : getMesh().getVertexIt(optFace.get())) {</span>
+<span class="nc bnc" id="L82" title="All 4 branches missed.">				if(v.getX() == x &amp;&amp; v.getY() == y) {</span>
+<span class="nc" id="L83">					return Optional.of(v);</span>
+				}
+<span class="nc" id="L85">			}</span>
+		}
+<span class="nc" id="L87">		return Optional.empty();</span>
+	}
+
+	/**
+	 * &lt;p&gt;Searches and returns the face containing the point (x,y) in O(n),
+	 * where n is the number of faces of the mesh.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param point the location point
+	 * @return the face containing the point or empty() if there is none
+	 */
+	default Optional&lt;F&gt; locate(@NotNull final IPoint point) {
+<span class="nc" id="L100">		return locate(point.getX(), point.getY());</span>
+	}
+
+	default Optional&lt;F&gt; locate(@NotNull final IPoint point, final Object caller) {
+<span class="nc" id="L104">		return locate(point.getX(), point.getY());</span>
+	}
+
+
+	/**
+	 * &lt;p&gt;Adjust the edge of a vertex in O(d) where d is the degree of the vertex.
+	 * If there is an half-edge e which is at the boundary (i.e. hole or border) and has the vertex v
+	 * as its end point, this method will set the half-edge of v to e. This is helpful to speed up the
+	 * test whether a vertex is a boundary vertex!&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not change the connectivity.&lt;/p&gt;
+	 *
+	 * @param vertex v
+	 */
+	default void adjustVertex(@NotNull final V vertex) {
+<span class="fc" id="L119">		getMesh().streamEdges(vertex).filter(edge -&gt; getMesh().isBoundary(edge)).findAny().ifPresent(edge -&gt; getMesh().setEdge(vertex, edge));</span>
+<span class="fc" id="L120">	}</span>
+
+	/**
+	 * Returns a half-edge (begin, end) where end is its end point
+	 * and begin is the end point of its predecessor. This requires
+	 * O(d), where d is the degree of begin.
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param begin the end point of the predecessor of the searched half-edge
+	 * @param end   the end point of the searched half-edge
+	 * @return a half-edge (begin, end) if there is any, otherwise empty()
+	 */
+	default Optional&lt;E&gt; findEdge(@NotNull final V begin, @NotNull final V end) {
+<span class="nc" id="L134">		IMesh&lt;V, E, F&gt; mesh = getMesh();</span>
+<span class="nc" id="L135">		return mesh.getIncidentEdges(mesh.getEdge(begin)).stream()</span>
+<span class="nc" id="L136">				.filter(edge -&gt; mesh.getPrev(edge).equals(end))</span>
+<span class="nc" id="L137">				.map(edge -&gt; mesh.getTwin(edge)).findAny();</span>
+	}
+
+	/**
+	 * Tests if the half-edge is the only link / part of the full-edge
+	 * between the face of the half-edge and the face of its twin.
+	 * This requires O(n), where n is the number of edges of the face
+	 * of the edge.
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param halfEdge a half-edge to test
+	 * @return true if the half-edge is a simple link, false otherwise
+	 */
+	default boolean isSimpleLink(@NotNull final E halfEdge) {
+<span class="fc" id="L152">		E edge = halfEdge;</span>
+<span class="fc" id="L153">		E twin = getMesh().getTwin(halfEdge);</span>
+<span class="fc" id="L154">		F twinFace = getMesh().getFace(twin);</span>
+
+<span class="fc" id="L156">		E next = getMesh().getNext(edge);</span>
+
+<span class="fc bfc" id="L158" title="All 2 branches covered.">		while (!edge.equals(next)) {</span>
+<span class="pc bpc" id="L159" title="1 of 2 branches missed.">			if (twinFace.equals(getMesh().getTwinFace(next))) {</span>
+<span class="nc" id="L160">				return false;</span>
+			}
+<span class="fc" id="L162">			next = getMesh().getNext(next);</span>
+		}
+<span class="fc" id="L164">		return true;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Splits the edge (s) to (e) into two edges (s) to (p) to (e) in O(1).&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Changes the connectivity.&lt;/p&gt;
+	 *
+	 * @param &lt;V&gt;   the type of the vertices
+	 * @param &lt;E&gt;   the type of the half-edges
+	 * @param &lt;F&gt;   the type of the faces
+	 *
+	 * @param edge  the edge
+	 * @param p     the split point.
+	 * @param mesh  the mesh containing the edge and which will contain p afterwards
+	 * @return returns the new vertex
+	 */
+	static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; V splitEdge(
+			@NotNull final E edge, @NotNull IPoint p, @NotNull IMesh&lt;V, E, F&gt; mesh) {
+<span class="fc" id="L183">		V u = mesh.createVertex(p);</span>
+<span class="fc" id="L184">		E twin = mesh.getTwin(edge);</span>
+<span class="fc" id="L185">		E prev = mesh.getPrev(edge);</span>
+<span class="fc" id="L186">		E tNext = mesh.getNext(twin);</span>
+
+<span class="fc" id="L188">		E e = mesh.createEdge(u);</span>
+<span class="fc" id="L189">		mesh.setFace(e, mesh.getFace(edge));</span>
+<span class="fc" id="L190">		E t = mesh.createEdge(mesh.getVertex(twin));</span>
+<span class="fc" id="L191">		mesh.setFace(t, mesh.getFace(twin));</span>
+
+<span class="pc bpc" id="L193" title="1 of 2 branches missed.">		if(mesh.getEdge(mesh.getVertex(twin)).equals(twin)) {</span>
+<span class="nc" id="L194">			mesh.setEdge(mesh.getVertex(twin), t);</span>
+		}
+
+<span class="fc" id="L197">		mesh.setVertex(twin, u);</span>
+<span class="fc" id="L198">		mesh.setEdge(u, e);</span>
+
+<span class="fc" id="L200">		mesh.setTwin(e, t);</span>
+<span class="fc" id="L201">		mesh.setNext(e, edge);</span>
+<span class="fc" id="L202">		mesh.setNext(twin, t);</span>
+
+<span class="fc" id="L204">		mesh.setPrev(e, prev);</span>
+<span class="fc" id="L205">		mesh.setNext(t, tNext);</span>
+
+<span class="fc" id="L207">		return u;</span>
+	}
+
+	/**
+	 * Tests if there is any face which shares more than one edge with the face
+	 * we are checking. This requires O(n), where n is the number of edges of the face.
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param face the face we are checking
+	 * @return true if there is no face which shares more than one edge with this face, false otherwise
+	 */
+	default boolean isSimpleConnected(@NotNull final F face) {
+<span class="nc" id="L220">		Set&lt;F&gt; faceSet = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L221">		E edge = getMesh().getEdge(face);</span>
+<span class="nc" id="L222">		E next = getMesh().getNext(edge);</span>
+<span class="nc" id="L223">		faceSet.add(getMesh().getTwinFace(edge));</span>
+
+<span class="nc bnc" id="L225" title="All 2 branches missed.">		while (!edge.equals(next)) {</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">			if(faceSet.contains(getMesh().getTwinFace(next))) {</span>
+<span class="nc" id="L227">				return false;</span>
+			}
+			else {
+<span class="nc" id="L230">				faceSet.add(getMesh().getTwinFace(next));</span>
+			}
+<span class="nc" id="L232">			next = getMesh().getNext(next);</span>
+		}
+<span class="nc" id="L234">		return true;</span>
+	}
+
+	/**
+	 * Splitting the face i.e. a polygon into as many faces as the face has edges which
+	 * triangulates the face / polygon. This requires the time to locate the face which is O(n),
+	 * where n is the number of faces for a basic implementation and O(log(n)) for more sophisticated
+	 * point location algorithms see {@link IPointLocator} and the actual split which
+	 * requires O(1) but which might require additional changes e.g. in case for a Delaunay Triangulation
+	 * see {@link IncrementalTriangulation}.
+	 *
+	 * Assumption: the vertex is valid i.e. it is contained in some face.
+	 *
+	 * Changes the connectivity.
+	 *
+	 * @param vertex the vertex which spilts the face which triangleContains the vertex. It has to be contained any face.
+	 */
+	default void split(@NotNull final V vertex) {
+<span class="nc" id="L252">		Optional&lt;F&gt; optFace = locate(getMesh().getPoint(vertex));</span>
+<span class="nc bnc" id="L253" title="All 2 branches missed.">		if(!optFace.isPresent()) {</span>
+<span class="nc" id="L254">			throw new IllegalArgumentException(vertex + &quot; is not contained in any face. Therefore, no face found to split into faces.&quot;);</span>
+		} else {
+<span class="nc" id="L256">			split(optFace.get(), vertex);</span>
+		}
+<span class="nc" id="L258">	}</span>
+
+	/**
+	 * Splitting the face i.e. a polygon into as many faces as the face has edges.
+	 * This will essentially triangulate the polygon.
+	 *
+	 * Assumption: the vertex is valid i.e. it is contained in the face.
+	 *
+	 * Changes the connectivity.
+	 *
+	 * @param face      the face to be split into n faces, where n is the number of edges of the face
+	 * @param vertex    the vertex which spilts the face. It has to be contained in the face
+	 */
+	default void split(@NotNull final F face, @NotNull final V vertex) {
+<span class="nc bnc" id="L272" title="All 4 branches missed.">		assert locate(getMesh().getPoint(vertex)).get().equals(face);</span>
+
+<span class="nc" id="L274">		E hend = getMesh().getEdge(face);</span>
+<span class="nc" id="L275">		E hh = getMesh().getNext(hend);</span>
+<span class="nc" id="L276">		E hold = getMesh().createEdge(vertex);</span>
+<span class="nc" id="L277">		E twin = getMesh().createEdge(getMesh().getVertex(hend));</span>
+
+<span class="nc" id="L279">		getMesh().setTwin(hold, twin);</span>
+<span class="nc" id="L280">		getMesh().setNext(hend, hold);</span>
+<span class="nc" id="L281">		getMesh().setFace(hold, face);</span>
+
+<span class="nc" id="L283">		hold = getMesh().getTwin(hold);</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">		while (!hh.equals(hend)) {</span>
+<span class="nc" id="L285">			E hnext = getMesh().getNext(hh);</span>
+<span class="nc" id="L286">			F newFace = getMesh().createFace();</span>
+<span class="nc" id="L287">			getMesh().setEdge(newFace, hh);</span>
+
+			// update the edge of the vertex such that the last new created edge will be its edge
+<span class="nc" id="L290">			E hnew = getMesh().createEdge(vertex);</span>
+<span class="nc" id="L291">			getMesh().setEdge(vertex, hnew);</span>
+
+<span class="nc" id="L293">			getMesh().setNext(hnew, hold);</span>
+<span class="nc" id="L294">			getMesh().setNext(hold, hh);</span>
+<span class="nc" id="L295">			getMesh().setNext(hh, hnew);</span>
+
+<span class="nc" id="L297">			getMesh().setFace(hnew, newFace);</span>
+<span class="nc" id="L298">			getMesh().setFace(hold, newFace);</span>
+<span class="nc" id="L299">			getMesh().setFace(hh, newFace);</span>
+
+<span class="nc" id="L301">			E hnewTwin = getMesh().createEdge(getMesh().getVertex(hh));</span>
+<span class="nc" id="L302">			getMesh().setTwin(hnew, hnewTwin);</span>
+
+<span class="nc" id="L304">			hold = hnewTwin;</span>
+<span class="nc" id="L305">			hh = hnext;</span>
+<span class="nc" id="L306">		}</span>
+
+<span class="nc" id="L308">		getMesh().setNext(hold, hend);</span>
+<span class="nc" id="L309">		getMesh().setNext(getMesh().getNext(hend), hold);</span>
+<span class="nc" id="L310">		getMesh().setFace(hold, face);</span>
+<span class="nc" id="L311">	}</span>
+
+	/**
+	 * &lt;p&gt;Removes all links between the face and the otherFace. This essentially merges these two
+	 * faces together if and only if there share a common edge. If one of these faces is the outer
+	 * boundary i.e. the border the other one will be deleted. This requires O(max(n,m)), where n and m
+	 * is the number of edges of the involved faces.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: both faces aren't destroyed.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Changes the connectivity.&lt;/p&gt;
+	 *
+	 * @param face                      face one
+	 * @param otherFace                 face two
+	 * @param deleteIsolatedVertices    if true, vertices with degree zero will be removed from the mesh data structure otherwise they will not.
+	 * @return  (optional) the remaining face (which might be face or otherFace)
+	 *          or empty if both edges share no common edge and therefore nothing changes
+	 */
+	default Optional&lt;F&gt; removeEdges(@NotNull final F face, @NotNull F otherFace, final boolean deleteIsolatedVertices) {
+		// TODO: test it!
+<span class="pc bpc" id="L331" title="3 of 6 branches missed.">		assert !getMesh().isDestroyed(face) &amp;&amp; !getMesh().isDestroyed(otherFace);</span>
+
+<span class="fc" id="L333">		F delFace = otherFace;</span>
+<span class="fc" id="L334">		F remFace = face;</span>
+
+<span class="pc bpc" id="L336" title="1 of 2 branches missed.">		if(getMesh().isBoundary(delFace)) {</span>
+<span class="nc" id="L337">			F tmp = delFace;</span>
+<span class="nc" id="L338">			delFace = remFace;</span>
+<span class="nc" id="L339">			remFace = tmp;</span>
+		}
+
+<span class="pc bpc" id="L342" title="1 of 2 branches missed.">		if(getMesh().isBorder(delFace)) {</span>
+<span class="nc" id="L343">			F tmp = delFace;</span>
+<span class="nc" id="L344">			delFace = remFace;</span>
+<span class="nc" id="L345">			remFace = tmp;</span>
+		}
+
+<span class="fc" id="L348">		final F finalFace = delFace;</span>
+<span class="fc" id="L349">		List&lt;E&gt; toDeleteEdges = getMesh().getEdges(remFace).stream().filter(e -&gt; getMesh().getTwinFace(e).equals(finalFace)).collect(Collectors.toList());</span>
+
+<span class="pc bpc" id="L351" title="2 of 4 branches missed.">		assert getMesh().getEdges(remFace).size() &gt; toDeleteEdges.size() : &quot;can not remove all of the edges, since this could lead to an invalid mesh&quot;;</span>
+
+		//List&lt;E&gt; survivalEdges = getMesh().streamEdges(remFace).filter(e -&gt; !getMesh().getTwinFace(e).equals(finalFace)).collect(Collectors.toList());
+
+		// face and otherFace share no common edge.
+<span class="pc bpc" id="L356" title="1 of 2 branches missed.">		if(toDeleteEdges.isEmpty()) {</span>
+<span class="nc" id="L357">			return Optional.empty();</span>
+		}
+
+<span class="fc bfc" id="L360" title="All 2 branches covered.">		for(E edge : toDeleteEdges) {</span>
+<span class="fc" id="L361">			E twin = getMesh().getTwin(edge);</span>
+
+<span class="pc bpc" id="L363" title="2 of 4 branches missed.">			assert !getMesh().isDestroyed(delFace);</span>
+
+<span class="fc" id="L365">			E prevEdge = getMesh().getPrev(edge);</span>
+<span class="fc" id="L366">			E prevTwin = getMesh().getPrev(twin);</span>
+
+<span class="fc" id="L368">			E nextEdge = getMesh().getNext(edge);</span>
+<span class="fc" id="L369">			E nextTwin = getMesh().getNext(twin);</span>
+
+			// = prevEdge == twin
+<span class="fc" id="L372">			boolean tDangling = nextTwin.equals(edge);</span>
+
+			// = prevTwin == edge
+<span class="fc" id="L375">			boolean eDangling = nextEdge.equals(twin);</span>
+
+			// adjust vertices, mb later
+<span class="fc" id="L378">			V eVertex = getMesh().getVertex(edge);</span>
+<span class="fc" id="L379">			V tVertex = getMesh().getVertex(twin);</span>
+
+			// twin vertex has to be deleted
+<span class="pc bpc" id="L382" title="2 of 4 branches missed.">			if(deleteIsolatedVertices &amp;&amp; getMesh().getNext(twin).equals(edge)) {</span>
+<span class="nc" id="L383">				getMesh().destroyVertex(tVertex);</span>
+			}
+
+			// edge vertex has to be deleted
+<span class="pc bpc" id="L387" title="2 of 4 branches missed.">			if(deleteIsolatedVertices &amp;&amp; getMesh().getNext(edge).equals(twin)) {</span>
+<span class="nc" id="L388">				getMesh().destroyVertex(eVertex);</span>
+			}
+
+<span class="fc" id="L391">			getMesh().setNext(prevEdge, nextTwin);</span>
+<span class="fc" id="L392">			getMesh().setNext(prevTwin, nextEdge);</span>
+
+<span class="fc" id="L394">			getMesh().setEdge(eVertex, prevTwin);</span>
+<span class="fc" id="L395">			getMesh().setEdge(tVertex, prevEdge);</span>
+
+<span class="fc bfc" id="L397" title="All 2 branches covered.">			if(getMesh().getEdge(remFace).equals(edge)) {</span>
+<span class="pc bpc" id="L398" title="1 of 2 branches missed.">				if(!eDangling) {</span>
+<span class="fc" id="L399">					getMesh().setEdge(remFace, nextEdge);</span>
+				}
+				else {
+<span class="nc" id="L402">					getMesh().setEdge(remFace, prevEdge);</span>
+				}
+			}
+
+			//getMesh().setEdge(remFace, survivalEdges.get(0));
+
+<span class="fc" id="L408">			getMesh().destroyEdge(edge);</span>
+<span class="fc" id="L409">			getMesh().destroyEdge(twin);</span>
+<span class="fc" id="L410">		}</span>
+
+<span class="fc bfc" id="L412" title="All 2 branches covered.">		for(E halfEdge : getMesh().getEdgeIt(remFace)) {</span>
+<span class="fc" id="L413">			getMesh().setFace(halfEdge, remFace);</span>
+<span class="fc" id="L414">			getMesh().setEdge(remFace, halfEdge);</span>
+
+			// adjust vertices to speed up isBoundary(vertex)
+			/*if(getMesh().isBoundary(remFace)) {
+				getMesh().setEdge(getMesh().getVertex(halfEdge), halfEdge);
+			}*/
+<span class="fc" id="L420">		}</span>
+
+<span class="fc" id="L422">		getMesh().destroyFace(delFace);</span>
+<span class="fc" id="L423">		return Optional.of(remFace);</span>
+	}
+
+	/**
+	 * &lt;p&gt;A virus like working algorithm which merges neighbouring faces by starting at the face until
+	 * the mergeCondition does no longer hold. This requires in the worst case O(n), where n is the number
+	 * of edges of all involved faces (i.e. the face and the merged faces).&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Changes the connectivity.&lt;/p&gt;
+	 *
+	 * @param face                      the face
+	 * @param mergeCondition            the merge condition
+	 * @param deleteIsolatedVertices    if true, vertices with degree zero will be removed from the mesh data structure otherwise they will not.
+	 *
+	 * @return the merge result i.e. the resulting face.
+	 */
+	default Optional&lt;F&gt; mergeFaces(@NotNull final F face, @NotNull final Predicate&lt;F&gt; mergeCondition, final boolean deleteIsolatedVertices) {
+<span class="nc" id="L440">		return mergeFaces(face, mergeCondition, deleteIsolatedVertices, -1);</span>
+	}
+
+	/**
+	 * &lt;p&gt;A virus like working algorithm which merges neighbouring faces by starting at the face until
+	 * the mergeCondition does no longer hold or the maximal dept is reached.
+	 * This requires in the worst case O(n), where n is the number of edges of all involved faces
+	 * (i.e. the face and the merged faces).&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Changes the connectivity.&lt;/p&gt;
+	 *
+	 * @param face                      the face
+	 * @param mergeCondition            the merge condition
+	 * @param deleteIsolatedVertices    if true, vertices with degree zero will be removed from the mesh data structure otherwise they will not.
+	 * @param errorCondition            a predicate which indicates that the merge process did merge faces which should not be merged,
+	 *                                  and therefore leading to an illegal mesh. If this condition is ever satisfied an exception will be thrown.
+	 * @throws IllegalMeshException     if during the merging &lt;tt&gt;errorCondition&lt;/tt&gt; is true.
+	 *
+	 * @return the merge result i.e. the resulting face.
+	 */
+	default Optional&lt;F&gt; mergeFaces(
+			@NotNull final F face,
+			@NotNull final Predicate&lt;F&gt; mergeCondition,
+			@NotNull final Predicate&lt;F&gt; errorCondition,
+			final boolean deleteIsolatedVertices) throws IllegalMeshException {
+<span class="nc" id="L465">		return mergeFaces(face, mergeCondition, errorCondition, deleteIsolatedVertices, -1);</span>
+	}
+
+	/**
+	 * &lt;p&gt;A virus like working algorithm which merges neighbouring faces by starting at the face until
+	 * the mergeCondition does no longer hold or the maximal dept is reached.
+	 * This requires in the worst case O(n), where n is the number of edges of all involved faces
+	 * (i.e. the face and the merged faces).&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Changes the connectivity.&lt;/p&gt;
+	 *
+	 * @param face                      the face
+	 * @param mergeCondition            the merge condition
+	 * @param deleteIsolatedVertices    if true, vertices with degree zero will be removed from the mesh data structure otherwise they will not.
+	 * @param maxDept                   the maximum dept / neighbouring distance at which faces can be removed
+	 *
+	 * @return the merge result i.e. the resulting face.
+	 */
+	default Optional&lt;F&gt; mergeFaces(
+			@NotNull final F face,
+			@NotNull final Predicate&lt;F&gt; mergeCondition,
+			final boolean deleteIsolatedVertices,
+			final int maxDept) {
+		try {
+<span class="fc" id="L489">			return mergeFaces(face, mergeCondition, f -&gt; false, deleteIsolatedVertices, maxDept);</span>
+<span class="nc" id="L490">		} catch (IllegalMeshException e) {</span>
+<span class="nc" id="L491">			e.printStackTrace();</span>
+		}
+		// this will never happen.
+<span class="nc" id="L494">		return Optional.empty();</span>
+	}
+
+	// TODO: improve performance by remembering faces
+	/**
+	 * &lt;p&gt;A virus like working algorithm which merges neighbouring faces by starting at the face until
+	 * the mergeCondition does no longer hold or the maximal dept is reached.
+	 * This requires in the worst case O(n), where n is the number of edges of all involved faces
+	 * (i.e. the face and the merged faces).&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Changes the connectivity.&lt;/p&gt;
+	 *
+	 * @param face                      the face
+	 * @param mergeCondition            the merge condition
+	 * @param deleteIsolatedVertices    if true, vertices with degree zero will be removed from the mesh data structure otherwise they will not.
+	 * @param maxDept                   the maximum dept / neighbouring distance at which faces can be removed
+	 * @param errorCondition            a predicate which indicates that the merge process did merge faces which should not be merged,
+	 *                                  and therefore leading to an illegal mesh. If this condition is ever satisfied an exception will be thrown.
+	 * @throws IllegalMeshException     if during the merging &lt;tt&gt;errorCondition&lt;/tt&gt; is true.
+	 *
+	 * @return the merge result i.e. the resulting face.
+	 */
+	default Optional&lt;F&gt; mergeFaces(
+			@NotNull final F face,
+			@NotNull final Predicate&lt;F&gt; mergeCondition,
+			@NotNull final Predicate&lt;F&gt; errorCondition,
+			final boolean deleteIsolatedVertices,
+			final int maxDept) throws IllegalMeshException {
+<span class="fc" id="L522">		boolean modified = true;</span>
+<span class="fc" id="L523">		F currentFace = face;</span>
+<span class="fc" id="L524">		int dept = 0;</span>
+
+<span class="pc bpc" id="L526" title="1 of 2 branches missed.">		while (modified) {</span>
+<span class="fc" id="L527">			modified = false;</span>
+<span class="fc" id="L528">			dept++;</span>
+<span class="fc" id="L529">			List&lt;F&gt; neighbouringFaces = getMesh().getFaces(currentFace);</span>
+
+<span class="pc bpc" id="L531" title="3 of 8 branches missed.">			assert neighbouringFaces.isEmpty() || neighbouringFaces.stream().anyMatch(f -&gt; !f.equals(neighbouringFaces.get(0))) : &quot;each edge of both faces is a link to the other face&quot;;</span>
+
+<span class="fc bfc" id="L533" title="All 2 branches covered.">			for(F neighbouringFace : neighbouringFaces) {</span>
+<span class="pc bpc" id="L534" title="1 of 2 branches missed.">				if(errorCondition.test(neighbouringFace)) {</span>
+<span class="nc" id="L535">					throw new IllegalMeshException(&quot;the errorCondition is satisfied.&quot;);</span>
+				}
+				// the face might be destroyed by an operation before
+<span class="pc bpc" id="L538" title="2 of 4 branches missed.">				if(!getMesh().isDestroyed(neighbouringFace) &amp;&amp; mergeCondition.test(neighbouringFace)) {</span>
+<span class="fc" id="L539">					Optional&lt;F&gt; optionalMergeResult = removeEdges(currentFace, neighbouringFace, deleteIsolatedVertices);</span>
+
+<span class="pc bpc" id="L541" title="1 of 2 branches missed.">					if(optionalMergeResult.isPresent()) {</span>
+<span class="fc" id="L542">						modified = true;</span>
+<span class="fc" id="L543">						currentFace = optionalMergeResult.get();</span>
+					}
+					else {
+<span class="nc bnc" id="L546" title="All 2 branches missed.">						if(getMesh().isDestroyed(currentFace)) {</span>
+<span class="nc" id="L547">							return Optional.empty();</span>
+						}
+					}
+				}
+<span class="fc" id="L551">			}</span>
+
+<span class="pc bpc" id="L553" title="2 of 4 branches missed.">			if(maxDept &gt; 0 &amp;&amp; dept &gt;= maxDept) {</span>
+<span class="pc bpc" id="L554" title="1 of 2 branches missed.">				if(getMesh().isDestroyed(currentFace)) {</span>
+<span class="nc" id="L555">					return Optional.empty();</span>
+				}
+				else {
+<span class="fc" id="L558">					return Optional.of(currentFace);</span>
+				}
+			}
+<span class="nc" id="L561">		}</span>
+
+<span class="nc" id="L563">		return Optional.of(currentFace);</span>
+	}
+
+	// TODO: improve performance by remembering faces
+	/**
+	 * &lt;p&gt;A virus like working algorithm which searches for neighbouring faces by starting at the face until
+	 * the &lt;tt&gt;markCondition&lt;/tt&gt; does no longer hold or the maximal dept is reached.
+	 * This requires in the worst case O(n), where n is the number of edges of all involved faces
+	 * (i.e. the face and the merged faces).&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Does not changes the connectivity.&lt;/p&gt;
+	 *
+	 * @param face                      the face
+	 * @param markCondition             the mark condition.
+	 * @param maxDept                   the maximum dept / neighbouring distance at which faces can be marked / found
+	 *
+	 * @return the merge result i.e. the resulting face.
+	 */
+	default List&lt;F&gt; findFaces(
+			@NotNull final F face,
+			@NotNull final Predicate&lt;F&gt; markCondition,
+			final int maxDept) {
+<span class="nc" id="L585">		int dept = 0;</span>
+
+<span class="nc bnc" id="L587" title="All 2 branches missed.">		if(!markCondition.test(face)) {</span>
+<span class="nc" id="L588">			return Collections.EMPTY_LIST;</span>
+		}
+
+<span class="nc" id="L591">		Set&lt;F&gt; markedFaces = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L592">		List&lt;F&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L593">		result.add(face);</span>
+<span class="nc" id="L594">		markedFaces.add(face);</span>
+
+<span class="nc" id="L596">		List&lt;E&gt; toProcess = getMesh().getEdges(face);</span>
+
+<span class="nc bnc" id="L598" title="All 2 branches missed.">		while (!toProcess.isEmpty()) {</span>
+<span class="nc" id="L599">			dept++;</span>
+
+<span class="nc" id="L601">			List&lt;E&gt; newToProcess = new ArrayList&lt;&gt;();</span>
+			//assert toProcess.isEmpty() || toProcess.stream().anyMatch(e -&gt; getMesh().getFace(e))) : &quot;each edge of both faces is a link to the other face&quot;;
+
+<span class="nc bnc" id="L604" title="All 2 branches missed.">			for(E edge : toProcess) {</span>
+				// the face might be destroyed by an operation before
+<span class="nc" id="L606">				F candidate = getMesh().getTwinFace(edge);</span>
+<span class="nc bnc" id="L607" title="All 4 branches missed.">				if(!markedFaces.contains(candidate) &amp;&amp;  markCondition.test(candidate)) {</span>
+<span class="nc" id="L608">					result.add(candidate);</span>
+<span class="nc" id="L609">					markedFaces.add(candidate);</span>
+<span class="nc bnc" id="L610" title="All 2 branches missed.">					for(E e : getMesh().getEdgeIt(candidate)) {</span>
+<span class="nc" id="L611">						newToProcess.add(e);</span>
+<span class="nc" id="L612">					}</span>
+				}
+<span class="nc" id="L614">			}</span>
+
+<span class="nc bnc" id="L616" title="All 4 branches missed.">			if(maxDept &gt; 0 &amp;&amp; dept &gt;= maxDept) {</span>
+<span class="nc" id="L617">				return result;</span>
+			}
+
+<span class="nc" id="L620">			toProcess = newToProcess;</span>
+<span class="nc" id="L621">		}</span>
+
+<span class="nc" id="L623">		return result;</span>
+	}
+
+	/**
+	 * Creates a new hole or extends an existing hole by removing neighbouring faces by a virus algorithm
+	 * which consumes faces as long as the merge condition holds.
+	 *
+	 * Changes the connectivity.
+	 *
+	 * @param face                      they face which will be transformed into a hole
+	 * @param mergeCondition            the merge condition
+	 * @param deleteIsoletedVertices    if true isolated vertices, i.e. vertices without any edges, will be removed from the mesh
+	 * @param vertexAdjust              true means that boundary vertices will get their boundary edge as edge, false means there is no guarantee that this adjustment is made
+	 * @return  (optional) the hole or face itself it the face does not fulfill the merge condition
+	 *          or empty if due to the creation of the hole all faces will be removed!
+	 */
+	default Optional&lt;F&gt; createHole(@NotNull final F face, @NotNull final Predicate&lt;F&gt; mergeCondition, final boolean deleteIsoletedVertices, final boolean vertexAdjust) {
+
+<span class="nc bnc" id="L641" title="All 2 branches missed.">		if(mergeCondition.test(face)) {</span>
+<span class="nc" id="L642">			getMesh().toHole(face);</span>
+<span class="nc" id="L643">			shrinkBoundary(face, mergeCondition, deleteIsoletedVertices, vertexAdjust);</span>
+<span class="nc" id="L644">			return Optional.of(face);</span>
+		}
+		else {
+			//	if(!getMesh().isDestroyed(face) &amp;&amp; !mergeCondition.test(face)) {
+			//		System.out.println(&quot;could not delete it!&quot;);
+			//	}
+<span class="nc" id="L650">			return Optional.empty();</span>
+		}
+
+		/*if(mergeCondition.test(face)) {
+			Optional&lt;F&gt; remainingFace = mergeFaces(face, mergeCondition, deleteIsoletedVertices);
+			if(remainingFace.isPresent()) {
+				getMesh().toHole(remainingFace.get());
+			}
+
+			return remainingFace;
+		}
+		else {
+		//	if(!getMesh().isDestroyed(face) &amp;&amp; !mergeCondition.test(face)) {
+		//		System.out.println(&quot;could not delete it!&quot;);
+		//	}
+			return Optional.of(face);
+		}*/
+	}
+
+	default Optional&lt;F&gt; createHole(@NotNull final F face, @NotNull final Predicate&lt;F&gt; mergeCondition, final boolean deleteIsoletedVertices) {
+<span class="nc" id="L670">		return createHole(face, mergeCondition, deleteIsoletedVertices, true);</span>
+	}
+
+	/**
+	 * Shrinks the border as long as the removeCondition is satisfied i.e. a face will be removed if
+	 * it is at the border (during the shrinking process) and satisfies the condition. Like a virus this
+	 * algorithms removes faces from outside, i.e. the border, towards inside. This requires O(n)
+	 * where n is the number of edges of all involved faces (the border and the removed ones).
+	 *
+	 * Changes the connectivity.
+	 *
+	 * @param removeCondition           the remove condition
+	 * @param deleteIsolatedVertices    true then isolated vertices (they are not connected to an edge) will be removed.
+	 * @param vertexAdjust              true means that boundary vertices will get their boundary edge as edge, false means there is no guarantee that this adjustment is made
+	 */
+	default void shrinkBorder(final Predicate&lt;F&gt; removeCondition, final boolean deleteIsolatedVertices, final boolean vertexAdjust) {
+<span class="fc" id="L686">		shrinkBoundary(getMesh().getBorder(), removeCondition, deleteIsolatedVertices, vertexAdjust);</span>
+<span class="fc" id="L687">	}</span>
+
+	default void shrinkBorder(final Predicate&lt;F&gt; removeCondition, final boolean deleteIsolatedVertices) {
+<span class="fc" id="L690">		shrinkBorder(removeCondition, deleteIsolatedVertices, true);</span>
+<span class="fc" id="L691">	}</span>
+
+	default void shrinkBoundary(final Predicate&lt;F&gt; removeCondition, final boolean deleteIsolatedVertices) {
+<span class="nc" id="L694">		shrinkBoundary(getMesh().getBorder(), removeCondition, deleteIsolatedVertices);</span>
+<span class="nc bnc" id="L695" title="All 2 branches missed.">		for(F hole : getMesh().getHoles()) {</span>
+<span class="nc" id="L696">			shrinkBoundary(hole, removeCondition, deleteIsolatedVertices);</span>
+<span class="nc" id="L697">		}</span>
+<span class="nc" id="L698">	}</span>
+
+	/**
+	 * Shrinks the border as long as the removeCondition is satisfied i.e. a face will be removed if
+	 * it is at the border (during the shrinking process) and satisfies the condition. Like a virus this
+	 * algorithms removes faces from outside, i.e. the border, towards inside. This requires O(n)
+	 * where n is the number of edges of all involved faces (the border and the removed ones).
+	 *
+	 * Changes the connectivity.
+	 *
+	 * @param removeCondition           the remove condition
+	 * @param deleteIsolatedVertices    true then isolated vertices (they are not connected to an edge) will be removed.
+	 * @param adjustVertices            true means that boundary vertices will get their boundary edge as edge, false means there is no guarantee that this adjustment is made
+	 */
+	default void shrinkBoundary(@NotNull final F boundary, final Predicate&lt;F&gt; removeCondition, final boolean deleteIsolatedVertices, final boolean adjustVertices) {
+<span class="pc bpc" id="L713" title="2 of 4 branches missed.">		assert getMesh().isBoundary(boundary);</span>
+
+<span class="fc" id="L715">		List&lt;F&gt; boundaryFaces = getMesh().getFaces(boundary);</span>
+<span class="fc" id="L716">		List&lt;F&gt; neighbouringFaces = boundaryFaces;</span>
+
+		do {
+<span class="fc" id="L719">			List&lt;F&gt; nextNeighbouringFaces = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L720" title="All 2 branches covered.">			for(F neighbouringFace : neighbouringFaces) {</span>
+				// the face might be destroyed by an operation before
+<span class="pc bpc" id="L722" title="1 of 4 branches missed.">				if(!getMesh().isDestroyed(neighbouringFace) &amp;&amp; removeCondition.test(neighbouringFace)) {</span>
+<span class="fc bfc" id="L723" title="All 2 branches covered.">					for(F face : getMesh().getFaceIt(neighbouringFace)) {</span>
+<span class="pc bpc" id="L724" title="2 of 6 branches missed.">						assert face.equals(boundary) || !getMesh().isBoundary(face);</span>
+<span class="fc bfc" id="L725" title="All 2 branches covered.">						if(!face.equals(boundary)) {</span>
+<span class="fc" id="L726">							nextNeighbouringFaces.add(face);</span>
+						}
+<span class="fc" id="L728">					}</span>
+<span class="fc" id="L729">					removeFaceAtBoundary(neighbouringFace, boundary, deleteIsolatedVertices, adjustVertices);</span>
+				}
+<span class="fc" id="L731">			}</span>
+<span class="fc" id="L732">			neighbouringFaces = nextNeighbouringFaces;</span>
+<span class="fc bfc" id="L733" title="All 2 branches covered.">		} while (!neighbouringFaces.isEmpty());</span>
+<span class="fc" id="L734">	}</span>
+
+	default void shrinkBoundary(@NotNull final F boundary, final Predicate&lt;F&gt; removeCondition, final boolean deleteIsolatedVertices) {
+<span class="nc" id="L737">		shrinkBoundary(boundary, removeCondition, deleteIsolatedVertices, true);</span>
+<span class="nc" id="L738">	}</span>
+
+	default void removeFacesAtBoundary(@NotNull final Predicate&lt;F&gt; mergePredicate, @NotNull final Predicate&lt;F&gt; errorPredicate) throws IllegalMeshException {
+<span class="nc" id="L741">		mergeFaces(getMesh().getBorder(), mergePredicate, errorPredicate, true, 1);</span>
+<span class="nc bnc" id="L742" title="All 2 branches missed.">		for(F face : getMesh().getHoles()) {</span>
+<span class="nc" id="L743">			mergeFaces(face, mergePredicate, errorPredicate, true, 1);</span>
+<span class="nc" id="L744">		}</span>
+<span class="nc" id="L745">	}</span>
+
+	/**
+	 * Removes a simple link. This will be done by merging two faces into one remaining face. One of
+	 * the face will be destroyed and the other one returned.
+	 *
+	 * Assumption: the edge is a simple link, if this is not the case the method will not change
+	 * the topology.
+	 *
+	 * Changes the connectivity.
+	 *
+	 * @param edge the simple link
+	 * @return the remaining face
+	 */
+	default F removeEdgeSafely(@NotNull final E edge) {
+<span class="nc bnc" id="L760" title="All 4 branches missed.">		if (isSimpleLink(edge) &amp;&amp; !getMesh().isDestroyed(edge)) {</span>
+<span class="nc" id="L761">			return removeSimpleLink(edge);</span>
+		}
+		else {
+<span class="nc" id="L764">			return getMesh().getFace(edge);</span>
+		}
+	}
+
+	/*default void removeEdgeUnsafe(@NotNull final E edge, final boolean deleteIsolatedVertices) {
+		E twin = getMesh().getTwin(edge);
+		E prevEdge = getMesh().getPrev(edge);
+		E prevTwin = getMesh().getPrev(twin);
+		E nextEdge = getMesh().getNext(edge);
+		E nextTwin = getMesh().getNext(twin);
+
+		// remove neighbouring faces
+		//if(!getMesh().getFace(edge).equals(face)) {
+		//	removeFace(getMesh().getFace(edge), true);
+		//}
+
+		//if(!getMesh().getFace(twin).equals(face)) {
+		//	removeFace(getMesh().getFace(twin), true);
+		//}
+
+
+		// Link the from-side of the edge
+		// off the model.
+
+		V fromVertex = getMesh().getVertex(twin);
+		E fromEdge = getMesh().getEdge(fromVertex);
+		if(fromEdge.equals(twin)) {
+
+			// isolated edge
+			if(deleteIsolatedVertices &amp;&amp; nextTwin.equals(edge)) {
+				getMesh().destroyVertex(fromVertex);
+			}
+			else {
+				getMesh().setEdge(fromVertex, prevEdge);
+			}
+		}
+
+		V toVertex = getMesh().getVertex(edge);
+		E toEdge =  getMesh().getEdge(toVertex);
+		if(toEdge.equals(edge)) {
+
+			// isolated edge
+			if(deleteIsolatedVertices &amp;&amp; prevEdge.equals(twin)) {
+				getMesh().destroyVertex(toVertex);
+			}
+			else {
+				getMesh().setEdge(toVertex, prevTwin);
+			}
+		}
+
+		F edgeFace = getMesh().getFace(edge);
+		F twinFace = getMesh().getFace(twin);
+		E edgeFaceEdge = getMesh().getEdge(edgeFace);
+		E twinFaceEdge = getMesh().getEdge(twinFace);
+
+		if(edgeFace.equals(edgeFaceEdge)) {
+			getMesh().setEdge(edgeFace, getMesh().getNext(edge));
+		}
+
+		if(twinFace.equals(twinFaceEdge)) {
+			getMesh().setEdge(twinFace, getMesh().getPrev(twin));
+		}
+
+		getMesh().setNext(prevEdge, nextTwin);
+		getMesh().setNext(prevTwin, nextEdge);
+
+		getMesh().destroyEdge(edge);
+		getMesh().destroyEdge(twin);
+
+	}*/
+
+	/**
+	 * Removes a simple link. This will be done by merging two faces into one remaining face. One of
+	 * the face will be destroyed and the other one returned. This requires O(n) where n is the sum of
+	 * the number of edges of both neighbouring faces.
+	 *
+	 * Assumption: the edge is a simple link
+	 *
+	 * Changes the connectivity.
+	 *
+	 * @param edge the simple link
+	 * @return the remaining face
+	 */
+	default F removeSimpleLink(@NotNull final E edge) {
+		/*V vertex = getMesh().getVertex(edge);
+		System.out.println(&quot;before = &quot; + getMesh().degree(vertex));*/
+<span class="pc bpc" id="L850" title="3 of 6 branches missed.">		assert isSimpleLink(edge) &amp;&amp; !getMesh().isDestroyed(edge);</span>
+<span class="fc" id="L851">		E twin = getMesh().getTwin(edge);</span>
+<span class="fc" id="L852">		F delFace = getMesh().getFace(edge);</span>
+<span class="fc" id="L853">		F remFace = getMesh().getFace(twin);</span>
+
+<span class="pc bpc" id="L855" title="1 of 2 branches missed.">		if(getMesh().isBoundary(delFace)) {</span>
+<span class="nc" id="L856">			F tmp = delFace;</span>
+<span class="nc" id="L857">			delFace = remFace;</span>
+<span class="nc" id="L858">			remFace = tmp;</span>
+		}
+
+<span class="pc bpc" id="L861" title="2 of 4 branches missed.">		assert !getMesh().isDestroyed(delFace);</span>
+
+<span class="fc" id="L863">		E prevEdge = getMesh().getPrev(edge);</span>
+<span class="fc" id="L864">		E prevTwin = getMesh().getPrev(twin);</span>
+
+<span class="fc" id="L866">		E nextEdge = getMesh().getNext(edge);</span>
+<span class="fc" id="L867">		E nextTwin = getMesh().getNext(twin);</span>
+
+<span class="fc" id="L869">		getMesh().setNext(prevEdge, nextTwin);</span>
+<span class="fc" id="L870">		getMesh().setNext(prevTwin, nextEdge);</span>
+
+		// adjust vertices, mb later
+<span class="fc" id="L873">		V eVertex = getMesh().getVertex(edge);</span>
+<span class="fc" id="L874">		V tVertex = getMesh().getVertex(twin);</span>
+
+<span class="fc" id="L876">		getMesh().setEdge(eVertex, prevTwin);</span>
+<span class="fc" id="L877">		getMesh().setEdge(tVertex, prevEdge);</span>
+
+<span class="pc bpc" id="L879" title="1 of 2 branches missed.">		if(getMesh().getEdge(remFace).equals(edge)) {</span>
+<span class="nc" id="L880">			getMesh().setEdge(remFace, prevTwin);</span>
+		}
+<span class="pc bpc" id="L882" title="1 of 2 branches missed.">		else if(getMesh().getEdge(remFace).equals(twin)) {</span>
+<span class="nc" id="L883">			getMesh().setEdge(remFace, prevEdge);</span>
+		}
+
+<span class="fc bfc" id="L886" title="All 2 branches covered.">		for(E halfEdge : getMesh().getEdgeIt(remFace)) {</span>
+<span class="fc" id="L887">			getMesh().setFace(halfEdge, remFace);</span>
+<span class="fc" id="L888">			getMesh().setEdge(remFace, halfEdge);</span>
+
+			// adjust vertices to speed up isBoundary(vertex)
+			/*if(getMesh().isBoundary(remFace)) {
+				getMesh().setEdge(getMesh().getVertex(halfEdge), halfEdge);
+			}*/
+<span class="fc" id="L894">		}</span>
+
+<span class="fc" id="L896">		getMesh().destroyEdge(edge);</span>
+<span class="fc" id="L897">		getMesh().destroyEdge(twin);</span>
+<span class="fc" id="L898">		getMesh().destroyFace(delFace);</span>
+		//System.out.println(&quot;after = &quot; + getMesh().degree(vertex));
+<span class="fc" id="L900">		return remFace;</span>
+	}
+
+	/*default void remove(final V vertex, final boolean deleteIsolatedVertices) {
+		List&lt;F&gt; toDeleteFaces = getMesh().getFaces(vertex);
+		for(F face : toDeleteFaces) {
+			removeFace(face, deleteIsolatedVertices);
+		}
+	}*/
+
+	/**
+	 * Tests whether the point (x, y) is contained in the face. This requires O(n), where
+	 * n is the number of edges of the face.
+	 *
+	 * Assumption: The ordering of the mesh is CCW and the face is a valid simple polyon.
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param x     x-coordinate of the point
+	 * @param y     y-coordinate of the point
+	 * @param face  the face
+	 * @return true if the point (x, y) is contained in the face, false otherwise
+	 */
+	default boolean contains(final double x, final double y, @NotNull final F face) {
+<span class="nc bnc" id="L924" title="All 2 branches missed.">		for(E e : getMesh().getEdgeIt(face)) {</span>
+<span class="nc bnc" id="L925" title="All 2 branches missed.">			if(isRightOf(x, y, e)) {</span>
+<span class="nc" id="L926">				return false;</span>
+			}
+<span class="nc" id="L928">		}</span>
+<span class="nc" id="L929">		return true;</span>
+	}
+
+	/**
+	 * Returns true if (x,y) is contained in the ccw triangle defined by (v1, v2, v3).
+	 *
+	 * Assumption: v1 -&gt; v2 -&gt; v3 is ccw oriented.
+	 *
+	 * @param x
+	 * @param y
+	 * @param v1
+	 * @param v2
+	 * @param v3
+	 * @return
+	 */
+	default boolean contains(final double x, final double y, @NotNull final V v1, @NotNull final V v2, @NotNull final V v3) {
+<span class="nc bnc" id="L945" title="All 2 branches missed.">		return !GeometryUtils.isRightOf(v1.getX(), v1.getY(), v2.getX(), v2.getY(), x, y)</span>
+<span class="nc bnc" id="L946" title="All 2 branches missed.">				&amp;&amp; !GeometryUtils.isRightOf(v2.getX(), v2.getY(), v3.getX(), v3.getY(), x, y)</span>
+<span class="nc bnc" id="L947" title="All 2 branches missed.">				&amp;&amp; !GeometryUtils.isRightOf(v3.getX(), v3.getY(), v1.getX(), v1.getY(), x, y);</span>
+	}
+
+	/**
+	 * Returns true if the point (x1, y1) is part of the face in O(n),
+	 * where n is the number of edges of the face.
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param face  the face
+	 * @param x1    the x-coordinate of the point
+	 * @param y1    the y-coordinate of the point
+	 * @return true if the (x1, y1) is part of the face, false otherwise
+	 */
+	default boolean isMember(final double x1, final double y1, @NotNull final F face) {
+<span class="nc" id="L962">		return getMemberEdge(face, x1, y1).isPresent();</span>
+	}
+
+	/**
+	 * Returns true if the point (x1, y1) is close to a point of the face in O(n),
+	 * where n is the number of edges of the face.
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param face      the face
+	 * @param x1        the x-coordinate of the point
+	 * @param y1        the y-coordinate of the point
+	 * @param distance  the maximal distance
+	 * @return true if the (x1, y1) close to a point of the face, false otherwise
+	 */
+	default boolean isClose(final double x1, final double y1, @NotNull final F face, double distance) {
+<span class="fc" id="L978">		return getCloseEdge(face, x1, y1, distance).isPresent();</span>
+	}
+
+	/**
+	 * (Optional) returns the half-edge of a face which ends in (x1, y1) in O(n),
+	 * where n is the number of edges of the face.
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param face  the face
+	 * @param x1    the x-coordinate of the point
+	 * @param y1    the y-coordinate of the point
+	 * @return (optional) the half-edge of a face which ends in (x1, y1)
+	 */
+	default Optional&lt;E&gt; getMemberEdge(@NotNull final F face, final double x1, final double y1) {
+
+<span class="nc bnc" id="L994" title="All 2 branches missed.">		for(E e : getMesh().getEdgeIt(face)) {</span>
+<span class="nc" id="L995">			IPoint p = getMesh().getPoint(e);</span>
+<span class="nc bnc" id="L996" title="All 4 branches missed.">			if(p.getX() == x1 &amp;&amp; p.getY() == y1) {</span>
+<span class="nc" id="L997">				return Optional.of(e);</span>
+			}
+<span class="nc" id="L999">		}</span>
+<span class="nc" id="L1000">		return Optional.empty();</span>
+	}
+
+	/**
+	 * (Optional) returns the half-edge of a face with an end-point close to (x1, y1) in O(n),
+	 * where n is the number of edges of the face.
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param face      the face
+	 * @param x1        the x-coordinate of the point
+	 * @param y1        the y-coordinate of the point
+	 * @param distance  the maximal distance
+	 * @return (optional) the half-edge of a face which ends in (x1, y1)
+	 */
+	default Optional&lt;E&gt; getCloseEdge(@NotNull final F face, double x1, double y1, double distance) {
+<span class="pc bpc" id="L1016" title="2 of 4 branches missed.">		assert distance &gt; 0;</span>
+<span class="fc bfc" id="L1017" title="All 2 branches covered.">		for(E e : getMesh().getEdgeIt(face)) {</span>
+<span class="fc" id="L1018">			IPoint p = getMesh().getPoint(e);</span>
+<span class="fc bfc" id="L1019" title="All 2 branches covered.">			if(p.distance(x1, y1) &lt;= distance) {</span>
+<span class="fc" id="L1020">				return Optional.of(e);</span>
+			}
+<span class="fc" id="L1022">		}</span>
+<span class="fc" id="L1023">		return Optional.empty();</span>
+	}
+
+	/**
+	 * Returns true if the point (x1, y1) is right of the half-edge in O(1). The half-edge is directed
+	 * and ends in its point.
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param x1    the x-coordinate of the point
+	 * @param y1    the y-coordinate of the point
+	 * @param edge  the half-edge
+	 * @return true if the point (x1, y1) is right of the half-edge, false otherwise
+	 */
+	default boolean isRightOf(final double x1, final double y1, @NotNull final E edge) {
+<span class="fc" id="L1038">		V v1 = getMesh().getVertex(getMesh().getPrev(edge));</span>
+<span class="fc" id="L1039">		V v2 = getMesh().getVertex(edge);</span>
+<span class="fc" id="L1040">		return GeometryUtils.isRightOf(getMesh().getX(v1), getMesh().getY(v1), getMesh().getX(v2), getMesh().getY(v2), x1, y1);</span>
+	}
+
+	/**
+	 * Returns true if the point (x1, y1) is left of the half-edge in O(1). The half-edge is directed
+	 * and ends in its point.
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param x1    the x-coordinate of the point
+	 * @param y1    the y-coordinate of the point
+	 * @param edge  the half-edge
+	 * @return true if the point (x1, y1) is left of the half-edge, false otherwise
+	 */
+	default boolean isLeftOfRobust(final double x1, final double y1, @NotNull final E edge) {
+<span class="fc" id="L1055">		V v1 = getMesh().getVertex(getMesh().getPrev(edge));</span>
+<span class="fc" id="L1056">		V v2 = getMesh().getVertex(edge);</span>
+<span class="fc" id="L1057">		return GeometryUtils.isLeftOf(v1.getX(), v1.getY(), v2.getX(), v2.getY(), x1, y1);</span>
+	}
+
+	/**
+	 * Returns true if the point (x1, y1) is left of the half-edge in O(1). The half-edge is directed
+	 * and ends in its point.
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param x1    the x-coordinate of the point
+	 * @param y1    the y-coordinate of the point
+	 * @param edge  the half-edge
+	 * @return true if the point (x1, y1) is left of the half-edge, false otherwise
+	 */
+	default boolean isLeftOf(final double x1, final double y1, @NotNull final E edge) {
+<span class="fc" id="L1072">		V v1 = getMesh().getVertex(getMesh().getPrev(edge));</span>
+<span class="fc" id="L1073">		V v2 = getMesh().getVertex(edge);</span>
+<span class="fc" id="L1074">		return GeometryUtils.isLeftOf(v1.getX(), v1.getY(), v2.getX(), v2.getY(), x1, y1);</span>
+	}
+
+    /**
+     * Tests if the line-segment defined by the half-edge intersects the line defined by p1 and p2 in O(1).
+     *
+     * Does not change the connectivity.
+     *
+     * @param p1    the first point of the undirected line
+     * @param p2    the second point of the undirected line
+     * @param edge  the half-edge defining the line-segment
+     * @return true if the line-segment defined by the half-edge intersects the line (p1, p2)
+     */
+	default boolean intersects(@NotNull final IPoint p1, @NotNull final IPoint p2, @NotNull final E edge) {
+<span class="fc" id="L1088">		V v1 = getMesh().getVertex(getMesh().getPrev(edge));</span>
+<span class="fc" id="L1089">		V v2 = getMesh().getVertex(edge);</span>
+<span class="fc" id="L1090">		return intersects(p1, p2, v1, v2);</span>
+	}
+
+	/**
+	 * Tests if the line-segment defined by the (v1,v2) intersects the line defined by p1 and p2 in O(1).
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param p1 the first point of the undirected line
+	 * @param p2 the second point of the undirected line
+	 * @param v1 the first point of the line-segment
+	 * @param v2 the second point of the line-segment
+	 * @return true if the line-segment defined by (v1,v2) intersects the line (p1, p2)
+	 */
+	default boolean intersects(@NotNull final IPoint p1, @NotNull final IPoint p2, @NotNull final V v1, @NotNull final V v2) {
+<span class="fc" id="L1105">		return GeometryUtils.intersectLine(p1.getX(), p1.getY(), p2.getX(), p2.getY(), v1.getX(), v1.getY(), v2.getX(), v2.getY());</span>
+	}
+
+	/**
+	 * Tests if the half-line-segment starting at p1 in the direction (p2-p1) intersects the line-segment defined by the half-edge in O(1).
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param p1    the start point of the directed half-line-segment
+	 * @param p2    the second point of the directed half-line-segment of direction (p2-p1).
+	 * @param edge  the half-edge defining the line-segment
+	 * @return true if the half-line-segment starting at p1 in the direction (p2-p1) intersects the line-segment defined by the half-edge, false otherwise
+	 */
+	default boolean intersectsDirectional(@NotNull final IPoint p1, @NotNull final IPoint p2, E edge) {
+<span class="fc" id="L1119">		V v1 = getMesh().getVertex(getMesh().getPrev(edge));</span>
+<span class="fc" id="L1120">		V v2 = getMesh().getVertex(edge);</span>
+<span class="fc" id="L1121">		return GeometryUtils.intersectHalfLineSegment(</span>
+<span class="fc" id="L1122">				p1.getX(), p1.getY(), p2.getX(), p2.getY(),</span>
+<span class="fc" id="L1123">				getMesh().getX(v1), getMesh().getY(v1), getMesh().getX(v2), getMesh().getY(v2));</span>
+	}
+
+
+	/*default void fill_hole (final V v, final List&lt;E&gt; deletedEdges)
+	{
+		// uses the fact that the hole is starshaped
+		// with repect to v-&gt;point()
+		typedef std::list&lt;Edge&gt; Hole;
+
+		Face_handle  ff, fn;
+		int ii , in;
+		Vertex_handle v0, v1, v2;
+		Bounded_side side;
+
+		//stack algorithm to create faces
+		// create face v0,v1,v2
+		//if v0,v1,v2 are finite vertices
+		// and form a left_turn
+		// and triangle v0v1v2 does not contain v-&gt;point()
+		if( hole.size() != 3) {
+			typename Hole::iterator hit = hole.begin();
+			typename Hole::iterator next= hit;
+			while( hit != hole.end() &amp;&amp; hole.size() != 3) {
+				ff = (*hit).first;
+				ii = (*hit).second;
+				v0 = ff-&gt;vertex(cw(ii));
+				v1 = ff-&gt;vertex(ccw(ii));
+				if( !is_infinite(v0) &amp;&amp; !is_infinite(v1)) {
+					next=hit; next++;
+					if(next == hole.end()) next=hole.begin();
+					fn = (*next).first;
+					in = (*next).second;
+					v2 = fn-&gt;vertex(ccw(in));
+					if ( !is_infinite(v2) &amp;&amp;
+							orientation(v0-&gt;point(), v1-&gt;point(), v2-&gt;point()) == LEFT_TURN ) {
+						side =  bounded_side(v0-&gt;point(),
+								v1-&gt;point(),
+								v2-&gt;point(),
+								v-&gt;point());
+
+						if( side == ON_UNBOUNDED_SIDE ||
+								(side == ON_BOUNDARY &amp;&amp; orientation(v0-&gt;point(),
+										v-&gt;point(),
+										v2-&gt;point()) == COLLINEAR &amp;&amp;
+										collinear_between(v0-&gt;point(),v-&gt;point(),v2-&gt;point()) ))
+						{
+							//create face
+							Face_handle  newf = create_face(ff,ii,fn,in);
+							typename Hole::iterator tempo=hit;
+							hit = hole.insertVertex(hit,Edge(newf,1)); //push newf
+							hole.erase(tempo); //erase ff
+							hole.erase(next); //erase fn
+							if (hit != hole.begin() ) --hit;
+							continue;
+						}
+					}
+				}
+				++hit;
+			}
+		}*/
+
+
+	//TODO: not working as expected
+	/**
+	 * Removes a face from the mesh by removing all border edges of the face.
+	 * If there are no border edges the face will be converted to be a hole. If
+	 * there are any neighbouring holes, all of them will be merged together.
+	 *
+	 * Changes the connectivity.
+	 *
+	 * @param face                      the face that will be removed from the mesh
+	 * @param deleteIsolatedVertices    true means that all vertices with degree smaller equals 1 will be removed as well
+	 */
+	default void removeFace(@NotNull final F face, final boolean deleteIsolatedVertices) {
+<span class="nc" id="L1198">		throw new UnsupportedOperationException(&quot;doest not work correctly jet.&quot;);</span>
+		/*if(!getMesh().isDestroyed(face)) {
+			List&lt;F&gt; mergeFaces = getMesh()
+					.streamEdges(face)
+					.map(e -&gt; getMesh().getTwinFace(e))
+					.filter(f -&gt; getMesh().isHole(f))
+					.distinct()
+					.collect(Collectors.toList());
+
+
+
+			F remainingFace = face;
+
+			for(F nFace : mergeFaces) {
+				remainingFace = removeEdges(remainingFace, nFace, deleteIsolatedVertices).orElse(remainingFace);
+			}
+
+			removeFaceAtBoundary(remainingFace, deleteIsolatedVertices);
+		}*/
+	}
+
+	/**
+	 * &lt;p&gt;Removes a face from the mesh by removing all boundary edges of the face.
+	 * If there is no boundary edge this method will not change the mesh topology.
+	 * This requires O(n) (if the face is no island) where n is the number of edges of
+	 * the face. If the face is an island (a very special case) this can require O(m), where m is the number of
+	 * all edges of the mesh!&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Changes the connectivity.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: boundary is in fact a boundary and is neighbouring the face and there is no other neighbouring boundary.&lt;/p&gt;
+	 *
+	 * @param face                      the face that will be removed from the mesh
+	 * @param boundary                  the boundary which has to be a neighbouring boundary of the face
+	 * @param deleteIsolatedVertices    true means that all vertices with degree smaller equals 1 will be removed as well
+	 * @param adjustVertices            true means that boundary vertices will get their boundary edge as edge, false means there is no guarantee that this adjustment is made
+	 */
+	default void removeFaceAtBoundary(@NotNull final F face, @NotNull final F boundary, final boolean deleteIsolatedVertices, final boolean adjustVertices) {
+<span class="pc bpc" id="L1236" title="1 of 2 branches missed.">		if(!getMesh().isDestroyed(face)) {</span>
+
+<span class="pc bpc" id="L1238" title="2 of 4 branches missed.">			assert getMesh().streamFaces(face).filter(neighbour -&gt; neighbour.equals(boundary)).count() &gt; 0;</span>
+
+<span class="fc" id="L1240">			List&lt;E&gt; delEdges = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L1241">			List&lt;V&gt; vertices = new ArrayList&lt;&gt;();</span>
+
+			// number of edges of the face
+<span class="fc" id="L1244">			int nEdges = 0;</span>
+<span class="fc" id="L1245">			boolean boundaryEdgeDeleted = false;</span>
+<span class="fc" id="L1246">			E survivingEdge = null;</span>
+<span class="fc" id="L1247">			E boundaryEdge = getMesh().getEdge(boundary);</span>
+
+<span class="fc bfc" id="L1249" title="All 2 branches covered.">			for(E edge : getMesh().getEdgeIt(face)) {</span>
+<span class="fc" id="L1250">				E twin = getMesh().getTwin(edge);</span>
+<span class="fc" id="L1251">				F twinFace = getMesh().getFace(twin);</span>
+
+<span class="pc bpc" id="L1253" title="2 of 6 branches missed.">				assert twinFace.equals(boundary) || !getMesh().isBoundary(twinFace);</span>
+
+<span class="fc" id="L1255">				nEdges++;</span>
+<span class="fc bfc" id="L1256" title="All 2 branches covered.">				if(twinFace.equals(boundary)) {</span>
+<span class="fc" id="L1257">					delEdges.add(edge);</span>
+
+					// adjust the boundary edge if it will be deleted
+<span class="fc bfc" id="L1260" title="All 2 branches covered.">					if(boundaryEdge.equals(twin)) {</span>
+<span class="fc" id="L1261">						boundaryEdgeDeleted = true;</span>
+					}
+				}
+				else {
+					// remember an edge that will not be deleted. This edge can be used as the edge of the boundary.
+<span class="fc" id="L1266">					survivingEdge = edge;</span>
+
+					// if the edge will not be deleted it becomes an boundary edge
+<span class="fc" id="L1269">					getMesh().setFace(edge, boundary);</span>
+				}
+<span class="fc" id="L1271">				vertices.add(getMesh().getVertex(edge));</span>
+<span class="fc" id="L1272">			}</span>
+
+
+			//TODO: this might be computational expensive!
+			// special case: all edges will be deleted &amp;&amp; the edge of the border will be deleted as well! =&gt; adjust the border edge
+<span class="fc bfc" id="L1277" title="All 4 branches covered.">			if(getMesh().getTwinFace(boundaryEdge).equals(face) &amp;&amp; delEdges.size() == nEdges) {</span>
+<span class="pc bpc" id="L1278" title="2 of 4 branches missed.">				assert survivingEdge == null;</span>
+
+				// all edges are border edges!
+<span class="fc" id="L1281">				EdgeIterator&lt;V, E, F&gt; edgeIterator = new EdgeIterator&lt;&gt;(getMesh(), boundaryEdge);</span>
+
+<span class="fc" id="L1283">				F twinFace = getMesh().getTwinFace(boundaryEdge);</span>
+
+				// walk along the border away from this faces to get another edge which won't be deleted
+<span class="fc bfc" id="L1286" title="All 4 branches covered.">				while (edgeIterator.hasNext() &amp;&amp; twinFace.equals(face)) {</span>
+<span class="fc" id="L1287">					boundaryEdge = edgeIterator.next();</span>
+<span class="fc" id="L1288">					twinFace = getMesh().getTwinFace(boundaryEdge);</span>
+				}
+
+				// no such candidate was found. This can happen if an island will be deleted.
+<span class="fc bfc" id="L1292" title="All 2 branches covered.">				if(twinFace.equals(face)) {</span>
+<span class="fc" id="L1293">					log.warn(&quot;no boundary candidate was found, we search through all edges of the mesh.&quot;);</span>
+<span class="fc" id="L1294">					Optional&lt;E&gt; optBoundaryEdge = getMesh().streamEdges()</span>
+<span class="fc" id="L1295">							.filter(e -&gt; getMesh().getFace(e).equals(boundary))</span>
+<span class="pc bpc" id="L1296" title="1 of 2 branches missed.">							.filter(e -&gt; !getMesh().getTwinFace(e).equals(face))</span>
+<span class="fc" id="L1297">							.findAny();</span>
+
+<span class="pc bpc" id="L1299" title="1 of 2 branches missed.">					if(!optBoundaryEdge.isPresent()) {</span>
+<span class="pc bpc" id="L1300" title="1 of 2 branches missed.">						if(getMesh().getEdges(boundary).size() == delEdges.size()) {</span>
+<span class="fc" id="L1301">							log.warn(face + &quot; is the last remaining face which will be deletes as well, therefore the mesh will be emoty!&quot;);</span>
+<span class="pc bpc" id="L1302" title="2 of 4 branches missed.">							assert getMesh().getNumberOfFaces() == 1;</span>
+<span class="fc" id="L1303">							getMesh().destroyFace(face);</span>
+<span class="fc" id="L1304">							getMesh().destroyFace(getMesh().getBorder());</span>
+<span class="fc" id="L1305">							getMesh().clear();</span>
+<span class="fc" id="L1306">							return;</span>
+						}
+						else {
+
+						}
+					} else {
+<span class="nc" id="L1312">						boundaryEdge = optBoundaryEdge.get();</span>
+					}
+				}
+
+<span class="fc" id="L1316">				getMesh().setFace(boundaryEdge, boundary);</span>
+<span class="fc" id="L1317">				getMesh().setEdge(boundary, boundaryEdge);</span>
+<span class="fc" id="L1318">			}</span>
+<span class="fc bfc" id="L1319" title="All 2 branches covered.">			else if(boundaryEdgeDeleted) {</span>
+<span class="pc bpc" id="L1320" title="2 of 4 branches missed.">				assert survivingEdge != null;</span>
+<span class="fc" id="L1321">				getMesh().setEdge(boundary, survivingEdge);</span>
+			}
+
+<span class="pc bpc" id="L1324" title="1 of 2 branches missed.">			if(!delEdges.isEmpty()) {</span>
+				E h0, h1, next0, next1, prev0, prev1;
+				V v0, v1;
+
+<span class="fc bfc" id="L1328" title="All 2 branches covered.">				for(E delEdge : delEdges) {</span>
+<span class="fc" id="L1329">					h0 = delEdge;</span>
+<span class="fc" id="L1330">					v0 = getMesh().getVertex(delEdge);</span>
+<span class="fc" id="L1331">					next0 = getMesh().getNext(h0);</span>
+<span class="fc" id="L1332">					prev0 = getMesh().getPrev(h0);</span>
+
+<span class="fc" id="L1334">					h1    = getMesh().getTwin(delEdge);</span>
+<span class="fc" id="L1335">					v1    = getMesh().getVertex(h1);</span>
+<span class="fc" id="L1336">					next1 = getMesh().getNext(h1);</span>
+<span class="fc" id="L1337">					prev1 = getMesh().getPrev(h1);</span>
+
+<span class="fc" id="L1339">					boolean isolated0 = isSimpleConnected(v0);</span>
+<span class="fc" id="L1340">					boolean isolated1 = isSimpleConnected(v1);</span>
+
+					//getMesh().setEdge(hole, prev1);
+
+					// adjust next and prev half-edges
+<span class="fc" id="L1345">					getMesh().setNext(prev0, next1);</span>
+<span class="fc" id="L1346">					getMesh().setNext(prev1, next0);</span>
+
+					//boolean isolated0 = getMesh().getNext(prev1).equals(getMesh().getTwin(prev1));
+					//boolean isolated1 = getMesh().getNext(prev0).equals(getMesh().getTwin(prev0));
+
+					//boolean isolated0 = getMesh().getTwin(h0) == getMesh().getNext(h0) || getMesh().getTwin(h0) == getMesh().getPrev(h0);
+					//boolean isolated1 = getMesh().getTwin(h1) == getMesh().getNext(h1) || getMesh().getTwin(h1) == getMesh().getPrev(h1);
+
+					// adjust vertices
+<span class="pc bpc" id="L1355" title="1 of 4 branches missed.">					if(getMesh().getEdge(v0) == h0 &amp;&amp; !isolated0) {</span>
+<span class="fc" id="L1356">						getMesh().setEdge(v0, prev1);</span>
+					}
+
+<span class="pc bpc" id="L1359" title="1 of 4 branches missed.">					if(deleteIsolatedVertices &amp;&amp; isolated0) {</span>
+<span class="fc" id="L1360">						getMesh().destroyVertex(v0);</span>
+					}
+
+<span class="fc bfc" id="L1363" title="All 4 branches covered.">					if(getMesh().getEdge(v1) == h1 &amp;&amp; !isolated1) {</span>
+<span class="fc" id="L1364">						getMesh().setEdge(v1, prev0);</span>
+					}
+
+<span class="pc bpc" id="L1367" title="1 of 4 branches missed.">					if(deleteIsolatedVertices &amp;&amp; isolated1) {</span>
+<span class="fc" id="L1368">						getMesh().destroyVertex(v1);</span>
+					}
+
+					// mark edge deleted if the mesh has a edge status
+<span class="fc" id="L1372">					getMesh().destroyEdge(h0);</span>
+<span class="fc" id="L1373">					getMesh().destroyEdge(h1);</span>
+
+					// adjust vertices such that we speed up the querry isBoundary(vertex).
+<span class="pc bpc" id="L1376" title="1 of 2 branches missed.">					if(adjustVertices) {</span>
+<span class="fc" id="L1377">						vertices.stream().filter(getMesh()::isAlive).forEach(v -&gt; adjustVertex(v));</span>
+					}
+<span class="fc" id="L1379">				}</span>
+			}
+
+<span class="pc bpc" id="L1382" title="1 of 2 branches missed.">			if(nEdges &gt; 0) {</span>
+<span class="fc" id="L1383">				getMesh().destroyFace(face);</span>
+			}
+			else {
+<span class="nc" id="L1386">				log.warn(&quot;could not delete face &quot; + face + &quot;. It is not at the border!&quot;);</span>
+			}
+
+		}
+<span class="fc" id="L1390">	}</span>
+
+	default void removeFaceAtBoundary(@NotNull final F face, @NotNull final F boundary, final boolean deleteIsolatedVertices) {
+<span class="fc" id="L1393">		removeFaceAtBoundary(face, boundary, deleteIsolatedVertices, true);</span>
+<span class="fc" id="L1394">	}</span>
+
+	/**
+	 * Removes a face from the mesh by removing all boundary edges of the face.
+	 * If there is no border edge this method will not change the mesh topology.
+	 *
+	 * Changes the connectivity.
+	 *
+	 * Assumption: the face is at the border
+	 *
+	 * @param face                      the face that will be removed from the mesh
+	 * @param deleteIsolatedVertices    true means that all vertices with degree smaller equals 1 will be removed as well
+	 */
+	default void removeFaceAtBorder(@NotNull final F face, final boolean deleteIsolatedVertices) {
+<span class="fc" id="L1408">		removeFaceAtBoundary(face, getMesh().getBorder(), deleteIsolatedVertices);</span>
+<span class="fc" id="L1409">	}</span>
+
+
+	/**
+	 * Tests whether the vertex has degree smaller or equals 2.
+	 * If an edge gets deleted and the vertex is simple connected
+	 * the vertex becomes isolated.
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param vertex    the vertex
+	 * @return true if the vertex has degree smaller or equals 2, false otherwise.
+	 */
+	default boolean isSimpleConnected(@NotNull final V vertex) {
+<span class="fc bfc" id="L1423" title="All 2 branches covered.">		if(getMesh().isDestroyed(vertex)) {</span>
+<span class="fc" id="L1424">			return true;</span>
+		}
+		// test if degree of the vertex is &lt;= 2
+<span class="fc" id="L1427">		E edge0 = getMesh().getEdge(vertex);</span>
+<span class="fc" id="L1428">		E edge1 = getMesh().getTwin(getMesh().getNext(edge0));</span>
+<span class="fc" id="L1429">		E edge2 = getMesh().getTwin(getMesh().getNext(edge1));</span>
+<span class="pc bpc" id="L1430" title="1 of 4 branches missed.">		return edge0 == edge1 || edge0 == edge2;</span>
+	}
+
+	/**
+	 * Returns a half-edge such that it is part of face1 and the twin of this half-edge
+	 * is part of face2.
+	 *
+	 * Does not change the connectivity.
+	 *
+	 * @param face1 the first face
+	 * @param face2 the second face that might be a neighbour of face1
+	 * @return  the half-edge of face1 such that its twin is part of face2
+	 */
+	default Optional&lt;E&gt; findTwins(@NotNull final F face1, @NotNull final F face2) {
+<span class="nc bnc" id="L1444" title="All 2 branches missed.">		for(E halfEdge1 : getMesh().getEdgeIt(face1)) {</span>
+<span class="nc bnc" id="L1445" title="All 2 branches missed.">			for(E halfEdge2 : getMesh().getEdgeIt(face2)) {</span>
+<span class="nc bnc" id="L1446" title="All 2 branches missed.">				if(getMesh().getTwin(halfEdge1).equals(halfEdge2)) {</span>
+<span class="nc" id="L1447">					return Optional.of(halfEdge1);</span>
+				}
+<span class="nc" id="L1449">			}</span>
+<span class="nc" id="L1450">		}</span>
+<span class="nc" id="L1451">		return Optional.empty();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

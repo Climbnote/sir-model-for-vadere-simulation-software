@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VLine.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry.shapes</a> &gt; <span class="el_source">VLine.java</span></div><h1>VLine.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry.shapes;
+
+import com.github.davidmoten.rtree.geometry.Circle;
+import com.github.davidmoten.rtree.geometry.Geometries;
+import com.github.davidmoten.rtree.geometry.Geometry;
+import com.github.davidmoten.rtree.geometry.Line;
+import com.github.davidmoten.rtree.geometry.Point;
+import com.github.davidmoten.rtree.geometry.Rectangle;
+import com.github.davidmoten.rtree.geometry.internal.GeometryUtil;
+import com.github.davidmoten.rtree.internal.RectangleUtil;
+
+import java.awt.geom.Line2D;
+import java.util.stream.Stream;
+
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.Vector2D;
+
+
+<span class="pc bpc" id="L19" title="1 of 2 branches missed.">@SuppressWarnings(&quot;serial&quot;)</span>
+public class VLine extends Line2D.Double implements Geometry {
+    private VPoint p1;
+    private VPoint p2;
+    private double length;
+    private double lengthSq;
+
+    public VLine(final VPoint p1, final VPoint p2) {
+<span class="fc" id="L27">        super(p1.getX(), p1.getY(), p2.getX(), p2.getY());</span>
+		/*if(p1.equals(p2)) {
+			throw new IllegalArgumentException(p1 + &quot; is equal &quot; + p2);
+		}*/
+<span class="fc" id="L31">        this.p1 = p1;</span>
+<span class="fc" id="L32">        this.p2 = p2;</span>
+<span class="fc" id="L33">        this.length = -1;</span>
+<span class="fc" id="L34">        this.lengthSq = -1;</span>
+<span class="fc" id="L35">    }</span>
+
+    public VLine(double x1, double y1, double x2, double y2) {
+<span class="fc" id="L38">        this(new VPoint(x1, y1), new VPoint(x2, y2));</span>
+<span class="fc" id="L39">    }</span>
+
+    public double ptSegDist(IPoint point) {
+<span class="fc" id="L42">        return super.ptSegDist(point.getX(), point.getY());</span>
+    }
+
+    public double slope() {
+<span class="fc" id="L46">        return (y2 - y1) / (x2 - x1);</span>
+    }
+
+    public double distance(IPoint point) {
+<span class="nc" id="L50">        return GeometryUtils.closestToSegment(this, point).distance(point);</span>
+    }
+
+    public VPoint midPoint() {
+<span class="nc" id="L54">        return p1.add(p2).scalarMultiply(0.5);</span>
+    }
+
+	public VPoint midPoint(double eps) {
+<span class="nc bnc" id="L58" title="All 6 branches missed.">    	assert eps &gt; -0.5 &amp;&amp; eps &lt; 0.5;</span>
+<span class="nc" id="L59">    	VPoint p3 = p2.subtract(p1);</span>
+<span class="nc" id="L60">		return p1.add(p3.scalarMultiply(0.5 + eps));</span>
+	}
+
+	public VPoint getVPoint1() {
+<span class="nc" id="L64">    	return new VPoint(getX1(), getY1());</span>
+	}
+
+	public VPoint getVPoint2() {
+<span class="nc" id="L68">    	return new VPoint(getX2(), getY2());</span>
+	}
+
+   /* @Override
+    public int hashCode() {
+        // this has to be symmetric
+        return super.getP1().hashCode() * getP2().hashCode();
+    }*/
+
+    /*@Override
+    public boolean equals(Object obj) {
+        if(obj instanceof Line2D.Double) {
+            Line2D.Double other = (Line2D.Double)obj;
+            return getP1().equals(other.getP1()) &amp;&amp; getP2().equals(other.getP2()) || getP1().equals(other.getP2()) &amp;&amp; getP2().equals(other.getP1());
+        }
+        return false;
+    }*/
+
+    public Stream&lt;VPoint&gt; streamPoints() {
+<span class="nc" id="L87">        return Stream.of(p1, p2);</span>
+    }
+
+    public double length() {
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        if(length == -1) {</span>
+<span class="nc" id="L92">        	length = getP1().distance(getP2());</span>
+        }
+<span class="nc" id="L94">    	return length;</span>
+    }
+
+    public double lengthSq() {
+<span class="nc bnc" id="L98" title="All 2 branches missed.">    	if(lengthSq == -1) {</span>
+<span class="nc" id="L99">		    lengthSq = getP1().distanceSq(getP2());</span>
+	    }
+<span class="nc" id="L101">    	return lengthSq;</span>
+    }
+
+	public double distance(VPoint point) {
+<span class="fc" id="L105">		return GeometryUtils.closestToSegment(this, point).distance(point);</span>
+	}
+
+	public Vector2D asVector(){
+<span class="nc" id="L109">		return new Vector2D(x2 - x1, y2 - y1);</span>
+	}
+
+	public VPoint asVPoint(){
+<span class="nc" id="L113">		return new VPoint(x2 - x1, y2 - y1);</span>
+	}
+
+
+	@Override
+	public String toString() {
+<span class="fc" id="L119">		return p1 + &quot; - &quot; + p2;</span>
+	}
+
+
+	// Methods used by the R-Tree
+	@Override
+	public double distance(Rectangle r) {
+<span class="nc bnc" id="L126" title="All 4 branches missed.">		if (r.contains(x1, y1) || r.contains(x2, y2)) {</span>
+<span class="nc" id="L127">			return 0;</span>
+		} else {
+<span class="nc" id="L129">			double d1 = distance(r.x1(), r.y1(), r.x1(), r.y2());</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">			if (d1 == 0)</span>
+<span class="nc" id="L131">				return 0;</span>
+<span class="nc" id="L132">			double d2 = distance(r.x1(), r.y2(), r.x2(), r.y2());</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">			if (d2 == 0)</span>
+<span class="nc" id="L134">				return 0;</span>
+<span class="nc" id="L135">			double d3 = distance(r.x2(), r.y2(), r.x2(), r.y1());</span>
+<span class="nc" id="L136">			double d4 = distance(r.x2(), r.y1(), r.x1(), r.y1());</span>
+<span class="nc" id="L137">			return Math.min(d1, Math.min(d2, Math.min(d3, d4)));</span>
+		}
+	}
+
+	private double distance(double x1, double y1, double x2, double y2) {
+<span class="nc" id="L142">		VLine line = new VLine(x1, y1, x2, y2);</span>
+<span class="nc" id="L143">		double d1 = line.ptSegDist(this.x1, this.y1);</span>
+<span class="nc" id="L144">		double d2 = line.ptSegDist(this.x2, this.y2);</span>
+<span class="nc" id="L145">		VLine line2 = new VLine(this.x1, this.y1, this.x2, this.y2);</span>
+<span class="nc" id="L146">		double d3 = line2.ptSegDist(x1, y1);</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">		if (d3 == 0)</span>
+<span class="nc" id="L148">			return 0;</span>
+<span class="nc" id="L149">		double d4 = line2.ptSegDist(x2, y2);</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">		if (d4 == 0)</span>
+<span class="nc" id="L151">			return 0;</span>
+		else
+<span class="nc" id="L153">			return Math.min(d1, Math.min(d2, Math.min(d3, d4)));</span>
+	}
+
+	@Override
+	public Rectangle mbr() {
+    	try {
+<span class="fc" id="L159">		    return Geometries.rectangle(Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2));</span>
+<span class="nc" id="L160">	    } catch(IllegalArgumentException e) {</span>
+<span class="nc" id="L161">    		System.out.println(&quot;wtf?&quot;);</span>
+<span class="nc" id="L162">		    return Geometries.rectangle(Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2));</span>
+	    }
+
+	}
+
+	@Override
+	public boolean intersects(Rectangle r) {
+<span class="fc" id="L169">		return RectangleUtil.rectangleIntersectsLine(r.x1(), r.y1(), r.x2() - r.x1(), r.y2() - r.y1(), x1, y1, x2, y2);</span>
+	}
+
+	@Override
+	public boolean isDoublePrecision() {
+<span class="nc" id="L174">		return true;</span>
+	}
+
+	/*@Override
+	public double x1() {
+		return x1;
+	}
+
+	@Override
+	public double y1() {
+		return y1;
+	}
+
+	@Override
+	public double x2() {
+		return x2;
+	}
+
+	@Override
+	public double y2() {
+		return y2;
+	}
+
+	@Override
+	public boolean intersects(Line line) {
+		com.github.davidmoten.rtree.internal.Line2D line1 = new com.github.davidmoten.rtree.internal.Line2D(x1, y1, x2, y2);
+		com.github.davidmoten.rtree.internal.Line2D line2 = new com.github.davidmoten.rtree.internal.Line2D(line.x1(), line.y1(), line.x2(), line.y2());
+		return line2.intersectsLine(line1);
+	}
+
+	@Override
+	public boolean intersects(Point point) {
+		return intersects(point.mbr());
+	}
+
+	@Override
+	public boolean intersects(Circle circle) {
+		return GeometryUtil.lineIntersects(x1, y1, x2, y2, circle);
+	}*/
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

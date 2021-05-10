@@ -1,0 +1,45 @@
+<h1> EikonalSolverFSM</h1>
+
+<p>
+Implementation of the sequential fast sweeping method (FSM) presented in
+'A fast sweeping method for Eikonal equations' zhao-2005.
+
+The fast sweeping method uses (in 2D) predefined 4 sweeping directions (up left, up right, top
+left, top right).
+In each iteration the travelling time approximation will be calculated according to each sweeping
+direction.
+The each sweeping direction can be done in parallel. For a obstacle free topography and a
+constant speed function F
+and a point target, one iteration (4 sweeps) are enough to compute T.
+
+
+</p>
+
+<hr>
+<h2> Field: cellGrid</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: logger</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: timeCostFunction</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: isHighAccuracy</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: targetPoints</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: EPSILON</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: distFunc</h2>
+<p>---</p>
+

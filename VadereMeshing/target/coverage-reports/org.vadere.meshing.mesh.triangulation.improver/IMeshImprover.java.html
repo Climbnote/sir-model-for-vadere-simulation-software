@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IMeshImprover.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.improver</a> &gt; <span class="el_source">IMeshImprover.java</span></div><h1>IMeshImprover.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.improver;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.IllegalMeshException;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.improver.distmesh.Parameters;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.gen.IEikMeshImprover;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.util.math.IDistanceFunction;
+
+import java.util.Collection;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
+/**
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public interface IMeshImprover&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; {
+
+	/**
+	 * Returns the mesh the improver is working on.
+	 *
+	 * @return the mesh the improver is working on.
+	 */
+	default IMesh&lt;V,E,F&gt; getMesh() {
+<span class="nc" id="L36">		return getTriangulation().getMesh();</span>
+	}
+
+	default Predicate&lt;F&gt; outsidePredicate(@NotNull final IDistanceFunction distanceFunc) {
+<span class="nc bnc" id="L40" title="All 2 branches missed.">		return f -&gt; distanceFunc.apply(getMesh().toTriangle(f).midPoint()) &gt; 0;</span>
+	}
+
+	default Predicate&lt;F&gt; lowQualityPredicate() {
+<span class="nc bnc" id="L44" title="All 2 branches missed.">		return f -&gt; faceToQuality(f) &lt; Parameters.MIN_TRIANGLE_QUALITY;</span>
+	}
+
+	/**
+	 * Removes / merges {@link F} faces of the mesh by a virus algorithm which starts at each hole and consumes faces as long as
+	 * the face is outside which is defined by the &lt;tt&gt;distanceFunc&lt;/tt&gt;. The virus consumes faces as long as they are outside
+	 * and therefore expanding each hole. The method should not change the number of holes, i.e. should not merge two holes
+	 * or the border and a hole.
+	 *
+	 * This takes O(n) time where n is the number of faces which will be consumed.
+	 *
+	 * Assumptions: Each pair of holes and each hole and the border are well separated by enough faces such that none pair will be merged together.
+	 *
+	 * @param distanceFunc          the distance function which defines inside and outside
+	 * @throws IllegalMeshException if two holes or the border and a hole collide, i.e. there are no more faces between them and
+	 *                              therefore the mesh becomes illegal
+	 */
+	default void removeFacesInsideHoles(@NotNull final IDistanceFunction distanceFunc) throws IllegalMeshException {
+<span class="nc" id="L62">		Predicate&lt;F&gt; isBoundary = f -&gt; getMesh().isBoundary(f);</span>
+<span class="nc" id="L63">		Predicate&lt;F&gt; isOutside = outsidePredicate(distanceFunc);</span>
+
+<span class="nc bnc" id="L65" title="All 2 branches missed.">		for(F face : getMesh().getHoles()) {</span>
+<span class="nc" id="L66">			getTriangulation().mergeFaces(face, isOutside, isBoundary, true);</span>
+<span class="nc" id="L67">		}</span>
+<span class="nc" id="L68">	}</span>
+
+	/**
+	 * Removes / merges {@link F} faces of the mesh by a virus algorithm which starts at the border and consumes faces as long as
+	 * the face is outside which is defined by the &lt;tt&gt;distanceFunc&lt;/tt&gt;. The virus consumes faces as long as they are outside
+	 * and therefore expanding the border, that is shrinking the meshed area.
+	 *
+	 * @param distanceFunc the distance function which defines inside and outside
+	 */
+	default void removeFacesOutsideBBox(@NotNull final IDistanceFunction distanceFunc) {
+<span class="nc" id="L78">		getTriangulation().shrinkBorder(outsidePredicate(distanceFunc), true);</span>
+<span class="nc" id="L79">	}</span>
+
+	/**
+	 * Removes / merges {@link F} faces of the mesh by a virus algorithm which starts at each boundary and consumes faces as long as
+	 * the face is outside which is defined by the &lt;tt&gt;distanceFunc&lt;/tt&gt;. The virus consumes faces as long as they are outside
+	 * and therefore expanding each hole and shrinking the boundary. Overall the meshed area will be reduced.
+	 *
+	 * Assumption: For each face which is outside there is a hole (or the border) and a chain of faces starting from that hole (or border)
+	 *             and leading to that face. All those faces of the chain have to be outside as well. Otherwise a face which is outside
+	 *             might not be removed!
+	 *
+	 * @param distanceFunc          the distance function which defines inside and outside
+	 * @throws IllegalMeshException if two holes or the border and a hole collide, i.e. there are no more faces between them and
+	 *                              therefore the mesh becomes illegal
+	 */
+	default void removeFacesOutside(@NotNull final IDistanceFunction distanceFunc) throws IllegalMeshException {
+<span class="nc" id="L95">		removeFacesInsideHoles(distanceFunc);</span>
+<span class="nc" id="L96">		removeFacesOutsideBBox(distanceFunc);</span>
+<span class="nc" id="L97">	}</span>
+
+	/**
+	 * Removes / merges {@link F} faces of the mesh by a virus algorithm which consumes faces as long as
+	 * the face is outside which is defined by the &lt;tt&gt;distanceFunc&lt;/tt&gt;. Since all faces of the mesh
+	 * are considered this is more expansive than {@link IEikMeshImprover#removeFacesOutside}.
+	 *
+	 * This takes O(n) time where n is the number of faces which will be consumed.
+	 *
+	 * @param distanceFunc the distance function which defines inside and outside
+	 */
+	default void removeAllFacesOutside(@NotNull final IDistanceFunction distanceFunc) {
+<span class="nc bnc" id="L109" title="All 2 branches missed.">		for(F face : getMesh().getFaces()) {</span>
+<span class="nc bnc" id="L110" title="All 4 branches missed.">			if(!getTriangulation().getMesh().isDestroyed(face) &amp;&amp; !getTriangulation().getMesh().isHole(face)) {</span>
+<span class="nc" id="L111">				getTriangulation().createHole(face, outsidePredicate(distanceFunc), true);</span>
+			}
+<span class="nc" id="L113">		}</span>
+<span class="nc" id="L114">	}</span>
+
+	/**
+	 * Removes / merges {@link F} faces which are directly neighbouring a hole and are of low quality.
+	 *
+	 * @throws IllegalMeshException if two holes or the border and a hole collide, i.e. there are no more faces between them and
+	 *                              therefore the mesh becomes illegal
+	 */
+	default void removeLowQualityFacesAtHoles() throws IllegalMeshException {
+<span class="nc" id="L123">		Predicate&lt;F&gt; isBoundary = f -&gt; getMesh().isBoundary(f);</span>
+<span class="nc" id="L124">		Predicate&lt;F&gt; isOfLowQuality = lowQualityPredicate();</span>
+
+<span class="nc bnc" id="L126" title="All 2 branches missed.">		for(F face : getMesh().getHoles()) {</span>
+<span class="nc" id="L127">			getTriangulation().mergeFaces(face, isOfLowQuality, isBoundary, true, 1);</span>
+<span class="nc" id="L128">		}</span>
+<span class="nc" id="L129">	}</span>
+
+	default void removeLowQualityFacesAtBorder() throws IllegalMeshException {
+<span class="nc" id="L132">		Predicate&lt;F&gt; isBoundary = f -&gt; getMesh().isBoundary(f);</span>
+<span class="nc" id="L133">		Predicate&lt;F&gt; isOfLowQuality = lowQualityPredicate();</span>
+<span class="nc" id="L134">		getTriangulation().mergeFaces(getMesh().getBorder(), isOfLowQuality, isBoundary, true, 1);</span>
+<span class="nc" id="L135">	}</span>
+
+    /**
+     * Returns a collection of triangles i.e. all the faces of the current mesh.
+     *
+     * @return a collection of triangles i.e. all the faces of the current mesh
+     */
+    Collection&lt;VTriangle&gt; getTriangles();
+
+    /**
+     * improves the current triangulation / mesh.
+     *
+     */
+    void improve();
+
+    /**
+     * Returns the current triangulation / mesh.
+     *
+     * @return the current triangulation / mesh
+     */
+    IIncrementalTriangulation&lt;V, E, F&gt; getTriangulation();
+
+	/**
+	 * Returns the current triangulation / mesh.
+	 *
+	 * @return the overall quality of the triangulation.
+	 */
+	default double getQuality() {
+<span class="nc" id="L163">		Collection&lt;F&gt; faces = getMesh().getFaces();</span>
+<span class="nc" id="L164">		return faces.stream().map(face -&gt; faceToQuality(face)).reduce((d1, d2) -&gt; d1 + d2).get() / faces.size();</span>
+	}
+
+	/**
+	 * Returns the quality of the triangle with the lowest / worst quality in O(n),
+	 * where n is the number of faces.
+	 *
+	 * @return the quality of the triangle with the lowest quality
+	 */
+	default double getMinQuality() {
+<span class="nc" id="L174">		Collection&lt;F&gt; faces = getMesh().getFaces();</span>
+<span class="nc" id="L175">		return faces.stream().map(face -&gt; faceToQuality(face)).reduce((d1, d2) -&gt; Math.min(d1, d2)).get();</span>
+	}
+
+	/**
+	 * Returns the quality of a face / triangle.
+	 *
+	 * @param face the face which has to be a valid triangle
+	 * @return the quality of a face / triangle
+	 */
+	default double faceToQuality(final F face) {
+<span class="nc" id="L185">		return getTriangulation().faceToQuality(face);</span>
+	}
+
+	default double faceToQuality(final F face, Function&lt;F, Double&gt; qualityMeasure) {
+<span class="nc" id="L189">		return qualityMeasure.apply(face);</span>
+	}
+
+	default double faceToQuality(final E edge) {
+<span class="nc bnc" id="L193" title="All 2 branches missed.">		if(getMesh().isBoundary(edge)) {</span>
+<span class="nc" id="L194">			return faceToQuality(getMesh().getTwinFace(edge));</span>
+		} else {
+<span class="nc" id="L196">			return faceToQuality(getMesh().getFace(edge));</span>
+		}
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

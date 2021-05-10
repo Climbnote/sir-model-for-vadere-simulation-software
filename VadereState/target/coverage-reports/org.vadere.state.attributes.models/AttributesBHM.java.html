@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesBHM.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.models</a> &gt; <span class="el_source">AttributesBHM.java</span></div><h1>AttributesBHM.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.models;
+
+import java.util.LinkedList;
+
+import org.vadere.annotation.factories.attributes.ModelAttributeClass;
+import org.vadere.state.attributes.Attributes;
+
+@ModelAttributeClass
+<span class="nc" id="L9">public class AttributesBHM extends Attributes {</span>
+
+    /**
+     * My documentation for xyz.
+     * @author BK
+     * @see AttributesBMM
+     */
+<span class="nc" id="L16">	private double stepLengthIntercept = 0.4625;</span>
+<span class="nc" id="L17">	private double stepLengthSlopeSpeed = 0.2345;</span>
+<span class="nc" id="L18">	private double stepLengthSD = 0.036;</span>
+<span class="nc" id="L19">	private boolean stepLengthDeviation = false;</span>
+
+	// TODO: Remove boolean navigation variables (including migration). Instead, use new &quot;NavigationBuilder&quot;.
+<span class="nc" id="L22">	private boolean navigationCluster = false;</span>
+<span class="nc" id="L23">	private boolean navigationFollower = false;</span>
+<span class="nc" id="L24">	private boolean followerProximityNavigation = true;</span>
+<span class="nc" id="L25">	private String navigationModel = &quot;NavigationProximity&quot;;</span>
+
+<span class="nc" id="L27">	private boolean directionWallDistance = false;</span>
+<span class="nc" id="L28">	private boolean tangentialEvasion = true;</span>
+<span class="nc" id="L29">	private boolean sidewaysEvasion = false;</span>
+<span class="nc" id="L30">	private boolean onlyEvadeContraFlow = false;</span>
+<span class="nc" id="L31">	private boolean makeSmallSteps = false;</span>
+
+<span class="nc" id="L33">	private boolean differentBehaviour = false;</span>
+<span class="nc" id="L34">	private LinkedList&lt;Double&gt; differentEvasionBehaviourPercentage = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L35">	private boolean varyingBehaviour = false;</span>
+<span class="nc" id="L36">	private boolean adaptiveBehaviourDensity = false;</span>
+<span class="nc" id="L37">	private LinkedList&lt;Integer&gt; adaptiveBehaviourStepsRemained = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L38">	private boolean switchBehaviour = false;</span>
+
+<span class="nc" id="L40">	private double evasionDetourThreshold = 0.1;</span>
+<span class="nc" id="L41">	private double onlyEvadeContraFlowAngle = Math.PI * 2.0 / 3.0;</span>
+<span class="nc" id="L42">	private double followerAngleMovement = Math.PI / 2.0;</span>
+<span class="nc" id="L43">	private double followerAnglePosition = Math.PI / 2.0;</span>
+<span class="nc" id="L44">	private double followerDistance = 10.0;</span>
+<span class="nc" id="L45">	private int smallStepResolution = 5;</span>
+<span class="nc" id="L46">	private int plannedStepsAhead = 5;</span>
+<span class="nc" id="L47">	private double obstacleRepulsionReach = 1.0;</span>
+<span class="nc" id="L48">	private double obstacleRepulsionMaxWeight = 0.5;</span>
+<span class="nc" id="L49">	private double distanceToKeep = 0.5;</span>
+<span class="nc" id="L50">	private double backwardsAngle = Math.PI / 2;</span>
+
+<span class="nc" id="L52">	private boolean reconsiderOldTargets = false;</span>
+<span class="nc" id="L53">	private double targetThresholdX = Double.MAX_VALUE;</span>
+<span class="nc" id="L54">	private double targetThresholdY = Double.MAX_VALUE;</span>
+
+<span class="nc" id="L56">	private double spaceToKeep = 0.01;</span>
+<span class="nc" id="L57">	private boolean stepAwayFromCollisions = false;</span>
+
+	public double getStepLengthIntercept() {
+<span class="nc" id="L60">		return stepLengthIntercept;</span>
+	}
+
+	public double getStepLengthSlopeSpeed() {
+<span class="nc" id="L64">		return stepLengthSlopeSpeed;</span>
+	}
+
+	public double getStepLengthSD() {
+<span class="nc" id="L68">		return stepLengthSD;</span>
+	}
+
+	public boolean isStepLengthDeviation() {
+<span class="nc" id="L72">		return stepLengthDeviation;</span>
+	}
+
+	public boolean isNavigationCluster() {
+<span class="nc" id="L76">		return navigationCluster;</span>
+	}
+
+	public boolean isNavigationFollower() {
+<span class="nc" id="L80">		return navigationFollower;</span>
+	}
+
+	public boolean isFollowerProximityNavigation() {
+<span class="nc" id="L84">		return followerProximityNavigation;</span>
+	}
+
+<span class="nc" id="L87">	public String getNavigationModel() { return navigationModel; }</span>
+
+	public boolean isDirectionWallDistance() {
+<span class="nc" id="L90">		return directionWallDistance;</span>
+	}
+
+	public boolean isTangentialEvasion() {
+<span class="nc" id="L94">		return tangentialEvasion;</span>
+	}
+
+	public boolean isSidewaysEvasion() {
+<span class="nc" id="L98">		return sidewaysEvasion;</span>
+	}
+
+	public boolean isOnlyEvadeContraFlow() {
+<span class="nc" id="L102">		return onlyEvadeContraFlow;</span>
+	}
+
+	public boolean isMakeSmallSteps() {
+<span class="nc" id="L106">		return makeSmallSteps;</span>
+	}
+
+
+	public double getEvasionDetourThreshold() {
+<span class="nc" id="L111">		return evasionDetourThreshold;</span>
+	}
+
+	public double getOnlyEvadeContraFlowAngle() {
+<span class="nc" id="L115">		return onlyEvadeContraFlowAngle;</span>
+	}
+
+	public double getFollowerAngleMovement() {
+<span class="nc" id="L119">		return followerAngleMovement;</span>
+	}
+
+	public double getFollowerAnglePosition() {
+<span class="nc" id="L123">		return followerAnglePosition;</span>
+	}
+
+	public double getFollowerDistance() {
+<span class="nc" id="L127">		return followerDistance;</span>
+	}
+
+	public int getSmallStepResolution() {
+<span class="nc" id="L131">		return smallStepResolution;</span>
+	}
+
+	public int getPlannedStepsAhead() {
+<span class="nc" id="L135">		return plannedStepsAhead;</span>
+	}
+
+	public double getObstacleRepulsionReach() {
+<span class="nc" id="L139">		return obstacleRepulsionReach;</span>
+	}
+
+	public double getObstacleRepulsionMaxWeight() {
+<span class="nc" id="L143">		return obstacleRepulsionMaxWeight;</span>
+	}
+
+	public double getDistanceToKeep() {
+<span class="nc" id="L147">		return distanceToKeep;</span>
+	}
+
+	public double getBackwardsAngle() {
+<span class="nc" id="L151">		return backwardsAngle;</span>
+	}
+
+	public boolean isReconsiderOldTargets() {
+<span class="nc" id="L155">		return reconsiderOldTargets;</span>
+	}
+
+	public double getTargetThresholdX() {
+<span class="nc" id="L159">		return targetThresholdX;</span>
+	}
+
+	public double getTargetThresholdY() {
+<span class="nc" id="L163">		return targetThresholdY;</span>
+	}
+
+	public double getSpaceToKeep() {
+<span class="nc" id="L167">		return spaceToKeep;</span>
+	}
+
+	public boolean isStepAwayFromCollisions() {
+<span class="nc" id="L171">		return stepAwayFromCollisions;</span>
+	}
+
+	public boolean isDifferentBehaviour() {
+<span class="nc" id="L175">		return differentBehaviour;</span>
+	}
+
+	public LinkedList&lt;Double&gt; getDifferentEvasionBehaviourPercentage() {
+<span class="nc" id="L179">		return differentEvasionBehaviourPercentage;</span>
+	}
+
+	public boolean isVaryingBehaviour() {
+<span class="nc" id="L183">		return varyingBehaviour;</span>
+	}
+
+	public boolean isAdaptiveBehaviourDensity() {
+<span class="nc" id="L187">		return adaptiveBehaviourDensity;</span>
+	}
+
+	public LinkedList&lt;Integer&gt; getAdaptiveBehaviourStepsRemained() {
+<span class="nc" id="L191">		return adaptiveBehaviourStepsRemained;</span>
+	}
+
+	public boolean isSwitchBehaviour() {
+<span class="nc" id="L195">		return switchBehaviour;</span>
+	}
+
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: org.vadere.util.math.TruncatedNormalDistributionTest
+-------------------------------------------------------------------------------
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 3, Time elapsed: 0.051 s - in org.vadere.util.math.TruncatedNormalDistributionTest

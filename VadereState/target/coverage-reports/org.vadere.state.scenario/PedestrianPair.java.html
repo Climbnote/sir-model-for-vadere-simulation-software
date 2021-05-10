@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PedestrianPair.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.scenario</a> &gt; <span class="el_source">PedestrianPair.java</span></div><h1>PedestrianPair.java</h1><pre class="source lang-java linenums">package org.vadere.state.scenario;
+
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+import org.vadere.util.geometry.shapes.VPoint;
+
+/**
+ * Describes an order pair of pedestrian objects.
+ */
+public class PedestrianPair extends Pair&lt;Pedestrian, Pedestrian&gt; {
+
+	private ImmutablePair&lt;Pedestrian, Pedestrian&gt; pair;
+
+	public static PedestrianPair of (Pedestrian left, Pedestrian right) {
+<span class="nc" id="L15">		return new PedestrianPair(left, right);</span>
+	}
+
+<span class="nc" id="L18">	private PedestrianPair(Pedestrian left, Pedestrian right) {</span>
+<span class="nc" id="L19">		this.pair = new ImmutablePair&lt;&gt;(left, right);</span>
+<span class="nc" id="L20">	}</span>
+
+	@Override
+	public Pedestrian getValue() {
+<span class="nc" id="L24">		return pair.getValue();</span>
+	}
+
+	@Override
+	public int compareTo(Pair&lt;Pedestrian, Pedestrian&gt; other) {
+<span class="nc" id="L29">		return pair.compareTo(other);</span>
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+<span class="nc" id="L34">		return pair.equals(obj);</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L39">		return pair.hashCode();</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L44">		return String.format(&quot;PedestrianPair: {left: %d, right: %d}&quot;,</span>
+<span class="nc" id="L45">				pair.getLeft().getId(),</span>
+<span class="nc" id="L46">				pair.getRight().getId());</span>
+	}
+
+	@Override
+	public String toString(String format) {
+<span class="nc" id="L51">		return super.toString(format);</span>
+	}
+
+	@Override
+	public Pedestrian getLeft() {
+<span class="nc" id="L56">		return pair.getLeft();</span>
+	}
+
+	public int getLeftId(){
+<span class="nc" id="L60">		return pair.getLeft().getId();</span>
+	}
+
+	public VPoint getLeftPosition(){
+<span class="nc" id="L64">		return pair.getLeft().getPosition().clone();</span>
+	}
+
+	@Override
+	public Pedestrian getRight() {
+<span class="nc" id="L69">		return pair.getRight();</span>
+	}
+
+	public int getRightId(){
+<span class="nc" id="L73">		return pair.getRight().getId();</span>
+	}
+
+	public VPoint getRightPosition(){
+<span class="nc" id="L77">		return pair.getRight().getPosition().clone();</span>
+	}
+
+	@Override
+	public Pedestrian setValue(Pedestrian value) {
+<span class="nc" id="L82">		pair = new ImmutablePair&lt;&gt;(pair.getLeft(), value);</span>
+<span class="nc" id="L83">		return pair.getValue();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

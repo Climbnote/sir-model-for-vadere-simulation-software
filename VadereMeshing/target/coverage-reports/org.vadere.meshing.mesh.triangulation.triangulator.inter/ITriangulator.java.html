@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ITriangulator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.inter</a> &gt; <span class="el_source">ITriangulator.java</span></div><h1>ITriangulator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.inter;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+
+import java.util.Collection;
+import java.util.List;
+
+/**
+ * &lt;p&gt;A triangulator i.e. a triangle generator creates a triangulation using a certain strategy.
+ * The strategy determines which point will be inserted at which time and at which position.
+ * The algorithm which inserts the point is part of the {@link ITriangulator}&lt;/p&gt;
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public interface ITriangulator&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; {
+
+	/**
+	 * &lt;p&gt;Returns the generated triangulation.&lt;/p&gt;
+	 *
+	 * @return the generated triangulation
+	 */
+	default IIncrementalTriangulation&lt;V, E, F&gt; generate() {
+<span class="nc" id="L36">		return generate(true);</span>
+	}
+
+	IIncrementalTriangulation&lt;V, E, F&gt; getTriangulation();
+
+	/**
+	 * &lt;p&gt;Returns the generated triangulation.&lt;/p&gt;
+	 *
+	 * @param finalize if true finalizes the triangulation i.e. removes all virtual vertices
+	 *                 and triangles inside holes.
+	 * @return the generated triangulation
+	 */
+	IIncrementalTriangulation&lt;V, E, F&gt; generate(boolean finalize);
+
+	IMesh&lt;V, E, F&gt; getMesh();
+
+	//TODO this should be in an abstract class and it might be slow!
+	default V split(@NotNull final E segment, @NotNull final Collection&lt;E&gt; segments) {
+<span class="nc" id="L54">		segments.remove(segment);</span>
+<span class="nc" id="L55">		segments.remove(getMesh().getTwin(segment));</span>
+
+		// add s1, s2
+<span class="nc" id="L58">		VLine line = getMesh().toLine(segment);</span>
+<span class="nc" id="L59">		VPoint midPoint = line.midPoint();</span>
+<span class="nc" id="L60">		V vertex = getMesh().createVertex(midPoint.getX(), midPoint.getY());</span>
+<span class="nc" id="L61">		V v1 = getMesh().getVertex(segment);</span>
+<span class="nc" id="L62">		V v2 = getMesh().getTwinVertex(segment);</span>
+
+		// split s
+<span class="nc" id="L65">		List&lt;E&gt; toLegalize = getTriangulation().splitEdgeAndReturn(vertex, segment, false);</span>
+
+		// update data structure: add s1, s2
+<span class="nc" id="L68">		E e1 = getMesh().getEdge(vertex, v1).get();</span>
+<span class="nc" id="L69">		E e2 = getMesh().getEdge(vertex, v2).get();</span>
+
+<span class="nc" id="L71">		segments.add(e1);</span>
+<span class="nc" id="L72">		segments.add(getMesh().getTwin(e1));</span>
+<span class="nc" id="L73">		segments.add(e2);</span>
+<span class="nc" id="L74">		segments.add(getMesh().getTwin(e2));</span>
+
+<span class="nc bnc" id="L76" title="All 2 branches missed.">		for(E e : toLegalize) {</span>
+<span class="nc" id="L77">			getTriangulation().legalize(e, vertex);</span>
+<span class="nc" id="L78">		}</span>
+
+<span class="nc" id="L80">		return vertex;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

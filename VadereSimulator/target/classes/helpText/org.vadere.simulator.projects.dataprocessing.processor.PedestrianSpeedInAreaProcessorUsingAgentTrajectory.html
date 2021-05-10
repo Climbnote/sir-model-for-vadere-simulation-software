@@ -1,0 +1,64 @@
+<h1> PedestrianSpeedInAreaProcessorUsingAgentTrajectory</h1>
+
+<p>
+Log for each pedestrian the speed within a measurement area.
+
+<pre>
++--------------------------------------------------+
+|                                                  |
+|        M1-------------+  M2-------------+        |
+| +-+    |              |  |              |    +-+ |
+| |S|    |      P1      |  |      P2      |    |T| |
+| +-+    |              |  |              |    +-+ |
+|        +--------------+  +--------------+        |
+|                                                  |
++--------------------------------------------------+
+
+- S: source
+- T: target
+- Pi: pedestrian i
+- Mj: measurement j
+</pre>
+
+Note: If two measurement areas M1 and M2 are disjoint
+and a pedestrian P1 is located within M1, M2 should
+log a speed of -1 for P1.
+
+<pre>
+| timeStep | pedId | ... | M1  | M2  |
+|----------|-------|-----|-----|-----|
+|1         | 1     |     | 0.5 | -1  |
+|1         | 2     |     | -1  | 0.6 |
+</pre>
+
+Note: If trajectory of pedestrian is empty, log -2.
+
+Use the <a href='/helpText/org.vadere.simulator.projects.dataprocessing.processor.PedestrianTrajectoryProcessor.html' class='class_link'>PedestrianTrajectoryProcessor</a> to access pedestrian's
+trajectory.
+
+This processor offers different methods do calculate pedestrian's speed:
+- ByTrajectory: Use <a href='/helpText/rel_/VTrajectory#speed().html' class='class_link'>VTrajectory#speed()</a>, i.e. trajectory.length() / trajectory.duration()
+- ByMeasurementAreaHeight: Use measurementArea.height() / trajectory.duration()
+- ByMeasurementAreaWidth: Use measurementArea.width() / trajectory.duration()
+</p>
+
+<hr>
+<h2> Field: pedestrianTrajectoryProcessor</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: speedCalculationStrategy</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: ERROR_PED_NOT_IN_MEASUREMENT_AREA</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: measurementArea</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: ERROR_NO_TRAJECTORY_AVAILABLE</h2>
+<p>---</p>
+

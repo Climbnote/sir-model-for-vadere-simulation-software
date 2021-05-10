@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AParallelWorker.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.parallel</a> &gt; <span class="el_source">AParallelWorker.java</span></div><h1>AParallelWorker.java</h1><pre class="source lang-java linenums">package org.vadere.util.parallel;
+
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+
+/**
+ * States methods for a parallel worker and defines the internal class Work.
+ * 
+ */
+public abstract class AParallelWorker&lt;ResultType&gt; {
+	/**
+	 * Internal class representing the work the {@link AParallelWorker} should
+	 * do. Implementation is done by the classes that use the
+	 * {@link AParallelWorker}.
+	 * 
+	 * 
+	 */
+	public interface Work&lt;T&gt; extends Callable&lt;T&gt; {
+		public void setID(int ID);
+
+		public int getWorkerID();
+	}
+
+	protected final Work&lt;ResultType&gt; work;
+	protected Future&lt;ResultType&gt; result;
+
+<span class="nc" id="L28">	public AParallelWorker(Work&lt;ResultType&gt; work) {</span>
+<span class="nc" id="L29">		this.work = work;</span>
+<span class="nc" id="L30">	}</span>
+
+	/**
+	 * Starts the work asynchronously.
+	 */
+	public abstract void start();
+
+	/**
+	 * Finishes the given parallel operation and returns the result. This pauses
+	 * the calling thread.
+	 * 
+	 * @return
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	public abstract ResultType finish() throws InterruptedException,
+			ExecutionException;
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

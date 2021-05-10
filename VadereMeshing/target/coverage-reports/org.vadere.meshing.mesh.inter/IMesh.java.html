@@ -1,0 +1,2654 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IMesh.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.inter</a> &gt; <span class="el_source">IMesh.java</span></div><h1>IMesh.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.inter;
+
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Streams;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.vadere.meshing.mesh.gen.AMesh;
+import org.vadere.meshing.mesh.gen.DelaunayHierarchy;
+import org.vadere.meshing.mesh.iterators.AdjacentFaceIterator;
+import org.vadere.meshing.mesh.iterators.AdjacentVertexIterator;
+import org.vadere.meshing.mesh.iterators.EdgeIterator;
+import org.vadere.meshing.mesh.iterators.EdgeOfVertexIterator;
+import org.vadere.meshing.mesh.iterators.IncidentEdgeIterator;
+import org.vadere.meshing.mesh.iterators.PointIterator;
+import org.vadere.meshing.mesh.iterators.SurroundingFaceIterator;
+import org.vadere.meshing.mesh.iterators.VertexIterator;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.ITriangulator;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.meshing.mesh.gen.PMesh;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.util.logging.Logger;
+
+import java.awt.geom.Path2D;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Random;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+/**
+ * &lt;p&gt;
+ * A {@link IMesh} is a set of {@link IFace}, their half-edges {@link IHalfEdge} and vertices {@link IVertex}
+ * defining a geometry. It also is a factory for those geometric base elements: vertices, half-edges and faces. The user should use one mesh
+ * for exactly one geometric and the user should never create any base element without calling its mesh. Furthermore, the user is responsible for the
+ * correctness of the mesh definition e.g. no overlapping edges. There are some classes for automatic mesh generation like
+ * {@link ITriangulator} or other factory methods like {@link IMesh#createSimpleTriMesh}
+ * &lt;/p&gt;
+ It uses the half-edge data structure to store all information and is a generic interface to provide different implementations such as:
+ * &lt;ul&gt;
+ *     &lt;li&gt;A pointer based version which implements a doubled-linked-list data structure {@link PMesh}&lt;/li&gt;
+ *     &lt;li&gt;An index based version which implements an array data structure {@link AMesh}&lt;/li&gt;
+ * &lt;/ul&gt;
+ * &lt;p&gt;
+ * It should be impossible to create faces, edges, and vertices of the mesh without using the mesh i.e. IMesh is a factory for faces, edges and vertices.
+ * A boundary can be a hole or the border. A hole is surrounded by faces and the border is the infinite large face representing the space which is not
+ * part of any finite face.
+ * &lt;/p&gt;
+ * &lt;p&gt;
+ * For all iterators and stream usage it should be clear that if one manipulates the mesh during iteration the result is not clear. Therefore, use those
+ * iterators and streams only if no manipulation is done while iterating. If you want to manipulate the data structure, construct a list {@link List} beforehand and
+ * iterate over the list {@link List} while changing elements in the mesh. The mesh offers a large set of different iterators and streams to iterate over all neighbouring
+ * faces of a face, vertices of a vertex, edges of a vertex or over all edges / vertices / points of a face.
+ * &lt;/p&gt;
+ *     We define as base elements: vertices {@link V}, half-edges {@link E} and faces {@link F}.
+ *     &lt;ul&gt;
+ *         &lt;li&gt;
+ *             vertex {@link V}:
+ *                  A vertex is the end node / point of a half-edge. A vertex has also a 1 to 1 relation to a half-edge and the half-edge of a vertex can accessed in O(1) time.
+ *                  Furthermore, it has a reference to one arbitrary of its half-edges (half-edges ending in it). If the vertex is at the boundary (hole or border) the half-edge should be
+ *                  a boundary half-edge but this is not guaranteed but the aim is to have this situation as often as possible to have quick access to boundary half-edges
+ *                  to quickly check if the vertex is a boundary vertex! Note that an arbitrary neighbouring face of the vertex can also be accessed in O(1) by fist getting
+ *                  its half-edge and extracting from the half-edge the face.
+ *         &lt;/li&gt;
+ *         &lt;li&gt;
+ *             half-edge {@link E}:
+ *                  A half-edge is part of a full-edge i.e. the half-edge and its twin fully define the full-edge. Each half-edge has a predecessor
+ *					and a successor and a twin half-edge {@link E} which can be accessed in O(1). Furthermore, each half-edge is part of exactly one face {@link F} and ends
+ *                  in exactly one vertex {@link V} both can be accessed in O(1) time. As one can see the half-edge has the most amount of references (5).
+ *         &lt;/li&gt;
+ *         &lt;li&gt;
+ *             face {@link F}:
+ *                  A face can be a interior face i.e. a simple polygon, a hole (also a polygon but representing empty space) or the border i.e. the infinite
+ *                  face which represents all the space which is not represented by any finite face. An arbitrary half-edge {@link E} can be accessed in O(1).
+ *         &lt;/li&gt;
+ *     &lt;/ul&gt;
+ * &lt;p&gt;
+ * We say a half-edge is a boundary / border / hole edge if it is part of a boundary / hole or the border. A boundary can be a hole or the border (there is only one border).
+ * We say a half-edge is at the boundary / border / hole if itself is a boundary / border / hole edge or its twin. Therefore a boundary / border / hole edge is via definition
+ * at the boundary / hole / border. Sometimes we say edge instead of half-edge but we try to use full-edge if we explicitly talk about the edge defined by the half-edge and
+ * its twin.
+ * &lt;/p&gt;
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+<span class="pc bpc" id="L109" title="1 of 2 branches missed.">public interface IMesh&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; extends Iterable&lt;F&gt;, Cloneable {</span>
+
+<span class="fc" id="L111">	Logger logger = Logger.getLogger(IMesh.class);</span>
+
+	/**
+	 * construct a new empty mesh.
+	 *
+	 * @return a new fresh empty mesh
+	 */
+	IMesh&lt;V, E, F&gt; construct();
+
+	/**
+	 * Removes deleted base elements from this data structure.
+	 * This might be used if removing an element from the mesh does not removes
+	 * this element from the data structure i.e. the mesh representing the geometry.
+	 * This operation might be expensive O(n) for n points.
+	 */
+	void garbageCollection();
+
+	/**
+	 * Returns the successor of the half-edge {@link E} in O(1).
+	 *
+	 * @param halfEdge the half-edge
+	 * @return the successor of the half-edge {@link E}.
+	 */
+	E getNext(@NotNull E halfEdge);
+
+	/**
+	 * Returns the predecessor of the half-edge {@link E} in O(1).
+	 *
+	 * @param halfEdge the half-edge
+	 * @return the predecessor of the half-edge {@link E}.
+	 */
+	E getPrev(@NotNull E halfEdge);
+
+	/**
+	 * Returns the twin of the half-edge {@link E} in O(1).
+	 *
+	 * @param halfEdge the half-edge
+	 * @return the twin of the half-edge {@link E}.
+	 */
+	E getTwin(@NotNull E halfEdge);
+
+	/**
+	 * Returns the vertex of the twin of the half-edge {@link E} in O(1).
+	 *
+	 * @param halfEdge the half-edge
+	 * @return the vertex of the twin of the half-edge {@link E}.
+	 */
+	default V getTwinVertex(@NotNull E halfEdge) {
+<span class="fc" id="L159">		return getVertex(getTwin(halfEdge));</span>
+	}
+
+	/**
+	 * Returns the face of the half-edge {@link E} in O(1).
+	 *
+	 * @param halfEdge the half-edge
+	 * @return the face of the half-edge {@link E}.
+	 */
+	F getFace(@NotNull E halfEdge);
+
+	/**
+	 * Returns the face which is not a boundary, i.e. no hole and no border
+	 * of the faces of a full-edge which the half-edge is part of in O(1).
+	 *
+	 * @param halfEdge the half-edge
+	 * @return the face which is not a boundary and the face of the half-edge or its twin
+	 */
+	default F getNonBoundaryFace(@NotNull E halfEdge) {
+<span class="nc bnc" id="L178" title="All 2 branches missed.">        if(!isBoundary(halfEdge)) {</span>
+<span class="nc" id="L179">            return getFace(halfEdge);</span>
+        }
+        else {
+<span class="nc" id="L182">            return getFace(getTwin(halfEdge));</span>
+        }
+    }
+
+	/**
+	 * Transforms an half-edge into a line segment (p, q) {@link VLine} where p is the point of the half-edge
+	 * and q is the point of its predecessor in O(1).
+	 *
+	 * @param halfEdge the half-edge
+	 * @return a line segment (p, q) {@link VLine} which is the transformation of the half-edge
+	 */
+	default VLine toLine(@NotNull E halfEdge) {
+<span class="fc" id="L194">		return new VLine(new VPoint(getVertex(getPrev(halfEdge))), new VPoint(getVertex(halfEdge)));</span>
+	}
+
+	/**
+	 * Transforms a vertex into a immutable point {@link VPoint}. This might be useful of one wants to
+	 * use the vertex in a calculation in O(1).
+	 *
+	 * @param vertex    the vertex
+	 * @return an immutable point
+	 */
+	default VPoint toPoint(@NotNull V vertex) {
+<span class="fc" id="L205">		return new VPoint(vertex);</span>
+	}
+
+	/**
+	 * Transforms an edge into a immutable point {@link VPoint}. This might be useful of one wants to
+	 * use the vertex in a calculation in O(1).
+	 *
+	 * @param edge  the edge
+	 * @return an immutable point
+	 */
+	default VPoint toPoint(@NotNull E edge) {
+<span class="nc" id="L216">		return toPoint(getVertex(edge));</span>
+	}
+
+	default VPoint toPoint(@NotNull IPoint p) {
+<span class="fc" id="L220">		return new VPoint(p.getX(), p.getY());</span>
+	}
+
+
+
+	/**
+	 * Returns the half-edge of the vertex i.e. one half-edge which ends in the vertex in O(1).
+	 *
+	 * @param vertex the vertex
+	 * @return the half-edge of the vertex.
+	 */
+	E getEdge(@NotNull V vertex);
+
+	double getX(@NotNull V vertex);
+
+	double getY(@NotNull V vertex);
+
+	void setCoords(@NotNull V vertex, double x, double y);
+
+	/**
+	 * Returns a half-edge of the face this can be any half-edge of this face in O(1).
+	 *
+	 * @param face the face
+	 * @return an arbitrary half-edge of the face
+	 */
+	E getEdge(@NotNull F face);
+
+	/**
+	 * Returns the (end-)point of the half-edge in O(1).
+	 *
+	 * @param halfEdge the half-edge
+	 * @return the (end-)point of the half-edge
+	 */
+	IPoint getPoint(@NotNull E halfEdge);
+
+	/**
+	 * Returns the (end-)vertex of the half-edge in O(1).
+	 *
+	 * @param halfEdge the half-edge
+	 * @return the (end-)vertex of the half-edge
+	 */
+	V getVertex(@NotNull E halfEdge);
+
+
+	default V getOpposite(@NotNull E edge) {
+<span class="nc bnc" id="L265" title="All 4 branches missed.">		assert getEdges(getFace(edge)).size() == 3;</span>
+<span class="nc" id="L266">		return getVertex(getNext(edge));</span>
+	}
+
+	/**
+	 * Returns the degree of a vertex i.e. the number of connected full-edges
+	 * in O(d) where d is the degree of the vertex.
+	 *
+	 * @param vertex the vertex
+	 * @return the degree of a vertex
+	 */
+	default int degree(@NotNull V vertex) {
+<span class="fc" id="L277">		return Iterators.size(getAdjacentVertexIt(vertex).iterator());</span>
+	}
+
+
+	// TODO: this is for the delaunay-hierarchy only!
+	/**
+	 * This is specifically used by {@link DelaunayHierarchy}
+	 * to establish the link of the different hierarchies in O(1).
+	 *
+	 * @param v a vertex of hierarchy k
+	 * @return the vertex connected to v which is at the hierarchy k-1.
+	 */
+	V getDown(@NotNull V v);
+
+	// TODO: this is for the delaunay-hierarchy only!
+	/**
+	 * This is specifically used by {@link DelaunayHierarchy}
+	 * to establish the link of the different hierarchies. Connects two vertices up and down such that
+	 * up is at the hierarchy k and down is at hierarchy k+1 in O(1).
+	 *
+	 * @param up    vertex at hierarchy k
+	 * @param down  vertex at hierarchy k+1
+	 */
+	void setDown(@NotNull V up, @NotNull V down);
+
+	/**
+	 * Returns the point (i.e. the data saved on the vertex) of a vertex in O(1).
+	 *
+	 * @param vertex the vertex
+	 * @return the point of vertex
+	 */
+	IPoint getPoint(@NotNull V vertex);
+
+	&lt;CV&gt; Optional&lt;CV&gt; getData(@NotNull final V vertex, @NotNull final String name, @NotNull final Class&lt;CV&gt; clazz);
+
+	default boolean getBooleanData(@NotNull final V vertex, @NotNull final String name) {
+<span class="nc" id="L313">		return getData(vertex, name, Boolean.class).orElse(false);</span>
+	}
+
+	default double getDoubleData(@NotNull final V vertex, @NotNull final String name) {
+<span class="nc" id="L317">		return getData(vertex, name, Double.class).orElse(0.0);</span>
+	}
+
+	default double getDoubleData(@NotNull final V vertex, @NotNull final int index) {
+<span class="nc" id="L321">		return getData(vertex, index+&quot;&quot;, Double.class).orElse(0.0);</span>
+	}
+
+	&lt;CV&gt; void setData(@NotNull final V vertex, @NotNull final String name, CV data);
+
+	default void setBooleanData(@NotNull final V vertex, @NotNull final String name, boolean data) {
+<span class="nc" id="L327">		setData(vertex, name, data);</span>
+<span class="nc" id="L328">	}</span>
+
+	default void setDoubleData(@NotNull final V vertex, @NotNull final String name, double data) {
+<span class="nc" id="L331">		setData(vertex, name, data);</span>
+<span class="nc" id="L332">	}</span>
+
+	default void setDoubleData(@NotNull final V vertex, @NotNull final int index, final double data) {
+<span class="nc" id="L335">		setData(vertex, index+&quot;&quot;, data);</span>
+<span class="nc" id="L336">	}</span>
+
+	default void setIntegerData(@NotNull final V vertex, @NotNull final String name, int data) {
+<span class="nc" id="L339">		setData(vertex, name, data);</span>
+<span class="nc" id="L340">	}</span>
+
+	//default void setBooleanNull(@NotNull final V vertex, @NotNull final String name, boolean nil) {}
+
+	//default void setDoubleNull(@NotNull final V vertex, @NotNull final String name, double nil) {}
+
+	/**
+	 * Returns the data saved on the half-edge in O(1) if there is any and otherwise &lt;tt&gt;Optional.empty()&lt;/tt&gt;.
+	 *
+	 * @param edge  the half-edge
+	 * @param name  name of the property
+	 * @param clazz type of the property
+	 * @return the data saved on the half-edge or &lt;tt&gt;Optional.empty()&lt;/tt&gt; if there is no data saved
+	 */
+	&lt;CE&gt; Optional&lt;CE&gt; getData(@NotNull E edge, @NotNull final String name, @NotNull final Class&lt;CE&gt; clazz);
+
+	default boolean getBooleanData(@NotNull E edge, @NotNull final String name) {
+<span class="nc" id="L357">		return getData(edge, name, Boolean.class).orElse(false);</span>
+	}
+
+	default double getDoubleData(@NotNull E edge, @NotNull final String name) {
+<span class="nc" id="L361">		return getData(edge, name, Double.class).orElse(0.0);</span>
+	}
+
+	default int getIntegerData(@NotNull E edge, @NotNull final String name) {
+<span class="nc" id="L365">		return getData(edge, name, Integer.class).orElse(0);</span>
+	}
+
+	default int getIntegerData(@NotNull V vertex, @NotNull final String name) {
+<span class="nc" id="L369">		return getData(vertex, name, Integer.class).orElse(0);</span>
+	}
+
+	/**
+	 * Sets the data for a specific half-edge in O(1).
+	 *
+	 * @param edge the half-edge
+	 * @param name of the property
+	 * @param data the data
+	 */
+	&lt;CE&gt; void setData(@NotNull E edge, @NotNull final String name, @Nullable CE data);
+
+	default void setBooleanData(@NotNull E edge, @NotNull final String name, boolean data) {
+<span class="nc" id="L382">		setData(edge, name, data);</span>
+<span class="nc" id="L383">	}</span>
+
+	default void setDoubleData(@NotNull E edge, @NotNull final String name, double data) {
+<span class="nc" id="L386">		setData(edge, name, data);</span>
+<span class="nc" id="L387">	}</span>
+
+	default void setIntegerData(@NotNull E edge, @NotNull final String name, int data) {
+<span class="nc" id="L390">		setData(edge, name, data);</span>
+<span class="nc" id="L391">	}</span>
+
+	/**
+	 * Returns the data saved on the face in O(1) if there is any and otherwise &lt;tt&gt;Optional.empty()&lt;/tt&gt;
+	 *
+	 * @param face the face
+	 * @param clazz
+	 * @return the data saved on the face or &lt;tt&gt;Optional.empty()&lt;/tt&gt; if there is no data saved
+	 */
+	&lt;CF&gt; Optional&lt;CF&gt; getData(@NotNull F face, @NotNull final String name, @NotNull final Class&lt;CF&gt; clazz);
+
+	default boolean getBooleanData(@NotNull F face, @NotNull final String name) {
+<span class="nc" id="L403">		return getData(face, name, Boolean.class).orElse(false);</span>
+	}
+
+	default double getDoubleData(@NotNull F face, @NotNull final String name) {
+<span class="nc" id="L407">		return getData(face, name, Double.class).orElse(0.0);</span>
+	}
+
+	default int getIntegerData(@NotNull F face, @NotNull final String name) {
+<span class="nc" id="L411">		return getData(face, name, Integer.class).orElse(0);</span>
+	}
+
+	/**
+	 * Sets the data for a specific face in O(1).
+	 *
+	 * @param face the face
+	 * @param data the data
+	 */
+	&lt;CF&gt; void setData(@NotNull F face, @NotNull final String name, @Nullable final CF data);
+
+	default void setBooleanData(@NotNull F face, @NotNull final String name, final boolean data) {
+<span class="nc" id="L423">		setData(face, name, data);</span>
+<span class="nc" id="L424">	}</span>
+
+	default void setDoubleData(@NotNull F face, @NotNull final String name, final double data) {
+<span class="nc" id="L427">		setData(face, name, data);</span>
+<span class="nc" id="L428">	}</span>
+
+	default void setIntegerData(@NotNull F face, @NotNull final String name, final int data) {
+<span class="nc" id="L431">		setData(face, name, data);</span>
+<span class="nc" id="L432">	}</span>
+
+	/**
+	 * Returns the face of the twin of the half-edge, i.e. its twin face in O(1).
+	 *
+	 * @param halfEdge the half-edge
+	 * @return the face of the twin of the half-edge
+	 */
+	default F getTwinFace(@NotNull E halfEdge) {
+<span class="fc" id="L441">		return getFace(getTwin(halfEdge));</span>
+	}
+
+	/**
+	 * Returns an arbitrary face of the mesh in O(1).
+	 *
+	 * @return an arbitrary face of the mesh
+	 */
+	F getFace();
+
+	/**
+	 * Returns an arbitrary face which is neighbouring the vertex and which is
+	 * not a boundary, i.e. no hole and no border in O(1).
+	 *
+	 * @param vertex the vertex
+	 * @return an arbitrary non-boundary face which is neighbouring the vertex
+	 */
+	default F getNonBoundaryFace(@NotNull V vertex) {
+<span class="nc" id="L459">		return getNonBoundaryFace(getEdge(vertex));</span>
+	}
+
+	/**
+	 * Returns a neighbouring face of the vertex in O(1).
+	 *
+	 * @param vertex the vertex
+	 * @return a neighbouring face of the vertex
+	 */
+	default F getFace(@NotNull V vertex) {
+<span class="fc" id="L469">		return getFace(getEdge(vertex));</span>
+	}
+
+	/**
+	 * Returns true if the face is the boundary in O(1).
+	 *
+	 * @param face the face
+	 * @return true if the face is the boundary, false otherwise
+	 */
+	boolean isBoundary(@NotNull F face);
+
+	/**
+	 * Returns true if the face is the border in O(1) (there is only one border
+	 * and the border is also a boundary).
+	 *
+	 * @param face the face
+	 * @return true if the face is the border, false otherwise
+	 */
+	default boolean isBorder(@NotNull F face) {
+<span class="fc bfc" id="L488" title="All 4 branches covered.">		return isBoundary(face) &amp;&amp; !isHole(face);</span>
+	}
+
+	/**
+	 * Returns true if the face is the hole in O(1) (there might be multiple holes
+	 * and each hole is a boundary).
+	 *
+	 * @param face the face
+	 * @return true if the face is a hole, false otherwise
+	 */
+	boolean isHole(@NotNull F face);
+
+	/**
+	 * Returns true if the edge is a hole edge i.e. part of a hole in O(1) (there might be multiple holes
+	 * and each hole is a boundary).
+	 *
+	 * @param edge the edge
+	 * @return true if the edge is a hole edge, false otherwise
+	 */
+	default boolean isHole(@NotNull E edge) {
+<span class="fc" id="L508">		return isHole(getFace(edge));</span>
+	}
+
+	/**
+	 * Returns true if the vertex is a boundary vertex in O(d) worst case where d
+	 * is the degree of the vertex. In general this should only cost O(1) if the data
+	 * structure well maintained and this method returns true (otherwise it will check each
+	 * neighbouring face).
+	 *
+	 * @param vertex the vertex
+	 * @return true if the vertex is a boundary vertex, false otherwise
+	 */
+	default boolean isAtBoundary(@NotNull final V vertex) {
+<span class="fc" id="L521">		return getAtBoundaryEdge(vertex).isPresent();</span>
+	}
+
+	/**
+	 * (Optional) returns a half-edge which is at the boundary (itself or its twin is a boundary edge)
+	 * (if the vertex is a boundary vertex) in O(d) worst case where d
+	 * is the degree of the vertex. In general this should only cost O(1) if the data
+	 * structure well maintained and this method returns true (otherwise it will check each
+	 * neighbouring face).
+	 *
+	 * @param vertex the vertex
+	 * @return (optional) a boundary edge
+	 */
+	default Optional&lt;E&gt; getAtBoundaryEdge(@NotNull final V vertex) {
+<span class="fc" id="L535">		return streamEdges(vertex).filter(e -&gt; isAtBoundary(e)).findAny();</span>
+	}
+
+	/**
+	 * (Optional) returns a boundary edge (if the vertex is a boundary vertex) in O(d) worst case where d
+	 * is the degree of the vertex. In general this should only cost O(1) if the data
+	 * structure well maintained and this method returns true (otherwise it will check each
+	 * neighbouring face).
+	 *
+	 * @param vertex the vertex
+	 * @return (optional) a boundary edge
+	 */
+	default Optional&lt;E&gt; getBoundaryEdge(@NotNull final V vertex) {
+<span class="nc bnc" id="L548" title="All 2 branches missed.">		if(isBoundary(getEdge(vertex))) {</span>
+<span class="nc" id="L549">			return Optional.of(getEdge(vertex));</span>
+		}
+<span class="nc" id="L551">		return streamEdges(vertex).filter(e -&gt; isBoundary(e)).findAny();</span>
+	}
+
+	/**
+	 * Returns true if this face is completely surrounded by the same boundary face, i.e. a hole
+	 * or the border.
+	 *
+	 * @param face  the face
+	 * @return true if this face is completely surrounded by the same boundary face
+	 */
+	default boolean isSeparated(@NotNull final F face) {
+<span class="nc" id="L562">		F neighbouringFace = getTwinFace(getEdge(face));</span>
+<span class="nc bnc" id="L563" title="All 2 branches missed.">		if(isBoundary(neighbouringFace)) {</span>
+<span class="nc" id="L564">			return false;</span>
+		}
+<span class="nc" id="L566">		return streamEdges(face).map(e -&gt; getTwinFace(e)).allMatch(f -&gt; f.equals(neighbouringFace));</span>
+	}
+
+	/**
+	 * (Optional) returns an arbitrary boundary edge of the face if one of its neighbouring face is
+	 * a boundary face or itself is a boundary face in O(k) where k is the number of neighbouring faces.
+	 *
+	 * @param face the face
+	 * @return (optional) a boundary edge
+	 */
+	default Optional&lt;E&gt; getBoundaryEdge(@NotNull final F face) {
+<span class="nc bnc" id="L577" title="All 2 branches missed.">		if(isBoundary(face)) {</span>
+<span class="nc" id="L578">			return Optional.of(getEdge(face));</span>
+		}
+<span class="nc" id="L580">		return streamEdges(face).filter(e -&gt; isAtBoundary(e)).map(e -&gt; getTwin(e)).findAny();</span>
+	}
+
+	/**
+	 * Returns true if the vertex is at the border in O(d) where d is the degree of the vertex.
+	 *
+	 * @param vertex the vertex
+	 * @return true if the vertex is at the border, otherwise false
+	 */
+	default boolean isAtBorder(@NotNull final V vertex) {
+<span class="fc" id="L590">		return streamEdges(vertex).anyMatch(e -&gt; isAtBorder(e));</span>
+	}
+
+	/**
+	 * Returns true if the face is at the border i.e. if any of its half-edges
+	 * is at the border in O(k) where k is the number of neighbouring faces,
+	 * i.e. number of edges of the face.
+	 *
+	 * @param face the face
+	 * @return true if the face is at the border, otherwise false
+	 */
+	default boolean isAtBorder(@NotNull final F face) {
+<span class="nc" id="L602">		return streamEdges(face).anyMatch(e -&gt; isAtBorder(e));</span>
+	}
+
+	/**
+	 * Returns true if the face is at the boundary i.e. if any of its half-edges
+	 * is at the border or a hole in O(k) where k is the number of neighbouring faces,
+	 * i.e. number of edges of the face.
+	 *
+	 * @param face the face
+	 * @return true if the face is at the boundary, otherwise false
+	 */
+	default boolean isAtBoundary(@NotNull final F face) {
+<span class="nc" id="L614">		return streamEdges(face).anyMatch(e -&gt; isAtBoundary(e));</span>
+	}
+
+	/**
+	 * Returns true if the half-edge is at the border i.e. if itself or its twin
+	 * is a border edge in O(1).
+	 *
+	 * @param edge the half-edge
+	 * @return true if the half-edge is at the border, otherwise false
+	 */
+	default boolean isAtBorder(@NotNull final E edge) {
+<span class="pc bpc" id="L625" title="1 of 4 branches missed.">		return isBorder(edge) || isBorder(getTwin(edge));</span>
+	}
+
+	/**
+	 * Returns true if the half-edge is at the boundary (the border or a hole) i.e. if itself or its twin
+	 * is a boundary edge in O(1).
+	 *
+	 * @param edge the half-edge
+	 * @return true if the half-edge is at the boundary, otherwise false
+	 */
+	default boolean isAtBoundary(@NotNull final E edge) {
+<span class="fc bfc" id="L636" title="All 4 branches covered.">		return isBoundary(edge) || isBoundary(getTwin(edge));</span>
+	}
+
+	/**
+	 * Returns true if one of the neighbouring faces of the face is the border.
+	 *
+	 * @param face the face
+	 * @return true if one of the neighbouring faces is the border, false otherwise
+	 */
+	default boolean isNeighbourBorder(@NotNull final F face){
+<span class="nc bnc" id="L646" title="All 2 branches missed.">		for(F neighbourFace : getFaceIt(face)) {</span>
+<span class="nc bnc" id="L647" title="All 2 branches missed.">			if(isBorder(neighbourFace)) {</span>
+<span class="nc" id="L648">				return true;</span>
+			}
+<span class="nc" id="L650">		}</span>
+<span class="nc" id="L651">		return false;</span>
+	}
+
+	/**
+	 * Returns true if one of the neighbouring faces of the face is a boundary.
+	 *
+	 * @param face the face
+	 * @return true if one of the neighbouring faces is a boundary, false otherwise
+	 */
+	default boolean isNeighbourBoundary(@NotNull final F face){
+<span class="nc bnc" id="L661" title="All 2 branches missed.">		for(F neighbourFace : getFaceIt(face)) {</span>
+<span class="nc bnc" id="L662" title="All 2 branches missed.">			if(isBoundary(neighbourFace)) {</span>
+<span class="nc" id="L663">				return true;</span>
+			}
+<span class="nc" id="L665">		}</span>
+<span class="nc" id="L666">		return false;</span>
+	}
+
+	/**
+	 * Returns true if one of the neighbouring faces of the face is a hole.
+	 *
+	 * @param face the face
+	 * @return true if one of the neighbouring faces is a hole, false otherwise
+	 */
+	default boolean isNeighbourHole(@NotNull final F face){
+<span class="nc bnc" id="L676" title="All 2 branches missed.">		for(F neighbourFace : getFaceIt(face)) {</span>
+<span class="nc bnc" id="L677" title="All 2 branches missed.">			if(isHole(neighbourFace)) {</span>
+<span class="nc" id="L678">				return true;</span>
+			}
+<span class="nc" id="L680">		}</span>
+<span class="nc" id="L681">		return false;</span>
+	}
+
+	/**
+	 * (Optional) returns the half-edge of a face which has a twin which is a boundary edge
+	 * i.e. the link to the boundary.
+	 *
+	 * @param face (optional) the link to the boundary
+	 *
+	 * @return (optional) the half-edge of a face which has a twin which is a boundary edge
+	 */
+	default Optional&lt;E&gt; getLinkToBoundary(@NotNull final F face){
+<span class="nc bnc" id="L693" title="All 2 branches missed.">		for(E edge : getEdgeIt(face)) {</span>
+<span class="nc bnc" id="L694" title="All 2 branches missed.">			if(isBoundary(getTwin(edge))) {</span>
+<span class="nc" id="L695">				return Optional.of(edge);</span>
+			}
+<span class="nc" id="L697">		}</span>
+<span class="nc" id="L698">		return Optional.empty();</span>
+	}
+
+	/**
+	 * Returns true if the edge is a boundary (border or hole) edge.
+	 *
+	 * @param halfEdge the half-edge
+	 * @return true if the edge is a boundary edge, false otherwise
+	 */
+	boolean isBoundary(@NotNull final E halfEdge);
+
+	/**
+	 * Returns true if the edge is a border edge.
+	 *
+	 * @param halfEdge the half-edge
+	 * @return true if the edge is a border edge, false otherwise
+	 */
+	default boolean isBorder(@NotNull final E halfEdge) {
+<span class="fc" id="L716">		return isBorder(getFace(halfEdge));</span>
+	}
+
+	/**
+	 * Returns true if the face is already destroyed i.e. not part of the geometric representation.
+	 *
+	 * @param face the face
+	 * @return true if the face is already destroyed, false otherwise
+	 */
+	boolean isDestroyed(@NotNull final F face);
+
+	/**
+	 * Returns true if the edge is already destroyed i.e. not part of the geometric representation.
+	 *
+	 * @param edge the half-edge
+	 * @return true if the edge is already destroyed, false otherwise
+	 */
+	boolean isDestroyed(@NotNull final E edge);
+
+	/**
+	 * Returns true if the vertex is already destroyed i.e. not part of the geometric representation.
+	 *
+	 * @param vertex the vertex
+	 * @return true if the vertex is already destroyed, false otherwise
+	 */
+	boolean isDestroyed(@NotNull final V vertex);
+
+	/**
+	 * Returns true if the vertex is already not i.e. is part of the geometric representation.
+	 *
+	 * @param vertex the vertex
+	 * @return true if the vertex is not destroyed, false otherwise
+	 */
+	default boolean isAlive(@NotNull final V vertex) {
+<span class="fc bfc" id="L750" title="All 2 branches covered.">		return !isDestroyed(vertex);</span>
+	}
+
+	/**
+	 * Returns true if the edge is not destroyed i.e. is part of the geometric representation.
+	 *
+	 * @param edge the half-edge
+	 * @return true if the edge is not destroyed, false otherwise
+	 */
+	default boolean isAlive(@NotNull final E edge) {
+<span class="fc bfc" id="L760" title="All 2 branches covered.">		return !isDestroyed(edge);</span>
+	}
+
+	/**
+	 * Returns true if the face is not destroyed i.e. is part of the geometric representation.
+	 *
+	 * @param face the face
+	 * @return true if the face is not destroyed, false otherwise
+	 */
+	default boolean isAlive(@NotNull final F face) {
+<span class="pc bpc" id="L770" title="1 of 2 branches missed.">		return !isDestroyed(face);</span>
+	}
+
+	/**
+	 * Sets the bi-directional relation twin of these two half-edges,
+	 * i.e. the halfedge will be the twin of the twin and vise versa.
+	 *
+	 * @param halfEdge  the half-edge halfedge (the twin of the twin)
+	 * @param twin      the half-edge twin (the twin of the half-edge)
+	 */
+	void setTwin(@NotNull final E halfEdge, @NotNull final E twin);
+
+	/**
+	 * Sets the bi-directional relation next-prev of these two half-edges,
+	 * i.e. the next will be the next (successor) of the halfedge and the halfedge will
+	 * be the prev (predecessor) of next.
+	 *
+	 * @param halfEdge  the half-edge halfedge (the next of the next)
+	 * @param next      the half-edge next (the next of the half-edge)
+	 */
+	void setNext(@NotNull final E halfEdge, @NotNull final E next);
+
+	/**
+	 * Sets the bi-directional relation next-prev of these two half-edges,
+	 * i.e. the prev will be the prev (predecessor) of the halfedge and the halfedge will
+	 * be the next (successor) of prev.
+	 *
+	 * @param halfEdge  the half-edge halfedge (the next of the next)
+	 * @param prev      the half-edge prev (the next of the half-edge)
+	 */
+	void setPrev(@NotNull final E halfEdge, @NotNull final E prev);
+
+	/**
+	 * Sets (uni-directional) the face of a half-edge. This is uni-directional,
+	 * i.e. this will not set the half-edge of the face!
+	 *
+	 * @param halfEdge  the half-edge
+	 * @param face      the face
+	 */
+	void setFace(@NotNull final E halfEdge, @NotNull final F face);
+
+	/**
+	 * Sets (uni-directional) the half-edge of the face. This is uni-directional,
+	 * i.e. this will not set the face of the half-edge!
+	 *
+	 * @param edge  the half-edge
+	 * @param face  the face
+	 */
+	void setEdge(@NotNull final F face, @NotNull final E edge);
+
+	/**
+	 * Sets (uni-directional) the half-edge of a vertex. This is uni-directional,
+	 * i.e. this will not set the vertex of the half-edge!
+	 *
+	 * @param vertex    the half-edge
+	 * @param edge      the face
+	 */
+	void setEdge(@NotNull final V vertex, @NotNull final E edge);
+
+	/**
+	 * Sets (uni-directional) the vertex of a half-edge. This is uni-directional,
+	 * i.e. this will not set the half-edge of the vetex!
+	 *
+	 * @param halfEdge    the half-edge
+	 * @param vertex      the vertex
+	 */
+	void setVertex(@NotNull final E halfEdge, @NotNull final V vertex);
+
+	/**
+	 * A factory method which creates a new half-edge with a established vertex relationship.
+	 * The the half-edge of the vertex will not change.
+	 * This edge will be added to the mesh data structure.
+	 *
+	 * @param vertex the vertex of the edge
+	 * @return a half-edge
+	 */
+	E createEdge(@NotNull final V vertex);
+
+	/**
+	 * A factory method which creates a new half-edge with a established vertex and face relationship.
+	 * The the half-edge of the face or the vertex will not change.
+	 * This edge will be added to the mesh data structure.
+	 *
+	 * @param vertex the vertex of the edge
+	 * @param face the face of the edge
+	 * @return a half-edge
+	 */
+	E createEdge(@NotNull final V vertex, @NotNull final F face);
+
+	/**
+	 * A factory method which creates a new face which will be added to the mesh data structure.
+	 *
+	 * @return a face
+	 */
+	F createFace();
+
+	/**
+	 * A factory method which creates a new face which will be added to the mesh data structure.
+	 *
+	 * @param hole if true the face is hole, otherwise it isn't
+	 * @return a face
+	 */
+	F createFace(final boolean hole);
+
+	/**
+	 * A factory method which creates a new point. The point will not be inserted into the mesh data
+	 * structure.
+	 *
+	 * @param x x-coordinate
+	 * @param y y-coordinate
+	 * @return a point.
+	 */
+	IPoint createPoint(final double x, final double y);
+
+	/**
+	 * A factory method which creates a new vertex. The vertex will not be inserted into the mesh data
+	 * structure.
+	 *
+	 * @param x x-coordinate
+	 * @param y y-coordinate
+	 * @return a vertex.
+	 */
+	V createVertex(final double x, final double y);
+
+	/**
+	 * A factory method which creates a new vertex. The vertex will not be inserted into the mesh data
+	 * structure.
+	 *
+	 * @param point a container supporting 2D-coordinates
+	 * @return a vertex.
+	 */
+	V createVertex(@NotNull final IPoint point);
+
+	/**
+	 * Returns the border of the mesh in O(1).
+	 *
+	 * @return the border of the mesh
+	 */
+	F getBorder();
+
+	/**
+	 * Inserts the vertex into the mesh data structure.
+	 *
+	 * @param vertex the vertex
+	 */
+	default void insert(@NotNull final V vertex) {
+<span class="nc" id="L916">		insertVertex(vertex);</span>
+<span class="nc" id="L917">	}</span>
+
+	/**
+	 * Inserts the vertex into the mesh data structure.
+	 *
+	 * @param vertex the vertex
+	 */
+	void insertVertex(@NotNull final V vertex);
+
+	/**
+	 * Inserts the point into the mesh data structure, returning its vertex
+	 *
+	 * @param point the point
+	 * @return the vertex of the point
+	 */
+	default V insertPoint(final IPoint point) {
+<span class="fc" id="L933">		V vertex = createVertex(point);</span>
+<span class="fc" id="L934">		insertVertex(vertex);</span>
+<span class="fc" id="L935">		return vertex;</span>
+	}
+
+	/**
+	 * Inserts the vertex into the mesh data structure.
+	 *
+	 * @param x x-coordinate
+	 * @param y y-coordinate
+	 * @return the vertex of the point defiend by (x,y)
+	 */
+	default V insertVertex(final double x, final double y) {
+<span class="fc" id="L946">		V vertex = createVertex(x, y);</span>
+<span class="fc" id="L947">		insertVertex(vertex);</span>
+<span class="fc" id="L948">		return vertex;</span>
+	}
+
+	/**
+	 * &lt;p&gt;A factory method which creates a new face from a list {@link List}
+	 * of vertices which forms a simple (non-intersecting) polygon.
+	 * All base elements of the face and the face itself will be
+	 * added to the mesh data structure.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Assumption: points (p1, ..., pn) is a valid simple polygon
+	 * and p1 != pn and vertices are already added to the mesh data structure.&lt;/p&gt;
+	 *
+	 * @param points a list {@link List} of vertices representing a simple polygon (non-intersecting)
+	 * @return a face
+	 */
+	default F createFace(@NotNull final List&lt;V&gt; points) {
+<span class="pc bpc" id="L964" title="2 of 4 branches missed.">		assert points.stream().allMatch(v -&gt; getVertices().contains(v));</span>
+
+<span class="fc" id="L966">		F face = createFace();</span>
+<span class="fc" id="L967">		F borderFace = getBorder();</span>
+
+<span class="fc" id="L969">		LinkedList&lt;E&gt; edges = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L970">		LinkedList&lt;E&gt; borderEdges = new LinkedList&lt;&gt;();</span>
+<span class="fc bfc" id="L971" title="All 2 branches covered.">		for(V p : points) {</span>
+			//insertVertex(p);
+<span class="fc" id="L973">			E edge = createEdge(p, face);</span>
+<span class="fc" id="L974">			setEdge(p, edge);</span>
+<span class="fc" id="L975">			E borderEdge = createEdge(p, borderFace);</span>
+<span class="fc" id="L976">			edges.add(edge);</span>
+<span class="fc" id="L977">			borderEdges.add(borderEdge);</span>
+<span class="fc" id="L978">		}</span>
+
+<span class="fc" id="L980">		E edge = null;</span>
+<span class="fc bfc" id="L981" title="All 2 branches covered.">		for(E halfEdge : edges) {</span>
+<span class="fc bfc" id="L982" title="All 2 branches covered.">			if(edge != null) {</span>
+<span class="fc" id="L983">				setNext(edge, halfEdge);</span>
+			}
+<span class="fc" id="L985">			edge = halfEdge;</span>
+<span class="fc" id="L986">		}</span>
+<span class="fc" id="L987">		setNext(edges.peekLast(), edges.peekFirst());</span>
+
+<span class="fc" id="L989">		edge = null;</span>
+<span class="fc bfc" id="L990" title="All 2 branches covered.">		for(E halfEdge : borderEdges) {</span>
+<span class="fc bfc" id="L991" title="All 2 branches covered.">			if(edge != null) {</span>
+<span class="fc" id="L992">				setPrev(edge, halfEdge);</span>
+			}
+<span class="fc" id="L994">			edge = halfEdge;</span>
+<span class="fc" id="L995">		}</span>
+<span class="fc" id="L996">		setPrev(borderEdges.peekLast(), borderEdges.peekFirst());</span>
+
+<span class="fc bfc" id="L998" title="All 2 branches covered.">		for(int i = 0; i &lt; edges.size(); i++) {</span>
+<span class="fc" id="L999">			E halfEdge = edges.get(i);</span>
+<span class="fc" id="L1000">			E twin = borderEdges.get((i + edges.size() - 1) % edges.size());</span>
+<span class="fc" id="L1001">			setTwin(halfEdge, twin);</span>
+		}
+
+<span class="fc" id="L1004">		setEdge(face, edges.peekFirst());</span>
+<span class="fc" id="L1005">		setEdge(borderFace, borderEdges.peekFirst());</span>
+
+<span class="fc" id="L1007">		return face;</span>
+	}
+
+	/**
+	 * A factory method which creates a new face from an array
+	 * of vertices which forms a simple (non-intersecting) polygon.
+	 * All base elements of the face and the face itself will be
+	 * added to the mesh data structure.
+	 *
+	 * Assumption: points (p1, ..., pn) is a valid simple polygon
+	 * and p1 != pn and vertices are not added to the mesh data structure already.
+	 *
+	 * @param points an array of vertices representing a simple polygon (non-intersecting)
+	 * @return a face
+	 */
+	default F createFace(@NotNull final V... points) {
+<span class="fc" id="L1023">		return createFace(Lists.newArrayList(points));</span>
+	}
+
+	/**
+	 * A factory method which creates a new face from an array
+	 * of points which forms a simple (non-intersecting) polygon.
+	 * All base elements of the face and the face itself will be
+	 * added to the mesh data structure.
+	 *
+	 * Assumption: points (p1, ..., pn) is a valid simple polygon
+	 * and p1 != pn.
+	 *
+	 * @param points an array of points representing a simple polygon (non-intersecting)
+	 * @return a face
+	 */
+	default F toFace(@NotNull final IPoint... points) {
+<span class="nc" id="L1039">		return createFace(Arrays.stream(points).map(p -&gt; insertPoint(p)).collect(Collectors.toList()));</span>
+	}
+
+	/**
+	 * A factory method which creates a new face from an list  {@link List}
+	 * of points which forms a simple (non-intersecting) polygon.
+	 * All base elements of the face and the face itself will be
+	 * added to the mesh data structure.
+	 *
+	 * Assumption: points (p1, ..., pn) is a valid simple polygon
+	 * and p1 != pn.
+	 *
+	 * @param points a list {@link List} of points representing a simple polygon (non-intersecting)
+	 * @return a face
+	 */
+	default F toFace(@NotNull final List&lt;IPoint&gt; points) {
+<span class="fc" id="L1055">		return createFace(points.stream().map(p -&gt; insertPoint(p)).collect(Collectors.toList()));</span>
+	}
+
+	/**
+	 * Marks the face to be a hole.
+	 *
+	 * @param face a face
+	 */
+	void toHole(@NotNull final F face);
+
+	/**
+	 * Marks the face to be destroyed.
+	 * @param face a face
+	 */
+	void destroyFace(@NotNull final F face);
+
+	/**
+	 * Marks the edge to be destroyed.
+	 *
+	 * @param edge a half-edge
+	 */
+	void destroyEdge(@NotNull final E edge);
+
+	/**
+	 * Marks the vertex to be destroyed.
+	 *
+	 * @param vertex a vertex
+	 */
+	void destroyVertex(@NotNull final V vertex);
+
+	/**
+	 * Returns a list {@link List} of all non-boundary and not already destroyed faces.
+	 * Therefore the list does not contain holes or the border.
+	 *
+	 * @return a list {@link List} of all non-boundary and not already destroyed faces.
+	 */
+	default List&lt;F&gt; getFaces() {
+<span class="pc bpc" id="L1092" title="1 of 2 branches missed.">		return streamFaces().filter(face -&gt; !isBoundary(face)).filter(face -&gt; isAlive(face)).collect(Collectors.toList());</span>
+	}
+
+	default List&lt;F&gt; getBoundaryAndHoles() {
+<span class="nc" id="L1096">		return Stream.concat(streamHoles(), Stream.of(getBorder())).collect(Collectors.toList());</span>
+	}
+
+	default List&lt;F&gt; getFacesWithBoundary() {
+<span class="fc" id="L1100">		return streamFacesWithBoundary().filter(face -&gt; isAlive(face)).collect(Collectors.toList());</span>
+	}
+
+	default Stream&lt;F&gt; streamFacesWithBoundary() {
+<span class="fc" id="L1104">		return Streams.concat(streamBoundaries(), streamFaces());</span>
+	}
+
+	default Stream&lt;F&gt; streamBoundaries() {
+<span class="fc" id="L1108">		return Streams.concat(streamHoles(), Stream.of(getBorder()));</span>
+	}
+
+	default Stream&lt;E&gt; streamBoundaryEdges() {
+<span class="nc" id="L1112">		return streamBoundaries().flatMap(f -&gt; streamEdges(f));</span>
+	}
+
+	/**
+	 * Returns a list {@link List} of all boundary edges (which are alive) of this mesh.
+	 * This requires O(n) where n is the number of boundary edges.
+	 *
+	 * @return a list {@link List} of all boundary edges
+	 */
+	default List&lt;E&gt; getBoundaryEdges() {
+<span class="nc" id="L1122">		return streamBoundaryEdges().collect(Collectors.toList());</span>
+	}
+
+	/**
+	 * Returns a list {@link List} of all boundary points (which are alive) of this mesh.
+	 * This requires O(n) where n is the number of boundary edges.
+	 *
+	 * @return a list {@link List} of all boundary points
+	 */
+	default List&lt;IPoint&gt; getBoundaryPoints() {
+<span class="nc" id="L1132">		return streamBoundaryEdges().map(e -&gt; getPoint(e)).collect(Collectors.toList());</span>
+	}
+
+
+	/**
+	 * Sets the point of a vertex. This should only be used with great care since
+	 * this will re-position the vertex and may destroy a valid connectivity! So in
+	 * general this can only be done if the new point is contained in the convex hull
+	 * of the neighbouring vertices of the vertex.
+	 *  @param vertex    the vertex
+	 * @param point     its new point
+	 */
+	void setPoint(@NotNull final V vertex, @NotNull final IPoint point);
+
+	/**
+	 * Returns a list {@link List} of all adjacent points of the vertex in O(d)
+	 * where d is the degree of the vertex.
+	 *
+	 * @param vertex the vertex
+	 * @return a list {@link List} of all adjacent points of the vertex
+	 */
+	default List&lt;IPoint&gt; getPoints(@NotNull final V vertex) {
+<span class="nc" id="L1154">		List&lt;IPoint&gt; points = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L1155" title="All 2 branches missed.">		for(V v : getAdjacentVertexIt(vertex)) {</span>
+<span class="nc" id="L1156">			points.add(toPoint(v));</span>
+<span class="nc" id="L1157">		}</span>
+
+<span class="nc" id="L1159">		return points;</span>
+	}
+
+	/**
+	 * Returns a list {@link List} of all faces of the mesh data structure with the exception of the border.
+	 * This requires O(n) where n is the number of faces.
+	 *
+	 * @return a list {@link List} of all faces of the mesh data structure with the exception of the border.
+	 */
+	default List&lt;F&gt; getFacesWithHoles() {
+<span class="nc" id="L1169">		return streamFaces().filter(face -&gt; isAlive(face)).collect(Collectors.toList());</span>
+	}
+
+	// TODO: this can be done much faster: only filter the edges of holes and the border!
+	/**
+	 * Returns a list {@link List} of all (alive) boundary vertices, i.e. vertices which have a boundary edge as their neighbours.
+	 * This requires O(n) where n is the number of edges.
+	 *
+	 * @return a list {@link List} of all boundary vertices
+	 */
+	default List&lt;V&gt; getBoundaryVertices() {
+<span class="nc" id="L1180">		return streamEdges().filter(edge -&gt; isBoundary(edge)).filter(edge -&gt; isAlive(edge)).map(edge -&gt; getVertex(edge)).collect(Collectors.toList());</span>
+	}
+
+	/**
+	 * Returns a filtered stream {@link Stream} of (all alive) interior faces such that each face fulfill the predicate.
+	 *
+	 * @param predicate the predicate
+	 * @return a filtered stream {@link Stream} of (all alive) interior faces
+	 */
+	Stream&lt;F&gt; streamFaces(@NotNull final Predicate&lt;F&gt; predicate);
+
+	/**
+	 * Returns a parallel stream {@link Stream} of (all alive) interior faces. Note that the required synchronization has to
+	 * be done by the user.
+	 *
+	 * @return a parallel stream {@link Stream} of (all alive) interior faces
+	 */
+	default Stream&lt;F&gt; streamFacesParallel() {
+<span class="nc" id="L1198">		return streamFaces(f -&gt; true).parallel();</span>
+	}
+
+	/**
+	 * Returns a stream {@link Stream} of (all alive) interior faces. Note that the required synchronization has to
+	 * be done by the user.
+	 *
+	 * @return a parallel stream {@link Stream} of (all alive) interior faces
+	 */
+	default Stream&lt;F&gt; streamFaces() {
+<span class="fc bfc" id="L1208" title="All 2 branches covered.">		return streamFaces(f -&gt; !isBoundary(f));</span>
+	}
+
+	/**
+	 * Clears the mesh data structure i.e. after this call the mesh is empty.
+	 */
+	void clear();
+
+	/**
+	 * (Optional) returns a point of the mesh fulfilling the predicate if there is any.
+	 * This requires O(n) where n is the number of points / vertices.
+	 *
+	 * @param predicate the predicate
+	 * @return (optional) returns a point of the mesh fulfilling the predicate
+	 */
+	default Optional&lt;IPoint&gt; findAny(@NotNull final Predicate&lt;IPoint&gt; predicate) {
+<span class="nc" id="L1224">		return streamPoints().filter(predicate).findAny();</span>
+	}
+
+	/**
+	 * (Optional) returns a point of the mesh fulfilling the predicate if there is any.
+	 * This requires O(n) where n is the number of half-edges.
+	 *
+	 * @param predicate the predicate
+	 * @return (optional) returns a point of the mesh fulfilling the predicate
+	 */
+	default Optional&lt;E&gt; findAnyEdge(@NotNull final Predicate&lt;IPoint&gt; predicate) {
+<span class="nc" id="L1235">		return streamEdges().filter(edge -&gt; predicate.test(getPoint(edge))).findAny();</span>
+	}
+
+	/**
+	 * Returns true if there is any point inside the mesh fulfilling the predicate.
+	 *
+ 	 * @param predicate the predicate
+	 * @return true if there is any point inside the mesh fulfilling the predicate, false otherwise
+	 */
+	default boolean findMatch(@NotNull final Predicate&lt;IPoint&gt; predicate) {
+<span class="nc" id="L1245">		return streamPoints().anyMatch(predicate);</span>
+	}
+
+	/**
+	 * Returns a stream {@link Stream} of (alive) holes.
+	 *
+	 * @return a stream {@link Stream} of holes
+	 */
+	Stream&lt;F&gt; streamHoles();
+
+	/**
+	 * Returns a list {@link List} of (alive) holes.
+	 *
+	 * @return a list {@link List} of holes
+	 */
+	default List&lt;F&gt; getHoles() {
+<span class="nc" id="L1261">		return streamHoles().collect(Collectors.toList());</span>
+	}
+
+	/**
+	 * Returns a stream {@link Stream} of all (alive) half-edges.
+	 *
+	 * @return a stream {@link Stream} of all half-edges.
+	 */
+	Stream&lt;E&gt; streamEdges();
+
+	/**
+	 * Returns a parallel stream {@link Stream} of all (alive) half-edges.
+	 * Synchronization has to be done by the user.
+	 *
+	 * @return a parallel stream {@link Stream} of all half-edges.
+	 */
+	Stream&lt;E&gt; streamEdgesParallel();
+
+	/**
+	 * Returns a stream {@link Stream} of all (alive) vertices.
+	 *
+	 * @return a stream {@link Stream} of all vertices.
+	 */
+	Stream&lt;V&gt; streamVertices();
+
+	/**
+	 * Returns a parallel stream {@link Stream} of all (alive) vertices.
+	 * Synchronization has to be done by the user.
+	 *
+	 * @return a parallel stream {@link Stream} of all vertices.
+	 */
+	Stream&lt;V&gt; streamVerticesParallel();
+
+	/**
+	 * Returns a stream {@link Stream} of all (alive) points.
+	 *
+	 * @return a stream {@link Stream} of all points.
+	 */
+	default Stream&lt;IPoint&gt; streamPoints() {
+<span class="nc" id="L1300">		return streamVertices().map(v -&gt; getPoint(v));</span>
+	}
+
+	/**
+	 * Returns a stream {@link Stream} of all of a specific face.
+	 *
+	 * @param face the specific face
+	 * @return a stream {@link Stream} of all points of a specific face.
+	 */
+	default Stream&lt;IPoint&gt; streamPoints(@NotNull final F face) {
+<span class="fc" id="L1310">		return streamVertices(face).map(v -&gt; getPoint(v));</span>
+	}
+
+	/**
+	 * Returns a parallel stream {@link Stream} of all (alive) points.
+	 * Synchronization has to be done by the user.
+	 *
+	 * @return a parallel stream {@link Stream} of all points.
+	 */
+	default Stream&lt;IPoint&gt; streamPointsParallel() {
+<span class="nc" id="L1320">		return streamEdgesParallel().map(e -&gt; getPoint(e));</span>
+	}
+
+	/**
+	 * Returns a immutable polygon {@link VPolygon} by transforming the face to a polygon.
+	 * Assumption: The face represents a simple polygon (no intersecting lines). This requires
+	 * O(k) time where k is the number of points of the face / polygon. In a first step a {@link Path2D}
+	 * is created.
+	 *
+	 * @param face the face.
+	 * @return a immutable polygon {@link VPolygon} representing the face
+	 */
+	default VPolygon toPolygon(@NotNull final F face) {
+<span class="fc" id="L1333">		Path2D path2D = new Path2D.Double();</span>
+<span class="fc" id="L1334">		E edge = getEdge(face);</span>
+<span class="fc" id="L1335">		E prev = getPrev(edge);</span>
+
+<span class="fc" id="L1337">		path2D.moveTo(getVertex(prev).getX(), getVertex(prev).getY());</span>
+<span class="fc" id="L1338">		path2D.lineTo(getVertex(edge).getX(), getVertex(edge).getY());</span>
+
+<span class="fc bfc" id="L1340" title="All 2 branches covered.">		while (!edge.equals(prev)) {</span>
+<span class="fc" id="L1341">			edge = getNext(edge);</span>
+<span class="fc" id="L1342">			V p = getVertex(edge);</span>
+<span class="fc" id="L1343">			path2D.lineTo(p.getX(), p.getY());</span>
+<span class="fc" id="L1344">		}</span>
+
+		//path2D.closePath();
+
+<span class="fc" id="L1348">		return new VPolygon(path2D);</span>
+	}
+
+	// TODO speed up by avoiding the creation of a list!
+	/**
+	 * Returns a immutable triangle {@link VTriangle} by transforming the face to a triangle.
+	 * Assumption: The face represents a triangle, i.e. it has exactly 3 distinct points. This
+	 * requires O(1) time.
+	 *
+	 * @param face the face.
+	 * @return a immutable triangle {@link VTriangle} representing the face
+	 */
+	default VTriangle toTriangle(@NotNull final F face) {
+<span class="fc" id="L1361">		List&lt;V&gt; vertices = getVertices(face);</span>
+<span class="pc bpc" id="L1362" title="2 of 4 branches missed.">		assert vertices.size() == 3 : &quot;number of vertices of &quot; + face + &quot; is &quot; + vertices.size();</span>
+<span class="fc" id="L1363">		return new VTriangle(new VPoint(vertices.get(0)), new VPoint(vertices.get(1)), new VPoint(vertices.get(2)));</span>
+	}
+
+	default VPoint toMidpoint(@NotNull final F face) {
+<span class="nc bnc" id="L1367" title="All 4 branches missed.">		assert getVertices(face).size() == 3 : &quot;number of vertices of &quot; + face + &quot; is &quot; + getVertices(face).size();</span>
+<span class="nc" id="L1368">		E edge = getEdge(face);</span>
+<span class="nc" id="L1369">		V v1 = getVertex(edge);</span>
+<span class="nc" id="L1370">		V v2 = getVertex(getNext(edge));</span>
+<span class="nc" id="L1371">		V v3 = getVertex(getPrev(edge));</span>
+<span class="nc" id="L1372">		return GeometryUtils.getTriangleMidpoint(getX(v1), getY(v1), getX(v2), getY(v2), getX(v3), getY(v3));</span>
+	}
+
+	default VPoint toCircumcenter(@NotNull final F face) {
+<span class="nc bnc" id="L1376" title="All 4 branches missed.">		assert getVertices(face).size() == 3 : &quot;number of vertices of &quot; + face + &quot; is &quot; + getVertices(face).size();</span>
+<span class="nc" id="L1377">		E edge = getEdge(face);</span>
+<span class="nc" id="L1378">		V v1 = getVertex(edge);</span>
+<span class="nc" id="L1379">		V v2 = getVertex(getNext(edge));</span>
+<span class="nc" id="L1380">		V v3 = getVertex(getPrev(edge));</span>
+<span class="nc" id="L1381">		return GeometryUtils.getCircumcenter(getX(v1), getY(v1), getX(v2), getY(v2), getX(v3), getY(v3));</span>
+	}
+
+	/**
+	 * Returns the midpoint {@link VPoint} of a triangle defined by the face.
+	 * Assumption: The face represents a triangle, i.e. it has exactly 3 distinct points. This
+	 * requires O(1) time.
+	 *
+	 * @param face the face.
+	 * @return the midpoint {@link VPoint} of a triangle defined by the face.
+	 */
+	default VPoint getTriangleMidPoint(@NotNull final F face) {
+<span class="pc bpc" id="L1393" title="2 of 4 branches missed.">		assert getVertices(face).size() == 3 : &quot;number of vertices of &quot; + face + &quot; is &quot; + getVertices(face).size();</span>
+<span class="fc" id="L1394">		E e1 = getEdge(face);</span>
+<span class="fc" id="L1395">		E e2 = getNext(e1);</span>
+<span class="fc" id="L1396">		E e3 = getNext(e2);</span>
+<span class="fc" id="L1397">		V v1 = getVertex(e1);</span>
+<span class="fc" id="L1398">		V v2 = getVertex(e2);</span>
+<span class="fc" id="L1399">		V v3 = getVertex(e3);</span>
+<span class="fc" id="L1400">		return GeometryUtils.getTriangleMidpoint(getX(v1), getY(v1), getX(v2), getY(v2), getX(v3), getY(v3));</span>
+	}
+
+	/**
+	 * Returns a triple {@link Triple} which represents a triangle by transforming the face to a triangle.
+	 * Assumption: The face represents a triangle, i.e. it has exactly 3 distinct points. This requires O(1) time.
+	 *
+	 * @param face the face.
+	 * @return a triple {@link Triple} representing the face
+	 */
+	default Triple&lt;IPoint, IPoint, IPoint&gt; toTriple(@NotNull final F face) {
+<span class="fc" id="L1411">		List&lt;V&gt; vertices = getVertices(face);</span>
+<span class="pc bpc" id="L1412" title="2 of 4 branches missed.">		assert vertices.size() == 3;</span>
+<span class="fc" id="L1413">		return Triple.of(getPoint(vertices.get(0)), getPoint(vertices.get(1)), getPoint(vertices.get(2)));</span>
+	}
+
+	/**
+	 * (Optional) returns the face containing the point (x, y) by testing each face. This is
+	 * a brute force strategy requiring O(n) time where n is the number of faces to
+	 * compare results with more sophisticated strategies. It should not be used aside from
+	 * testing since it is very slow!
+	 *
+	 * @param x the x-coordinate of the point
+	 * @param y the y-coordinate of the point
+	 * @return (optional) returns the face containing the point (x, y)
+	 */
+	default Optional&lt;F&gt; locate(final double x, final double y) {
+<span class="nc bnc" id="L1427" title="All 2 branches missed.">		for(F face : getFaces()) {</span>
+<span class="nc" id="L1428">			VPolygon polygon = toPolygon(face);</span>
+<span class="nc bnc" id="L1429" title="All 2 branches missed.">			if(polygon.contains(new VPoint(x, y))) {</span>
+<span class="nc" id="L1430">				return Optional.of(face);</span>
+			}
+<span class="nc" id="L1432">		}</span>
+<span class="nc" id="L1433">		return Optional.empty();</span>
+	}
+
+	/**
+	 * This method will triangulate all holes and mark them as holes.
+	 * Note that a triangulated hole becomes invalid if a vertex or edge of
+	 * this hole gets changes (moved, split, collapsed, removed, inserted)!
+	 */
+	/*default void fillHoles() {
+
+	}*/
+
+	/**
+	 * &lt;p&gt;Returns vertex of the triangulation of the face with the smallest distance to point.&lt;/p&gt;
+	 *
+	 * @param face          the face of the trianuglation
+	 * @param point         the point
+	 * @return vertex of the triangulation of the face with the smallest distance to point
+	 */
+	default V getNearestPoint(@NotNull final F face, @NotNull final IPoint point) {
+<span class="nc" id="L1453">		return getNearestPoint(face, point.getX(), point.getY());</span>
+	}
+
+	/**
+	 * &lt;p&gt;Returns the vertex of a face which is closest to (x, y).&lt;/p&gt;
+	 *
+	 * @param face  the face
+	 * @param x     the x-coordinate of the point
+	 * @param y     the y-coordinate of the point
+	 * @return  the vertex of a face which is closest to (x, y).
+	 */
+	default V getNearestPoint(final F face, final double x, final double y) {
+<span class="nc bnc" id="L1465" title="All 2 branches missed.">		return streamEdges(face).map(edge -&gt; getVertex(edge)).reduce((p1, p2) -&gt; p1.distance(x,y) &gt; p2.distance(x,y) ? p2 : p1).get();</span>
+	}
+
+
+	/**
+	 * Returns an iterator {@link Iterator} which iterates over all (alive) faces of this mesh.
+	 *
+	 * @return an iterator which iterates over all faces of this mesh
+	 */
+	@Override
+	default Iterator&lt;F&gt; iterator() {
+<span class="nc" id="L1476">		return getFaces().iterator();</span>
+	}
+
+	/**
+	 * Returns a list {@link List} of faces which are adjacent to the vertex of this edge.
+	 *
+	 * @param edge the edge holding the vertex
+	 * @return a list {@link List} of faces which are adjacent to the vertex of this edge
+	 */
+	default List&lt;F&gt; getFaces(@NotNull E edge) {
+<span class="nc" id="L1486">		return Lists.newArrayList(new AdjacentFaceIterator(this, edge));</span>
+	}
+
+	/**
+	 * Returns a list {@link List} of faces which are adjacent to the vertex.
+	 *
+	 * @param vertex the vertex
+	 * @return a list {@link List} of faces which are adjacent to the vertex of this edge
+	 */
+	default List&lt;F&gt; getFaces(@NotNull V vertex) {
+<span class="fc" id="L1496">		return Lists.newArrayList(new AdjacentFaceIterator(this, getEdge(vertex)));</span>
+	}
+
+	/**
+	 * Returns a Iterable {@link Iterable} which can be used to iterate over all edges which end point is the vertex that is adjacent to the vertex of this edge.
+	 *
+	 * @param edge the edge which holds the vertex
+	 * @return a Iterable {@link Iterable} which can be used to iterate over all edges which are adjacent to the vertex of this edge.
+	 */
+	default Iterable&lt;E&gt; getIncidentEdgesIt(@NotNull final E edge) {
+<span class="fc" id="L1506">		return () -&gt; new IncidentEdgeIterator(this, edge);</span>
+	}
+
+	/**
+	 * Returns a Iterable {@link Iterable} which can be used to iterate over adjacent vertices of this vertex.
+	 *
+	 * @param vertex the vertex
+	 * @return a Iterable {@link Iterable} which can be used to iterate over all adjacent vertices.
+	 */
+	default Iterable&lt;V&gt; getAdjacentVertexIt(@NotNull final V vertex) {
+<span class="fc" id="L1516">		return () -&gt; new AdjacentVertexIterator&lt;&gt;(this, vertex);</span>
+	}
+
+	default List&lt;V&gt; getAdjacentVertices(@NotNull final V vertex) {
+<span class="nc" id="L1520">		return Lists.newArrayList(new AdjacentVertexIterator&lt;&gt;(this, vertex));</span>
+	}
+
+	/**
+	 * Returns an Iterable {@link Iterable} which can be used to iterate over all edges of a face.
+	 *
+	 * @param face the face the iterable iterates over
+	 * @return an Iterable {@link Iterable} which can be used to iterate over all edges of a face.
+	 */
+	default Iterable&lt;E&gt; getEdgeIt(@NotNull final F face) {
+<span class="fc" id="L1530">		return () -&gt; new EdgeIterator&lt;&gt;(this, face);</span>
+	}
+
+	/**
+	 * Returns an Iterable {@link Iterable} which can be used to iterate over all edges of a face which the edge is part of.
+	 *
+	 * @param edge the edge which is part of the face the iterable iterates over
+	 * @return an Iterable {@link Iterable} which can be used to iterate over all edges of a face.
+	 */
+	default Iterable&lt;E&gt; getEdgeIt(@NotNull final E edge) {
+<span class="fc" id="L1540">		return () -&gt; new EdgeIterator&lt;&gt;(this, edge);</span>
+	}
+
+
+	default Iterable&lt;E&gt; getEdgeItReverse(@NotNull final E edge) {
+<span class="fc" id="L1545">		return () -&gt; new EdgeIterator&lt;&gt;(this, edge, true);</span>
+	}
+
+	/**
+	 * Returns an Iterable {@link Iterable} which can be used to iterate over all vertices of a face.
+	 *
+	 * @param face the face the iterable iterates over
+	 * @return an Iterable {@link Iterable} which can be used to iterate over all vertices of a face
+	 */
+	default Iterable&lt;V&gt; getVertexIt(@NotNull final F face) {
+<span class="fc" id="L1555">		return () -&gt; new VertexIterator&lt;&gt;(this, face);</span>
+	}
+
+	/**
+	 * Returns an Iterable {@link Iterable} which can be used to iterate over all vertices of a face.
+	 *
+	 * @param face the face the iterable iterates over
+	 * @return an Iterable {@link Iterable} which can be used to iterate over all vertices of a face
+	 */
+	default Iterable&lt;IPoint&gt; getPointIt(@NotNull final F face) {
+<span class="nc" id="L1565">		return () -&gt; new PointIterator&lt;&gt;(this, face);</span>
+	}
+
+	/**
+	 * Returns a Stream {@link Stream} of edges of a face.
+	 *
+	 * @param face the faces of which edges the stream consist
+	 * @return a Stream {@link Stream} of edges of a face
+	 */
+	default Stream&lt;E&gt; streamEdges(@NotNull final F face) {
+<span class="fc" id="L1575">		Iterable&lt;E&gt; iterable = getEdgeIt(face);</span>
+<span class="fc" id="L1576">		return StreamSupport.stream(iterable.spliterator(), false);</span>
+	}
+
+	/**
+	 * Returns a Stream {@link Stream} of all adjacent vertices of the vertex.
+	 *
+	 * @param v the vertex
+	 * @return a Stream {@link Stream} of all adjacent vertices
+	 */
+	default Stream&lt;V&gt; streamVertices(@NotNull final V v) {
+<span class="nc" id="L1586">		Iterable&lt;V&gt; iterable = getAdjacentVertexIt(v);</span>
+<span class="nc" id="L1587">		return StreamSupport.stream(iterable.spliterator(), false);</span>
+	}
+
+	/**
+	 * Returns a Stream {@link Stream} of edges of a face.
+	 *
+	 * @param edge the edge of the face of which edges the stream consist
+	 * @return a Stream {@link Stream} of edges of a face specified by the edge
+	 */
+	default Stream&lt;E&gt; streamEdges(@NotNull final E edge) {
+<span class="nc" id="L1597">		Iterable&lt;E&gt; iterable = getEdgeIt(edge);</span>
+<span class="nc" id="L1598">		return StreamSupport.stream(iterable.spliterator(), false);</span>
+	}
+
+	default Stream&lt;E&gt; streamEdgesReverse(@NotNull final E edge) {
+<span class="nc" id="L1602">		Iterable&lt;E&gt; iterable = getEdgeItReverse(edge);</span>
+<span class="nc" id="L1603">		return StreamSupport.stream(iterable.spliterator(), false);</span>
+	}
+
+	/**
+	 * Returns a Stream {@link Stream} of vertices of a face.
+	 *
+	 * @param face the faces of which edges the stream consist
+	 * @return a Stream {@link Stream} of edges of a face
+	 */
+	default Stream&lt;V&gt; streamVertices(@NotNull final F face) {
+<span class="fc" id="L1613">		return streamEdges(face).map(edge -&gt; getVertex(edge));</span>
+	}
+
+	/**
+	 * Returns an Iterable {@link Iterable} which can be used to iterate over surrounding faces of the face.
+	 *
+	 * @param face the face the iterable iterates over
+	 * @return an Iterable {@link Iterable} which can be used to iterate over all surrounding faces
+	 */
+<span class="fc" id="L1622">	default Iterable&lt;F&gt; getFaceIt(@NotNull final F face) { return () -&gt; new SurroundingFaceIterator&lt;&gt;(this, face);}</span>
+
+	/**
+	 * Returns an Iterable {@link Iterable} which can be used to iterate over surrounding faces of the vertex.
+	 *
+	 * @param vertex the vertex the iterable iterates over
+	 * @return an Iterable {@link Iterable} which can be used to iterate over all surrounding faces
+	 */
+<span class="nc" id="L1630">	default Iterable&lt;F&gt; getFaceIt(@NotNull final V vertex) { return () -&gt; new AdjacentFaceIterator(this, getEdge(vertex));}</span>
+
+<span class="fc" id="L1632">	default List&lt;F&gt; getFaces(@NotNull final F face) { return Lists.newArrayList(new SurroundingFaceIterator&lt;&gt;(this, face)); }</span>
+
+	/**
+	 * Returns a Stream {@link Stream} consisting of all surrounding faces of the face.
+	 *
+	 * @param face the face of which surrounding faces the stream consist.
+	 * @return a Stream {@link Stream} consisting of all surrounding faces of the face
+	 */
+	default Stream&lt;F&gt; streamFaces(@NotNull final F face) {
+<span class="fc" id="L1641">		Iterable&lt;F&gt; iterable = getFaceIt(face);</span>
+<span class="fc" id="L1642">		return StreamSupport.stream(iterable.spliterator(), false);</span>
+	}
+
+	/**
+	 * Returns a Stream {@link Stream} consisting of all surrounding faces of the vertex.
+	 *
+	 * @param vertex the face of which surrounding faces the stream consist.
+	 * @return a Stream {@link Stream} consisting of all surrounding faces of the vertex
+	 */
+	default Stream&lt;F&gt; streamFaces(@NotNull final V vertex) {
+<span class="nc" id="L1652">		Iterable&lt;F&gt; iterable = getFaceIt(vertex);</span>
+<span class="nc" id="L1653">		return StreamSupport.stream(iterable.spliterator(), false);</span>
+	}
+
+	/**
+	 * Returns a Stream {@link Stream} consisting of all edges which are incident to the edge
+	 *
+	 * @param edge the edge of which the edges are incident
+	 * @return a Stream {@link Stream} consisting of all edges which are incident to the edge.
+	 */
+	default Stream&lt;E&gt; streamIncidentEdges(@NotNull final E edge) {
+<span class="fc" id="L1663">		Iterable&lt;E&gt; iterable = getIncidentEdgesIt(edge);</span>
+<span class="fc" id="L1664">		return StreamSupport.stream(iterable.spliterator(), false);</span>
+	}
+
+	/**
+	 * Returns an Iterable {@link Iterable} which can be used to iterate over all faces which are adjacent to the vertex of the edge
+	 *
+	 * @param edge the edge of which adjacent faces
+	 * @return an Iterable {@link Iterable} which can be used to iterate over all faces which are adjacent to the vertex of the edge
+	 */
+<span class="pc" id="L1673">	default Iterable&lt;F&gt; getAdjacentFacesIt(@NotNull final E edge) { return () -&gt; new AdjacentFaceIterator&lt;&gt;(this, edge); }</span>
+
+	/**
+	 * Returns an Iterable {@link Iterable} which can be used to iterate over all faces which are adjacent to the vertex.
+	 *
+	 * @param vertex the vertex
+	 * @return an Iterable {@link Iterable} which can be used to iterate over all faces which are adjacent to the vertex
+	 */
+<span class="nc" id="L1681">	default Iterable&lt;F&gt; getAdjacentFacesIt(@NotNull final V vertex) { return () -&gt; new AdjacentFaceIterator&lt;&gt;(this, getEdge(vertex)); }</span>
+
+	/**
+	 * Returns a list {@link List} of all faces which are adjacent to the vertex of the edge
+	 *
+	 * @param edge the edge of which adjacent faces
+	 * @return a list {@link List} of all faces which are adjacent to the vertex of the edge
+	 */
+	default List&lt;F&gt; getAdjacentFaces(@NotNull final E edge) {
+<span class="fc" id="L1690">		return Lists.newArrayList(new AdjacentFaceIterator(this, edge));</span>
+	}
+
+	/**
+	 * Returns a list {@link List} of edges which are incident to the vertex of this edge.
+	 * They hold the vertices which are adjacent to vertex of the edge.
+	 *
+	 * @param edge the edge which holds the vertex
+	 * @return a list {@link List} of edges which are incident to the vertex of this edge.
+	 */
+<span class="nc" id="L1700">	default List&lt;E&gt; getIncidentEdges(@NotNull final E edge) { return Lists.newArrayList(new IncidentEdgeIterator(this, edge)); }</span>
+
+
+	/**
+	 * Returns an iterable {@link Iterable} that can be used to iterate over all edges which end-point is equal to the vertex, i.e. all edges connected to the vertex.
+	 *
+	 * @param vertex the end-point of all the edges
+	 * @return an iterable {@link Iterable} that can be used to iterate over all edges which end-point is equal to the vertex
+	 */
+	default Iterable&lt;E&gt; getEdgeIt(@NotNull final V vertex) {
+<span class="fc" id="L1710">		return () -&gt; new EdgeOfVertexIterator(this, vertex);</span>
+	}
+
+	/**
+	 * Returns a list {@link List} of all edges which end-point is equal to the vertex, i.e. all edges connected to the vertex
+	 *
+	 * @param vertex the end-point of all the edges
+	 * @return a list {@link List} of all edges which end-point is equal to the vertex
+	 */
+	default List&lt;E&gt; getEdges(@NotNull final V vertex) {
+<span class="fc" id="L1720">		return Lists.newArrayList(new EdgeOfVertexIterator(this, vertex));</span>
+	}
+
+	/**
+	 * Returns a {@link Stream} of edges which end-point is equal to the vertex, i.e. all edges connected to the vertex
+	 *
+	 * @param vertex the end-point of all the edges
+	 * @return a {@link Stream} of edges which end-point is equal to the vertex
+	 */
+	default Stream&lt;E&gt; streamEdges(@NotNull final V vertex) {
+<span class="fc" id="L1730">		Iterable&lt;E&gt; iterable = getEdgeIt(vertex);</span>
+<span class="fc" id="L1731">		return StreamSupport.stream(iterable.spliterator(), false);</span>
+	}
+
+	/**
+	 * Returns a list {@link List} of vertices which are adjacent to the vertex of this edge.
+	 *
+	 * @param edge the edge which holds the vertex
+	 * @return a list {@link List} of vertices which are adjacent to the vertex of this edge.
+	 */
+	default List&lt;V&gt; getAdjacentVertices(@NotNull final E edge) {
+<span class="fc" id="L1741">		return streamIncidentEdges(edge).map(this::getVertex).collect(Collectors.toList());</span>
+	}
+
+	/**
+	 * Returns a list {@link List} of all (alive) edges in O(n) where n is the number of edges.
+	 *
+	 * @return a list {@link List} of all (alive) edges.
+	 */
+	default List&lt;E&gt; getEdges() {
+<span class="fc" id="L1750">		List&lt;E&gt; edges = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L1751" title="All 2 branches covered.">		for (E edge : getEdgeIt()) {</span>
+<span class="fc bfc" id="L1752" title="All 2 branches covered.">			if(isAlive(edge)) {</span>
+<span class="fc" id="L1753">				edges.add(edge);</span>
+			}
+<span class="fc" id="L1755">		}</span>
+
+<span class="fc" id="L1757">		return edges;</span>
+	}
+
+	/**
+	 * Returns a list {@link Set} of all (alive) edges (only one of the half-edge) transformed into lines
+	 * in O(n) where n is the number of half-edges.
+	 *
+	 * @return a list {@link Set} of all (alive) edges transformed into lines
+	 */
+	default Set&lt;VLine&gt; getLines() {
+<span class="nc" id="L1767">		return streamEdges().map(edge -&gt; toLine(edge)).collect(Collectors.toSet());</span>
+	}
+
+	/**
+	 * Returns a list {@link Set} of all unique (alive) points transformed into immutable {@link VPoint}
+	 * in O(n) where n is the number of points.
+	 *
+	 * @return a list {@link Set} of all unique (alive) edges transformed into lines
+	 */
+	default Set&lt;VPoint&gt; getUniquePoints() {
+<span class="nc" id="L1777">		return streamVertices().map(vertex -&gt; toPoint(vertex)).collect(Collectors.toSet());</span>
+	}
+
+	/**
+	 * Returns a list {@link Collection} of all (alive) points in O(n) where n is the number of points.
+	 *
+	 * @return a list {@link Collection} of all (alive) points
+	 */
+	default Collection&lt;IPoint&gt; getPoints() {
+<span class="fc" id="L1786">		return streamVertices().map(vertex -&gt; getPoint(vertex)).collect(Collectors.toList());</span>
+	}
+
+	/**
+	 * Returns an iterator {@link Iterable} iterating over all edges (this includes destroyed edges).
+	 *
+	 * @return an iterator {@link Iterable} iterating over all edges (this includes destroyed edges)
+	 */
+	Iterable&lt;E&gt; getEdgeIt();
+
+	/**
+	 * Returns a list {@link List} of all edges of a face in O(k) where k is the number of
+	 * points / vertices / half-edges of the face.
+	 *
+	 * @param face the face
+	 * @return a list {@link List} of all edges of a face.
+	 */
+	default List&lt;E&gt; getEdges(@NotNull final F face) {
+<span class="fc" id="L1804">		return Lists.newArrayList(new EdgeIterator(this, face));</span>
+	}
+
+	/**
+	 * Returns a list {@link List} of all edges of a face in O(k) where k is the number of
+	 * points / vertices / half-edges of the face.
+	 *
+	 * @param edge some edge of the face
+	 * @return a list {@link List} of all edges of a face.
+	 */
+	default List&lt;E&gt; getEdges(@NotNull final E edge) {
+<span class="nc" id="L1815">		return Lists.newArrayList(new EdgeIterator(this, edge));</span>
+	}
+
+	/**
+	 * Returns a list {@link List} of all vertices of a face in O(n) where n is the
+	 * number of faces.
+	 *
+	 * @param face the face
+	 * @return a list {@link List} of all vertices of a face.
+	 */
+	default List&lt;V&gt; getVertices(@NotNull final F face) {
+<span class="fc" id="L1826">		EdgeIterator&lt;V, E, F&gt; edgeIterator = new EdgeIterator&lt;&gt;(this, face);</span>
+
+<span class="fc" id="L1828">		List&lt;V&gt; vertices = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L1829" title="All 2 branches covered.">		while (edgeIterator.hasNext()) {</span>
+<span class="fc" id="L1830">			vertices.add(getVertex(edgeIterator.next()));</span>
+		}
+
+<span class="fc" id="L1833">		return vertices;</span>
+	}
+
+	/**
+	 * Returns a list {@link List} of all points of a face in O(k), where k is the number of points
+	 * of the face.
+	 *
+	 * @param face the face
+	 * @return a list {@link List} of all points of a face.
+	 */
+	default List&lt;IPoint&gt; getPoints(@NotNull final F face) {
+<span class="fc" id="L1844">		EdgeIterator&lt;V, E, F&gt; edgeIterator = new EdgeIterator&lt;&gt;(this, face);</span>
+
+<span class="fc" id="L1846">		List&lt;IPoint&gt; points = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L1847" title="All 2 branches covered.">		while (edgeIterator.hasNext()) {</span>
+<span class="fc" id="L1848">			points.add(getPoint(edgeIterator.next()));</span>
+		}
+
+<span class="fc" id="L1851">		return points;</span>
+	}
+
+	/**
+	 * Returns true if the two half-edges represent the same line segment,
+	 * i.e. their set of points (start- and end-point) is equals in O(1).
+	 *
+	 * @param e1 the first half-edge
+	 * @param e2 the second half-edge
+	 * @return true if the two half-edges represent the same line segment, false otherwise
+	 */
+	default boolean isSameLineSegment(@NotNull final E e1, @NotNull final E e2) {
+<span class="nc bnc" id="L1863" title="All 2 branches missed.">		if(e1.equals(e2)) {</span>
+<span class="nc" id="L1864">			return true;</span>
+		}
+
+<span class="nc" id="L1867">		IPoint p11 = getPoint(e1);</span>
+<span class="nc" id="L1868">		IPoint p12 = getPoint(getPrev(e1));</span>
+
+<span class="nc" id="L1870">		IPoint p21 = getPoint(e2);</span>
+<span class="nc" id="L1871">		IPoint p22 = getPoint(getPrev(e2));</span>
+
+<span class="nc bnc" id="L1873" title="All 8 branches missed.">		return p11.equals(p21) &amp;&amp; p12.equals(p22) || p11.equals(p22) &amp;&amp; p12.equals(p21);</span>
+	}
+
+	/**
+	 * Tests whether the point (x,y) is a vertex of the face in O(k),
+	 * where k is the number of points /vertices of the face.
+	 *
+	 * @param face  the face
+	 * @param x     the x-coordinate of the point
+	 * @param y     the y-coordinate of the point
+	 * @return true if the point (x,y) is a vertex of the face, false otherwise
+	 */
+	default boolean isCloseTo(@NotNull final F face, final double x, final double y) {
+<span class="nc" id="L1886">		return getMember(face, x, y).isPresent();</span>
+	}
+
+	/**
+	 * Tests whether the point (x,y) is very close to one of the points of the face
+	 * in O(k) where k is the number of points /vertices of the face.
+	 *
+	 * @param face      the face
+	 * @param x         the x-coordinate of the point
+	 * @param y         the y-coordinate of the point
+	 * @param distance  the maximal distance of the point
+	 *
+	 * @return true if the point (x,y) is very close to a vertex of the face, false otherwise
+	 */
+	default boolean isCloseTo(@NotNull final F face, final double x, final double y, final double distance) {
+<span class="nc" id="L1901">		return getClose(face, x, y, distance).isPresent();</span>
+	}
+
+	/**
+	 * (Optional) returns an arbitrary edge with an end point having the same coordinates as the point (x, y)
+	 * in O(k) where k is the number of points /vertices of the face.
+	 *
+	 * @param face  the face
+	 * @param x     the x-coordinate of the point
+	 * @param y     the y-coordinate of the point
+	 * @return (optional) an arbitrary edge with an end point having the same coordinates as the point (x, y)
+	 */
+	default Optional&lt;E&gt; getMember(@NotNull final F face, final double x, final double y) {
+<span class="nc bnc" id="L1914" title="All 4 branches missed.">		return streamEdges(face).filter(e -&gt; getVertex(e).getX() == x &amp;&amp; getVertex(e).getY() == y).findAny();</span>
+	}
+
+	/**
+	 * (Optional) returns an arbitrary edge with an end point close to the point (x, y) in O(k),
+	 * where k is the number of points /vertices of the face.
+	 *
+	 * @param face      the face
+	 * @param x         the x-coordinate of the point
+	 * @param y         the y-coordinate of the point
+	 * @param distance  the maximal distance
+	 * @return (optional) an arbitrary edge with an end point having the same coordinates as the point (x, y)
+	 */
+	default Optional&lt;E&gt; getClose(@NotNull final F face, final double x, final double y, final double distance) {
+<span class="nc bnc" id="L1928" title="All 2 branches missed.">		return streamEdges(face).filter(e -&gt; getVertex(e).distance(x, y) &lt;= distance).findAny();</span>
+	}
+
+	/**
+	 * Returns a list {@link List} of all (alive) vertices of the mesh in O(n),
+	 * where n is the number of vertices.
+	 *
+	 * @return a list {@link List} of all (alive) vertices of the mesh
+	 */
+	default List&lt;V&gt; getVertices() {
+<span class="fc" id="L1938">		return streamVertices().collect(Collectors.toList());</span>
+	}
+
+	/**
+	 * Returns valid vertex uniformly randomly chosen from the set of all vertices.
+	 *
+	 * @param random a pseudo-random number generator
+	 *
+	 * @return valid vertex uniformly randomly chosen from the set of all vertices.
+	 */
+	V getRandomVertex(@NotNull final Random random);
+
+	/**
+	 * Returns the number of alive vertices in O(1).
+	 *
+	 * @return the number of alive vertices
+	 */
+	int getNumberOfVertices();
+
+	/**
+	 * Returns the number of alive interior faces in O(1), i.e. holes and the border are excluded.
+	 *
+	 * @return the number of alive faces
+	 */
+	int getNumberOfFaces();
+
+	/**
+	 * Returns the number of alive holes in O(1).
+	 *
+	 * @return the number of alive faces
+	 */
+	int getNumberOfHoles();
+
+	/**
+	 * Returns the number of alive edges in O(1).
+	 *
+	 * @return the number of alive edges
+	 */
+	int getNumberOfEdges();
+
+	// TODO duplcated code see getNearestPoint.
+	/**
+	 * Returns the closest (Euklidean distance) vertex of the face with respect to (x ,y) in
+	 * O(k), where k is the number of vetices of the face.
+	 *
+	 * @param face  the face
+	 * @param x     the x-coordinate of the point
+	 * @param y     the y-coordinate of the point
+	 * @return the closest vertex of the face with respect to (x ,y)
+	 */
+	default V closestVertex(@NotNull final F face, final double x, final double y) {
+<span class="fc" id="L1989">		V result = null;</span>
+<span class="fc" id="L1990">		double distance = Double.MAX_VALUE;</span>
+<span class="fc bfc" id="L1991" title="All 2 branches covered.">		for (V vertex : getVertexIt(face)) {</span>
+<span class="pc bpc" id="L1992" title="1 of 2 branches missed.">			if(getPoint(vertex).distance(x, y) &lt; distance) {</span>
+<span class="fc" id="L1993">				result = vertex;</span>
+			}
+<span class="fc" id="L1995">		}</span>
+
+<span class="fc" id="L1997">		return result;</span>
+	}
+
+	default String getMeshInformations() {
+		// here we divide the number of half-edges by 2 because each edge is represented by 2 half-edges
+<span class="nc" id="L2002">		return &quot;#vertices = &quot; + getNumberOfVertices() +</span>
+<span class="nc" id="L2003">				&quot;, #edges = &quot; + getNumberOfEdges() / 2 +</span>
+<span class="nc" id="L2004">				&quot;, #faces = &quot; + getNumberOfFaces();</span>
+	}
+
+	/**
+	 * This method is for synchronizing resources if multiple threads are used.
+	 * It tries to lock the vertex which might be uses to modify the mesh data structure
+	 * by multiple threads e.g. one can flip an edge see {@link ITriConnectivity#flipSync(IHalfEdge)}
+	 * in parallel by locking all 4 involved vertices beforehand.
+	 *
+	 * @param vertex the vertex for which the lock is acquired
+	 * @return true if the lock was successfully acquired, false otherwise
+	 */
+	boolean tryLock(@NotNull final V vertex);
+
+	/**
+	 * This method is for synchronizing resources if multiple threads are used.
+	 * It releases the lock if it was acquired otherwise this method has no effect.
+	 *
+	 * @param vertex the vertex for which the lock is released
+	 */
+	void unlock(@NotNull final V vertex);
+
+	/**
+	 * Returns the edge of a given face which is the closest edge of the face in respect to the point defined
+	 * by (x,y). The point might be outside or inside the face or even on an specific edge.
+	 *
+	 * @param face  the face
+	 * @param x     x-coordinate of the point
+	 * @param y     y-coordinate of the point
+	 * @return the edge of a given face which is closest to a point p = (x,y)
+	 */
+	default E closestEdge(@NotNull final F face, final double x, final double y) {
+<span class="fc" id="L2036">		E result = null;</span>
+<span class="fc" id="L2037">		double minDistance = Double.MAX_VALUE;</span>
+<span class="fc bfc" id="L2038" title="All 2 branches covered.">		for (E edge : getEdgeIt(face)) {</span>
+<span class="fc" id="L2039">			double distance = GeometryUtils.distanceToLineSegment(getPoint(getPrev(edge)), getPoint(edge), x, y);</span>
+<span class="fc bfc" id="L2040" title="All 2 branches covered.">			if(distance &lt; minDistance) {</span>
+<span class="fc" id="L2041">				result = edge;</span>
+<span class="fc" id="L2042">				minDistance = distance;</span>
+			}
+<span class="fc" id="L2044">		}</span>
+<span class="fc" id="L2045">		return result;</span>
+	}
+
+	default double getMinEdgeLen() {
+<span class="nc" id="L2049">		return streamEdges().map(e -&gt; toLine(e)).mapToDouble(l -&gt; l.length()).min().orElse(0.0);</span>
+	}
+
+	default double getMaxEdgeLen() {
+<span class="nc" id="L2053">		return streamEdges().map(e -&gt; toLine(e)).mapToDouble(l -&gt; l.length()).max().orElse(0.0);</span>
+	}
+
+	/**
+	 * Returns the half-edge which ends in v1 and starts in v2 if there is any, otherwise empty.
+	 *
+	 * @param v1 the end vertex
+	 * @param v2 the start vertex
+	 * @return the half-edge which ends in v1 and starts in v2 if there is any, empty otherwise
+	 */
+	default Optional&lt;E&gt; getEdge(@NotNull V v1, @NotNull V v2){
+<span class="nc bnc" id="L2064" title="All 2 branches missed.">		for(E edge : getEdgeIt(v1)) {</span>
+<span class="nc bnc" id="L2065" title="All 2 branches missed.">			if(getTwinVertex(edge).equals(v2)) {</span>
+<span class="nc" id="L2066">				return Optional.of(edge);</span>
+			}
+<span class="nc" id="L2068">		}</span>
+<span class="nc" id="L2069">		return Optional.empty();</span>
+	}
+
+	default Optional&lt;E&gt; getEdge(@NotNull final F face, @NotNull final VPoint v1, @NotNull final VPoint v2){
+<span class="nc bnc" id="L2073" title="All 2 branches missed.">		for(E edge : getEdgeIt(face)) {</span>
+<span class="nc bnc" id="L2074" title="All 4 branches missed.">			if(toPoint(getTwinVertex(edge)).equals(v1) &amp;&amp; toPoint(getVertex(edge)).equals(v2)) {</span>
+<span class="nc" id="L2075">				return Optional.of(edge);</span>
+			}
+<span class="nc" id="L2077">		}</span>
+<span class="nc" id="L2078">		return Optional.empty();</span>
+	}
+
+	//default Optional&lt;E&gt; getBoundaryEdge()
+
+	/**
+	 * Returns a deep clone of this mesh.
+	 *
+	 * @return a deep clone of this mesh
+	 */
+	IMesh&lt;V, E, F&gt; clone();
+
+	/**
+	 * Returns a rectangular bound containing all vertices of the mesh.
+	 *
+	 * @return a rectangular bound containing all vertices of the mesh
+	 */
+	default VRectangle getBound() {
+
+<span class="pc bpc" id="L2097" title="1 of 2 branches missed.">		if(getNumberOfVertices() &lt;= 2) {</span>
+<span class="nc" id="L2098">			return new VRectangle(0,0,1,1);</span>
+		}
+
+<span class="fc" id="L2101">		double minX = Double.MAX_VALUE;</span>
+<span class="fc" id="L2102">		double maxX = Double.MIN_VALUE;</span>
+<span class="fc" id="L2103">		double minY = Double.MAX_VALUE;</span>
+<span class="fc" id="L2104">		double maxY = Double.MIN_VALUE;</span>
+
+<span class="fc bfc" id="L2106" title="All 2 branches covered.">		for(IPoint p : getPoints()) {</span>
+<span class="fc" id="L2107">			minX = Math.min(minX, p.getX());</span>
+<span class="fc" id="L2108">			minY = Math.min(minY, p.getY());</span>
+<span class="fc" id="L2109">			maxX = Math.max(maxX, p.getX());</span>
+<span class="fc" id="L2110">			maxY = Math.max(maxY, p.getY());</span>
+<span class="fc" id="L2111">		}</span>
+
+<span class="fc" id="L2113">		return new VRectangle(minX, minY, maxX-minX, maxY-minY);</span>
+	}
+
+	/**
+	 * Transforms the mesh into a rich triangulation {@link IIncrementalTriangulation}.
+	 * There will be no connectivity changes performed!
+	 *
+	 * Assumption: The mesh is a valid triangulation.
+	 *
+	 * @param type  specifies the used {@link IPointLocator}
+	 * @return a triangulation {@link IIncrementalTriangulation} of this mesh
+	 */
+	IIncrementalTriangulation&lt;V, E, F&gt; toTriangulation(@NotNull final IPointLocator.Type type);
+
+	/**
+	 * Rearranges the memory location of faces, vertices and halfEdges of the mesh according to
+	 * the {@link Iterable} faceOrder. I.e. edges, vertices and faces which are close the faceOrder
+	 * will be close in the memory!
+	 *
+	 * Assumption: faceOrder contains all faces of this mesh.
+	 * Invariant: the geometry i.e. the connectivity and the vertex positions will not change.
+	 *
+	 * @param faceOrder the new order
+	 */
+	void arrangeMemory(@NotNull final Iterable&lt;F&gt; faceOrder);
+
+	/**
+	 * This method is for logging information. It returns a string of the path defining the polygon of a face.
+	 *
+	 * @param face  the face
+	 * @return a string of the path defining the polygon of a face
+	 */
+	default String toPath(@NotNull final F face) {
+<span class="nc" id="L2146">		return streamPoints(face).map(p -&gt; p.toString()).reduce((s1, s2) -&gt; s1 + &quot; -&gt; &quot; + s2).orElse(&quot;&quot;);</span>
+	}
+
+	/**
+	 * Tests whether the half-edge is the longest edge of its two faces (excluding boundary faces).
+	 * This requires O(n + m) where n and m are the number of edges of the two neighbouring faces.
+	 *
+	 * @param edge  the half-edge
+	 * @return true if the half-edge is the longest edge of its two faces (excluding boundary faces), false otherwise
+	 */
+	default boolean isLongestEdge(@NotNull final E edge) {
+<span class="nc bnc" id="L2157" title="All 2 branches missed.">		if(!isAtBoundary(edge)) {</span>
+<span class="nc bnc" id="L2158" title="All 2 branches missed.">			E longestEdge1 = streamEdges(getFace(edge)).reduce((e1, e2) -&gt; toLine(e1).length() &gt; toLine(e2).length() ? e1 : e2).get();</span>
+<span class="nc bnc" id="L2159" title="All 2 branches missed.">			E longestEdge2 = streamEdges(getTwinFace(edge)).reduce((e1, e2) -&gt; toLine(e1).length() &gt; toLine(e2).length() ? e1 : e2).get();</span>
+<span class="nc bnc" id="L2160" title="All 4 branches missed.">			return isSameLineSegment(longestEdge1, edge) &amp;&amp; isSameLineSegment(longestEdge2, edge);</span>
+		}
+		else {
+<span class="nc" id="L2163">			E nonBoundaryEdge = edge;</span>
+<span class="nc bnc" id="L2164" title="All 2 branches missed.">			if(isBoundary(edge)) {</span>
+<span class="nc" id="L2165">				nonBoundaryEdge = getTwin(edge);</span>
+			}
+
+<span class="nc bnc" id="L2168" title="All 2 branches missed.">			E longestEdge = streamEdges(getFace(nonBoundaryEdge)).reduce((e1, e2) -&gt; toLine(e1).length() &gt; toLine(e2).length() ? e1 : e2).get();</span>
+<span class="nc" id="L2169">			return isSameLineSegment(longestEdge, edge);</span>
+		}
+	}
+
+	/**
+	 * Tests if the mesh is a valid mesh, i.e. all relations between edges, faces and vertices are correct,
+	 * e.g. &lt;tt&gt;getFace(getEdge(face)) == face&lt;/tt&gt;.
+	 *
+	 * @return true if the mesh is valid, false otherwise
+	 */
+	default boolean isValid() {
+<span class="fc" id="L2180">		String message = &quot;invalid mesh: &quot;;</span>
+<span class="fc bfc" id="L2181" title="All 2 branches covered.">		for(F face : getFacesWithBoundary()) {</span>
+<span class="fc" id="L2182">			int count = 0;</span>
+<span class="fc bfc" id="L2183" title="All 2 branches covered.">			for(E edge : getEdgeIt(face)) {</span>
+<span class="fc" id="L2184">				count++;</span>
+<span class="pc bpc" id="L2185" title="1 of 2 branches missed.">				if(count &gt; getNumberOfEdges()) {</span>
+<span class="nc" id="L2186">					logger.warn(message + &quot;endless loop in face&quot;);</span>
+<span class="nc" id="L2187">					return false;</span>
+				}
+
+<span class="fc" id="L2190">				F f = getFace(edge);</span>
+
+<span class="pc bpc" id="L2192" title="1 of 2 branches missed.">				if(f == null) {</span>
+<span class="nc" id="L2193">					logger.warn(message + &quot;null face of edge &quot; + edge);</span>
+<span class="nc" id="L2194">					return false;</span>
+				}
+
+<span class="pc bpc" id="L2197" title="1 of 2 branches missed.">				if(!f.equals(face)) {</span>
+<span class="nc" id="L2198">					logger.warn(message + &quot;wrong edge face &quot; + face + &quot;!=&quot; + getFace(edge));</span>
+<span class="nc" id="L2199">					return false;</span>
+				}
+<span class="fc" id="L2201">			}</span>
+
+<span class="pc bpc" id="L2203" title="1 of 2 branches missed.">			if(count &lt; 3) {</span>
+<span class="nc" id="L2204">				logger.warn(message + &quot;number of edges smaller 2&quot;);</span>
+<span class="nc" id="L2205">				return false;</span>
+			}
+
+<span class="fc" id="L2208">			count = 0;</span>
+<span class="fc bfc" id="L2209" title="All 2 branches covered.">			for(V vertex : getVertexIt(face)) {</span>
+<span class="pc bpc" id="L2210" title="1 of 2 branches missed.">				if(count &gt; getNumberOfVertices()) {</span>
+<span class="nc" id="L2211">					logger.warn(message + &quot;endless loop in face&quot;);</span>
+<span class="nc" id="L2212">					return false;</span>
+				}
+<span class="fc" id="L2214">			}</span>
+<span class="fc" id="L2215">		}</span>
+
+<span class="fc bfc" id="L2217" title="All 2 branches covered.">		for(V vertex : getVertices()) {</span>
+<span class="fc" id="L2218">			int count = 0;</span>
+<span class="fc" id="L2219">			E edge = getEdge(vertex);</span>
+<span class="pc bpc" id="L2220" title="1 of 2 branches missed.">			if(edge == null) {</span>
+<span class="nc" id="L2221">				logger.warn(message + &quot;null edge of vertex &quot; + vertex);</span>
+<span class="nc" id="L2222">				return false;</span>
+			}
+
+<span class="pc bpc" id="L2225" title="1 of 2 branches missed.">			if(!vertex.equals(getVertex(edge))) {</span>
+<span class="nc" id="L2226">				logger.warn(message + &quot;wrong edge vertex &quot; + vertex + &quot;!=&quot; + getVertex(edge));</span>
+<span class="nc" id="L2227">				return false;</span>
+			}
+
+<span class="fc bfc" id="L2230" title="All 2 branches covered.">			for(E e : getEdgeIt(vertex)) {</span>
+<span class="pc bpc" id="L2231" title="1 of 2 branches missed.">				if(count &gt; getNumberOfVertices()) {</span>
+<span class="nc" id="L2232">					logger.warn(message + &quot;endless loop around vertex &quot; + vertex);</span>
+<span class="nc" id="L2233">					return false;</span>
+				}
+
+<span class="pc bpc" id="L2236" title="1 of 2 branches missed.">				if(!vertex.equals(getVertex(e))) {</span>
+<span class="nc" id="L2237">					logger.warn(message + &quot;wrong edge vertex &quot; + vertex + &quot;!=&quot; + getVertex(e));</span>
+<span class="nc" id="L2238">					return false;</span>
+				}
+<span class="fc" id="L2240">			}</span>
+<span class="fc" id="L2241">		}</span>
+
+<span class="fc bfc" id="L2243" title="All 2 branches covered.">		for(E edge : getEdges()) {</span>
+<span class="fc" id="L2244">			E twin = getTwin(edge);</span>
+<span class="fc" id="L2245">			E next = getNext(edge);</span>
+<span class="fc" id="L2246">			E prev = getPrev(edge);</span>
+<span class="fc" id="L2247">			V v = getVertex(edge);</span>
+<span class="fc" id="L2248">			F face = getFace(edge);</span>
+<span class="fc" id="L2249">			F twinFace = getFace(twin);</span>
+
+<span class="pc bpc" id="L2251" title="1 of 2 branches missed.">			if(twin == null) {</span>
+<span class="nc" id="L2252">				logger.warn(message + &quot;twin is null for &quot; + edge);</span>
+<span class="nc" id="L2253">				return false;</span>
+			}
+
+<span class="pc bpc" id="L2256" title="1 of 2 branches missed.">			if(next == null) {</span>
+<span class="nc" id="L2257">				logger.warn(message + &quot;next is null for &quot; + edge);</span>
+<span class="nc" id="L2258">				return false;</span>
+			}
+
+<span class="pc bpc" id="L2261" title="1 of 2 branches missed.">			if(prev == null) {</span>
+<span class="nc" id="L2262">				logger.warn(message + &quot;prev is null for &quot; + edge);</span>
+<span class="nc" id="L2263">				return false;</span>
+			}
+
+<span class="pc bpc" id="L2266" title="1 of 2 branches missed.">			if(v == null) {</span>
+<span class="nc" id="L2267">				logger.warn(message + &quot;vertex is null for &quot; + edge);</span>
+<span class="nc" id="L2268">				return false;</span>
+			}
+
+<span class="fc" id="L2271">			E twinTwin = getTwin(twin);</span>
+
+<span class="pc bpc" id="L2273" title="1 of 2 branches missed.">			if(twinTwin == null) {</span>
+<span class="nc" id="L2274">				logger.warn(message + &quot;twin of the twin is null for &quot; + edge);</span>
+<span class="nc" id="L2275">				return false;</span>
+			}
+
+<span class="pc bpc" id="L2278" title="1 of 2 branches missed.">			if(!twinTwin.equals(edge)) {</span>
+<span class="nc" id="L2279">				logger.warn(message + &quot;twin of the twin is not equal to the edge &quot; + edge);</span>
+<span class="nc" id="L2280">				return false;</span>
+			}
+
+<span class="fc" id="L2283">			V twinVertex = getVertex(twin);</span>
+
+<span class="pc bpc" id="L2285" title="1 of 2 branches missed.">			if(twinVertex == null) {</span>
+<span class="nc" id="L2286">				logger.warn(message + &quot;vertex of the twin is null for &quot; + edge);</span>
+<span class="nc" id="L2287">				return false;</span>
+			}
+
+<span class="pc bpc" id="L2290" title="1 of 2 branches missed.">			if(twinVertex.equals(v)) {</span>
+<span class="nc" id="L2291">				logger.warn(message + &quot;edge ends and starts at the same vertex &quot; + v);</span>
+<span class="nc" id="L2292">				return false;</span>
+			}
+
+<span class="pc bpc" id="L2295" title="1 of 2 branches missed.">			if(twinFace.equals(face)) {</span>
+<span class="nc" id="L2296">				logger.warn(message + &quot;the faces of the edge and its twin are equals&quot;);</span>
+<span class="nc" id="L2297">				return false;</span>
+			}
+
+<span class="pc bpc" id="L2300" title="1 of 4 branches missed.">			if(isBoundary(edge) &amp;&amp; isBoundary(twin)) {</span>
+<span class="nc" id="L2301">				logger.warn(message + &quot;the faces of the edge and its twin are boundaries&quot;);</span>
+<span class="nc" id="L2302">				return false;</span>
+			}
+<span class="fc" id="L2304">		}</span>
+
+<span class="fc" id="L2306">		return true;</span>
+	}
+
+	/**
+	 * Creates a very simple mesh consisting of two triangles ((-100, 0), (100, 0), (0, 1)) and ((0, -1), (-100, 0), (100, 0))
+	 *
+	 * @param mesh  the mesh used to create the triangle. This mesh should be empty.
+	 * @param &lt;V&gt;   the type of the vertex
+	 * @param &lt;E&gt;   the type of the edge
+	 * @param &lt;F&gt;   the type of the face
+	 */
+	static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; void createSimpleTriMesh(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh
+	) {
+		F face1;
+		F face2;
+		F border;
+		V x, y, z, w;
+		E zx ;
+		E xy;
+		E yz;
+
+		E wx;
+		E xz;
+		E yw;
+		E zy;
+
+<span class="nc" id="L2333">		border = mesh.getBorder();</span>
+
+		// first triangle xyz
+<span class="nc" id="L2336">		face1 = mesh.createFace();</span>
+<span class="nc" id="L2337">		x = mesh.insertVertex(-100, 0);</span>
+<span class="nc" id="L2338">		y = mesh.insertVertex(100, 0);</span>
+<span class="nc" id="L2339">		z = mesh.insertVertex(0, 1);</span>
+
+<span class="nc" id="L2341">		zx = mesh.createEdge(x, face1);</span>
+<span class="nc" id="L2342">		mesh.setEdge(x, zx);</span>
+<span class="nc" id="L2343">		xy = mesh.createEdge(y, face1);</span>
+<span class="nc" id="L2344">		mesh.setEdge(y, xy);</span>
+<span class="nc" id="L2345">		yz = mesh.createEdge(z, face1);</span>
+<span class="nc" id="L2346">		mesh.setEdge(z, yz);</span>
+
+<span class="nc" id="L2348">		mesh.setNext(zx, xy);</span>
+<span class="nc" id="L2349">		mesh.setNext(xy, yz);</span>
+<span class="nc" id="L2350">		mesh.setNext(yz, zx);</span>
+
+<span class="nc" id="L2352">		mesh.setEdge(face1, xy);</span>
+
+
+		// second triangle yxw
+<span class="nc" id="L2356">		face2 = mesh.createFace();</span>
+<span class="nc" id="L2357">		w = mesh.insertVertex(0, -1);</span>
+
+<span class="nc" id="L2359">		E yx = mesh.createEdge(x, face2);</span>
+<span class="nc" id="L2360">		E xw = mesh.createEdge(w, face2);</span>
+<span class="nc" id="L2361">		E wy = mesh.createEdge(y, face2);</span>
+
+<span class="nc" id="L2363">		mesh.setNext(yx, xw);</span>
+<span class="nc" id="L2364">		mesh.setNext(xw, wy);</span>
+<span class="nc" id="L2365">		mesh.setNext(wy, yx);</span>
+
+<span class="nc" id="L2367">		mesh.setEdge(face2, yx);</span>
+
+<span class="nc" id="L2369">		mesh.setTwin(xy, yx);</span>
+
+		// border twins
+<span class="nc" id="L2372">		zy = mesh.createEdge(y, border);</span>
+<span class="nc" id="L2373">		xz = mesh.createEdge(z, border);</span>
+
+<span class="nc" id="L2375">		mesh.setTwin(yz, zy);</span>
+<span class="nc" id="L2376">		mesh.setTwin(zx, xz);</span>
+
+<span class="nc" id="L2378">		wx = mesh.createEdge(x, border);</span>
+<span class="nc" id="L2379">		yw = mesh.createEdge(w, border);</span>
+<span class="nc" id="L2380">		mesh.setEdge(w, yw);</span>
+
+<span class="nc" id="L2382">		mesh.setEdge(border, wx);</span>
+<span class="nc" id="L2383">		mesh.setTwin(xw, wx);</span>
+<span class="nc" id="L2384">		mesh.setTwin(wy, yw);</span>
+
+
+<span class="nc" id="L2387">		mesh.setNext(zy, yw);</span>
+<span class="nc" id="L2388">		mesh.setNext(yw, wx);</span>
+<span class="nc" id="L2389">		mesh.setNext(wx, xz);</span>
+<span class="nc" id="L2390">		mesh.setNext(xz, zy);</span>
+<span class="nc" id="L2391">	}</span>
+
+
+	default String toPythonValues(@NotNull final Function&lt;V, Double&gt; evalPoint) {
+<span class="nc" id="L2395">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc" id="L2396">		List&lt;V&gt; vertices = getVertices();</span>
+<span class="nc bnc" id="L2397" title="All 2 branches missed.">		for(V v : vertices) {</span>
+<span class="nc" id="L2398">			builder.append(evalPoint.apply(v) + &quot;,&quot;);</span>
+<span class="nc" id="L2399">		}</span>
+<span class="nc" id="L2400">		builder.delete(builder.length()-1, builder.length());</span>
+<span class="nc" id="L2401">		builder.append(&quot;\n&quot;);</span>
+<span class="nc" id="L2402">		return builder.toString();</span>
+	}
+
+	/**
+	 * Constructs and returns a string which can be used to construct a matplotlib Triangulation
+	 * which is helpful to plot the mesh.
+	 *
+	 * @param evalPoint a function to extract double values from vertices.
+	 *
+	 * @return a string representing the mesh
+	 */
+	default String toPythonTriangulation(@Nullable final Function&lt;V, Double&gt; evalPoint) {
+<span class="nc" id="L2414">		garbageCollection();</span>
+<span class="nc" id="L2415">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc" id="L2416">		List&lt;V&gt; vertices = getVertices();</span>
+<span class="nc" id="L2417">		Map&lt;V, Integer&gt; indexMap = new HashMap&lt;&gt;();</span>
+
+		// [x1, x2, ...]
+<span class="nc" id="L2420">		builder.append(&quot;X.append([&quot;);</span>
+<span class="nc bnc" id="L2421" title="All 2 branches missed.">		for(int i = 0; i &lt; vertices.size(); i++) {</span>
+<span class="nc" id="L2422">			V v = vertices.get(i);</span>
+<span class="nc" id="L2423">			indexMap.put(v, i);</span>
+<span class="nc" id="L2424">			builder.append(v.getX() + &quot;,&quot;);</span>
+		}
+<span class="nc" id="L2426">		builder.delete(builder.length()-1, builder.length());</span>
+<span class="nc" id="L2427">		builder.append(&quot;])\n&quot;);</span>
+
+		// [y1, y2, ...]
+<span class="nc" id="L2430">		builder.append(&quot;Y.append([&quot;);</span>
+<span class="nc bnc" id="L2431" title="All 2 branches missed.">		for(V v : vertices) {</span>
+<span class="nc" id="L2432">			builder.append(v.getY() + &quot;,&quot;);</span>
+<span class="nc" id="L2433">		}</span>
+<span class="nc" id="L2434">		builder.delete(builder.length()-1, builder.length());</span>
+<span class="nc" id="L2435">		builder.append(&quot;])\n&quot;);</span>
+
+		// [z1, z2, ...] z = value
+<span class="nc bnc" id="L2438" title="All 2 branches missed.">		if(evalPoint != null) {</span>
+<span class="nc" id="L2439">			builder.append(&quot;Z.append([&quot;);</span>
+<span class="nc bnc" id="L2440" title="All 2 branches missed.">			for(V v : vertices) {</span>
+<span class="nc" id="L2441">				builder.append(evalPoint.apply(v) + &quot;,&quot;);</span>
+<span class="nc" id="L2442">			}</span>
+<span class="nc" id="L2443">			builder.delete(builder.length()-1, builder.length());</span>
+<span class="nc" id="L2444">			builder.append(&quot;])\n&quot;);</span>
+		}
+
+		// [[vId1, vId2, vId3], ...]
+<span class="nc" id="L2448">		List&lt;F&gt; faces = getFaces();</span>
+<span class="nc" id="L2449">		builder.append(&quot;TRIS.append([&quot;);</span>
+<span class="nc bnc" id="L2450" title="All 2 branches missed.">		for(F face : faces) {</span>
+<span class="nc" id="L2451">			builder.append(&quot;[&quot;);</span>
+<span class="nc bnc" id="L2452" title="All 2 branches missed.">			for(V v : getVertexIt(face)) {</span>
+<span class="nc" id="L2453">				int index = indexMap.get(v);</span>
+<span class="nc" id="L2454">				builder.append(index + &quot;,&quot;);</span>
+<span class="nc" id="L2455">			}</span>
+<span class="nc" id="L2456">			builder.delete(builder.length()-1, builder.length());</span>
+<span class="nc" id="L2457">			builder.append(&quot;],&quot;);</span>
+<span class="nc" id="L2458">		}</span>
+<span class="nc" id="L2459">		builder.delete(builder.length()-1, builder.length());</span>
+<span class="nc" id="L2460">		builder.append(&quot;])\n&quot;);</span>
+
+<span class="nc" id="L2462">		return builder.toString();</span>
+	}
+
+	// delete
+	default void getVirtualSupport(@NotNull final V v, @NotNull final E edge, @NotNull final List&lt;Pair&lt;V, V&gt;&gt; virtualSupport) {
+		//assert isNonAcute(getMesh().getVertex(edge), getMesh().getVertex(getMesh().getNext(edge)), getMesh().getVertex(getMesh().getPrev(edge)));
+
+<span class="nc bnc" id="L2469" title="All 2 branches missed.">		if(isAtBoundary(edge)) {</span>
+<span class="nc" id="L2470">			return;</span>
+		}
+
+<span class="nc" id="L2473">		E prev = getPrev(edge);</span>
+<span class="nc" id="L2474">		E twin = getTwin(edge);</span>
+
+<span class="nc" id="L2476">		V v1 = getVertex(prev);</span>
+<span class="nc" id="L2477">		V v2 = getVertex(edge);</span>
+<span class="nc" id="L2478">		V u = getVertex(getNext(twin));</span>
+
+<span class="nc bnc" id="L2480" title="All 2 branches missed.">		if(!isNonAcute(u, v, v1)) {</span>
+<span class="nc" id="L2481">			virtualSupport.add(Pair.of(v1, u));</span>
+		} else {
+<span class="nc" id="L2483">			getVirtualSupport(v, getNext(twin), virtualSupport);</span>
+		}
+
+<span class="nc bnc" id="L2486" title="All 2 branches missed.">		if(!isNonAcute(v2, v, u)) {</span>
+<span class="nc" id="L2487">			virtualSupport.add(Pair.of(v2, u));</span>
+		} else {
+<span class="nc" id="L2489">			getVirtualSupport(v, getPrev(twin), virtualSupport);</span>
+		}
+<span class="nc" id="L2491">	}</span>
+
+	// delete
+	default boolean isNonAcute(V v1, V v2, V v3) {
+<span class="nc" id="L2495">		double angle1 = GeometryUtils.angle(v1, v2, v3);</span>
+
+		// non-acute triangle
+<span class="nc" id="L2498">		double rightAngle = Math.PI/2;</span>
+<span class="nc bnc" id="L2499" title="All 2 branches missed.">		return angle1 &gt; rightAngle + GeometryUtils.DOUBLE_EPS;</span>
+	}
+
+	default boolean isNonAcute(@NotNull final E edge) {
+<span class="nc" id="L2503">		VPoint p1 = toPoint(getPrev(edge));</span>
+<span class="nc" id="L2504">		VPoint p2 = toPoint(edge);</span>
+<span class="nc" id="L2505">		VPoint p3 = toPoint(getNext(edge));</span>
+
+<span class="nc" id="L2507">		double angle1 = GeometryUtils.angle(p1, p2, p3);</span>
+
+		// non-acute triangle
+<span class="nc" id="L2510">		double rightAngle = Math.PI/2;</span>
+<span class="nc bnc" id="L2511" title="All 2 branches missed.">		return angle1 &gt; rightAngle + GeometryUtils.DOUBLE_EPS;</span>
+	}
+
+
+	// Default-Container setter and getter
+	/*default double getCurvature(@NotNull final V vertex) {
+		return getDoubleData(vertex, &quot;curvature&quot;);
+	}
+
+	default void setCurvature(@NotNull final V vertex, final double curvature) {
+		setDoubleData(vertex, &quot;curvature&quot;, curvature);
+	}
+
+	default double getPotential(@NotNull final V vertex) {
+		return getDoubleData(vertex, &quot;potential&quot;);
+	}
+
+	default void setPotential(@NotNull final V vertex, final double potential) {
+		setDoubleData(vertex, &quot;potential&quot;, potential);
+	}
+
+	default boolean isBurned(@NotNull final V vertex) {
+		return getBooleanData(vertex, &quot;burned&quot;);
+	}
+
+	default void setBurned(@NotNull final V vertex, final boolean burned) {
+		setBooleanData(vertex, &quot;burned&quot;, burned);
+	}
+
+	default boolean isBurning(@NotNull final V vertex) {
+		return getBooleanData(vertex, &quot;burning&quot;);
+	}
+
+	default void setBurning(@NotNull final V vertex, final boolean burning) {
+		setBooleanData(vertex, &quot;burning&quot;, burning);
+	}
+
+	default boolean isTarget(@NotNull final V vertex) {
+		return getBooleanData(vertex, &quot;target&quot;);
+	}
+
+	default void setTarget(@NotNull V vertex, boolean target) {
+		setBooleanData(vertex, &quot;target&quot;, target);
+	}*/
+
+	default IEdgeContainerDouble&lt;V, E, F&gt; getDoubleEdgeContainer(@NotNull final String name) {
+<span class="nc" id="L2557">		return new IEdgeContainerDouble&lt;&gt;() {</span>
+			@Override
+			public double getValue(@NotNull final E edge) {
+<span class="nc" id="L2560">				return getDoubleData(edge, name);</span>
+			}
+
+			@Override
+			public void setValue(@NotNull final E edge, double value) {
+<span class="nc" id="L2565">				setDoubleData(edge, name, value);</span>
+<span class="nc" id="L2566">			}</span>
+		};
+	}
+
+	default IVertexContainerDouble&lt;V, E, F&gt; getDoubleVertexContainer(@NotNull final String name) {
+<span class="nc" id="L2571">		return new IVertexContainerDouble&lt;&gt;() {</span>
+			@Override
+			public double getValue(@NotNull V vertex) {
+<span class="nc" id="L2574">				return getDoubleData(vertex, name);</span>
+			}
+
+			@Override
+			public void setValue(@NotNull V vertex, double value) {
+<span class="nc" id="L2579">				setDoubleData(vertex, name, value);</span>
+<span class="nc" id="L2580">			}</span>
+
+			@Override
+			public void reset() {
+<span class="nc bnc" id="L2584" title="All 2 branches missed.">				for(V v : getVertices()) {</span>
+<span class="nc" id="L2585">					setValue(v, 0.0);</span>
+<span class="nc" id="L2586">				}</span>
+<span class="nc" id="L2587">			}</span>
+		};
+	}
+
+	default IVertexContainerBoolean&lt;V, E, F&gt; getBooleanVertexContainer(@NotNull final String name) {
+<span class="nc" id="L2592">		return new IVertexContainerBoolean&lt;&gt;() {</span>
+			@Override
+			public boolean getValue(@NotNull final V vertex) {
+<span class="nc" id="L2595">				return getBooleanData(vertex, name);</span>
+			}
+
+			@Override
+			public void setValue(@NotNull final V vertex, final boolean value) {
+<span class="nc" id="L2600">				setBooleanData(vertex, name, value);</span>
+<span class="nc" id="L2601">			}</span>
+		};
+	}
+
+	default &lt;CV&gt; IVertexContainerObject&lt;V, E, F, CV&gt; getObjectVertexContainer(@NotNull final String name, final Class&lt;CV&gt; clazz) {
+
+<span class="nc" id="L2607">		return new IVertexContainerObject&lt;&gt;() {</span>
+
+			@Override
+			public CV getValue(@NotNull final V v) {
+<span class="nc" id="L2611">				return getData(v, name, clazz).get();</span>
+			}
+
+			@Override
+			public void setValue(@NotNull final V v, final CV value) {
+<span class="nc" id="L2616">				setData(v, name, value);</span>
+<span class="nc" id="L2617">			}</span>
+
+		};
+	}
+
+	default IEdgeContainerBoolean&lt;V, E, F&gt; getBooleanEdgeContainer(@NotNull final String name) {
+<span class="nc" id="L2623">		return new IEdgeContainerBoolean&lt;&gt;() {</span>
+			@Override
+			public boolean getValue(@NotNull final E edge) {
+<span class="nc" id="L2626">				return getBooleanData(edge, name);</span>
+			}
+
+			@Override
+			public void setValue(@NotNull final E edge, final boolean value) {
+<span class="nc" id="L2631">				setBooleanData(edge, name, value);</span>
+<span class="nc" id="L2632">			}</span>
+		};
+	}
+
+	default &lt;CV&gt; IEdgeContainerObject&lt;V, E, F, CV&gt; getObjectEdgeContainer(@NotNull final String name, final Class&lt;CV&gt; clazz) {
+
+<span class="nc" id="L2638">		return new IEdgeContainerObject&lt;&gt;() {</span>
+
+			@Override
+			public CV getValue(@NotNull final E edge) {
+<span class="nc" id="L2642">				return getData(edge, name, clazz).get();</span>
+			}
+
+			@Override
+			public void setValue(@NotNull final E edge, final CV value) {
+<span class="nc" id="L2647">				setData(edge, name, value);</span>
+<span class="nc" id="L2648">			}</span>
+
+		};
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

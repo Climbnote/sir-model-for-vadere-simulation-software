@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PointLocation.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">PointLocation.java</span></div><h1>PointLocation.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+
+import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+public class PointLocation {
+
+	private final Collection&lt;PFace&gt; faces;
+	private final List&lt;IPoint&gt; orderedPointList;
+	private final List&lt;List&lt;PHalfEdge&gt;&gt; halfeEdgesSegments;
+	private final List&lt;List&lt;IPoint&gt;&gt; intersectionPointsInSegment;
+	private final IMesh&lt;PVertex, PHalfEdge, PFace&gt; mesh;
+
+<span class="fc" id="L28">	private Comparator&lt;IPoint&gt; pointComparatorX = (p1, p2) -&gt; {</span>
+<span class="fc" id="L29">		double dx = p1.getX() - p2.getX();</span>
+<span class="fc bfc" id="L30" title="All 2 branches covered.">		if(dx &lt; 0) return -1;</span>
+<span class="fc bfc" id="L31" title="All 2 branches covered.">		else if(dx &gt; 0) return 1;</span>
+<span class="fc" id="L32">		else return 0;</span>
+	};
+
+<span class="fc" id="L35">	private Comparator&lt;IPoint&gt; pointComparatorY = (p1, p2) -&gt; {</span>
+<span class="fc" id="L36">		double dy = p1.getY() - p2.getY();</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">		if(dy &lt; 0) return -1;</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">		else if(dy &gt; 0) return 1;</span>
+<span class="fc" id="L39">		else return 0;</span>
+	};
+
+	private class BetweenTwoPoints implements Predicate&lt;PHalfEdge&gt; {
+
+		private IPoint p1;
+		private IPoint p2;
+
+<span class="fc" id="L47">		private BetweenTwoPoints(final IPoint p1, final IPoint p2) {</span>
+<span class="fc" id="L48">			this.p1 = p1;</span>
+<span class="fc" id="L49">			this.p2 = p2;</span>
+<span class="fc" id="L50">		}</span>
+
+		@Override
+		public boolean test(final PHalfEdge halfEdge) {
+<span class="fc" id="L54">			IPoint v1 = mesh.getPoint(halfEdge);</span>
+<span class="fc" id="L55">			IPoint v2 = mesh.getPoint(mesh.getPrev(halfEdge));</span>
+<span class="fc bfc" id="L56" title="All 8 branches covered.">			return (v1.getX() &lt;= p1.getX() &amp;&amp; v2.getX() &gt;= p2.getX()) || (v2.getX() &lt;= p1.getX() &amp;&amp; v1.getX() &gt;= p2.getX());</span>
+		}
+	}
+
+	private class HalfEdgeComparator implements Comparator&lt;PHalfEdge&gt; {
+
+		private double x1;
+		private double x2;
+
+<span class="fc" id="L65">		private HalfEdgeComparator(final double x1, final double x2) {</span>
+<span class="fc" id="L66">			this.x1 = x1;</span>
+<span class="fc" id="L67">			this.x2 = x2;</span>
+<span class="fc" id="L68">		}</span>
+
+		@Override
+		public int compare(final PHalfEdge edge1, final PHalfEdge edge2) {
+<span class="fc" id="L72">			VLine line1 = edge1.toLine();</span>
+<span class="fc" id="L73">			VLine line2 = edge2.toLine();</span>
+<span class="fc" id="L74">			double slope1 = line1.slope();</span>
+<span class="fc" id="L75">			double slope2 = line2.slope();</span>
+
+<span class="fc" id="L77">			double yIntersection1 = line1.getY1() + (x1-line1.getX1()) * slope1;</span>
+<span class="fc" id="L78">			double yIntersection2 = line2.getY1() + (x1 - line2.getX1()) * slope2;</span>
+
+<span class="pc bpc" id="L80" title="1 of 2 branches missed.">			if(yIntersection1 &lt; yIntersection2) return -1;</span>
+<span class="fc bfc" id="L81" title="All 2 branches covered.">			else if(yIntersection1 &gt; yIntersection2) return 1;</span>
+<span class="fc" id="L82">			else return 0;</span>
+		}
+	}
+
+<span class="fc" id="L86">	public PointLocation(final Collection&lt;PFace&gt; faces, final IMesh&lt;PVertex, PHalfEdge, PFace&gt; mesh) {</span>
+<span class="fc" id="L87">		this.faces = faces;</span>
+<span class="fc" id="L88">		this.mesh = mesh;</span>
+
+		//TODO distinct is maybe slow here
+<span class="fc" id="L91">		Set&lt;IPoint&gt; pointSet = faces.stream()</span>
+<span class="fc" id="L92">				.flatMap(face -&gt; mesh.streamEdges(face)).map(edge -&gt; mesh.getPoint(edge))</span>
+<span class="fc" id="L93">				.sorted(pointComparatorX).collect(Collectors.toSet());</span>
+
+<span class="fc" id="L95">		orderedPointList = pointSet.stream().sorted(pointComparatorX).collect(Collectors.toList());</span>
+<span class="fc" id="L96">		halfeEdgesSegments = new ArrayList&lt;&gt;(orderedPointList.size()-1);</span>
+<span class="fc" id="L97">		intersectionPointsInSegment = new ArrayList&lt;&gt;(orderedPointList.size()-1);</span>
+
+<span class="fc bfc" id="L99" title="All 2 branches covered.">		for(int i = 0; i &lt; orderedPointList.size() - 1; i++) {</span>
+<span class="fc" id="L100">			IPoint p1 = orderedPointList.get(i);</span>
+<span class="fc" id="L101">			IPoint p2 = orderedPointList.get(i+1);</span>
+<span class="fc" id="L102">			List&lt;PHalfEdge&gt; halfEdges = faces.stream()</span>
+<span class="fc" id="L103">					.flatMap(face -&gt; mesh.streamEdges(face)).filter(new BetweenTwoPoints(p1, p2))</span>
+<span class="fc" id="L104">					.sorted(new HalfEdgeComparator(p1.getX(), p2.getX())).collect(Collectors.toList());</span>
+
+<span class="fc" id="L106">			List&lt;IPoint&gt; intersectionPoints = halfEdges.stream()</span>
+<span class="fc" id="L107">					.map(hf -&gt; hf.toLine())</span>
+<span class="fc" id="L108">					.map(line -&gt; intersectionWithX(p1.getX(), line))</span>
+<span class="fc" id="L109">					.distinct()</span>
+<span class="fc" id="L110">					.collect(Collectors.toList());</span>
+
+<span class="fc" id="L112">			halfeEdgesSegments.add(halfEdges);</span>
+
+<span class="fc" id="L114">			intersectionPointsInSegment.add(intersectionPoints);</span>
+
+<span class="fc bfc" id="L116" title="All 2 branches covered.">			if(i == orderedPointList.size() - 2) {</span>
+<span class="fc" id="L117">				intersectionPoints = Collections.singletonList(p2);</span>
+<span class="fc" id="L118">				halfeEdgesSegments.add(halfEdges);</span>
+<span class="fc" id="L119">				intersectionPointsInSegment.add(intersectionPoints);</span>
+			}
+		}
+
+<span class="fc" id="L123">	}</span>
+
+	private IPoint intersectionWithX(double x, VLine line) {
+<span class="fc bfc" id="L126" title="All 2 branches covered.">		Point2D p = line.getX1() &lt; line.getX2() ? line.getP1() : line.getP2();</span>
+
+<span class="fc" id="L128">		return mesh.getPoint(mesh.createVertex(x, (p.getY() + (p.getX()-x) * line.slope())));</span>
+	}
+
+	public Optional&lt;PFace&gt; getFace(final VPoint point) {
+<span class="fc" id="L132">		int xSegmentIndex = Collections.binarySearch(orderedPointList, point, pointComparatorX);</span>
+
+<span class="fc bfc" id="L134" title="All 2 branches covered.">		xSegmentIndex = xSegmentIndex &lt; 0 ? -xSegmentIndex - 2 : xSegmentIndex;</span>
+
+<span class="pc bpc" id="L136" title="1 of 4 branches missed.">		if(xSegmentIndex &lt; 0 || xSegmentIndex &gt;= intersectionPointsInSegment.size()) {</span>
+<span class="fc" id="L137">			return Optional.empty();</span>
+		}
+
+<span class="fc" id="L140">		List&lt;IPoint&gt; intersectionPoints = intersectionPointsInSegment.get(xSegmentIndex);</span>
+<span class="fc" id="L141">		int ySegmentIndex = Collections.binarySearch(intersectionPoints, point, pointComparatorY);</span>
+
+<span class="fc bfc" id="L143" title="All 2 branches covered.">		ySegmentIndex = ySegmentIndex &lt; 0 ? -ySegmentIndex - 2 : ySegmentIndex;</span>
+
+
+<span class="pc bpc" id="L146" title="2 of 4 branches missed.">		if(ySegmentIndex &lt; 0 || ySegmentIndex &gt;= halfeEdgesSegments.get(xSegmentIndex).size()) {</span>
+<span class="nc" id="L147">			return Optional.empty();</span>
+		}
+
+<span class="fc" id="L150">		PHalfEdge edge = halfeEdgesSegments.get(xSegmentIndex).get(ySegmentIndex);</span>
+
+<span class="fc" id="L152">		PFace face = mesh.getFace(edge);</span>
+<span class="fc" id="L153">		VPolygon polygon = mesh.toPolygon(face);</span>
+<span class="fc bfc" id="L154" title="All 2 branches covered.">		if(polygon.contains(point)) {</span>
+<span class="fc" id="L155">			return Optional.of(face);</span>
+		}
+		else {
+<span class="fc" id="L158">			PFace f = mesh.getTwinFace(edge);</span>
+<span class="pc bpc" id="L159" title="1 of 2 branches missed.">			if(mesh.isBoundary(f)) {</span>
+<span class="fc" id="L160">				return Optional.empty();</span>
+			}
+			else {
+<span class="nc" id="L163">				return Optional.of(f);</span>
+			}
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

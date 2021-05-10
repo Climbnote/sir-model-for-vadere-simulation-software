@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: org.vadere.state.simulation.FootstepHistoryTest
+-------------------------------------------------------------------------------
+Tests run: 20, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.01 s - in org.vadere.state.simulation.FootstepHistoryTest

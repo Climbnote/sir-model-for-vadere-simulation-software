@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CLDemo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.opencl</a> &gt; <span class="el_source">CLDemo.java</span></div><h1>CLDemo.java</h1><pre class="source lang-java linenums">package org.vadere.util.opencl;
+
+
+import org.lwjgl.BufferUtils;
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.opencl.CL;
+import org.lwjgl.opencl.CLBufferRegion;
+import org.lwjgl.opencl.CLCapabilities;
+import org.lwjgl.opencl.CLContextCallback;
+import org.lwjgl.opencl.CLEventCallback;
+import org.lwjgl.opencl.CLMemObjectDestructorCallback;
+import org.lwjgl.opencl.CLNativeKernel;
+import org.lwjgl.system.FunctionProviderLocal;
+import org.lwjgl.system.MemoryStack;
+import org.vadere.util.logging.Logger;
+
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import static org.lwjgl.opencl.CL10.CL_COMPLETE;
+import static org.lwjgl.opencl.CL10.CL_CONTEXT_PLATFORM;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_ADDRESS_BITS;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_AVAILABLE;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_COMPILER_AVAILABLE;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_EXECUTION_CAPABILITIES;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_EXTENSIONS;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_MAX_CLOCK_FREQUENCY;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_MAX_COMPUTE_UNITS;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_MAX_WORK_GROUP_SIZE;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_NAME;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_PROFILE;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_TYPE;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_TYPE_ALL;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_VENDOR;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_VENDOR_ID;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_VERSION;
+import static org.lwjgl.opencl.CL10.CL_DRIVER_VERSION;
+import static org.lwjgl.opencl.CL10.CL_EXEC_NATIVE_KERNEL;
+import static org.lwjgl.opencl.CL10.CL_MEM_READ_ONLY;
+import static org.lwjgl.opencl.CL10.CL_PLATFORM_EXTENSIONS;
+import static org.lwjgl.opencl.CL10.CL_PLATFORM_NAME;
+import static org.lwjgl.opencl.CL10.CL_PLATFORM_PROFILE;
+import static org.lwjgl.opencl.CL10.CL_PLATFORM_VENDOR;
+import static org.lwjgl.opencl.CL10.CL_PLATFORM_VERSION;
+import static org.lwjgl.opencl.CL10.CL_QUEUED;
+import static org.lwjgl.opencl.CL10.CL_RUNNING;
+import static org.lwjgl.opencl.CL10.CL_SUBMITTED;
+import static org.lwjgl.opencl.CL10.clCreateBuffer;
+import static org.lwjgl.opencl.CL10.clCreateCommandQueue;
+import static org.lwjgl.opencl.CL10.clCreateContext;
+import static org.lwjgl.opencl.CL10.clEnqueueNativeKernel;
+import static org.lwjgl.opencl.CL10.clFinish;
+import static org.lwjgl.opencl.CL10.clGetDeviceIDs;
+import static org.lwjgl.opencl.CL10.clGetPlatformIDs;
+import static org.lwjgl.opencl.CL10.clReleaseCommandQueue;
+import static org.lwjgl.opencl.CL10.clReleaseContext;
+import static org.lwjgl.opencl.CL10.clReleaseEvent;
+import static org.lwjgl.opencl.CL10.clReleaseMemObject;
+import static org.lwjgl.opencl.CL11.CL_BUFFER_CREATE_TYPE_REGION;
+import static org.lwjgl.opencl.CL11.CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE;
+import static org.lwjgl.opencl.CL11.CL_DEVICE_OPENCL_C_VERSION;
+import static org.lwjgl.opencl.CL11.clSetEventCallback;
+import static org.lwjgl.opencl.CL11.clSetMemObjectDestructorCallback;
+import static org.lwjgl.opencl.CL11.nclCreateSubBuffer;
+import static org.lwjgl.opencl.KHRICD.CL_PLATFORM_ICD_SUFFIX_KHR;
+import static org.lwjgl.system.MemoryStack.stackPush;
+import static org.lwjgl.system.MemoryUtil.NULL;
+import static org.lwjgl.system.MemoryUtil.memAddress;
+import static org.lwjgl.system.MemoryUtil.memByteBuffer;
+import static org.lwjgl.system.MemoryUtil.memUTF8;
+import static org.lwjgl.system.Pointer.POINTER_SIZE;
+
+/*
+ * Copyright LWJGL. All rights reserved.
+ * License terms: https://www.lwjgl.org/license
+ */
+public final class CLDemo {
+
+<span class="nc" id="L82">	public static Logger logger = Logger.getLogger(CLDemo.class);</span>
+
+	private CLDemo() {}
+
+	public static void main(String[] args) {
+<span class="nc" id="L87">		try (MemoryStack stack = stackPush()) {</span>
+<span class="nc" id="L88">			demo(stack);</span>
+<span class="nc" id="L89">		} catch (OpenCLException e) {</span>
+<span class="nc" id="L90">			e.printStackTrace();</span>
+<span class="nc" id="L91">		}</span>
+<span class="nc" id="L92">	}</span>
+
+	private static void demo(MemoryStack stack) throws OpenCLException {
+<span class="nc" id="L95">		IntBuffer pi = stack.mallocInt(1);</span>
+		try {
+<span class="nc" id="L97">			CLInfo.checkCLError(clGetPlatformIDs(null, pi));</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">			if (pi.get(0) == 0) {</span>
+<span class="nc" id="L99">				throw new RuntimeException(&quot;No OpenCL platforms found.&quot;);</span>
+			}
+
+<span class="nc" id="L102">			PointerBuffer platforms = stack.mallocPointer(pi.get(0));</span>
+<span class="nc" id="L103">			CLInfo.checkCLError(clGetPlatformIDs(platforms, (IntBuffer)null));</span>
+
+<span class="nc" id="L105">			PointerBuffer ctxProps = stack.mallocPointer(3);</span>
+<span class="nc" id="L106">			ctxProps</span>
+<span class="nc" id="L107">					.put(0, CL_CONTEXT_PLATFORM)</span>
+<span class="nc" id="L108">					.put(2, 0);</span>
+
+<span class="nc" id="L110">			IntBuffer errcode_ret = stack.callocInt(1);</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">			for (int p = 0; p &lt; platforms.capacity(); p++) {</span>
+<span class="nc" id="L112">				long platform = platforms.get(p);</span>
+<span class="nc" id="L113">				ctxProps.put(1, platform);</span>
+
+<span class="nc" id="L115">				System.out.println(&quot;\n-------------------------&quot;);</span>
+<span class="nc" id="L116">				System.out.printf(&quot;NEW PLATFORM: [0x%X]\n&quot;, platform);</span>
+
+<span class="nc" id="L118">				CLCapabilities platformCaps = CL.createPlatformCapabilities(platform);</span>
+
+<span class="nc" id="L120">				printPlatformInfo(platform, &quot;CL_PLATFORM_PROFILE&quot;, CL_PLATFORM_PROFILE);</span>
+<span class="nc" id="L121">				printPlatformInfo(platform, &quot;CL_PLATFORM_VERSION&quot;, CL_PLATFORM_VERSION);</span>
+<span class="nc" id="L122">				printPlatformInfo(platform, &quot;CL_PLATFORM_NAME&quot;, CL_PLATFORM_NAME);</span>
+<span class="nc" id="L123">				printPlatformInfo(platform, &quot;CL_PLATFORM_VENDOR&quot;, CL_PLATFORM_VENDOR);</span>
+<span class="nc" id="L124">				printPlatformInfo(platform, &quot;CL_PLATFORM_EXTENSIONS&quot;, CL_PLATFORM_EXTENSIONS);</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">				if (platformCaps.cl_khr_icd) {</span>
+<span class="nc" id="L126">					printPlatformInfo(platform, &quot;CL_PLATFORM_ICD_SUFFIX_KHR&quot;, CL_PLATFORM_ICD_SUFFIX_KHR);</span>
+				}
+<span class="nc" id="L128">				System.out.println(&quot;&quot;);</span>
+
+<span class="nc" id="L130">				CLInfo.checkCLError(clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, null, pi));</span>
+
+<span class="nc" id="L132">				PointerBuffer devices = stack.mallocPointer(pi.get(0));</span>
+<span class="nc" id="L133">				CLInfo.checkCLError(clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, devices, (IntBuffer)null));</span>
+
+<span class="nc bnc" id="L135" title="All 2 branches missed.">				for (int d = 0; d &lt; devices.capacity(); d++) {</span>
+<span class="nc" id="L136">					long device = devices.get(d);</span>
+
+<span class="nc" id="L138">					CLCapabilities caps = CL.createDeviceCapabilities(device, platformCaps);</span>
+
+<span class="nc" id="L140">					System.out.printf(&quot;\n\t** NEW DEVICE: [0x%X]\n&quot;, device);</span>
+<span class="nc" id="L141">					System.out.println(&quot;\tCL_DEVICE_TYPE = &quot; + CLInfo.getDeviceInfoLong(device, CL_DEVICE_TYPE));</span>
+<span class="nc" id="L142">					System.out.println(&quot;\tCL_DEVICE_VENDOR_ID = &quot; + CLInfo.getDeviceInfoInt(device, CL_DEVICE_VENDOR_ID));</span>
+<span class="nc" id="L143">					System.out.println(&quot;\tCL_DEVICE_MAX_COMPUTE_UNITS = &quot; + CLInfo.getDeviceInfoInt(device, CL_DEVICE_MAX_COMPUTE_UNITS));</span>
+<span class="nc" id="L144">					System.out.println(&quot;\tCL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE = &quot; + CLInfo.getDeviceInfoLong(device, CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE));</span>
+					//System.out.println(&quot;\tCL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE = &quot; + InfoUtils.getDeviceInfoPointer(device, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE));
+<span class="nc" id="L146">					System.out.println(&quot;\tCL_DEVICE_MAX_WORK_ITEM_DIMENSIONS = &quot; + CLInfo.getDeviceInfoInt(device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS));</span>
+<span class="nc" id="L147">					System.out.println(&quot;\tCL_DEVICE_MAX_WORK_GROUP_SIZE = &quot; + CLInfo.getDeviceInfoPointer(device, CL_DEVICE_MAX_WORK_GROUP_SIZE));</span>
+<span class="nc" id="L148">					System.out.println(&quot;\tCL_DEVICE_MAX_CLOCK_FREQUENCY = &quot; + CLInfo.getDeviceInfoInt(device, CL_DEVICE_MAX_CLOCK_FREQUENCY));</span>
+<span class="nc" id="L149">					System.out.println(&quot;\tCL_DEVICE_ADDRESS_BITS = &quot; + CLInfo.getDeviceInfoInt(device, CL_DEVICE_ADDRESS_BITS));</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">					System.out.println(&quot;\tCL_DEVICE_AVAILABLE = &quot; + (CLInfo.getDeviceInfoInt(device, CL_DEVICE_AVAILABLE) != 0));</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">					System.out.println(&quot;\tCL_DEVICE_COMPILER_AVAILABLE = &quot; + (CLInfo.getDeviceInfoInt(device, CL_DEVICE_COMPILER_AVAILABLE) != 0));</span>
+
+<span class="nc" id="L153">					printDeviceInfo(device, &quot;CL_DEVICE_NAME&quot;, CL_DEVICE_NAME);</span>
+<span class="nc" id="L154">					printDeviceInfo(device, &quot;CL_DEVICE_VENDOR&quot;, CL_DEVICE_VENDOR);</span>
+<span class="nc" id="L155">					printDeviceInfo(device, &quot;CL_DRIVER_VERSION&quot;, CL_DRIVER_VERSION);</span>
+<span class="nc" id="L156">					printDeviceInfo(device, &quot;CL_DEVICE_PROFILE&quot;, CL_DEVICE_PROFILE);</span>
+<span class="nc" id="L157">					printDeviceInfo(device, &quot;CL_DEVICE_VERSION&quot;, CL_DEVICE_VERSION);</span>
+<span class="nc" id="L158">					printDeviceInfo(device, &quot;CL_DEVICE_EXTENSIONS&quot;, CL_DEVICE_EXTENSIONS);</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">					if (caps.OpenCL11) {</span>
+<span class="nc" id="L160">						printDeviceInfo(device, &quot;CL_DEVICE_OPENCL_C_VERSION&quot;, CL_DEVICE_OPENCL_C_VERSION);</span>
+					}
+
+					CLContextCallback contextCB;
+<span class="nc" id="L164">					long context = clCreateContext(ctxProps, device, contextCB = CLContextCallback.create((errinfo, private_info, cb, user_data) -&gt; {</span>
+<span class="nc" id="L165">						System.err.println(&quot;[LWJGL] cl_context_callback&quot;);</span>
+<span class="nc" id="L166">						System.err.println(&quot;\tInfo: &quot; + memUTF8(errinfo));</span>
+<span class="nc" id="L167">					}), NULL, errcode_ret);</span>
+<span class="nc" id="L168">					CLInfo.checkCLError(errcode_ret);</span>
+
+<span class="nc" id="L170">					long buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, 128, errcode_ret);</span>
+<span class="nc" id="L171">					CLInfo.checkCLError(errcode_ret);</span>
+
+<span class="nc" id="L173">					CLMemObjectDestructorCallback bufferCB1 = null;</span>
+<span class="nc" id="L174">					CLMemObjectDestructorCallback bufferCB2 = null;</span>
+
+<span class="nc" id="L176">					long subbuffer = NULL;</span>
+
+<span class="nc" id="L178">					CLMemObjectDestructorCallback subbufferCB = null;</span>
+
+					int errcode;
+
+					CountDownLatch destructorLatch;
+
+<span class="nc bnc" id="L184" title="All 2 branches missed.">					if (caps.OpenCL11) {</span>
+<span class="nc" id="L185">						destructorLatch = new CountDownLatch(3);</span>
+
+<span class="nc" id="L187">						errcode = clSetMemObjectDestructorCallback(buffer, bufferCB1 = CLMemObjectDestructorCallback.create((memobj, user_data) -&gt; {</span>
+<span class="nc" id="L188">							System.out.println(&quot;\t\tBuffer destructed (1): &quot; + memobj);</span>
+<span class="nc" id="L189">							destructorLatch.countDown();</span>
+<span class="nc" id="L190">						}), NULL);</span>
+<span class="nc" id="L191">						CLInfo.checkCLError(errcode);</span>
+
+<span class="nc" id="L193">						errcode = clSetMemObjectDestructorCallback(buffer, bufferCB2 = CLMemObjectDestructorCallback.create((memobj, user_data) -&gt; {</span>
+<span class="nc" id="L194">							System.out.println(&quot;\t\tBuffer destructed (2): &quot; + memobj);</span>
+<span class="nc" id="L195">							destructorLatch.countDown();</span>
+<span class="nc" id="L196">						}), NULL);</span>
+<span class="nc" id="L197">						CLInfo.checkCLError(errcode);</span>
+
+<span class="nc" id="L199">						try (CLBufferRegion buffer_region = CLBufferRegion.malloc()) {</span>
+<span class="nc" id="L200">							buffer_region.origin(0);</span>
+<span class="nc" id="L201">							buffer_region.size(64);</span>
+
+<span class="nc" id="L203">							subbuffer = nclCreateSubBuffer(buffer,</span>
+									CL_MEM_READ_ONLY,
+									CL_BUFFER_CREATE_TYPE_REGION,
+<span class="nc" id="L206">									buffer_region.address(),</span>
+<span class="nc" id="L207">									memAddress(errcode_ret));</span>
+<span class="nc" id="L208">							CLInfo.checkCLError(errcode_ret);</span>
+						}
+
+<span class="nc" id="L211">						errcode = clSetMemObjectDestructorCallback(subbuffer, subbufferCB = CLMemObjectDestructorCallback.create((memobj, user_data) -&gt; {</span>
+<span class="nc" id="L212">							System.out.println(&quot;\t\tSub Buffer destructed: &quot; + memobj);</span>
+<span class="nc" id="L213">							destructorLatch.countDown();</span>
+<span class="nc" id="L214">						}), NULL);</span>
+<span class="nc" id="L215">						CLInfo.checkCLError(errcode);</span>
+					} else {
+<span class="nc" id="L217">						destructorLatch = null;</span>
+					}
+
+<span class="nc" id="L220">					long exec_caps = CLInfo.getDeviceInfoLong(device, CL_DEVICE_EXECUTION_CAPABILITIES);</span>
+<span class="nc bnc" id="L221" title="All 2 branches missed.">					if ((exec_caps &amp; CL_EXEC_NATIVE_KERNEL) == CL_EXEC_NATIVE_KERNEL) {</span>
+<span class="nc" id="L222">						System.out.println(&quot;\t\t-TRYING TO EXEC NATIVE KERNEL-&quot;);</span>
+<span class="nc" id="L223">						long queue = clCreateCommandQueue(context, device, NULL, errcode_ret);</span>
+
+<span class="nc" id="L225">						PointerBuffer ev = BufferUtils.createPointerBuffer(1);</span>
+
+<span class="nc" id="L227">						ByteBuffer kernelArgs = BufferUtils.createByteBuffer(4);</span>
+<span class="nc" id="L228">						kernelArgs.putInt(0, 1337);</span>
+
+						CLNativeKernel kernel;
+<span class="nc" id="L231">						errcode = clEnqueueNativeKernel(queue, kernel = CLNativeKernel.create(</span>
+<span class="nc" id="L232">								args -&gt; System.out.println(&quot;\t\tKERNEL EXEC argument: &quot; + memByteBuffer(args, 4).getInt(0) + &quot;, should be 1337&quot;)</span>
+						), kernelArgs, null, null, null, ev);
+<span class="nc" id="L234">						CLInfo.checkCLError(errcode);</span>
+
+<span class="nc" id="L236">						long e = ev.get(0);</span>
+
+<span class="nc" id="L238">						CountDownLatch latch = new CountDownLatch(1);</span>
+
+						CLEventCallback eventCB;
+<span class="nc" id="L241">						errcode = clSetEventCallback(e, CL_COMPLETE, eventCB = CLEventCallback.create((event, event_command_exec_status, user_data) -&gt; {</span>
+<span class="nc" id="L242">							System.out.println(&quot;\t\tEvent callback status: &quot; + getEventStatusName(event_command_exec_status));</span>
+<span class="nc" id="L243">							latch.countDown();</span>
+<span class="nc" id="L244">						}), NULL);</span>
+<span class="nc" id="L245">						CLInfo.checkCLError(errcode);</span>
+
+						try {
+<span class="nc bnc" id="L248" title="All 2 branches missed.">							boolean expired = !latch.await(500, TimeUnit.MILLISECONDS);</span>
+<span class="nc bnc" id="L249" title="All 2 branches missed.">							if (expired) {</span>
+<span class="nc" id="L250">								System.out.println(&quot;\t\tKERNEL EXEC FAILED!&quot;);</span>
+							}
+<span class="nc" id="L252">						} catch (InterruptedException exc) {</span>
+<span class="nc" id="L253">							exc.printStackTrace();</span>
+<span class="nc" id="L254">						}</span>
+<span class="nc" id="L255">						eventCB.free();</span>
+
+<span class="nc" id="L257">						errcode = clReleaseEvent(e);</span>
+<span class="nc" id="L258">						CLInfo.checkCLError(errcode);</span>
+<span class="nc" id="L259">						kernel.free();</span>
+
+<span class="nc" id="L261">						kernelArgs = BufferUtils.createByteBuffer(POINTER_SIZE * 2);</span>
+
+<span class="nc" id="L263">						kernel = CLNativeKernel.create(args -&gt; {</span>
+<span class="nc" id="L264">						});</span>
+
+<span class="nc" id="L266">						long time   = System.nanoTime();</span>
+<span class="nc" id="L267">						int  REPEAT = 1000;</span>
+<span class="nc bnc" id="L268" title="All 2 branches missed.">						for (int i = 0; i &lt; REPEAT; i++) {</span>
+<span class="nc" id="L269">							clEnqueueNativeKernel(queue, kernel, kernelArgs, null, null, null, null);</span>
+						}
+<span class="nc" id="L271">						clFinish(queue);</span>
+<span class="nc" id="L272">						time = System.nanoTime() - time;</span>
+
+<span class="nc" id="L274">						System.out.printf(&quot;\n\t\tEMPTY NATIVE KERNEL AVG EXEC TIME: %.4fus\n&quot;, (double)time / (REPEAT * 1000));</span>
+
+<span class="nc" id="L276">						errcode = clReleaseCommandQueue(queue);</span>
+<span class="nc" id="L277">						CLInfo.checkCLError(errcode);</span>
+<span class="nc" id="L278">						kernel.free();</span>
+					}
+
+<span class="nc" id="L281">					System.out.println();</span>
+
+<span class="nc bnc" id="L283" title="All 2 branches missed.">					if (subbuffer != NULL) {</span>
+<span class="nc" id="L284">						errcode = clReleaseMemObject(subbuffer);</span>
+<span class="nc" id="L285">						CLInfo.checkCLError(errcode);</span>
+					}
+
+<span class="nc" id="L288">					errcode = clReleaseMemObject(buffer);</span>
+<span class="nc" id="L289">					CLInfo.checkCLError(errcode);</span>
+
+<span class="nc bnc" id="L291" title="All 2 branches missed.">					if (destructorLatch != null) {</span>
+						// mem object destructor callbacks are called asynchronously on Nvidia
+
+						try {
+<span class="nc" id="L295">							destructorLatch.await();</span>
+<span class="nc" id="L296">						} catch (InterruptedException e) {</span>
+<span class="nc" id="L297">							e.printStackTrace();</span>
+<span class="nc" id="L298">						}</span>
+
+<span class="nc" id="L300">						subbufferCB.free();</span>
+
+<span class="nc" id="L302">						bufferCB2.free();</span>
+<span class="nc" id="L303">						bufferCB1.free();</span>
+					}
+
+<span class="nc" id="L306">					errcode = clReleaseContext(context);</span>
+<span class="nc" id="L307">					CLInfo.checkCLError(errcode);</span>
+
+<span class="nc" id="L309">					contextCB.free();</span>
+				}
+			}
+		}
+<span class="nc" id="L313">		catch (OpenCLException ex) {</span>
+<span class="nc" id="L314">			logger.error(ex.getMessage());</span>
+<span class="nc" id="L315">			throw ex;</span>
+<span class="nc" id="L316">		}</span>
+<span class="nc" id="L317">	}</span>
+
+	public static void get(FunctionProviderLocal provider, long platform, String name) {
+<span class="nc" id="L320">		System.out.println(name + &quot;: &quot; + provider.getFunctionAddress(platform, name));</span>
+<span class="nc" id="L321">	}</span>
+
+	private static void printPlatformInfo(long platform, String param_name, int param) throws OpenCLException {
+<span class="nc" id="L324">		System.out.println(&quot;\t&quot; + param_name + &quot; = &quot; + CLInfo.getPlatformInfoStringUTF8(platform, param));</span>
+<span class="nc" id="L325">	}</span>
+
+	private static void printDeviceInfo(long device, String param_name, int param) throws OpenCLException {
+<span class="nc" id="L328">		System.out.println(&quot;\t&quot; + param_name + &quot; = &quot; + CLInfo.getDeviceInfoStringUTF8(device, param));</span>
+<span class="nc" id="L329">	}</span>
+
+	private static String getEventStatusName(int status) {
+<span class="nc bnc" id="L332" title="All 5 branches missed.">		switch (status) {</span>
+			case CL_QUEUED:
+<span class="nc" id="L334">				return &quot;CL_QUEUED&quot;;</span>
+			case CL_SUBMITTED:
+<span class="nc" id="L336">				return &quot;CL_SUBMITTED&quot;;</span>
+			case CL_RUNNING:
+<span class="nc" id="L338">				return &quot;CL_RUNNING&quot;;</span>
+			case CL_COMPLETE:
+<span class="nc" id="L340">				return &quot;CL_COMPLETE&quot;;</span>
+			default:
+<span class="nc" id="L342">				throw new IllegalArgumentException(String.format(&quot;Unsupported event status: 0x%X&quot;, status));</span>
+		}
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

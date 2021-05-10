@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TriangleQuality.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.plots.qualities</a> &gt; <span class="el_source">TriangleQuality.java</span></div><h1>TriangleQuality.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.plots.qualities;
+
+import org.apache.commons.lang3.time.StopWatch;
+import org.vadere.meshing.mesh.gen.AFace;
+import org.vadere.meshing.mesh.gen.AHalfEdge;
+import org.vadere.meshing.mesh.gen.AMesh;
+import org.vadere.meshing.mesh.gen.AVertex;
+import org.vadere.meshing.mesh.inter.IMeshSupplier;
+import org.vadere.meshing.mesh.inter.IPointConstructor;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.gen.GenEikMesh;
+import org.vadere.meshing.mesh.gen.MeshPanel;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.EikMeshPoint;
+import org.vadere.meshing.mesh.triangulation.improver.distmesh.Distmesh;
+import org.vadere.meshing.mesh.triangulation.improver.distmesh.DistmeshPanel;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.math.IDistanceFunction;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.util.geometry.shapes.VTriangle;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Predicate;
+
+import javax.swing.*;
+
+<span class="nc" id="L29">public class TriangleQuality {</span>
+<span class="nc" id="L30">	private static final Logger log = Logger.getLogger(TriangleQuality.class);</span>
+
+	/**
+	 * Each geometry is contained this bounding box.
+	 */
+<span class="nc" id="L35">	private static final VRectangle bbox = new VRectangle(-1.01, -1.01, 2.02, 2.02);</span>
+<span class="nc" id="L36">	private static final IEdgeLengthFunction uniformEdgeLength = p -&gt; 1.0;</span>
+<span class="nc" id="L37">	private static final IPointConstructor&lt;EikMeshPoint&gt; pointConstructor = (x, y) -&gt; new EikMeshPoint(x, y, false);</span>
+	private static final double initialEdgeLength = 1.5;
+
+
+	private static void adaptiveDistMesh(double startLen) {
+<span class="nc" id="L42">		IDistanceFunction distanceFunc = p -&gt; Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY()) - 1.0;</span>
+<span class="nc" id="L43">		IEdgeLengthFunction edgeLengthFunction = p -&gt; 1.0 + Math.max(-distanceFunc.apply(p), 0) * 2.0;</span>
+<span class="nc" id="L44">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L46">		double initialEdgeLength = startLen;</span>
+
+<span class="nc" id="L48">		List&lt;Integer&gt; steps = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L49">		List&lt;Double&gt; quality = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L50">		List&lt;Double&gt; minQuality = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L52">		Distmesh meshGenerator = new Distmesh(distanceFunc,</span>
+				edgeLengthFunction,
+				initialEdgeLength,
+				bbox, obstacles);
+
+		//79 480
+<span class="nc" id="L58">		StopWatch overAllTime = new StopWatch();</span>
+
+<span class="nc" id="L60">		overAllTime.start();</span>
+<span class="nc" id="L61">		overAllTime.suspend();</span>
+<span class="nc" id="L62">		int step = 0;</span>
+		do {
+<span class="nc" id="L64">			steps.add(step);</span>
+<span class="nc" id="L65">			overAllTime.resume();</span>
+<span class="nc" id="L66">			meshGenerator.step();</span>
+<span class="nc" id="L67">			overAllTime.suspend();</span>
+<span class="nc" id="L68">			quality.add(meshGenerator.getQuality());</span>
+<span class="nc" id="L69">			minQuality.add(meshGenerator.getMinQuality());</span>
+<span class="nc" id="L70">			step++;</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">		} while (!meshGenerator.hasMaximalSteps());</span>
+
+<span class="nc" id="L73">		log.info(&quot;#vertices: &quot; + meshGenerator.getPoints().size());</span>
+<span class="nc" id="L74">		log.info(&quot;quality: &quot; + meshGenerator.getQuality());</span>
+<span class="nc" id="L75">		log.info(&quot;#step: &quot; + steps);</span>
+<span class="nc" id="L76">		log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+
+<span class="nc bnc" id="L78" title="All 2 branches missed.">		Predicate&lt;VTriangle&gt; predicate = t -&gt; meshGenerator.getQuality(t) &lt; 0.4;</span>
+<span class="nc" id="L79">		DistmeshPanel distmeshPanel = new DistmeshPanel(meshGenerator, 1000, 800, bbox, predicate);</span>
+
+<span class="nc" id="L81">		JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L82">		frame.setVisible(true);</span>
+<span class="nc" id="L83">		frame.setTitle(&quot;DistMesh: adaptiveDisc(&quot;+ initialEdgeLength +&quot;)&quot;);</span>
+<span class="nc" id="L84">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L85">		distmeshPanel.repaint();</span>
+
+		// 200 steps
+<span class="nc" id="L88">		System.out.println(&quot;print qualities for unified tri &quot; + initialEdgeLength);</span>
+<span class="nc" id="L89">		System.out.println(&quot;#steps: [&quot; + steps.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L90">		System.out.println(&quot;quality = [&quot; + quality.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L91">		System.out.println(&quot;minQuality = [&quot; + minQuality.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L92">	}</span>
+
+	private static void adaptiveDiscEikMesh(double startLen) {
+<span class="nc" id="L95">		IMeshSupplier&lt;AVertex, AHalfEdge, AFace&gt; supplier = () -&gt; new AMesh();</span>
+<span class="nc" id="L96">		IDistanceFunction distanceFunc = p -&gt; Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY()) - 1.0;</span>
+<span class="nc" id="L97">		IEdgeLengthFunction edgeLengthFunction = p -&gt; 1.0 + Math.max(-distanceFunc.apply(p), 0) * 2.0;</span>
+<span class="nc" id="L98">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L100">		double initialEdgeLength = startLen;</span>
+
+<span class="nc" id="L102">		List&lt;Integer&gt; steps = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L103">		List&lt;Double&gt; quality = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L104">		List&lt;Double&gt; minQuality = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L106">		GenEikMesh&lt;AVertex, AHalfEdge, AFace&gt; meshGenerator = new GenEikMesh&lt;&gt;(</span>
+				distanceFunc,
+				edgeLengthFunction,
+				initialEdgeLength,
+				bbox, obstacles,
+				supplier);
+
+		//79 480
+<span class="nc" id="L114">		StopWatch overAllTime = new StopWatch();</span>
+
+<span class="nc" id="L116">		overAllTime.start();</span>
+<span class="nc" id="L117">		overAllTime.suspend();</span>
+<span class="nc" id="L118">		int step = 0;</span>
+		do {
+<span class="nc" id="L120">			steps.add(step);</span>
+<span class="nc" id="L121">			overAllTime.resume();</span>
+<span class="nc" id="L122">			meshGenerator.improve();</span>
+<span class="nc" id="L123">			overAllTime.suspend();</span>
+<span class="nc" id="L124">			quality.add(meshGenerator.getQuality());</span>
+<span class="nc" id="L125">			minQuality.add(meshGenerator.getMinQuality());</span>
+<span class="nc" id="L126">			step++;</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">		} while (!meshGenerator.isFinished());</span>
+
+<span class="nc" id="L129">		log.info(&quot;#vertices: &quot; + meshGenerator.getMesh().getVertices().size());</span>
+<span class="nc" id="L130">		log.info(&quot;#edges: &quot; + meshGenerator.getMesh().getEdges().size());</span>
+<span class="nc" id="L131">		log.info(&quot;#faces: &quot; + meshGenerator.getMesh().getFaces().size());</span>
+<span class="nc" id="L132">		log.info(&quot;quality: &quot; + meshGenerator.getQuality());</span>
+<span class="nc" id="L133">		log.info(&quot;#step: &quot; + steps);</span>
+<span class="nc" id="L134">		log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+
+<span class="nc" id="L136">		MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; distmeshPanel = new MeshPanel(meshGenerator.getMesh(), f -&gt; false, 1000, 800);</span>
+<span class="nc" id="L137">		JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L138">		frame.setVisible(true);</span>
+<span class="nc" id="L139">		frame.setTitle(&quot;uniformRing()&quot;);</span>
+<span class="nc" id="L140">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L141">		distmeshPanel.repaint();</span>
+
+		// 200 steps
+<span class="nc" id="L144">		System.out.println(&quot;print qualities for unified tri &quot; + initialEdgeLength);</span>
+<span class="nc" id="L145">		System.out.println(&quot;#steps: [&quot; + steps.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L146">		System.out.println(&quot;quality = [&quot; + quality.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L147">		System.out.println(&quot;minQuality = [&quot; + minQuality.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L148">	}</span>
+
+
+	private static void adaptiveRingDistMesh(double startLen) {
+<span class="nc" id="L152">		IDistanceFunction distanceFunc = p -&gt; Math.abs(0.7 - Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY())) - 0.3;</span>
+<span class="nc" id="L153">		IEdgeLengthFunction edgeLengthFunction = p -&gt; 1.0 + Math.max(-distanceFunc.apply(p), 0) * 2.0;</span>
+<span class="nc" id="L154">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L156">		double initialEdgeLength = startLen;</span>
+
+<span class="nc" id="L158">		List&lt;Integer&gt; steps = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L159">		List&lt;Double&gt; quality = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L160">		List&lt;Double&gt; minQuality = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L162">		Distmesh meshGenerator = new Distmesh(distanceFunc,</span>
+				edgeLengthFunction,
+				initialEdgeLength,
+				bbox, obstacles);
+
+		//79 480
+<span class="nc" id="L168">		StopWatch overAllTime = new StopWatch();</span>
+
+<span class="nc" id="L170">		overAllTime.start();</span>
+<span class="nc" id="L171">		overAllTime.suspend();</span>
+<span class="nc" id="L172">		int step = 0;</span>
+		do {
+<span class="nc" id="L174">			steps.add(step);</span>
+<span class="nc" id="L175">			overAllTime.resume();</span>
+<span class="nc" id="L176">			meshGenerator.step();</span>
+<span class="nc" id="L177">			overAllTime.suspend();</span>
+<span class="nc" id="L178">			quality.add(meshGenerator.getQuality());</span>
+<span class="nc" id="L179">			minQuality.add(meshGenerator.getMinQuality());</span>
+<span class="nc" id="L180">			step++;</span>
+<span class="nc bnc" id="L181" title="All 2 branches missed.">		} while (!meshGenerator.hasMaximalSteps());</span>
+
+<span class="nc" id="L183">		log.info(&quot;#vertices: &quot; + meshGenerator.getPoints().size());</span>
+<span class="nc" id="L184">		log.info(&quot;quality: &quot; + meshGenerator.getQuality());</span>
+<span class="nc" id="L185">		log.info(&quot;#step: &quot; + steps);</span>
+<span class="nc" id="L186">		log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+
+<span class="nc bnc" id="L188" title="All 2 branches missed.">		Predicate&lt;VTriangle&gt; predicate = t -&gt; meshGenerator.getQuality(t) &lt; 0.4;</span>
+<span class="nc" id="L189">		DistmeshPanel distmeshPanel = new DistmeshPanel(meshGenerator, 1000, 800, bbox, predicate);</span>
+
+<span class="nc" id="L191">		JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L192">		frame.setVisible(true);</span>
+<span class="nc" id="L193">		frame.setTitle(&quot;DistMesh: adaptiveDisc(&quot;+ initialEdgeLength +&quot;)&quot;);</span>
+<span class="nc" id="L194">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L195">		distmeshPanel.repaint();</span>
+
+		// 200 steps
+<span class="nc" id="L198">		System.out.println(&quot;print qualities for unified tri &quot; + initialEdgeLength);</span>
+<span class="nc" id="L199">		System.out.println(&quot;#steps: [&quot; + steps.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L200">		System.out.println(&quot;quality = [&quot; + quality.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L201">		System.out.println(&quot;minQuality = [&quot; + minQuality.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L202">	}</span>
+
+
+	private static void adaptiveRingEikMesh(double startLen) {
+<span class="nc" id="L206">		IMeshSupplier&lt;AVertex, AHalfEdge, AFace&gt; supplier = () -&gt; new AMesh();</span>
+<span class="nc" id="L207">		IDistanceFunction distanceFunc = p -&gt; Math.abs(0.7 - Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY())) - 0.3;</span>
+<span class="nc" id="L208">		IEdgeLengthFunction edgeLengthFunction = p -&gt; 1.0 + Math.max(-distanceFunc.apply(p), 0) * 2.0;</span>
+<span class="nc" id="L209">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L211">		double initialEdgeLength = startLen;</span>
+
+<span class="nc" id="L213">		List&lt;Integer&gt; steps = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L214">		List&lt;Double&gt; quality = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L215">		List&lt;Double&gt; minQuality = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L217">		GenEikMesh&lt;AVertex, AHalfEdge, AFace&gt; meshGenerator = new GenEikMesh&lt;&gt;(</span>
+				distanceFunc,
+				edgeLengthFunction,
+				initialEdgeLength,
+				bbox, obstacles,
+				supplier);
+
+		//79 480
+<span class="nc" id="L225">		StopWatch overAllTime = new StopWatch();</span>
+
+<span class="nc" id="L227">		overAllTime.start();</span>
+<span class="nc" id="L228">		overAllTime.suspend();</span>
+<span class="nc" id="L229">		int step = 0;</span>
+		do {
+<span class="nc" id="L231">			steps.add(step);</span>
+<span class="nc" id="L232">			overAllTime.resume();</span>
+<span class="nc" id="L233">			meshGenerator.improve();</span>
+<span class="nc" id="L234">			overAllTime.suspend();</span>
+<span class="nc" id="L235">			quality.add(meshGenerator.getQuality());</span>
+<span class="nc" id="L236">			minQuality.add(meshGenerator.getMinQuality());</span>
+<span class="nc" id="L237">			step++;</span>
+<span class="nc bnc" id="L238" title="All 2 branches missed.">		} while (!meshGenerator.isFinished());</span>
+
+<span class="nc" id="L240">		log.info(&quot;#vertices: &quot; + meshGenerator.getMesh().getVertices().size());</span>
+<span class="nc" id="L241">		log.info(&quot;#edges: &quot; + meshGenerator.getMesh().getEdges().size());</span>
+<span class="nc" id="L242">		log.info(&quot;#faces: &quot; + meshGenerator.getMesh().getFaces().size());</span>
+<span class="nc" id="L243">		log.info(&quot;quality: &quot; + meshGenerator.getQuality());</span>
+<span class="nc" id="L244">		log.info(&quot;#step: &quot; + steps);</span>
+<span class="nc" id="L245">		log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+
+<span class="nc" id="L247">		MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; distmeshPanel = new MeshPanel(meshGenerator.getMesh(), f -&gt; false, 1000, 800);</span>
+<span class="nc" id="L248">		JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L249">		frame.setVisible(true);</span>
+<span class="nc" id="L250">		frame.setTitle(&quot;uniformRing()&quot;);</span>
+<span class="nc" id="L251">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L252">		distmeshPanel.repaint();</span>
+
+		// 200 steps
+<span class="nc" id="L255">		System.out.println(&quot;print qualities for unified tri &quot; + initialEdgeLength);</span>
+<span class="nc" id="L256">		System.out.println(&quot;#steps: [&quot; + steps.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L257">		System.out.println(&quot;quality = [&quot; + quality.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L258">		System.out.println(&quot;minQuality = [&quot; + minQuality.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L259">	}</span>
+
+	private static void adaptiveHexDistMesh(double startLen) {
+<span class="nc" id="L262">		VPolygon hex = VShape.generateHexagon(0.4);</span>
+<span class="nc" id="L263">		IDistanceFunction quader = p -&gt; Math.max(Math.abs(p.getX()), Math.abs(p.getY())) - 1.0;</span>
+<span class="nc" id="L264">		IDistanceFunction circ = p -&gt; Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY()) - 1.0;</span>
+<span class="nc" id="L265">		IDistanceFunction distanceFunc = IDistanceFunction.intersect(quader, IDistanceFunction.create(bbox, hex));</span>
+
+
+<span class="nc" id="L268">		IEdgeLengthFunction edgeLengthFunction = p -&gt; 1.0 + Math.max(-distanceFunc.apply(p), 0) * 8.0;</span>
+<span class="nc" id="L269">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L270">		obstacles.add(hex);</span>
+<span class="nc" id="L271">		obstacles.add(new VRectangle(-1,-1,2,2));</span>
+
+<span class="nc" id="L273">		double initialEdgeLength = startLen;</span>
+
+<span class="nc" id="L275">		List&lt;Integer&gt; steps = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L276">		List&lt;Double&gt; quality = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L277">		List&lt;Double&gt; minQuality = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L279">		Distmesh meshGenerator = new Distmesh(distanceFunc,</span>
+				edgeLengthFunction,
+				initialEdgeLength,
+				bbox, obstacles);
+
+		//79 480
+<span class="nc" id="L285">		StopWatch overAllTime = new StopWatch();</span>
+
+<span class="nc" id="L287">		overAllTime.start();</span>
+<span class="nc" id="L288">		overAllTime.suspend();</span>
+<span class="nc" id="L289">		int step = 0;</span>
+		do {
+<span class="nc" id="L291">			steps.add(step);</span>
+<span class="nc" id="L292">			overAllTime.resume();</span>
+<span class="nc" id="L293">			meshGenerator.step();</span>
+<span class="nc" id="L294">			overAllTime.suspend();</span>
+<span class="nc" id="L295">			quality.add(meshGenerator.getQuality());</span>
+<span class="nc" id="L296">			minQuality.add(meshGenerator.getMinQuality());</span>
+<span class="nc" id="L297">			step++;</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">		} while (!meshGenerator.hasMaximalSteps());</span>
+
+<span class="nc" id="L300">		log.info(&quot;#vertices: &quot; + meshGenerator.getPoints().size());</span>
+<span class="nc" id="L301">		log.info(&quot;quality: &quot; + meshGenerator.getQuality());</span>
+<span class="nc" id="L302">		log.info(&quot;#step: &quot; + steps);</span>
+<span class="nc" id="L303">		log.info(&quot;#tris: &quot; + meshGenerator.getNumberOfReTriangulations());</span>
+<span class="nc" id="L304">		log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+
+<span class="nc bnc" id="L306" title="All 2 branches missed.">		Predicate&lt;VTriangle&gt; predicate = t -&gt; meshGenerator.getQuality(t) &lt; 0.4;</span>
+<span class="nc" id="L307">		DistmeshPanel distmeshPanel = new DistmeshPanel(meshGenerator, 1000, 800, bbox, predicate);</span>
+
+<span class="nc" id="L309">		JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L310">		frame.setVisible(true);</span>
+<span class="nc" id="L311">		frame.setTitle(&quot;DistMesh: adaptiveDisc(&quot;+ initialEdgeLength +&quot;)&quot;);</span>
+<span class="nc" id="L312">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L313">		distmeshPanel.repaint();</span>
+
+		// 200 steps
+<span class="nc" id="L316">		System.out.println(&quot;print qualities for unified tri &quot; + initialEdgeLength);</span>
+<span class="nc" id="L317">		System.out.println(&quot;#steps: [&quot; + steps.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L318">		System.out.println(&quot;quality = [&quot; + quality.stream().map(n -&gt; (n-0.01)+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L319">		System.out.println(&quot;minQuality = [&quot; + minQuality.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L320">	}</span>
+
+	private static void adaptiveHexEikMesh(double startLen) {
+<span class="nc" id="L323">		VPolygon hex = VShape.generateHexagon(0.4);</span>
+<span class="nc" id="L324">		IMeshSupplier&lt;AVertex, AHalfEdge, AFace&gt; supplier = () -&gt; new AMesh();</span>
+<span class="nc" id="L325">		IDistanceFunction quader = p -&gt; Math.max(Math.abs(p.getX()), Math.abs(p.getY())) - 1.0;</span>
+<span class="nc" id="L326">		IDistanceFunction circ = p -&gt; Math.sqrt(p.getX() * p.getX() + p.getY() * p.getY()) - 1.0;</span>
+<span class="nc" id="L327">		IDistanceFunction distanceFunc = IDistanceFunction.intersect(quader, IDistanceFunction.create(bbox, hex));</span>
+
+
+<span class="nc" id="L330">		IEdgeLengthFunction edgeLengthFunction = p -&gt; 1.0 + Math.max(-distanceFunc.apply(p), 0) * 8.0;</span>
+<span class="nc" id="L331">		List&lt;VShape&gt; obstacles = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L332">		obstacles.add(hex);</span>
+<span class="nc" id="L333">		obstacles.add(new VRectangle(-1,-1,2,2));</span>
+
+<span class="nc" id="L335">		double initialEdgeLength = startLen;</span>
+
+<span class="nc" id="L337">		List&lt;Integer&gt; steps = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L338">		List&lt;Double&gt; quality = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L339">		List&lt;Double&gt; minQuality = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L341">		GenEikMesh&lt;AVertex, AHalfEdge, AFace&gt; meshGenerator = new GenEikMesh&lt;&gt;(</span>
+				distanceFunc,
+				edgeLengthFunction,
+				initialEdgeLength,
+				bbox, obstacles,
+				supplier);
+
+		//79 480
+<span class="nc" id="L349">		StopWatch overAllTime = new StopWatch();</span>
+
+<span class="nc" id="L351">		overAllTime.start();</span>
+<span class="nc" id="L352">		overAllTime.suspend();</span>
+<span class="nc" id="L353">		int step = 0;</span>
+		do {
+<span class="nc" id="L355">			steps.add(step);</span>
+<span class="nc" id="L356">			overAllTime.resume();</span>
+<span class="nc" id="L357">			meshGenerator.improve();</span>
+<span class="nc" id="L358">			overAllTime.suspend();</span>
+<span class="nc" id="L359">			quality.add(meshGenerator.getQuality());</span>
+<span class="nc" id="L360">			minQuality.add(meshGenerator.getMinQuality());</span>
+<span class="nc" id="L361">			step++;</span>
+<span class="nc bnc" id="L362" title="All 2 branches missed.">		} while (!meshGenerator.isFinished());</span>
+
+<span class="nc" id="L364">		log.info(&quot;#vertices: &quot; + meshGenerator.getMesh().getVertices().size());</span>
+<span class="nc" id="L365">		log.info(&quot;#edges: &quot; + meshGenerator.getMesh().getEdges().size());</span>
+<span class="nc" id="L366">		log.info(&quot;#faces: &quot; + meshGenerator.getMesh().getFaces().size());</span>
+<span class="nc" id="L367">		log.info(&quot;quality: &quot; + meshGenerator.getQuality());</span>
+<span class="nc" id="L368">		log.info(&quot;#step: &quot; + steps);</span>
+<span class="nc" id="L369">		log.info(&quot;overall time: &quot; + overAllTime.getTime() + &quot;[ms]&quot;);</span>
+
+<span class="nc" id="L371">		MeshPanel&lt;AVertex, AHalfEdge, AFace&gt; distmeshPanel = new MeshPanel(meshGenerator.getMesh(), f -&gt; false, 1000, 800);</span>
+<span class="nc" id="L372">		JFrame frame = distmeshPanel.display();</span>
+<span class="nc" id="L373">		frame.setVisible(true);</span>
+<span class="nc" id="L374">		frame.setTitle(&quot;uniformRing()&quot;);</span>
+<span class="nc" id="L375">		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);</span>
+<span class="nc" id="L376">		distmeshPanel.repaint();</span>
+
+		// 200 steps
+<span class="nc" id="L379">		System.out.println(&quot;print qualities for unified tri &quot; + initialEdgeLength);</span>
+<span class="nc" id="L380">		System.out.println(&quot;#steps: [&quot; + steps.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L381">		System.out.println(&quot;quality = [&quot; + quality.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L382">		System.out.println(&quot;minQuality = [&quot; + minQuality.stream().map(n -&gt; n+&quot;&quot;).reduce(&quot;&quot;, (s1,s2) -&gt; s1 + &quot;,&quot; + s2).substring(1) + &quot;]&quot;);</span>
+<span class="nc" id="L383">	}</span>
+
+
+	public static void main(String[] args) {
+		//adaptiveDiscEikMesh(0.1);
+		//adaptiveDistMesh(0.06);
+
+		//adaptiveDiscEikMesh(0.05);
+		//adaptiveDistMesh(0.03);
+
+<span class="nc" id="L393">		adaptiveHexEikMesh(0.05);</span>
+<span class="nc" id="L394">		adaptiveHexDistMesh(0.03);</span>
+<span class="nc" id="L395">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

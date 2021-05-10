@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CLEikMesh.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.improver.eikmesh.opencl</a> &gt; <span class="el_source">CLEikMesh.java</span></div><h1>CLEikMesh.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.improver.eikmesh.opencl;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.vadere.meshing.mesh.gen.AFace;
+import org.vadere.meshing.mesh.gen.AHalfEdge;
+import org.vadere.meshing.mesh.gen.AMesh;
+import org.vadere.meshing.mesh.gen.AVertex;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.inter.IMeshSupplier;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.ITriangulator;
+import org.vadere.meshing.mesh.triangulation.triangulator.gen.GenUniformRefinementTriangulatorSFC;
+import org.vadere.meshing.opencl.CLDistMesh;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.math.IDistanceFunction;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.EikMeshPoint;
+import org.vadere.util.opencl.OpenCLException;
+import org.vadere.util.geometry.shapes.*;
+import org.vadere.meshing.mesh.triangulation.improver.IMeshImprover;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * @author Benedikt Zoennchen
+ *
+ */
+public class CLEikMesh implements IMeshImprover&lt;AVertex, AHalfEdge, AFace&gt;, ITriangulator&lt;AVertex, AHalfEdge, AFace&gt; {
+<span class="nc" id="L30">    private static final Logger log = Logger.getLogger(CLEikMesh.class);</span>
+<span class="nc" id="L31">    private boolean illegalMovement = false;</span>
+    private IDistanceFunction distanceFunc;
+    private IEdgeLengthFunction edgeLengthFunc;
+    private final IMeshSupplier&lt;AVertex, AHalfEdge, AFace&gt; meshSupplier;
+    private IIncrementalTriangulation&lt;AVertex, AHalfEdge, AFace&gt; triangulation;
+    private Collection&lt;? extends VShape&gt; obstacleShapes;
+    private ArrayList&lt;Pair&lt;EikMeshPoint, EikMeshPoint&gt;&gt; edges;
+    private VRectangle bound;
+    private double scalingFactor;
+    private PriorityQueue&lt;Pair&lt;PFace, Double&gt;&gt; heap;
+
+	public final static double MIN_TRIANGLE_QUALITY = 0.1;
+
+<span class="nc" id="L44">    private double initialEdgeLen = 0.4;</span>
+    private double deps;
+    private double sumOfqDesiredEdgeLength;
+    private double sumOfqLengths;
+
+<span class="nc" id="L49">    private boolean initialized = false;</span>
+
+<span class="nc" id="L51">    private int numberOfRetriangulations = 0;</span>
+<span class="nc" id="L52">    private int numberOfIterations = 0;</span>
+<span class="nc" id="L53">    private int numberOfIllegalMovementTests = 0;</span>
+<span class="nc" id="L54">    private double minDeltaTravelDistance = 0.0;</span>
+<span class="nc" id="L55">    private double delta = 0.2;</span>
+
+<span class="nc" id="L57">    private Object gobalAcessSynchronizer = new Object();</span>
+
+    private CLDistMesh clDistMesh;
+<span class="nc" id="L60">    private boolean hasToRead = false;</span>
+    private int nSteps;
+    private final static int MAX_STEPS = 200;
+
+    public CLEikMesh(
+            final IDistanceFunction distanceFunc,
+            final IEdgeLengthFunction edgeLengthFunc,
+            final VRectangle bound,
+            final Collection&lt;? extends VShape&gt; obstacleShapes,
+<span class="nc" id="L69">            final IMeshSupplier&lt;AVertex, AHalfEdge, AFace&gt; meshSupplier) {</span>
+
+<span class="nc" id="L71">        this.bound = bound;</span>
+<span class="nc" id="L72">        this.distanceFunc = distanceFunc;</span>
+<span class="nc" id="L73">        this.edgeLengthFunc = edgeLengthFunc;</span>
+<span class="nc" id="L74">        this.initialEdgeLen = initialEdgeLen;</span>
+<span class="nc" id="L75">        this.obstacleShapes = obstacleShapes;</span>
+<span class="nc" id="L76">        this.meshSupplier = meshSupplier;</span>
+<span class="nc" id="L77">        this.edges = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L78">        this.deps = 1.4901e-8 * initialEdgeLen;</span>
+<span class="nc" id="L79">        this.nSteps = 0;</span>
+<span class="nc" id="L80">    }</span>
+
+    /**
+     * Start with a uniform refined triangulation
+     * @throws OpenCLException if there is OpenCL is not or not correct installed.
+     */
+    public void initialize() throws OpenCLException {
+<span class="nc" id="L87">        log.info(&quot;##### (start) compute a uniform refined triangulation #####&quot;);</span>
+        //UniformRefinementTriangulator uniformRefinementTriangulation = new UniformRefinementTriangulator(triangulation, bound, obstacleShapes, p -&gt; edgeLengthFunc.apply(p) * initialEdgeLen, distanceFunc);
+        //uniformRefinementTriangulation.generate();
+
+<span class="nc" id="L91">        log.info(&quot;##### (end) compute a uniform refined triangulation #####&quot;);</span>
+
+<span class="nc" id="L93">        log.info(&quot;##### (start) generate a triangulation #####&quot;);</span>
+<span class="nc" id="L94">        GenUniformRefinementTriangulatorSFC&lt;AVertex, AHalfEdge, AFace&gt; uniformRefinementTriangulation = new GenUniformRefinementTriangulatorSFC(</span>
+                meshSupplier,
+                bound,
+                obstacleShapes,
+		        edgeLengthFunc,
+                distanceFunc);
+<span class="nc" id="L100">        triangulation = uniformRefinementTriangulation.generate();</span>
+
+        // TODO: dirty cast.
+<span class="nc" id="L103">        clDistMesh = new CLDistMesh((AMesh)triangulation.getMesh());</span>
+<span class="nc" id="L104">	    clDistMesh.init();</span>
+
+	    //clDistMesh.refresh();
+<span class="nc" id="L107">        initialized = true;</span>
+<span class="nc" id="L108">        log.info(&quot;##### (end) generate a triangulation #####&quot;);</span>
+<span class="nc" id="L109">    }</span>
+
+    public IIncrementalTriangulation&lt;AVertex, AHalfEdge, AFace&gt; getTriangulation() {
+<span class="nc" id="L112">        return triangulation;</span>
+    }
+
+    @Override
+    public IIncrementalTriangulation&lt;AVertex, AHalfEdge, AFace&gt; generate(boolean finalize) {
+<span class="nc" id="L117">        return generate();</span>
+    }
+
+	@Override
+	public IIncrementalTriangulation&lt;AVertex, AHalfEdge, AFace&gt; generate() {
+		try {
+<span class="nc" id="L123">			initialize();</span>
+
+			// TODO: quality check!
+<span class="nc bnc" id="L126" title="All 2 branches missed.">			while (nSteps &lt; MAX_STEPS) {</span>
+<span class="nc" id="L127">				improve();</span>
+				//log.info(&quot;quality: &quot; + quality);
+			}
+<span class="nc" id="L130">			refresh();</span>
+<span class="nc" id="L131">			finish();</span>
+<span class="nc" id="L132">			return triangulation;</span>
+		}
+<span class="nc" id="L134">		catch (OpenCLException e) {</span>
+<span class="nc" id="L135">			log.error(e.getMessage());</span>
+<span class="nc" id="L136">			e.printStackTrace();</span>
+<span class="nc" id="L137">			throw new RuntimeException(e);</span>
+		}
+	}
+
+	public void execute() {
+    	try {
+<span class="nc bnc" id="L143" title="All 2 branches missed.">		    if(!initialized) {</span>
+<span class="nc" id="L144">			    initialize();</span>
+		    }
+
+<span class="nc bnc" id="L147" title="All 2 branches missed.">		    while (!isFinished()) {</span>
+<span class="nc" id="L148">			    step();</span>
+		    }
+	    }
+<span class="nc" id="L151">	    catch (OpenCLException e) {</span>
+<span class="nc" id="L152">    		log.error(e.getMessage());</span>
+<span class="nc" id="L153">    		e.printStackTrace();</span>
+<span class="nc" id="L154">    		throw new RuntimeException(e);</span>
+<span class="nc" id="L155">	    }</span>
+<span class="nc" id="L156">    }</span>
+
+    public boolean isFinished() {
+<span class="nc bnc" id="L159" title="All 2 branches missed.">        return nSteps &gt;= MAX_STEPS;</span>
+    }
+
+    public void step() {
+<span class="nc" id="L163">        step(true);</span>
+<span class="nc" id="L164">    }</span>
+
+    public boolean step(boolean flipAll) {
+<span class="nc" id="L167">        hasToRead = true;</span>
+<span class="nc" id="L168">        minDeltaTravelDistance = Double.MAX_VALUE;</span>
+<span class="nc" id="L169">        illegalMovement = false;</span>
+        //log.info(scalingFactor);
+
+
+        //flipEdges();
+        //retriangulate();
+
+        // get new cooridnates
+
+        // there might be some illegal movements
+<span class="nc bnc" id="L179" title="All 2 branches missed.">        if(minDeltaTravelDistance &lt; 0.0) {</span>
+<span class="nc" id="L180">            illegalMovement = isMovementIllegal();</span>
+<span class="nc" id="L181">            numberOfIllegalMovementTests++;</span>
+        }
+
+<span class="nc bnc" id="L184" title="All 2 branches missed.">        if(illegalMovement) {</span>
+            //retriangulate();
+//			while (flipEdges());
+
+<span class="nc" id="L188">            numberOfRetriangulations++;</span>
+        }
+        else {
+//			flipEdges();
+        }
+
+<span class="nc bnc" id="L194" title="All 2 branches missed.">        if(minDeltaTravelDistance &lt; 0) {</span>
+//			computeMaxLegalMovements();
+        }
+
+<span class="nc" id="L198">        numberOfIterations++;</span>
+	    try {
+<span class="nc" id="L200">		    return clDistMesh.step(flipAll);</span>
+<span class="nc" id="L201">	    } catch (OpenCLException e) {</span>
+<span class="nc" id="L202">		    e.printStackTrace();</span>
+<span class="nc" id="L203">		    return false;</span>
+	    }
+		/*log.info(&quot;#illegalMovementTests: &quot; + numberOfIllegalMovementTests);
+		log.info(&quot;#retriangulations: &quot; + numberOfRetriangulations);
+		log.info(&quot;#steps: &quot; + numberOfIterations);
+		log.info(&quot;#points: &quot; + getMesh().getVertices().size());*/
+    }
+
+    public void finish() {
+	    try {
+<span class="nc" id="L213">		    clDistMesh.finish();</span>
+<span class="nc" id="L214">	    } catch (OpenCLException e) {</span>
+<span class="nc" id="L215">		    e.printStackTrace();</span>
+<span class="nc" id="L216">	    }</span>
+<span class="nc" id="L217">    }</span>
+
+    public void refresh() {
+<span class="nc bnc" id="L220" title="All 2 branches missed.">        if(clDistMesh != null) {</span>
+<span class="nc" id="L221">            clDistMesh.refresh();</span>
+<span class="nc" id="L222">            hasToRead = false;</span>
+        }
+<span class="nc" id="L224">    }</span>
+
+    private void removeLowQualityTriangles() {
+<span class="nc" id="L227">        List&lt;AFace&gt; faces = getMesh().getFaces();</span>
+<span class="nc bnc" id="L228" title="All 2 branches missed.">        for(AFace face : faces) {</span>
+<span class="nc bnc" id="L229" title="All 2 branches missed.">            if(faceToQuality(face) &lt; MIN_TRIANGLE_QUALITY) {</span>
+<span class="nc" id="L230">                Optional&lt;AHalfEdge&gt; optEdge = getMesh().getLinkToBoundary(face);</span>
+<span class="nc bnc" id="L231" title="All 4 branches missed.">                if(optEdge.isPresent() &amp;&amp; !getMesh().isBoundary(getMesh().getTwin(getMesh().getNext(optEdge.get())))) {</span>
+<span class="nc" id="L232">                    AHalfEdge edge = getMesh().getNext(optEdge.get());</span>
+<span class="nc" id="L233">                    projectToBoundary(getMesh().getVertex(edge));</span>
+<span class="nc" id="L234">                    triangulation.removeFaceAtBorder(face, true);</span>
+                }
+            }
+<span class="nc" id="L237">        }</span>
+<span class="nc" id="L238">    }</span>
+
+    public boolean isMovementIllegal() {
+<span class="nc bnc" id="L241" title="All 2 branches missed.">        for(AFace face : getMesh().getFaces()) {</span>
+<span class="nc bnc" id="L242" title="All 6 branches missed.">            if(!getMesh().isBoundary(face) &amp;&amp; !getMesh().isDestroyed(face) &amp;&amp; !triangulation.isCCW(face)) {</span>
+<span class="nc" id="L243">                return true;</span>
+            }
+<span class="nc" id="L245">        }</span>
+<span class="nc" id="L246">        return false;</span>
+    }
+
+    @Override
+    public synchronized AMesh getMesh() {
+<span class="nc" id="L251">        refresh();</span>
+        // TODO: dirty casting
+<span class="nc" id="L253">        return (AMesh) triangulation.getMesh();</span>
+    }
+
+    public double faceToQuality(final AFace face) {
+
+<span class="nc" id="L258">        VLine[] lines = getMesh().toTriangle(face).getLines();</span>
+<span class="nc" id="L259">        double a = lines[0].length();</span>
+<span class="nc" id="L260">        double b = lines[1].length();</span>
+<span class="nc" id="L261">        double c = lines[2].length();</span>
+<span class="nc" id="L262">        double part = 0.0;</span>
+<span class="nc bnc" id="L263" title="All 6 branches missed.">        if(a != 0.0 &amp;&amp; b != 0.0 &amp;&amp; c != 0.0) {</span>
+<span class="nc" id="L264">            part = ((b + c - a) * (c + a - b) * (a + b - c)) / (a * b * c);</span>
+        }
+        else {
+<span class="nc" id="L267">            throw new IllegalArgumentException(face + &quot; is not a feasible triangle!&quot;);</span>
+        }
+<span class="nc" id="L269">        return part;</span>
+    }
+
+    private void projectToBoundary(final AVertex vertex) {
+    	// TODO: get rid of VPoint
+<span class="nc" id="L274">	    VPoint position = getMesh().toPoint(vertex);</span>
+<span class="nc" id="L275">        double distance = distanceFunc.apply(position);</span>
+<span class="nc bnc" id="L276" title="All 2 branches missed.">        if(distance &lt; 0) {</span>
+<span class="nc" id="L277">            double dGradPX = (distanceFunc.apply(position.add(new VPoint(deps,0))) - distance) / deps;</span>
+<span class="nc" id="L278">            double dGradPY = (distanceFunc.apply(position.add(new VPoint(0,deps))) - distance) / deps;</span>
+<span class="nc" id="L279">            VPoint projection = new VPoint(dGradPX * distance, dGradPY * distance);</span>
+<span class="nc" id="L280">            position.subtract(projection);</span>
+        }
+<span class="nc" id="L282">    }</span>
+
+    private void removeTrianglesInsideObstacles() {
+<span class="nc" id="L285">        List&lt;AFace&gt; faces = triangulation.getMesh().getFaces();</span>
+<span class="nc bnc" id="L286" title="All 2 branches missed.">        for(AFace face : faces) {</span>
+<span class="nc bnc" id="L287" title="All 4 branches missed.">            if(!triangulation.getMesh().isDestroyed(face) &amp;&amp; distanceFunc.apply(triangulation.getMesh().toTriangle(face).midPoint()) &gt; 0) {</span>
+<span class="nc" id="L288">                triangulation.removeFaceAtBorder(face, true);</span>
+            }
+<span class="nc" id="L290">        }</span>
+<span class="nc" id="L291">    }</span>
+
+    @Override
+    public Collection&lt;VTriangle&gt; getTriangles() {
+<span class="nc" id="L295">        refresh();</span>
+<span class="nc" id="L296">        return triangulation.streamTriangles().collect(Collectors.toList());</span>
+    }
+
+    @Override
+    public void improve() {
+<span class="nc" id="L301">        step();</span>
+<span class="nc" id="L302">        nSteps++;</span>
+<span class="nc" id="L303">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

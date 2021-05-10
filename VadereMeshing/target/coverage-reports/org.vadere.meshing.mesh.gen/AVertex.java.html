@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AVertex.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">AVertex.java</span></div><h1>AVertex.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.shapes.IPoint;
+
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+ * TODO: remove all object references!
+ *
+ * An array-based implementation of {@link IVertex}.
+ *
+ *
+ * @author Benedikt Zoennchen
+ */
+public class AVertex implements IVertex, Cloneable {
+
+	/**
+	 * A lock for flipping edges in parallel
+	 */
+	private final Lock lock;
+
+	/**
+	 * The point of the vertex
+	 */
+    private IPoint point;
+
+	/**
+	 * The array-index of the down vertex. This is only required by if one uses the {@link DelaunayHierarchy} as the
+	 * point location algorithm of the mesh / the triangulation.
+	 */
+	private int down;
+
+	/**
+	 * The array-index of the half-edge which ends in this vertex.
+	 */
+    private int halfEdge;
+
+	/**
+	 * The array-index of this vertex.
+	 */
+	private int id;
+
+	/**
+	 * Indicates that the vertex is destroyed and can be removed from the array-based data structure.
+	 */
+    private boolean destroyed;
+
+	/**
+	 * Default constructor.
+	 *
+	 * @param id        the array-index of this vertex
+	 * @param point     the point / container of this vertex
+	 */
+<span class="fc" id="L57">	public AVertex(final int id, final IPoint point) {</span>
+<span class="fc" id="L58">		this.point = point;</span>
+<span class="fc" id="L59">		this.id = id;</span>
+<span class="fc" id="L60">		this.lock = new ReentrantLock();</span>
+<span class="fc" id="L61">		this.destroyed = false;</span>
+<span class="fc" id="L62">		this.halfEdge = -1;</span>
+<span class="fc" id="L63">	}</span>
+
+	protected void setPoint(@NotNull final IPoint point) {
+<span class="nc" id="L66">		this.point = point;</span>
+<span class="nc" id="L67">	}</span>
+
+	@Override
+	public IPoint getPoint() {
+<span class="nc" id="L71">		return point;</span>
+	}
+
+	public int getEdge() {
+<span class="fc" id="L75">		return halfEdge;</span>
+	}
+
+	public void setEdge(final int halfEdge) {
+<span class="fc" id="L79">		this.halfEdge = halfEdge;</span>
+<span class="fc" id="L80">	}</span>
+
+	public int getDown() {
+<span class="nc" id="L83">		return down;</span>
+	}
+
+	public void setDown(final int down) {
+<span class="nc" id="L87">		this.down = down;</span>
+<span class="nc" id="L88">	}</span>
+
+	public int getId() {
+<span class="fc" id="L91">	    return id;</span>
+    }
+
+	/**
+	 * Sets the array-index of this vertex. Note that this method should
+	 * only be called by the garbage collector in {@link AMesh} which
+	 * adjust indices to remove destroyed base elements.
+	 *
+	 * @param id the new array-index of this face
+	 */
+	void setId(final int id) {
+<span class="nc" id="L102">		this.id = id;</span>
+<span class="nc" id="L103">	}</span>
+
+	public boolean isDestroyed() {
+<span class="nc" id="L106">		return destroyed;</span>
+	}
+
+
+	public void destroy() {
+<span class="nc" id="L111">		destroyed = true;</span>
+<span class="nc" id="L112">	}</span>
+
+	Lock getLock() {
+<span class="nc" id="L115">		return lock;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L120">		return id+&quot;&quot;;</span>
+	}
+
+	@Override
+	public IPoint add(double x, double y) {
+<span class="nc" id="L125">		return point.add(x, y);</span>
+	}
+
+	@Override
+	public IPoint norm(double len) {
+<span class="nc" id="L130">		return point.norm(len);</span>
+	}
+
+	@Override
+	public double distanceSq(IPoint other) {
+<span class="nc" id="L135">		return point.distanceSq(other);</span>
+	}
+
+	@Override
+	public double distanceSq(double x, double y) {
+<span class="nc" id="L140">		return point.distanceSq(x, y);</span>
+	}
+
+	@Override
+    public AVertex clone() {
+        try {
+<span class="nc" id="L146">            AVertex clone = (AVertex)super.clone();</span>
+<span class="nc" id="L147">            clone.point = point.clone();</span>
+<span class="nc" id="L148">            return clone;</span>
+<span class="nc" id="L149">        } catch (CloneNotSupportedException e) {</span>
+<span class="nc" id="L150">            throw new InternalError(e.getMessage());</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

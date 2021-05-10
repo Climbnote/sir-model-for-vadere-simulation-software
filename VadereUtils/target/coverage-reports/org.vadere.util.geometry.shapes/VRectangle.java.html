@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VRectangle.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry.shapes</a> &gt; <span class="el_source">VRectangle.java</span></div><h1>VRectangle.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry.shapes;
+
+import com.github.davidmoten.rtree.geometry.Rectangle;
+import com.github.davidmoten.rtree.geometry.internal.RectangleDouble;
+
+import org.vadere.util.geometry.GeometryUtils;
+
+import java.awt.geom.Rectangle2D;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+
+@SuppressWarnings(&quot;serial&quot;)
+/**
+ * Note: A rectangle which has the same corner points as a polygon is not
+ * equals to the polygon.
+ */
+public class VRectangle extends Rectangle2D.Double implements VShape {
+
+	/**
+	 * The x and y define the corner of the rectangle with the smallest values.
+	 *
+	 * @param x x-coordinate of the lower-left corner
+	 * @param y y-coordinate of the lower-left corner
+	 * @param w the width of the rectangle
+	 * @param h the height of the rectangle
+	 */
+	public VRectangle(double x, double y, double w, double h) {
+<span class="fc" id="L30">		super(x, y, w, h);</span>
+
+<span class="pc bpc" id="L32" title="2 of 4 branches missed.">		if (w &lt;= 0 || h &lt;= 0) {</span>
+<span class="nc" id="L33">			throw new IllegalArgumentException(</span>
+					&quot;Width and height have to be positive.&quot;);
+		}
+<span class="fc" id="L36">	}</span>
+
+	public VRectangle(final Rectangle2D rectangle) {
+<span class="nc" id="L39">		this(rectangle.getX(), rectangle.getY(), rectangle.getWidth(), rectangle.getHeight());</span>
+<span class="nc" id="L40">	}</span>
+
+	public VRectangle(final Rectangle2D.Double rectangle) {
+<span class="nc" id="L43">		this(rectangle.x, rectangle.y, rectangle.width, rectangle.height);</span>
+<span class="nc" id="L44">	}</span>
+
+	@Override
+	public boolean contains(VCircle otherShape) {
+<span class="fc" id="L48">		double centerX = otherShape.getCentroid().x;</span>
+<span class="fc" id="L49">		double centerY = otherShape.getCentroid().y;</span>
+<span class="fc" id="L50">		double radius = otherShape.getRadius();</span>
+
+<span class="pc bpc" id="L52" title="1 of 4 branches missed.">		boolean circleFitsIntoHorizontally = (centerX &gt; (this.x + radius)) &amp;&amp; ((this.x + this.width) &gt; (centerX + radius));</span>
+<span class="pc bpc" id="L53" title="1 of 4 branches missed.">		boolean circleFitsIntoVertically = (centerY &gt; (this.y + radius)) &amp;&amp; ((this.y + this.height) &gt; (centerY + radius));</span>
+
+<span class="pc bpc" id="L55" title="3 of 4 branches missed.">		return circleFitsIntoHorizontally &amp;&amp; circleFitsIntoVertically;</span>
+	}
+
+	@Override
+	public double distance(IPoint point) {
+<span class="fc" id="L60">		VPoint closestPoint = closestPoint(point);</span>
+
+<span class="fc bfc" id="L62" title="All 2 branches covered.">		if (contains(point)) {</span>
+<span class="fc" id="L63">			return -closestPoint.distance(point);</span>
+		} else {
+<span class="fc" id="L65">			return closestPoint.distance(point);</span>
+		}
+	}
+
+	@Override
+	public VPoint closestPoint(IPoint point) {
+<span class="fc" id="L71">		VLine[] lines = getLines();</span>
+<span class="fc" id="L72">		VPoint result = GeometryUtils.closestToSegment(lines[0], point);</span>
+<span class="fc" id="L73">		double distanceToLine = result.distance(point);</span>
+
+<span class="fc bfc" id="L75" title="All 2 branches covered.">		for (int i = 1; i &lt; 4; i++) {</span>
+<span class="fc" id="L76">			VPoint tmpClosest = GeometryUtils.closestToSegment(lines[i], point);</span>
+<span class="fc" id="L77">			double tmpDistance = tmpClosest.distance(point);</span>
+<span class="pc bpc" id="L78" title="1 of 2 branches missed.">			if (tmpDistance &lt; distanceToLine) {</span>
+<span class="nc" id="L79">				distanceToLine = tmpDistance;</span>
+<span class="nc" id="L80">				result = tmpClosest;</span>
+			}
+		}
+
+<span class="fc" id="L84">		return result;</span>
+	}
+
+	@Override
+	public Optional&lt;VPoint&gt; getClosestIntersectionPoint(VPoint q1, VPoint q2, VPoint r) {
+<span class="nc" id="L89">		double minDinstance = java.lang.Double.MAX_VALUE;</span>
+<span class="nc" id="L90">		VPoint intersectionPoint = null;</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">		for(VLine line : getLines()) {</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">			if(GeometryUtils.intersectLineSegment(line, q1, q2)) {</span>
+<span class="nc" id="L93">				VPoint tmpIntersectionPoint = GeometryUtils.lineIntersectionPoint(line, q1.getX(), q1.getY(), q2.getX(), q2.getY());</span>
+<span class="nc" id="L94">				double distance = tmpIntersectionPoint.distance(r);</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">				if(distance &lt; minDinstance) {</span>
+<span class="nc" id="L96">					minDinstance = distance;</span>
+<span class="nc" id="L97">					intersectionPoint = tmpIntersectionPoint;</span>
+				}
+			}
+		}
+<span class="nc" id="L101">		return Optional.ofNullable(intersectionPoint);</span>
+	}
+
+	public VLine[] getLines() {
+<span class="fc" id="L105">		VLine[] result = new VLine[4];</span>
+
+<span class="fc" id="L107">		result[0] = new VLine(x, y, x + width, y);</span>
+<span class="fc" id="L108">		result[1] = new VLine(x + width, y, x + width, y + height);</span>
+<span class="fc" id="L109">		result[2] = new VLine(x + width, y + height, x, y + height);</span>
+<span class="fc" id="L110">		result[3] = new VLine(x, y + height, x, y);</span>
+
+<span class="fc" id="L112">		return result;</span>
+	}
+
+	public VPoint[] getCornerPoints() {
+<span class="nc" id="L116">		VPoint[] result = new VPoint[4];</span>
+
+<span class="nc" id="L118">		result[0] = new VPoint(x, y);</span>
+<span class="nc" id="L119">		result[1] = new VPoint(x + width, y);</span>
+<span class="nc" id="L120">		result[2] = new VPoint(x + width, y + height);</span>
+<span class="nc" id="L121">		result[3] = new VPoint(x, y + height);</span>
+
+<span class="nc" id="L123">		return result;</span>
+	}
+
+	public double getArea() {
+<span class="nc" id="L127">		return getWidth() * getHeight();</span>
+	}
+
+	@Override
+	public boolean contains(IPoint point) {
+<span class="fc" id="L132">		return super.contains(point.getX(), point.getY());</span>
+	}
+
+	@Override
+	public VRectangle translatePrecise(final IPoint vector) {
+<span class="nc" id="L137">		VPoint dp = VPoint.addPrecise(vector, new VPoint(getX(), getY()));</span>
+<span class="nc" id="L138">		return new VRectangle(dp.getX(), dp.getY(), getWidth(), getHeight());</span>
+	}
+
+	@Override
+	public VRectangle translate(final IPoint vector) {
+<span class="nc" id="L143">		return new VRectangle(getX() + vector.getX(), getY() + vector.getY(), getWidth(), getHeight());</span>
+	}
+
+	@Override
+	public VRectangle scale(final double scalar) {
+<span class="nc" id="L148">		return new VRectangle(getX() * scalar, getY() * scalar, getWidth() * scalar, getHeight() * scalar);</span>
+	}
+
+	@Override
+	public VRectangle resize(IPoint start, IPoint end){
+<span class="nc bnc" id="L153" title="All 2 branches missed.">		double minX = Math.abs(start.getX() - getMinX()) &lt; BORDER_TOLERANCE ? end.getX() : getMinX();</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">		double minY = Math.abs(start.getY() - getMinY())  &lt; BORDER_TOLERANCE ? end.getY() : getMinY();</span>
+
+<span class="nc bnc" id="L156" title="All 2 branches missed.">		double maxX    = Math.abs(start.getX() - getMaxX()) &lt; BORDER_TOLERANCE ? end.getX() : getMaxX();</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">		double maxY    = Math.abs(start.getY() - getMaxY()) &lt; BORDER_TOLERANCE ? end.getY() : getMaxY();</span>
+
+<span class="nc" id="L159">		return new VRectangle(minX, minY, maxX - minX, maxY - minY);</span>
+	}
+
+	@Override
+	public int getDirectionalCode(IPoint startPoint, int directions){
+<span class="nc" id="L164">		double horizontalRatio = (startPoint.getX() - getCenterX()) / (getWidth() / 2);</span>
+<span class="nc" id="L165">		double verticalRatio = (startPoint.getY() - getCenterY()) / (getHeight() / 2);</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">		if (Math.abs(horizontalRatio - verticalRatio) &lt; BORDER_TOLERANCE) {</span>
+<span class="nc bnc" id="L167" title="All 2 branches missed.">			return horizontalRatio &gt; 0 ? 1 : 5;</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">		} else if (Math.abs(horizontalRatio + verticalRatio) &lt; BORDER_TOLERANCE) {</span>
+<span class="nc bnc" id="L169" title="All 2 branches missed.">			return horizontalRatio &gt; 0 ? 3 : 7;</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">		} else if (Math.abs(horizontalRatio) &gt; Math.abs(verticalRatio)) {</span>
+<span class="nc bnc" id="L171" title="All 2 branches missed.">			return horizontalRatio &gt; 0 ? 0 : 4;</span>
+		}
+<span class="nc bnc" id="L173" title="All 2 branches missed.">		return verticalRatio &gt; 0 ? 2 : 6;</span>
+	}
+
+	@Override
+	public boolean intersects(VLine intersectingLine) {
+<span class="nc bnc" id="L178" title="All 2 branches missed.">		if (intersectingLine.intersects(this)) {</span>
+<span class="nc" id="L179">			return true;</span>
+		}
+<span class="nc" id="L181">		return false;</span>
+	}
+
+	@Override
+	public VPoint getCentroid() {
+<span class="fc" id="L186">		return new VPoint(x + (width / 2), y + (height / 2));</span>
+	}
+
+	@Override
+	public ShapeType getType() {
+<span class="nc" id="L191">		return ShapeType.RECTANGLE;</span>
+	}
+
+	public VPolygon toPolygon() {
+<span class="fc" id="L195">		return new VPolygon(this);</span>
+	}
+
+	@Override
+	public boolean intersects(final VShape shape) {
+<span class="fc bfc" id="L200" title="All 2 branches covered.">		if(shape instanceof VRectangle){</span>
+<span class="fc" id="L201">			return super.intersects(((VRectangle)shape));</span>
+		}
+<span class="pc bpc" id="L203" title="1 of 2 branches missed.">		else if(shape instanceof VPolygon) {</span>
+<span class="nc" id="L204">			return ((VPolygon)shape).intersects(this);</span>
+		}
+		else {
+<span class="fc" id="L207">			return VShape.super.intersects(shape);</span>
+		}
+	}
+
+	@Override
+	public List&lt;VPoint&gt; getPath() {
+<span class="nc" id="L213">		return Arrays.asList(new VPoint(x,y), new VPoint(x+width, y), new VPoint(x+width, y+height), new VPoint(x, y+height));</span>
+	}
+
+	@Override
+	public List&lt;VLine&gt; lines() {
+<span class="nc" id="L218">		List&lt;VLine&gt; lines = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">		for (VLine line : getLines()) {</span>
+<span class="nc" id="L220">			lines.add(line);</span>
+		}
+<span class="nc" id="L222">		return lines;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

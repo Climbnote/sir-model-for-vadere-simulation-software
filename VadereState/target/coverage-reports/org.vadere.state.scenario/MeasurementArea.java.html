@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MeasurementArea.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.scenario</a> &gt; <span class="el_source">MeasurementArea.java</span></div><h1>MeasurementArea.java</h1><pre class="source lang-java linenums">package org.vadere.state.scenario;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.state.attributes.Attributes;
+import org.vadere.state.attributes.scenario.AttributesMeasurementArea;
+import org.vadere.state.types.ScenarioElementType;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VShape;
+
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Objects;
+
+public class MeasurementArea extends ScenarioElement {
+
+	private AttributesMeasurementArea attributes;
+
+	public MeasurementArea(){
+<span class="nc" id="L20">		this(new AttributesMeasurementArea());</span>
+<span class="nc" id="L21">	}</span>
+
+<span class="nc" id="L23">	public MeasurementArea(@NotNull  AttributesMeasurementArea attributes) {</span>
+<span class="nc" id="L24">		this.attributes = attributes;</span>
+<span class="nc" id="L25">	}</span>
+
+	public MeasurementArea(MeasurementArea measurementArea){
+<span class="nc" id="L28">		this(new AttributesMeasurementArea(measurementArea.getId(), measurementArea.getShape()));</span>
+<span class="nc" id="L29">	}</span>
+
+
+	public boolean isRectangular(){
+<span class="nc" id="L33">		VShape shape = attributes.getShape();</span>
+<span class="nc bnc" id="L34" title="All 2 branches missed.">		if (shape instanceof VRectangle)</span>
+<span class="nc" id="L35">			return true;</span>
+<span class="nc bnc" id="L36" title="All 2 branches missed.">		if (shape instanceof VPolygon){</span>
+<span class="nc" id="L37">			return ((VPolygon)shape).isRectangular();</span>
+		}
+<span class="nc" id="L39">		return false;</span>
+	}
+
+	public VRectangle asVRectangle(){
+<span class="nc" id="L43">		VShape shape = attributes.getShape();</span>
+<span class="nc bnc" id="L44" title="All 2 branches missed.">		if (shape instanceof VRectangle)</span>
+<span class="nc" id="L45">			return (VRectangle) shape;</span>
+<span class="nc bnc" id="L46" title="All 2 branches missed.">		if (shape instanceof VPolygon){</span>
+<span class="nc" id="L47">			VRectangle rectangle = ((VPolygon)shape).asVRectangle();</span>
+<span class="nc" id="L48">			setShape(rectangle);</span>
+<span class="nc" id="L49">			return rectangle;</span>
+		}
+<span class="nc" id="L51">		return null;</span>
+	}
+
+	public VPolygon asPolygon() {
+<span class="nc" id="L55">		VShape shape = attributes.getShape();</span>
+<span class="nc bnc" id="L56" title="All 4 branches missed.">		if (shape instanceof VRectangle || shape instanceof VPolygon) {</span>
+<span class="nc" id="L57">			return new VPolygon(shape);</span>
+		}
+<span class="nc" id="L59">		return null;</span>
+	}
+
+	/**
+	 * Compare {@link MeasurementArea}s based on their shape.
+	 * Important {@link VPolygon} != {@link VRectangle} even if all points are the same.
+	 * @param other
+	 * @return
+	 */
+	public boolean compareByShape(MeasurementArea other){
+<span class="nc" id="L69">		return this.getShape().equals(other.getShape());</span>
+	}
+
+	@Override
+	public VShape getShape() {
+<span class="nc" id="L74">		return attributes.getShape();</span>
+	}
+
+	@Override
+	public void setShape(VShape newShape) {
+<span class="nc" id="L79">		attributes.setShape(newShape);</span>
+<span class="nc" id="L80">	}</span>
+
+	@Override
+	public int getId() {
+<span class="nc" id="L84">		return attributes.getId();</span>
+	}
+
+	@Override
+	public ScenarioElementType getType() {
+<span class="nc" id="L89">		return ScenarioElementType.MEASUREMENT_AREA;</span>
+	}
+
+	@Override
+	public ScenarioElement clone() {
+<span class="nc" id="L94">		return new MeasurementArea(((AttributesMeasurementArea) attributes.clone()));</span>
+	}
+
+	@Override
+	public Attributes getAttributes() {
+<span class="nc" id="L99">		return attributes;</span>
+	}
+
+	@Override
+	public void setAttributes(Attributes attributes) {
+<span class="nc" id="L104">		this.attributes = (AttributesMeasurementArea)attributes;</span>
+<span class="nc" id="L105">	}</span>
+
+	public void setId(int id){
+<span class="nc" id="L108">		((AttributesMeasurementArea)getAttributes()).setId(id);</span>
+<span class="nc" id="L109">	}</span>
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L113">		final int prime = 31;</span>
+<span class="nc" id="L114">		int result = 1;</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">		result = prime * result + ((attributes == null) ? 0 : attributes.hashCode());</span>
+<span class="nc" id="L116">		return result;</span>
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		if (this == obj) {</span>
+<span class="nc" id="L122">			return true;</span>
+		}
+<span class="nc bnc" id="L124" title="All 2 branches missed.">		if (obj == null) {</span>
+<span class="nc" id="L125">			return false;</span>
+		}
+<span class="nc bnc" id="L127" title="All 2 branches missed.">		if (!(obj instanceof MeasurementArea)) {</span>
+<span class="nc" id="L128">			return false;</span>
+		}
+<span class="nc" id="L130">		MeasurementArea other = (MeasurementArea) obj;</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">		if (attributes == null) {</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">			if (other.attributes != null) {</span>
+<span class="nc" id="L133">				return false;</span>
+			}
+<span class="nc bnc" id="L135" title="All 2 branches missed.">		} else if (!attributes.equals(other.attributes)) {</span>
+<span class="nc" id="L136">			return false;</span>
+		}
+<span class="nc" id="L138">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

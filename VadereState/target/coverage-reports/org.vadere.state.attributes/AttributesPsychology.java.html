@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesPsychology.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes</a> &gt; <span class="el_source">AttributesPsychology.java</span></div><h1>AttributesPsychology.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes;
+
+import java.util.Objects;
+import java.util.Random;
+
+/**
+ * This class encapsulates psychology-related simulation attributes.
+ */
+<span class="nc" id="L9">public class AttributesPsychology extends Attributes {</span>
+
+	/** Store the members of this class under this key in the JSON file. */
+	public static final String JSON_KEY = &quot;attributesPsychology&quot;;
+
+	/** Allows agents to change their behavior (e.g. from TARGET_ORIENTIED to COOPERATIVE if it is too dense) */
+<span class="nc" id="L15">	private boolean usePsychologyLayer = false;</span>
+<span class="nc" id="L16">	private AttributesPsychologyLayer psychologyLayer = new AttributesPsychologyLayer();</span>
+
+	// Getter
+	public boolean isUsePsychologyLayer() {
+<span class="nc" id="L20">		return usePsychologyLayer;</span>
+	}
+<span class="nc" id="L22">	public AttributesPsychologyLayer getPsychologyLayer() { return psychologyLayer; }</span>
+
+	// Setters
+	public void setUsePsychologyLayer(boolean usePsychologyLayer) {
+<span class="nc" id="L26">		checkSealed();</span>
+<span class="nc" id="L27">		this.usePsychologyLayer = usePsychologyLayer;</span>
+<span class="nc" id="L28">	}</span>
+
+	public void setPsychologyLayer(AttributesPsychologyLayer attributesPsychologyLayer) {
+<span class="nc" id="L31">		checkSealed();</span>
+<span class="nc" id="L32">		this.psychologyLayer = attributesPsychologyLayer;</span>
+<span class="nc" id="L33">	}</span>
+
+	@Override
+	public boolean equals(Object o) {
+<span class="nc bnc" id="L37" title="All 2 branches missed.">		if (this == o) return true;</span>
+<span class="nc bnc" id="L38" title="All 4 branches missed.">		if (o == null || getClass() != o.getClass()) return false;</span>
+<span class="nc" id="L39">		AttributesPsychology that = (AttributesPsychology) o;</span>
+<span class="nc bnc" id="L40" title="All 2 branches missed.">		return usePsychologyLayer == that.usePsychologyLayer &amp;&amp;</span>
+<span class="nc bnc" id="L41" title="All 2 branches missed.">				psychologyLayer.equals(that.psychologyLayer);</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L46">		return Objects.hash(usePsychologyLayer, psychologyLayer);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GenConstrainSplitter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">GenConstrainSplitter.java</span></div><h1>GenConstrainSplitter.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.vadere.meshing.SpaceFillingCurve;
+import org.vadere.meshing.mesh.gen.IncrementalTriangulation;
+import org.vadere.meshing.mesh.impl.PSLG;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.ITriEventListener;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.ITriangulator;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.logging.Logger;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+
+public class GenConstrainSplitter&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements ITriangulator&lt;V, E, F&gt; {
+
+<span class="nc" id="L36">	private final static Logger logger = Logger.getLogger(GenConstrainSplitter.class);</span>
+	private final IIncrementalTriangulation&lt;V, E, F&gt; triangulation;
+	private final Collection&lt;VLine&gt; constrains;
+	private final Collection&lt;Pair&lt;V, V&gt;&gt; vConstrains;
+	private final Set&lt;E&gt; eConstrains;
+	private final Collection&lt;IPoint&gt; points;
+	private final Map&lt;V, VLine&gt; projectionMap;
+	private boolean generated;
+	private final double tol;
+	private final GenSpaceFillingCurve&lt;V, E, F&gt; sfc;
+
+
+	public GenConstrainSplitter(
+			@NotNull final Supplier&lt;IMesh&lt;V, E, F&gt;&gt; meshSupply,
+			@NotNull final PSLG pslg,
+			final double tol) {
+<span class="nc" id="L52">		this(new IncrementalTriangulation&lt;&gt;(meshSupply.get(), pslg.getBoundingBox()), pslg, tol);</span>
+<span class="nc" id="L53">	}</span>
+
+	public GenConstrainSplitter(
+			@NotNull final IIncrementalTriangulation&lt;V, E, F&gt; triangulation,
+			@NotNull final PSLG pslg,
+			final double tol) {
+<span class="nc" id="L59">		this(triangulation, pslg.getAllSegments(), tol, null);</span>
+<span class="nc" id="L60">	}</span>
+
+	public GenConstrainSplitter(
+			@NotNull final IIncrementalTriangulation&lt;V, E, F&gt; triangulation,
+			@NotNull final Collection&lt;VLine&gt; constrains,
+			final double tol) {
+<span class="nc" id="L66">		this(triangulation, constrains, tol, null);</span>
+<span class="nc" id="L67">	}</span>
+
+	public GenConstrainSplitter(
+			@NotNull final IIncrementalTriangulation&lt;V, E, F&gt; triangulation,
+			@NotNull final Collection&lt;VLine&gt; constrains,
+			final double tol,
+<span class="nc" id="L73">			@Nullable final GenSpaceFillingCurve&lt;V, E, F&gt; sfc) {</span>
+<span class="nc" id="L74">		this.constrains = constrains;</span>
+<span class="nc" id="L75">		this.points = Collections.EMPTY_LIST;</span>
+<span class="nc" id="L76">		this.vConstrains = new ArrayList&lt;&gt;(constrains.size());</span>
+<span class="nc" id="L77">		this.eConstrains = new HashSet&lt;&gt;(constrains.size());</span>
+<span class="nc" id="L78">		this.projectionMap = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L79">		this.tol = tol;</span>
+<span class="nc" id="L80">		this.sfc = sfc;</span>
+
+		/**
+		 * This prevent the flipping of constrained edges
+		 */
+<span class="nc bnc" id="L85" title="All 4 branches missed.">		Predicate&lt;E&gt; canIllegal = e -&gt; !eConstrains.contains(e) &amp;&amp; !eConstrains.contains(getMesh().getTwin(e));</span>
+<span class="nc" id="L86">		this.triangulation = triangulation;</span>
+<span class="nc" id="L87">		this.triangulation.setCanIllegalPredicate(canIllegal);</span>
+<span class="nc" id="L88">	}</span>
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; getTriangulation() {
+<span class="nc" id="L92">		return triangulation;</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate(boolean finalize) {
+<span class="nc bnc" id="L97" title="All 2 branches missed.">		if(!generated) {</span>
+<span class="nc" id="L98">			insertPoints();</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">			for(Pair&lt;V, V&gt; constrain : vConstrains) {</span>
+<span class="nc" id="L100">				enforceConstrain(constrain);</span>
+<span class="nc" id="L101">			}</span>
+<span class="nc" id="L102">			generated = true;</span>
+		}
+
+<span class="nc bnc" id="L105" title="All 2 branches missed.">		for(Pair&lt;V, V&gt; constrain : vConstrains) {</span>
+<span class="nc" id="L106">			V v1 = constrain.getLeft();</span>
+<span class="nc" id="L107">			V v2 = constrain.getRight();</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">			for(E e : getMesh().getEdgeIt(v1)) {</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">				if(getMesh().getTwinVertex(e).equals(v2)) {</span>
+<span class="nc" id="L110">					eConstrains.add(e);</span>
+<span class="nc" id="L111">					eConstrains.add(getMesh().getTwin(e));</span>
+<span class="nc" id="L112">					break;</span>
+				}
+<span class="nc" id="L114">			}</span>
+<span class="nc" id="L115">		}</span>
+
+<span class="nc bnc" id="L117" title="All 2 branches missed.">		if(finalize) {</span>
+<span class="nc" id="L118">			getTriangulation().finish();</span>
+		}
+
+<span class="nc" id="L121">		return triangulation;</span>
+	}
+
+	public Collection&lt;E&gt; getConstrains() {
+<span class="nc" id="L125">		return eConstrains;</span>
+	}
+
+	public Map&lt;V, VLine&gt; getProjections() {
+<span class="nc" id="L129">		return projectionMap;</span>
+	}
+
+	private void enforceConstrain(@NotNull final Pair&lt;V, V&gt; constrain) {
+<span class="nc" id="L133">		V v1 = constrain.getLeft();</span>
+<span class="nc" id="L134">		V v2 = constrain.getRight();</span>
+
+		// this may also contain co-linear edges!
+<span class="nc" id="L137">		LinkedList&lt;E&gt; intersectingEdges = triangulation.getIntersectingEdges(v1, v2);</span>
+
+<span class="nc bnc" id="L139" title="All 2 branches missed.">		for(E edge : intersectingEdges) {</span>
+<span class="nc" id="L140">			VLine vEdge = triangulation.getMesh().toLine(edge);</span>
+<span class="nc" id="L141">			V v11 = getMesh().getVertex(edge);</span>
+<span class="nc" id="L142">			V v22 = getMesh().getVertex(getMesh().getPrev(edge));</span>
+
+			// to be save, TODO inconsistent geometry check which may lead to a deadlock (isLeftOfRobust is &quot;robust&quot; while intersectLineSegment is not&quot;)
+<span class="nc bnc" id="L145" title="All 2 branches missed.">			if(GeometryUtils.intersectLineSegment(vEdge.x1, vEdge.y1, vEdge.x2, vEdge.y2, v1.getX(), v1.getY(), v2.getX(), v2.getY())) {</span>
+				//E next = triangulation.getMesh().getNext(edge);
+				//E prev = triangulation.getMesh().getPrev(edge);
+				//E twin = triangulation.getMesh().getTwin(edge);
+<span class="nc" id="L149">				VPoint intersectionPoint = GeometryUtils.intersectionPoint(vEdge.x1, vEdge.y1, vEdge.x2, vEdge.y2, v1.getX(), v1.getY(), v2.getX(), v2.getY());</span>
+
+<span class="nc bnc" id="L151" title="All 2 branches missed.">				if(intersectionPoint.distanceSq(v11) &lt;= tol * tol) {</span>
+					//getMesh().setPoint(v11, intersectionPoint);
+<span class="nc" id="L153">					projectionMap.put(v11, vEdge);</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">				} else if(intersectionPoint.distanceSq(v22) &lt;= tol * tol) {</span>
+					//getMesh().setPoint(v22, intersectionPoint);
+<span class="nc" id="L156">					projectionMap.put(v22, vEdge);</span>
+				} else {
+<span class="nc" id="L158">					V vertex = getMesh().createVertex(intersectionPoint);</span>
+<span class="nc" id="L159">					triangulation.splitEdge(vertex, edge, false);</span>
+<span class="nc" id="L160">					projectionMap.put(vertex, vEdge);</span>
+				}
+			} else {
+				// the edge is co-linear that means we add the complete edge to be part of the constrains or one vertex is very close to (v1--v2).
+				/*if(GeometryUtils.distanceToLineSegment(v1, v2, v11.getX(), v11.getY()) &lt;= tol) {
+					VPoint projection1 = GeometryUtils.projectOntoLine(v11.getX(), v11.getY(), v1.getX(), v1.getY(), v2.getX(), v2.getY());
+					getMesh().setPoint(v11, projection1);
+					projectionMap.put(v11, vEdge);
+				}
+
+				if(GeometryUtils.distanceToLineSegment(v1, v2, v22.getX(), v22.getY()) &lt;= tol) {
+					VPoint projection2 = GeometryUtils.projectOntoLine(v22.getX(), v22.getY(), v1.getX(), v1.getY(), v2.getX(), v2.getY());
+					getMesh().setPoint(v22, projection2);
+					projectionMap.put(v22, vEdge);
+				}*/
+			}
+<span class="nc" id="L176">		}</span>
+<span class="nc" id="L177">	}</span>
+
+	private void insertPoints() {
+<span class="nc" id="L180">		triangulation.init();</span>
+<span class="nc" id="L181">		IMesh&lt;V, E, F&gt; mesh = triangulation.getMesh();</span>
+
+<span class="nc" id="L183">		triangulation.insert(points);</span>
+
+<span class="nc bnc" id="L185" title="All 2 branches missed.">		for(VLine constrain : constrains) {</span>
+<span class="nc" id="L186">			boolean insertPair = true;</span>
+<span class="nc" id="L187">			IPoint p1 = mesh.createPoint(constrain.x1, constrain.y1);</span>
+<span class="nc" id="L188">			IPoint p2 = mesh.createPoint(constrain.x2, constrain.y2);</span>
+
+<span class="nc" id="L190">			E edge1 = triangulation.insert(p1);</span>
+<span class="nc" id="L191">			V v1 = triangulation.getMesh().getVertex(edge1);</span>
+			// could not insertVertex p1
+<span class="nc bnc" id="L193" title="All 2 branches missed.">			if(!getMesh().getPoint(v1).equals(p1)) {</span>
+<span class="nc" id="L194">				logger.warn(&quot;could not insertVertex &quot; + p1);</span>
+<span class="nc" id="L195">				insertPair = false;</span>
+			}
+
+<span class="nc" id="L198">			E edge2 = triangulation.insert(p2);</span>
+<span class="nc" id="L199">			V v2 = triangulation.getMesh().getVertex(edge2);</span>
+			// could not insertVertex p2
+<span class="nc bnc" id="L201" title="All 2 branches missed.">			if(!getMesh().getPoint(v2).equals(p2)) {</span>
+<span class="nc" id="L202">				logger.warn(&quot;could not insertVertex &quot; + p2);</span>
+<span class="nc" id="L203">				insertPair = false;</span>
+			}
+
+<span class="nc bnc" id="L206" title="All 2 branches missed.">			if(insertPair) {</span>
+<span class="nc" id="L207">				vConstrains.add(Pair.of(v1, v2));</span>
+			}
+<span class="nc" id="L209">		}</span>
+<span class="nc" id="L210">	}</span>
+
+	@Override
+	public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="nc" id="L214">		return triangulation.getMesh();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,75 @@
+<h1> ProcessorTestEnv</h1>
+
+<p>
+A <a href='/helpText/org.vadere.simulator.projects.dataprocessing.processor.ProcessorTestEnv.html' class='class_link'>ProcessorTestEnv</a> encapsulates needed  dependencies to test a <a href='/helpText/org.vadere.simulator.projects.dataprocessing.processor.DataProcessor.html' class='class_link'>DataProcessor</a>. If
+possible dependencies are mocked via <a href='/helpText/rel_/org.mockito.Mockito.html' class='class_link'>org.mockito.Mockito</a>.
+
+@author Stefan Schuhbäck
+</p>
+
+<hr>
+<h2> Field: processorFactory</h2>
+<p>
+Factories
+</p>
+
+<hr>
+<h2> Field: testedProcessor</h2>
+<p>
+processor under test
+</p>
+
+<hr>
+<h2> Field: manager</h2>
+<p>
+Needed for DataProcessor doUpdate call. (mocked)
+</p>
+
+<hr>
+<h2> Field: states</h2>
+<p>
+List of <a href='/helpText/org.vadere.simulator.control.simulation.SimulationState.html' class='class_link'>SimulationState</a>s used for test. (mocked)
+</p>
+
+<hr>
+<h2> Field: requiredProcessors</h2>
+<p>
+If <span class='local_link'>testedProcessor</span> has dependencies to other <a href='/helpText/org.vadere.simulator.projects.dataprocessing.processor.DataProcessor.html' class='class_link'>DataProcessor</a>s
+</p>
+
+<hr>
+<h2> Field: delimiter</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: dataKeyType</h2>
+<p>
+Needed to access class of K in a type safe manner.
+</p>
+
+<hr>
+<h2> Field: testedProcessorClass</h2>
+<p>
+Needed to access class of testedProcessor in a type safe manner.
+</p>
+
+<hr>
+<h2> Field: outputFile</h2>
+<p>
+Corresponding <a href='/helpText/org.vadere.simulator.projects.dataprocessing.outputfile.OutputFile.html' class='class_link'>OutputFile</a> needed by <span class='local_link'>testedProcessor</span>
+</p>
+
+<hr>
+<h2> Field: expectedOutput</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: nextProcessorId</h2>
+<p>
+Ids of <a href='/helpText/org.vadere.simulator.projects.dataprocessing.processor.DataProcessor.html' class='class_link'>DataProcessor</a>s
+</p>
+
+<hr>
+<h2> Field: outputFileFactory</h2>
+<p>---</p>
+

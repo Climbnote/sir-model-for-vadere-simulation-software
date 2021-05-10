@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MPoint.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry.shapes</a> &gt; <span class="el_source">MPoint.java</span></div><h1>MPoint.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry.shapes;
+
+public class MPoint implements org.vadere.util.geometry.shapes.IPoint, Cloneable{
+
+    private VPoint point;
+<span class="nc" id="L6">    private int hashCode = -1;</span>
+
+<span class="nc" id="L8">    public MPoint(final double x, final double y){</span>
+<span class="nc" id="L9">        this.point = new VPoint(x, y);</span>
+<span class="nc" id="L10">    }</span>
+
+    public VPoint toVPoint() {
+<span class="nc" id="L13">        return new VPoint(getX(), getY());</span>
+    }
+
+    @Override
+    public double getX() {
+<span class="nc" id="L18">        return point.getX();</span>
+    }
+
+    @Override
+    public double getY() {
+<span class="nc" id="L23">        return point.getY();</span>
+    }
+
+    public void set(double x, double y) {
+<span class="nc" id="L27">        point = new VPoint(x, y);</span>
+<span class="nc" id="L28">    }</span>
+
+    @Override
+    public MPoint add(final IPoint point) {
+<span class="nc" id="L32">        this.point = this.point.add(point);</span>
+<span class="nc" id="L33">        hashCode = -1;</span>
+<span class="nc" id="L34">        return this;</span>
+    }
+
+	@Override
+	public IPoint add(double x, double y) {
+<span class="nc" id="L39">		this.point = this.point.add(x, y);</span>
+<span class="nc" id="L40">		hashCode = -1;</span>
+<span class="nc" id="L41">		return this;</span>
+	}
+
+	@Override
+    public MPoint addPrecise(final IPoint point) {
+<span class="nc" id="L46">        this.point = this.point.addPrecise(point);</span>
+<span class="nc" id="L47">	    hashCode = -1;</span>
+<span class="nc" id="L48">        return this;</span>
+    }
+
+    @Override
+    public MPoint subtract(IPoint point) {
+<span class="nc" id="L53">        this.point = this.point.subtract(point);</span>
+<span class="nc" id="L54">	    hashCode = -1;</span>
+<span class="nc" id="L55">        return this;</span>
+    }
+
+    @Override
+    public MPoint multiply(IPoint point) {
+<span class="nc" id="L60">        this.point = this.point.multiply(point);</span>
+<span class="nc" id="L61">	    hashCode = -1;</span>
+<span class="nc" id="L62">        return this;</span>
+    }
+
+    @Override
+    public MPoint scalarMultiply(double factor) {
+<span class="nc" id="L67">        this.point = this.point.scalarMultiply(factor);</span>
+<span class="nc" id="L68">	    hashCode = -1;</span>
+<span class="nc" id="L69">        return this;</span>
+    }
+
+    @Override
+    public MPoint rotate(double radAngle) {
+<span class="nc" id="L74">        this.point = this.point.rotate(radAngle);</span>
+<span class="nc" id="L75">	    hashCode = -1;</span>
+<span class="nc" id="L76">        return this;</span>
+    }
+
+    @Override
+    public double scalarProduct(IPoint point) {
+<span class="nc" id="L81">        return this.point.scalarProduct(point);</span>
+    }
+
+    @Override
+    public MPoint norm() {
+<span class="nc" id="L86">        this.point = this.point.norm();</span>
+<span class="nc" id="L87">	    hashCode = -1;</span>
+<span class="nc" id="L88">        return this;</span>
+    }
+
+	@Override
+	public IPoint norm(double len) {
+<span class="nc" id="L93">		return point.norm(len);</span>
+	}
+
+	@Override
+    public MPoint normZeroSafe() {
+<span class="nc" id="L98">        this.point = this.point.normZeroSafe();</span>
+<span class="nc" id="L99">		hashCode = -1;</span>
+<span class="nc" id="L100">        return this;</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc bnc" id="L105" title="All 2 branches missed.">    	if(hashCode == -1) {</span>
+		    // hashCode of java.awt.geom.Point2D
+<span class="nc" id="L107">		    long bits = java.lang.Double.doubleToLongBits(getX());</span>
+<span class="nc" id="L108">		    bits ^= java.lang.Double.doubleToLongBits(getY()) * 31;</span>
+<span class="nc" id="L109">		    hashCode = (((int) bits) ^ ((int) (bits &gt;&gt; 32)));</span>
+	    }
+<span class="nc" id="L111">        return hashCode;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        if (this == obj) {</span>
+<span class="nc" id="L117">            return true;</span>
+        }
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        if (obj == null) {</span>
+<span class="nc" id="L120">            return false;</span>
+        }
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        if (!(obj instanceof IPoint))</span>
+<span class="nc" id="L123">            return false;</span>
+
+<span class="nc" id="L125">        IPoint other = (IPoint) obj;</span>
+
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        if (this.getX() != other.getX())</span>
+<span class="nc" id="L128">            return false;</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">        if (this.getY() != other.getY())</span>
+<span class="nc" id="L130">            return false;</span>
+
+<span class="nc" id="L132">        return true;</span>
+    }
+
+
+    @Override
+    public String toString() {
+<span class="nc" id="L138">        return point.toString();</span>
+    }
+
+    @Override
+    public double distance(IPoint other) {
+<span class="nc" id="L143">        return point.distance(other);</span>
+    }
+
+    @Override
+    public double distance(double x, double y) {
+<span class="nc" id="L148">        return point.distance(x, y);</span>
+    }
+
+	@Override
+	public double distanceSq(IPoint other) {
+<span class="nc" id="L153">		return point.distanceSq(other);</span>
+	}
+
+	@Override
+	public double distanceSq(double x, double y) {
+<span class="nc" id="L158">		return point.distanceSq(x, y);</span>
+	}
+
+	@Override
+    public double distanceToOrigin() {
+<span class="nc" id="L163">        return this.point.distanceToOrigin();</span>
+    }
+
+    @Override
+    public MPoint clone() {
+        try {
+<span class="nc" id="L169">            MPoint clone = (MPoint)super.clone();</span>
+<span class="nc" id="L170">            return clone;</span>
+<span class="nc" id="L171">        } catch (CloneNotSupportedException e) {</span>
+<span class="nc" id="L172">            throw new RuntimeException(e.getMessage());</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

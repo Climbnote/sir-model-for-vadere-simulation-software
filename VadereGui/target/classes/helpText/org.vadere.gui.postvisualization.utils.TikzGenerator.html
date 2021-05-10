@@ -1,0 +1,41 @@
+<h1> TikzGenerator</h1>
+
+<p>
+Convert the (Java) scenario elements to a TikZ representation.
+
+The conversion is done by using a simple Java-to-TikZ translation table.
+This generator loops over all scenario elements and converts them to TikZ code.
+
+Usually, each (Java) scenario element is represented as a path via
+@see PathIterator This PathSeparator must be converted into its TikZ
+representation.
+
+For example, traversing a Java path with PathIterator returns two segments:
+
+segment type = 0 (SEG_MOVETO) with coords: [1.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+segment type = 3 (SEG_LINETO) with coords: [2.0, 2.0, 0.0, 0.0, 0.0, 0.0]
+
+This must be transformed to TikZ:
+
+(1.0,1.0) to (2.0,2.0)
+
+The TikZGenerator should also respect the GUI settings (e.g., enabled
+elements, colors etc.).
+</p>
+
+<hr>
+<h2> Field: translationTable</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: logger</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: renderer</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: model</h2>
+<p>---</p>
+

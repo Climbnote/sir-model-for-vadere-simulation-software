@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GenRandomPointsSetTriangulator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">GenRandomPointsSetTriangulator.java</span></div><h1>GenRandomPointsSetTriangulator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.gen.IncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.ITriangulator;
+import org.vadere.util.math.IDistanceFunction;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VRectangle;
+
+import java.util.Random;
+
+/**
+ * &lt;p&gt;A triangulator which randomly inserts points.&lt;/p&gt;
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public class GenRandomPointsSetTriangulator&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements ITriangulator&lt;V, E, F&gt; {
+
+    private final IIncrementalTriangulation&lt;V, E, F&gt; triangulation;
+    private final int numberOfPoints;
+    private Random random;
+    private final VRectangle bound;
+    private final IDistanceFunction distFunc;
+
+
+	/**
+	 * The default constructor.
+	 *
+	 * @param mesh              an empty mesh which will contain the all elements of the triangulation
+	 * @param numberOfPoints    the number of random points which will be inserted
+	 * @param bound             the bound containing all points
+	 * @param distFunc          a distance function which has to be positive at positions where
+	 *                          no point should be inserted and negative elsewhere.
+	 * @param random            a pseudo random number generator
+	 */
+	public GenRandomPointsSetTriangulator(@NotNull final IMesh&lt;V, E, F&gt; mesh,
+	                                      @NotNull final int numberOfPoints,
+	                                      @NotNull final VRectangle bound,
+	                                      @NotNull final IDistanceFunction distFunc,
+	                                      @NotNull final Random random
+<span class="nc" id="L50">	) {</span>
+<span class="nc" id="L51">		this.triangulation = new IncrementalTriangulation&lt;&gt;(mesh, bound);</span>
+<span class="nc" id="L52">		this.numberOfPoints = numberOfPoints;</span>
+<span class="nc" id="L53">		this.random = random;</span>
+<span class="nc" id="L54">		this.bound = bound;</span>
+<span class="nc" id="L55">		this.distFunc = distFunc;</span>
+<span class="nc" id="L56">	}</span>
+
+	/**
+	 *
+	 * @param mesh              an empty mesh which will contain the all elements of the triangulation
+	 * @param numberOfPoints    the number of random points which will be inserted
+	 * @param bound             the bound containing all points
+	 * @param distFunc          a distance function which has to be positive at positions where
+	 *                          no point should be inserted and negative elsewhere.
+	 */
+    public GenRandomPointsSetTriangulator(@NotNull final IMesh&lt;V, E, F&gt; mesh,
+                                          @NotNull final int numberOfPoints,
+                                          @NotNull final VRectangle bound,
+                                          @NotNull final IDistanceFunction distFunc
+                                ) {
+<span class="nc" id="L71">        this(mesh, numberOfPoints, bound, distFunc, new Random());</span>
+<span class="nc" id="L72">    }</span>
+
+	/**
+	 *
+	 * @param mesh              an empty mesh which will contain the all elements of the triangulation
+	 * @param numberOfPoints    the number of random points which will be inserted
+	 * @param bound             the bound containing all points
+	 * @param random            a pseudo random number generator
+	 */
+	public GenRandomPointsSetTriangulator(@NotNull final IMesh&lt;V, E, F&gt; mesh,
+	                                      @NotNull final int numberOfPoints,
+	                                      @NotNull final VRectangle bound,
+	                                      @NotNull final Random random
+<span class="nc" id="L85">	) {</span>
+<span class="nc" id="L86">		this.triangulation = new IncrementalTriangulation&lt;&gt;(mesh, bound);</span>
+<span class="nc" id="L87">		this.numberOfPoints = numberOfPoints;</span>
+<span class="nc" id="L88">		this.random = random;</span>
+<span class="nc" id="L89">		this.bound = bound;</span>
+<span class="nc" id="L90">		this.distFunc = p -&gt; -1.0;</span>
+<span class="nc" id="L91">	}</span>
+
+	/**
+	 *
+	 * @param mesh              an empty mesh which will contain the all elements of the triangulation
+	 * @param numberOfPoints    the number of random points which will be inserted
+	 * @param bound             the bound containing all points
+	 */
+	public GenRandomPointsSetTriangulator(@NotNull final IMesh&lt;V, E, F&gt; mesh,
+	                                      @NotNull final int numberOfPoints,
+	                                      @NotNull final VRectangle bound
+	) {
+<span class="nc" id="L103">		this(mesh, numberOfPoints, bound, new Random());</span>
+<span class="nc" id="L104">	}</span>
+
+    @Override
+    public IIncrementalTriangulation&lt;V, E, F&gt; generate() {
+<span class="nc" id="L108">		return generate(true);</span>
+    }
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate(boolean finalize) {
+<span class="nc" id="L113">		triangulation.init();</span>
+<span class="nc" id="L114">		int numberOfInsertedPoints = 0;</span>
+
+<span class="nc bnc" id="L116" title="All 2 branches missed.">		while (numberOfInsertedPoints &lt; numberOfPoints) {</span>
+<span class="nc" id="L117">			IPoint point = randomPoint();</span>
+
+<span class="nc bnc" id="L119" title="All 2 branches missed.">			if(distFunc.apply(point) &lt;= 0) {</span>
+<span class="nc" id="L120">				triangulation.insert(point);</span>
+<span class="nc" id="L121">				numberOfInsertedPoints++;</span>
+			}
+<span class="nc" id="L123">		}</span>
+
+<span class="nc bnc" id="L125" title="All 2 branches missed.">		if(finalize) {</span>
+<span class="nc" id="L126">			triangulation.finish();</span>
+		}
+
+<span class="nc" id="L129">		return triangulation;</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; getTriangulation() {
+<span class="nc" id="L134">		return triangulation;</span>
+	}
+
+	@Override
+	public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="nc" id="L139">		return triangulation.getMesh();</span>
+	}
+
+	private IPoint randomPoint() {
+<span class="nc" id="L143">        double x = bound.getMinX() + random.nextDouble() * bound.getWidth();</span>
+<span class="nc" id="L144">        double y = bound.getMinY() + random.nextDouble() * bound.getHeight();</span>
+<span class="nc" id="L145">        return triangulation.getMesh().createPoint(x, y);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

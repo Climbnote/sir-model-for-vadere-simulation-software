@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EdgeIterator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.iterators</a> &gt; <span class="el_source">EdgeIterator.java</span></div><h1>EdgeIterator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.iterators;
+
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.shapes.IPoint;
+import java.util.Iterator;
+
+
+/**
+ * This Iterator iterates over all half-edges of a specific face.
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public class EdgeIterator&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements Iterator&lt;E&gt; {
+	private E currentHalfEdge;
+	private E edge;
+<span class="fc" id="L23">	private boolean started = false;</span>
+<span class="fc" id="L24">	private boolean reverse = false;</span>
+	private IMesh&lt;V, E, F&gt; mesh;
+
+<span class="fc" id="L27">	public EdgeIterator(final IMesh&lt;V, E, F&gt; mesh, final F face){</span>
+<span class="fc" id="L28">		this.edge = mesh.getEdge(face);</span>
+<span class="fc" id="L29">		this.currentHalfEdge = edge;</span>
+<span class="fc" id="L30">		this.mesh = mesh;</span>
+<span class="fc" id="L31">	}</span>
+
+<span class="fc" id="L33">	public EdgeIterator(final IMesh&lt;V, E, F&gt; mesh, final E edge){</span>
+<span class="fc" id="L34">		this.edge = edge;</span>
+<span class="fc" id="L35">		this.currentHalfEdge = edge;</span>
+<span class="fc" id="L36">		this.mesh = mesh;</span>
+<span class="fc" id="L37">	}</span>
+
+<span class="fc" id="L39">	public EdgeIterator(final IMesh&lt;V, E, F&gt; mesh, final E edge, final boolean reverse){</span>
+<span class="fc" id="L40">		this.edge = edge;</span>
+<span class="fc" id="L41">		this.currentHalfEdge = edge;</span>
+<span class="fc" id="L42">		this.mesh = mesh;</span>
+<span class="fc" id="L43">		this.reverse = reverse;</span>
+<span class="fc" id="L44">	}</span>
+
+
+	@Override
+	public boolean hasNext() {
+<span class="pc bpc" id="L49" title="1 of 6 branches missed.">		return currentHalfEdge != null &amp;&amp; (!started || !currentHalfEdge.equals(edge));</span>
+	}
+
+	@Override
+	public E next() {
+<span class="fc" id="L54">		started = true;</span>
+<span class="fc" id="L55">		E result = currentHalfEdge;</span>
+<span class="fc bfc" id="L56" title="All 2 branches covered.">		currentHalfEdge = reverse ? mesh.getPrev(currentHalfEdge) : mesh.getNext(currentHalfEdge);</span>
+<span class="fc" id="L57">		return result;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

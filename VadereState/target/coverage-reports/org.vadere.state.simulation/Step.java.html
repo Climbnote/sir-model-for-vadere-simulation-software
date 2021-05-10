@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Step.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.simulation</a> &gt; <span class="el_source">Step.java</span></div><h1>Step.java</h1><pre class="source lang-java linenums">package org.vadere.state.simulation;
+
+
+/**
+ * Immutable class. Java Bean that store the stepNumber and the simulation time in seconds of a specific time step.
+ * A simulation step is defined by &lt;tt&gt;simTimeStepLength&lt;/tt&gt; that is if t is the simulation time than
+ * ceil(t / &lt;tt&gt;simTimeStepLength&lt;/tt&gt;) is the simulation {@link Step}.
+ *
+ * @author Benedikt Zoennchen
+ *
+ */
+public class Step implements Comparable&lt;Step&gt; {
+	private final int stepNumber;
+	private final static int MINIMAL_STEP = 1;
+<span class="nc" id="L15">	private final static Step FIST_STEP = new Step(1);</span>
+	private final static double MIN_TOLERANCE = 0.001;
+	private final static double MAX_TOLERANCE = 0.999;
+
+<span class="nc" id="L19">	public Step(final int stepNumber) {</span>
+<span class="nc" id="L20">		this.stepNumber = stepNumber;</span>
+<span class="nc" id="L21">	}</span>
+
+	/**
+	 * The number of this step. The smallest step number is 1.
+	 * 
+	 * @return number of this step
+	 */
+	public int getStepNumber() {
+<span class="nc" id="L29">		return stepNumber;</span>
+	}
+
+	/**
+	 * Securely increments the step.
+	 *
+	 * @return the incremented step
+	 */
+	public Step increment() {
+<span class="nc" id="L38">		return new Step(stepNumber + 1);</span>
+	}
+
+	/**
+	 * Securely substracts the &lt;tt&gt;step&lt;/tt&gt; from &lt;tt&gt;this&lt;/tt&gt;.
+	 *
+	 * @param step a step
+	 * @return the subtraction result or the minimal step if the result would generate a step smaller than the minimal step.
+	 */
+	public Step subtract(final Step step) {
+<span class="nc" id="L48">		int diff = stepNumber - step.getStepNumber();</span>
+
+<span class="nc bnc" id="L50" title="All 2 branches missed.">		if (diff &gt;= MINIMAL_STEP) {</span>
+<span class="nc" id="L51">			return new Step(diff);</span>
+		} else {
+<span class="nc" id="L53">			return FIST_STEP;</span>
+		}
+	}
+
+	/**
+	 * Securely decrements the step by 1.
+	 *
+	 * @return the decremented step or this step (if this step is the minimal step).
+	 */
+	public Step decrement() {
+<span class="nc" id="L63">		return new Step(stepNumber - 1);</span>
+	}
+
+	public boolean isGreaterThan(final Step step) {
+<span class="nc bnc" id="L67" title="All 2 branches missed.">		return compareTo(step) &gt; 0;</span>
+	}
+
+	public boolean isGreaterEqThan(final Step step) {
+<span class="nc bnc" id="L71" title="All 2 branches missed.">		return compareTo(step) &gt;= 0;</span>
+	}
+
+	public boolean isSmallerThan(final Step step) {
+<span class="nc bnc" id="L75" title="All 2 branches missed.">		return compareTo(step) &lt; 0;</span>
+	}
+
+	public boolean isSmallerEqThan(final Step step) {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		return compareTo(step) &lt;= 0;</span>
+	}
+
+	public static int toFloorStep(final double simTimeInSec, final double simStepLengthInSec) {
+<span class="nc" id="L83">		Step base = new Step((int) (simTimeInSec / simStepLengthInSec));</span>
+<span class="nc" id="L84">		double r = simTimeInSec - toSimTimeInSec(base.getStepNumber(), simStepLengthInSec);</span>
+
+<span class="nc bnc" id="L86" title="All 2 branches missed.">		if(r / simStepLengthInSec &gt; MAX_TOLERANCE) {</span>
+<span class="nc" id="L87">			return base.increment().getStepNumber();</span>
+		} else{
+<span class="nc" id="L89">			return base.getStepNumber();</span>
+		}
+	}
+
+	public static int toCeilStep(final double simTimeInSec, final double simStepLengthInSec) {
+<span class="nc" id="L94">		Step base = new Step((int) (simTimeInSec / simStepLengthInSec));</span>
+<span class="nc" id="L95">		double r = simTimeInSec - toSimTimeInSec(base.getStepNumber(), simStepLengthInSec);</span>
+
+<span class="nc bnc" id="L97" title="All 2 branches missed.">		if(r / simStepLengthInSec &lt; MIN_TOLERANCE) {</span>
+<span class="nc" id="L98">			return base.getStepNumber();</span>
+		} else {
+<span class="nc" id="L100">			return base.increment().getStepNumber();</span>
+		}
+	}
+
+	public static double toSimTimeInSec(final int step, final double simStepLengthInSec) {
+<span class="nc" id="L105">		return step * simStepLengthInSec;</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="nc bnc" id="L110" title="All 2 branches missed.">		if (obj == null) {</span>
+<span class="nc" id="L111">			return false;</span>
+		}
+<span class="nc bnc" id="L113" title="All 2 branches missed.">		if (obj.getClass() != getClass()) {</span>
+<span class="nc" id="L114">			return false;</span>
+		}
+<span class="nc" id="L116">		Step other = (Step) obj;</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">		return stepNumber == other.stepNumber;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L122">		return &quot;(&quot; + stepNumber + &quot;)&quot;;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L127">		return 31 * stepNumber;</span>
+	}
+
+	@Override
+	public int compareTo(final Step o) {
+<span class="nc" id="L132">		return this.getStepNumber() - o.getStepNumber();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

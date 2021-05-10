@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FixPointGenerator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing</a> &gt; <span class="el_source">FixPointGenerator.java</span></div><h1>FixPointGenerator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing;
+
+import org.vadere.meshing.mesh.inter.IPointConstructor;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VShape;
+
+import java.awt.geom.PathIterator;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Function;
+
+/**
+ * @author Benedikt Zoennchen
+ * @param &lt;P&gt; the type of the points (containers)
+ */
+<span class="nc" id="L18">public class FixPointGenerator&lt;P extends IPoint&gt; {</span>
+
+	public Collection&lt;P&gt; generate(final VShape shape, final Function&lt;IPoint, Double&gt; segmentLenFunc, final IPointConstructor&lt;P&gt; pointConstructor) {
+<span class="nc" id="L21">		Set&lt;P&gt; points = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L22">		PathIterator path = shape.getPathIterator(null);</span>
+<span class="nc" id="L23">		double[] tempCoords = new double[6];</span>
+<span class="nc" id="L24">		double[] coordinates = new double[6];</span>
+<span class="nc" id="L25">		path.currentSegment(tempCoords);</span>
+
+<span class="nc bnc" id="L27" title="All 2 branches missed.">		while (!path.isDone()) {</span>
+<span class="nc" id="L28">			path.next();</span>
+<span class="nc" id="L29">			path.currentSegment(coordinates);</span>
+<span class="nc bnc" id="L30" title="All 4 branches missed.">			if (coordinates[0] == tempCoords[0] &amp;&amp; coordinates[1] == tempCoords[1]) {</span>
+<span class="nc" id="L31">				break;</span>
+			}
+
+<span class="nc" id="L34">			SplitLineIterator&lt;P&gt; iterator = new SplitLineIterator&lt;&gt;(new VLine(coordinates[0], coordinates[1], tempCoords[0], tempCoords[1]), segmentLenFunc, pointConstructor);</span>
+
+<span class="nc bnc" id="L36" title="All 2 branches missed.">			while (iterator.hasNext()) {</span>
+<span class="nc" id="L37">				points.add(iterator.next());</span>
+			}
+
+<span class="nc" id="L40">			path.currentSegment(tempCoords);</span>
+<span class="nc" id="L41">		}</span>
+
+<span class="nc" id="L43">		return points;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

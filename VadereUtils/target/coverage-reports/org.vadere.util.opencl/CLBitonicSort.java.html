@@ -1,0 +1,410 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CLBitonicSort.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.opencl</a> &gt; <span class="el_source">CLBitonicSort.java</span></div><h1>CLBitonicSort.java</h1><pre class="source lang-java linenums">package org.vadere.util.opencl;
+
+
+import org.jetbrains.annotations.NotNull;
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.opencl.CL;
+import org.lwjgl.opencl.CLContextCallback;
+import org.lwjgl.opencl.CLProgramCallback;
+import org.lwjgl.system.Configuration;
+import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
+import org.vadere.util.logging.Logger;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+
+import static org.lwjgl.opencl.CL10.CL_CONTEXT_PLATFORM;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_MAX_WORK_GROUP_SIZE;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_NAME;
+import static org.lwjgl.opencl.CL10.CL_DEVICE_TYPE_GPU;
+import static org.lwjgl.opencl.CL10.CL_MEM_ALLOC_HOST_PTR;
+import static org.lwjgl.opencl.CL10.CL_MEM_COPY_HOST_PTR;
+import static org.lwjgl.opencl.CL10.CL_MEM_READ_WRITE;
+import static org.lwjgl.opencl.CL10.CL_PROGRAM_BUILD_STATUS;
+import static org.lwjgl.opencl.CL10.CL_SUCCESS;
+import static org.lwjgl.opencl.CL10.clBuildProgram;
+import static org.lwjgl.opencl.CL10.clCreateBuffer;
+import static org.lwjgl.opencl.CL10.clCreateCommandQueue;
+import static org.lwjgl.opencl.CL10.clCreateContext;
+import static org.lwjgl.opencl.CL10.clCreateKernel;
+import static org.lwjgl.opencl.CL10.clCreateProgramWithSource;
+import static org.lwjgl.opencl.CL10.clEnqueueNDRangeKernel;
+import static org.lwjgl.opencl.CL10.clEnqueueReadBuffer;
+import static org.lwjgl.opencl.CL10.clFinish;
+import static org.lwjgl.opencl.CL10.clGetDeviceIDs;
+import static org.lwjgl.opencl.CL10.clGetDeviceInfo;
+import static org.lwjgl.opencl.CL10.clGetPlatformIDs;
+import static org.lwjgl.opencl.CL10.clReleaseCommandQueue;
+import static org.lwjgl.opencl.CL10.clReleaseContext;
+import static org.lwjgl.opencl.CL10.clReleaseKernel;
+import static org.lwjgl.opencl.CL10.clReleaseMemObject;
+import static org.lwjgl.opencl.CL10.clReleaseProgram;
+import static org.lwjgl.opencl.CL10.clSetKernelArg;
+import static org.lwjgl.opencl.CL10.clSetKernelArg1i;
+import static org.lwjgl.opencl.CL10.clSetKernelArg1p;
+import static org.lwjgl.system.MemoryStack.stackPush;
+import static org.lwjgl.system.MemoryUtil.NULL;
+import static org.lwjgl.system.MemoryUtil.memUTF8;
+
+/**
+ * @author Benedikt Zoennchen
+ *
+ * This class implements the bitonic sort using the GPU via OpenCL.
+ */
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">public class CLBitonicSort {</span>
+<span class="fc" id="L57">    private static Logger log = Logger.getLogger(CLBitonicSort.class);</span>
+
+    // CL ids
+    private long clPlatform;
+    private long clDevice;
+    private long clContext;
+    private long clQueue;
+    private long clProgram;
+
+    // CL Memory
+    private long clInKeys;
+    private long clOutKeys;
+    private long clInValues;
+    private long clOutValues;
+
+    // Host Memory
+    private IntBuffer inKeys;
+    private IntBuffer outKeys;
+	private IntBuffer inValues;
+	private IntBuffer outValues;
+
+    // CL callbacks
+    private CLContextCallback contextCB;
+    private CLProgramCallback programCB;
+
+    // CL kernel
+    private long clBitonicSortLocal;
+	private long clBitonicSortLocal1;
+	private long clBitonicMergeGlobal;
+    private long clBitonicMergeLocal;
+    private long clKernel;
+
+    private int[] resultValues;
+    private int[] resultKeys;
+
+	//Note: logically shared with BitonicSort.cl!
+<span class="fc" id="L93">    private int max_work_group_size = 16;</span>
+
+<span class="fc" id="L95">    private boolean debug = false;</span>
+
+<span class="fc" id="L97">    public CLBitonicSort() throws OpenCLException {</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">	    if(debug) {</span>
+<span class="nc" id="L99">		    Configuration.DEBUG.set(true);</span>
+<span class="nc" id="L100">		    Configuration.DEBUG_MEMORY_ALLOCATOR.set(true);</span>
+<span class="nc" id="L101">		    Configuration.DEBUG_STACK.set(true);</span>
+	    }
+<span class="fc" id="L103">	    init();</span>
+<span class="fc" id="L104">    }</span>
+
+	public int[] getResultKeys() {
+<span class="fc" id="L107">		return resultKeys;</span>
+	}
+
+	public int[] getResultValues() {
+<span class="fc" id="L111">		return resultValues;</span>
+	}
+
+	/**
+	 * Builds all OpenCL resources. This does not initialize or reserve any device or host memory.
+	 *
+	 * @throws OpenCLException
+	 */
+	private void init() throws OpenCLException {
+<span class="fc" id="L120">        initCallbacks();</span>
+<span class="fc" id="L121">        initCL();</span>
+<span class="fc" id="L122">        buildProgram();</span>
+<span class="fc" id="L123">    }</span>
+
+    public void sort(@NotNull final int[] keys, @NotNull final int[] values) throws OpenCLException {
+<span class="pc bpc" id="L126" title="2 of 4 branches missed.">    	assert keys.length == values.length;</span>
+
+    	final int[] padKeys;
+    	final int[] padValues;
+<span class="pc bpc" id="L130" title="1 of 2 branches missed.">    	boolean padding = CLUtils.factorRadix2(keys.length) != 1;</span>
+
+    	// padding is required!
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">    	if(padding) {</span>
+<span class="fc" id="L134">			int k = (int)CLUtils.power(keys.length, 2);</span>
+<span class="pc bpc" id="L135" title="3 of 6 branches missed.">			assert k &gt; keys.length &amp;&amp; CLUtils.factorRadix2(k) == 1;</span>
+<span class="fc" id="L136">			padKeys = new int[k];</span>
+<span class="fc" id="L137">			padValues = new int[k];</span>
+<span class="fc" id="L138">			System.arraycopy(keys, 0, padKeys, 0, keys.length);</span>
+<span class="fc" id="L139">		    System.arraycopy(values, 0, padValues, 0, values.length);</span>
+
+<span class="fc bfc" id="L141" title="All 2 branches covered.">		    for(int i = keys.length; i &lt; padKeys.length; i++) {</span>
+<span class="fc" id="L142">		    	padKeys[i] = Integer.MAX_VALUE;</span>
+		    }
+
+<span class="fc" id="L145">	    } else {</span>
+<span class="nc" id="L146">			padKeys = keys;</span>
+<span class="nc" id="L147">			padValues = values;</span>
+	    }
+
+	    /**
+	     * We use non-stack memory because the stack might be too small.
+	     */
+<span class="fc" id="L153">	    inKeys = CLUtils.toIntBuffer(padKeys);</span>
+<span class="fc" id="L154">	    outKeys = MemoryUtil.memAllocInt(padKeys.length);</span>
+<span class="fc" id="L155">	    inValues = CLUtils.toIntBuffer(padValues);</span>
+<span class="fc" id="L156">	    outValues = MemoryUtil.memAllocInt(padValues.length);</span>
+
+<span class="fc" id="L158">	    try (MemoryStack stack = stackPush()) {</span>
+<span class="fc" id="L159">	    	int dir = 1;</span>
+
+<span class="fc" id="L161">		    PointerBuffer clGlobalWorkSize = stack.mallocPointer(1);</span>
+<span class="fc" id="L162">		    PointerBuffer clLocalWorkSize = stack.mallocPointer(1);</span>
+<span class="fc" id="L163">		    IntBuffer errcode_ret = stack.callocInt(1);</span>
+		    // host memory to gpu memory
+<span class="fc" id="L165">		    clInKeys = clCreateBuffer(clContext, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR, inKeys, errcode_ret);</span>
+<span class="fc" id="L166">		    CLInfo.checkCLError(errcode_ret);</span>
+<span class="fc" id="L167">		    clOutKeys = clCreateBuffer(clContext, CL_MEM_READ_WRITE, 4 * padKeys.length, errcode_ret);</span>
+<span class="fc" id="L168">		    CLInfo.checkCLError(errcode_ret);</span>
+<span class="fc" id="L169">		    clInValues = clCreateBuffer(clContext, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR, inValues, errcode_ret);</span>
+<span class="fc" id="L170">		    CLInfo.checkCLError(errcode_ret);</span>
+<span class="fc" id="L171">		    clOutValues = clCreateBuffer(clContext, CL_MEM_READ_WRITE, 4 * padKeys.length, errcode_ret);</span>
+<span class="fc" id="L172">		    CLInfo.checkCLError(errcode_ret);</span>
+
+<span class="fc" id="L174">		    long ms = System.currentTimeMillis();</span>
+	    	// small sorts
+<span class="fc bfc" id="L176" title="All 2 branches covered.">	    	if(padKeys.length &lt;= max_work_group_size)</span>
+		    {
+<span class="fc" id="L178">			    CLInfo.checkCLError(clSetKernelArg1p(clBitonicSortLocal, 0, clOutKeys));</span>
+<span class="fc" id="L179">			    CLInfo.checkCLError(clSetKernelArg1p(clBitonicSortLocal, 1, clOutValues));</span>
+<span class="fc" id="L180">			    CLInfo.checkCLError(clSetKernelArg1p(clBitonicSortLocal, 2, clInKeys));</span>
+<span class="fc" id="L181">			    CLInfo.checkCLError(clSetKernelArg1p(clBitonicSortLocal, 3, clInValues));</span>
+<span class="fc" id="L182">			    CLInfo.checkCLError(clSetKernelArg1i(clBitonicSortLocal, 4, padKeys.length));</span>
+<span class="fc" id="L183">			    CLInfo.checkCLError(clSetKernelArg1i(clBitonicSortLocal, 5, 1));</span>
+<span class="fc" id="L184">			    CLInfo.checkCLError(clSetKernelArg(clBitonicSortLocal, 6, padKeys.length * 4)); // local memory</span>
+<span class="fc" id="L185">			    CLInfo.checkCLError(clSetKernelArg(clBitonicSortLocal, 7, padKeys.length * 4)); // local memory</span>
+<span class="fc" id="L186">			    clGlobalWorkSize.put(0, padKeys.length / 2);</span>
+<span class="fc" id="L187">			    clLocalWorkSize.put(0, padKeys.length / 2);</span>
+
+			    // run the kernel and read the result
+<span class="fc" id="L190">			    CLInfo.checkCLError(clEnqueueNDRangeKernel(clQueue, clBitonicSortLocal, 1, null, clGlobalWorkSize, clLocalWorkSize, null, null));</span>
+<span class="fc" id="L191">			    CLInfo.checkCLError(clFinish(clQueue));</span>
+		    }
+		    else {
+			    //Launch bitonicSortLocal1
+<span class="fc" id="L195">			    CLInfo.checkCLError(clSetKernelArg1p(clBitonicSortLocal1, 0, clOutKeys));</span>
+<span class="fc" id="L196">			    CLInfo.checkCLError(clSetKernelArg1p(clBitonicSortLocal1, 1, clOutValues));</span>
+<span class="fc" id="L197">			    CLInfo.checkCLError(clSetKernelArg1p(clBitonicSortLocal1, 2, clInKeys));</span>
+<span class="fc" id="L198">			    CLInfo.checkCLError(clSetKernelArg1p(clBitonicSortLocal1, 3, clInValues));</span>
+<span class="fc" id="L199">			    CLInfo.checkCLError(clSetKernelArg(clBitonicSortLocal1, 4, max_work_group_size * 4)); // local memory</span>
+<span class="fc" id="L200">			    CLInfo.checkCLError(clSetKernelArg(clBitonicSortLocal1, 5, max_work_group_size * 4)); // local memory</span>
+
+<span class="fc" id="L202">			    clGlobalWorkSize = stack.mallocPointer(1);</span>
+<span class="fc" id="L203">			    clLocalWorkSize = stack.mallocPointer(1);</span>
+<span class="fc" id="L204">			    clGlobalWorkSize.put(0, padKeys.length / 2);</span>
+<span class="fc" id="L205">			    clLocalWorkSize.put(0, max_work_group_size / 2);</span>
+
+<span class="fc" id="L207">			    CLInfo.checkCLError(clEnqueueNDRangeKernel(clQueue, clBitonicSortLocal1, 1, null, clGlobalWorkSize, clLocalWorkSize, null, null));</span>
+<span class="fc" id="L208">			    CLInfo.checkCLError(clFinish(clQueue));</span>
+
+<span class="fc bfc" id="L210" title="All 2 branches covered.">			    for(int size = 2 * max_work_group_size; size &lt;= padKeys.length; size &lt;&lt;= 1)</span>
+			    {
+<span class="pc bpc" id="L212" title="1 of 2 branches missed.">				    for(int stride = size / 2; stride &gt; 0; stride &gt;&gt;= 1)</span>
+				    {
+<span class="fc bfc" id="L214" title="All 2 branches covered.">					    if(stride &gt;= max_work_group_size)</span>
+					    {
+						    //Launch bitonicMergeGlobal
+<span class="fc" id="L217">						    CLInfo.checkCLError(clSetKernelArg1p(clBitonicMergeGlobal, 0, clOutKeys));</span>
+<span class="fc" id="L218">						    CLInfo.checkCLError(clSetKernelArg1p(clBitonicMergeGlobal, 1, clOutValues));</span>
+<span class="fc" id="L219">						    CLInfo.checkCLError(clSetKernelArg1p(clBitonicMergeGlobal, 2, clOutKeys));</span>
+<span class="fc" id="L220">						    CLInfo.checkCLError(clSetKernelArg1p(clBitonicMergeGlobal, 3, clOutValues));</span>
+
+<span class="fc" id="L222">						    CLInfo.checkCLError(clSetKernelArg1i(clBitonicMergeGlobal, 4, padKeys.length));</span>
+<span class="fc" id="L223">						    CLInfo.checkCLError(clSetKernelArg1i(clBitonicMergeGlobal, 5, size));</span>
+<span class="fc" id="L224">						    CLInfo.checkCLError(clSetKernelArg1i(clBitonicMergeGlobal, 6, stride));</span>
+<span class="fc" id="L225">						    CLInfo.checkCLError(clSetKernelArg1i(clBitonicMergeGlobal, 7, dir));</span>
+
+<span class="fc" id="L227">						    clGlobalWorkSize = stack.mallocPointer(1);</span>
+<span class="fc" id="L228">						    clLocalWorkSize = stack.mallocPointer(1);</span>
+<span class="fc" id="L229">						    clGlobalWorkSize.put(0, padKeys.length / 2);</span>
+<span class="fc" id="L230">						    clLocalWorkSize.put(0, max_work_group_size / 4);</span>
+
+<span class="fc" id="L232">						    CLInfo.checkCLError(clEnqueueNDRangeKernel(clQueue, clBitonicMergeGlobal, 1, null, clGlobalWorkSize, clLocalWorkSize, null, null));</span>
+						    //CLInfo.checkCLError(clFinish(clQueue));
+					    }
+					    else
+					    {
+						    //Launch bitonicMergeLocal
+<span class="fc" id="L238">						    CLInfo.checkCLError(clSetKernelArg1p(clBitonicMergeLocal, 0, clOutKeys));</span>
+<span class="fc" id="L239">						    CLInfo.checkCLError(clSetKernelArg1p(clBitonicMergeLocal, 1, clOutValues));</span>
+<span class="fc" id="L240">						    CLInfo.checkCLError(clSetKernelArg1p(clBitonicMergeLocal, 2, clOutKeys));</span>
+<span class="fc" id="L241">						    CLInfo.checkCLError(clSetKernelArg1p(clBitonicMergeLocal, 3, clOutValues));</span>
+
+<span class="fc" id="L243">						    CLInfo.checkCLError(clSetKernelArg1i(clBitonicMergeLocal, 4, padKeys.length));</span>
+<span class="fc" id="L244">						    CLInfo.checkCLError(clSetKernelArg1i(clBitonicMergeLocal, 5, stride));</span>
+<span class="fc" id="L245">						    CLInfo.checkCLError(clSetKernelArg1i(clBitonicMergeLocal, 6, size));</span>
+<span class="fc" id="L246">						    CLInfo.checkCLError(clSetKernelArg1i(clBitonicMergeLocal, 7, dir));</span>
+<span class="fc" id="L247">						    CLInfo.checkCLError(clSetKernelArg(clBitonicMergeLocal, 8, max_work_group_size * 4 )); // local memory</span>
+<span class="fc" id="L248">						    CLInfo.checkCLError(clSetKernelArg(clBitonicMergeLocal, 9, max_work_group_size * 4)); // local memory</span>
+
+<span class="fc" id="L250">						    clGlobalWorkSize = stack.mallocPointer(1);</span>
+<span class="fc" id="L251">						    clLocalWorkSize = stack.mallocPointer(1);</span>
+<span class="fc" id="L252">						    clGlobalWorkSize.put(0, padKeys.length / 2);</span>
+<span class="fc" id="L253">						    clLocalWorkSize.put(0, max_work_group_size / 2);</span>
+
+<span class="fc" id="L255">						    CLInfo.checkCLError(clEnqueueNDRangeKernel(clQueue, clBitonicMergeLocal, 1, null, clGlobalWorkSize, clLocalWorkSize, null, null));</span>
+						    //CLInfo.checkCLError(clFinish(clQueue));
+<span class="fc" id="L257">						    break;</span>
+					    }
+				    }
+			    }
+		    }
+		    //System.out.println(System.currentTimeMillis() - ms);
+
+<span class="fc" id="L264">		    clEnqueueReadBuffer(clQueue, clOutKeys, true, 0, outKeys, null, null);</span>
+<span class="fc" id="L265">		    clEnqueueReadBuffer(clQueue, clOutValues, true, 0, outValues, null, null);</span>
+<span class="fc" id="L266">		    resultKeys = CLUtils.toIntArray(outKeys, keys.length);</span>
+<span class="fc" id="L267">		    resultValues = CLUtils.toIntArray(outValues, values.length);</span>
+	    }
+
+<span class="fc" id="L270">	    clearMemory();</span>
+<span class="fc" id="L271">    }</span>
+
+	public void clear() throws OpenCLException {
+<span class="fc" id="L274">		clearCL();</span>
+		//clearMemory();
+<span class="fc" id="L276">	}</span>
+
+	/**
+	 * Clears the device and host memory.
+	 *
+	 * @throws OpenCLException
+	 */
+    private void clearMemory() throws OpenCLException {
+        // release memory and devices
+	    try {
+<span class="fc" id="L286">		    CLInfo.checkCLError(clReleaseMemObject(clInKeys));</span>
+<span class="fc" id="L287">		    CLInfo.checkCLError(clReleaseMemObject(clOutKeys));</span>
+<span class="fc" id="L288">		    CLInfo.checkCLError(clReleaseMemObject(clInValues));</span>
+<span class="fc" id="L289">		    CLInfo.checkCLError(clReleaseMemObject(clOutValues));</span>
+	    }
+<span class="nc" id="L291">	    catch (OpenCLException ex) {</span>
+<span class="nc" id="L292">			throw ex;</span>
+	    }
+		finally {
+<span class="fc" id="L295">	    	MemoryUtil.memFree(inValues);</span>
+<span class="fc" id="L296">	    	MemoryUtil.memFree(inKeys);</span>
+<span class="fc" id="L297">	    	MemoryUtil.memFree(outValues);</span>
+<span class="fc" id="L298">	    	MemoryUtil.memFree(outKeys);</span>
+	    	// release host memory.
+	    }
+<span class="fc" id="L301">    }</span>
+
+	/**
+	 * Clears the OpenCL resources i.e. kernels, queues and programs.
+	 *
+	 * @throws OpenCLException
+	 */
+	private void clearCL() throws OpenCLException {
+<span class="fc" id="L309">	    CLInfo.checkCLError(clReleaseKernel(clBitonicSortLocal));</span>
+<span class="fc" id="L310">	    CLInfo.checkCLError(clReleaseKernel(clBitonicSortLocal1));</span>
+<span class="fc" id="L311">	    CLInfo.checkCLError(clReleaseKernel(clBitonicMergeGlobal));</span>
+<span class="fc" id="L312">	    CLInfo.checkCLError(clReleaseKernel(clBitonicMergeLocal));</span>
+
+<span class="fc" id="L314">	    CLInfo.checkCLError(clReleaseCommandQueue(clQueue));</span>
+<span class="fc" id="L315">	    CLInfo.checkCLError(clReleaseProgram(clProgram));</span>
+<span class="fc" id="L316">	    CLInfo.checkCLError(clReleaseContext(clContext));</span>
+<span class="fc" id="L317">	    contextCB.free();</span>
+<span class="fc" id="L318">	    programCB.free();</span>
+<span class="fc" id="L319">    }</span>
+
+    // private helpers
+    private void initCallbacks() {
+<span class="fc" id="L323">        contextCB = CLContextCallback.create((errinfo, private_info, cb, user_data) -&gt;</span>
+        {
+<span class="nc" id="L325">            log.debug(&quot;[LWJGL] cl_context_callback&quot; + &quot;\tInfo: &quot; + memUTF8(errinfo));</span>
+<span class="nc" id="L326">        });</span>
+
+<span class="fc" id="L328">        programCB = CLProgramCallback.create((program, user_data) -&gt;</span>
+        {
+	        try {
+<span class="pc bpc" id="L331" title="1 of 2 branches missed.">		        log.debug(&quot;The cl_program [0x&quot;+program+&quot;] was built &quot; + (CLInfo.getProgramBuildInfoInt(program, clDevice, CL_PROGRAM_BUILD_STATUS) == CL_SUCCESS ? &quot;successfully&quot; : &quot;unsuccessfully&quot;));</span>
+<span class="nc" id="L332">	        } catch (OpenCLException e) {</span>
+<span class="nc" id="L333">		        e.printStackTrace();</span>
+<span class="fc" id="L334">	        }</span>
+<span class="fc" id="L335">        });</span>
+<span class="fc" id="L336">    }</span>
+
+    private void initCL() throws OpenCLException {
+<span class="fc" id="L339">        try (MemoryStack stack = stackPush()) {</span>
+<span class="fc" id="L340">            IntBuffer errcode_ret = stack.mallocInt(1);</span>
+<span class="fc" id="L341">            IntBuffer numberOfPlatforms = stack.mallocInt(1);</span>
+
+<span class="fc" id="L343">	        CLInfo.checkCLError(clGetPlatformIDs(null, numberOfPlatforms));</span>
+<span class="fc" id="L344">            PointerBuffer platformIDs = stack.mallocPointer(numberOfPlatforms.get(0));</span>
+<span class="fc" id="L345">	        CLInfo.checkCLError(clGetPlatformIDs(platformIDs, numberOfPlatforms));</span>
+
+<span class="fc" id="L347">            clPlatform = platformIDs.get(0);</span>
+
+<span class="fc" id="L349">            IntBuffer numberOfDevices = stack.mallocInt(1);</span>
+<span class="fc" id="L350">	        CLInfo.checkCLError(clGetDeviceIDs(clPlatform, CL_DEVICE_TYPE_GPU, null, numberOfDevices));</span>
+<span class="fc" id="L351">            PointerBuffer deviceIDs = stack.mallocPointer(numberOfDevices.get(0));</span>
+<span class="fc" id="L352">	        CLInfo.checkCLError(clGetDeviceIDs(clPlatform, CL_DEVICE_TYPE_GPU, deviceIDs, numberOfDevices));</span>
+
+<span class="fc" id="L354">            clDevice = deviceIDs.get(0);</span>
+
+<span class="fc" id="L356">	        log.debug(&quot;CL_DEVICE_NAME = &quot; + CLInfo.getDeviceInfoStringUTF8(clDevice, CL_DEVICE_NAME));</span>
+
+<span class="fc" id="L358">	        PointerBuffer ctxProps = stack.mallocPointer(3);</span>
+<span class="fc" id="L359">            ctxProps.put(CL_CONTEXT_PLATFORM)</span>
+<span class="fc" id="L360">                    .put(clPlatform)</span>
+<span class="fc" id="L361">                    .put(NULL)</span>
+<span class="fc" id="L362">                    .flip();</span>
+
+<span class="fc" id="L364">            clContext = clCreateContext(ctxProps, clDevice, contextCB, NULL, errcode_ret);</span>
+<span class="fc" id="L365">            CLInfo.checkCLError(errcode_ret);</span>
+
+<span class="fc" id="L367">            clQueue = clCreateCommandQueue(clContext, clDevice, 0, errcode_ret);</span>
+<span class="fc" id="L368">            CLInfo.checkCLError(errcode_ret);</span>
+        }
+<span class="fc" id="L370">    }</span>
+
+    private void buildProgram() throws OpenCLException {
+<span class="fc" id="L373">	    try (MemoryStack stack = stackPush()) {</span>
+<span class="fc" id="L374">		    IntBuffer errcode_ret = stack.mallocInt(1);</span>
+
+<span class="fc" id="L376">		    PointerBuffer strings = stack.mallocPointer(1);</span>
+<span class="fc" id="L377">		    PointerBuffer lengths = stack.mallocPointer(1);</span>
+<span class="fc" id="L378">		    ByteBuffer source = null;</span>
+
+		    try {
+<span class="fc" id="L381">			    source = CLUtils.ioResourceToByteBuffer(&quot;BitonicSort.cl&quot;, 4096);</span>
+<span class="nc" id="L382">		    } catch (IOException e) {</span>
+<span class="nc" id="L383">			    throw new OpenCLException(e.getMessage());</span>
+<span class="fc" id="L384">		    }</span>
+
+
+<span class="fc" id="L387">		    strings.put(0, source);</span>
+<span class="fc" id="L388">		    lengths.put(0, source.remaining());</span>
+
+<span class="fc" id="L390">		    clProgram = clCreateProgramWithSource(clContext, strings, lengths, errcode_ret);</span>
+<span class="fc" id="L391">		    CLInfo.checkCLError(clBuildProgram(clProgram, clDevice, &quot;&quot;, programCB, NULL));</span>
+<span class="fc" id="L392">		    clBitonicSortLocal = clCreateKernel(clProgram, &quot;bitonicSortLocal&quot;, errcode_ret);</span>
+<span class="fc" id="L393">		    CLInfo.checkCLError(errcode_ret);</span>
+<span class="fc" id="L394">		    clBitonicSortLocal1 = clCreateKernel(clProgram, &quot;bitonicSortLocal1&quot;, errcode_ret);</span>
+<span class="fc" id="L395">		    CLInfo.checkCLError(errcode_ret);</span>
+<span class="fc" id="L396">		    clBitonicMergeGlobal = clCreateKernel(clProgram, &quot;bitonicMergeGlobal&quot;, errcode_ret);</span>
+<span class="fc" id="L397">		    CLInfo.checkCLError(errcode_ret);</span>
+<span class="fc" id="L398">		    clBitonicMergeLocal = clCreateKernel(clProgram, &quot;bitonicMergeLocal&quot;, errcode_ret);</span>
+<span class="fc" id="L399">		    CLInfo.checkCLError(errcode_ret);</span>
+
+<span class="fc" id="L401">		    PointerBuffer pp = stack.mallocPointer(1);</span>
+<span class="fc" id="L402">		    clGetDeviceInfo(clDevice, CL_DEVICE_MAX_WORK_GROUP_SIZE, pp, null);</span>
+<span class="fc" id="L403">		    max_work_group_size = (int)pp.get(0);</span>
+		    //System.out.println(max_work_group_size);
+<span class="fc" id="L405">		    MemoryUtil.memFree(source);</span>
+	    }
+
+<span class="fc" id="L408">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

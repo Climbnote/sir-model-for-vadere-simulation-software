@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ThreatMemory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.psychology.perception</a> &gt; <span class="el_source">ThreatMemory.java</span></div><h1>ThreatMemory.java</h1><pre class="source lang-java linenums">package org.vadere.state.psychology.perception;
+
+import org.vadere.state.psychology.perception.types.Threat;
+import org.vadere.state.scenario.Pedestrian;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * A {@link ThreatMemory} is required to avoid following situation during simulation:
+ *
+ * &lt;ol&gt;
+ *     &lt;li&gt;Cognition layer detects a {@link Threat}.&lt;/li&gt;
+ *     &lt;li&gt;In locomotion layer, a {@link Pedestrian} has no time credit to react to the {@link Threat}.&lt;/li&gt;
+ *     &lt;li&gt;In next simulation loop, the {@link Threat} is already gone.
+ *     I.e., the {@link Threat} from previous simulation loop would be lost.&lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * Therefore, provide a {@link ThreatMemory} with a boolean flag included which
+ * indicates if latest {@link Threat} was already handled by the locomotion layer.
+ *
+ * Note: Maybe, this memory could also be implemented as a stack. I.e., cognition layer
+ * pushes {@link Threat}s to the stack while the locomotion layer pops off the {@link Threat}s.
+ * But, this is ot a real &quot;memory&quot;!
+ */
+public class ThreatMemory {
+
+    // Member Variables
+    List&lt;Threat&gt; allThreats;
+    boolean latestThreatUnhandled;
+
+    // Constructors
+<span class="fc" id="L33">    public ThreatMemory() {</span>
+<span class="fc" id="L34">        this.allThreats = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L35">        this.latestThreatUnhandled = false;</span>
+<span class="fc" id="L36">    }</span>
+
+<span class="nc" id="L38">    public ThreatMemory(ThreatMemory other) {</span>
+<span class="nc" id="L39">        this.allThreats = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L41" title="All 2 branches missed.">        if (other.getAllThreats() != null) {</span>
+<span class="nc" id="L42">            other.getAllThreats().stream().forEach(threat -&gt; this.allThreats.add(threat.clone()));</span>
+        }
+
+<span class="nc" id="L45">        this.latestThreatUnhandled = other.isLatestThreatUnhandled();</span>
+<span class="nc" id="L46">    }</span>
+
+    // Getter
+<span class="nc" id="L49">    public List&lt;Threat&gt; getAllThreats() { return allThreats; }</span>
+<span class="nc" id="L50">    public boolean isLatestThreatUnhandled() { return latestThreatUnhandled; }</span>
+
+    // Setter
+    public void setLatestThreatUnhandled(boolean latestThreatUnhandled) {
+<span class="nc" id="L54">        this.latestThreatUnhandled = latestThreatUnhandled;</span>
+<span class="nc" id="L55">    }</span>
+
+    // Methods
+    public void add(Threat threat) {
+<span class="nc" id="L59">        allThreats.add(threat);</span>
+<span class="nc" id="L60">    }</span>
+
+    public void clear() {
+<span class="nc" id="L63">        allThreats.clear();</span>
+<span class="nc" id="L64">    }</span>
+
+    public boolean isEmpty() {
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        return allThreats.size() == 0;</span>
+    }
+
+    public Threat getLatestThreat() {
+<span class="nc" id="L71">        int totalThreats = allThreats.size();</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">        Threat latestThreat = (totalThreats == 0)? null : allThreats.get(totalThreats - 1);</span>
+
+<span class="nc" id="L74">        return latestThreat;</span>
+    }
+
+    public ThreatMemory clone() {
+<span class="nc" id="L78">        return new ThreatMemory(this);</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

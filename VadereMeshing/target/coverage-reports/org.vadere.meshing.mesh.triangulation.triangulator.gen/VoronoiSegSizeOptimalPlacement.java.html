@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VoronoiSegSizeOptimalPlacement.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">VoronoiSegSizeOptimalPlacement.java</span></div><h1>VoronoiSegSizeOptimalPlacement.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.IPlacementStrategy;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VTriangle;
+
+public class VoronoiSegSizeOptimalPlacement&lt;P extends IPoint, CE, CF, V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements IPlacementStrategy&lt;V, E ,F&gt; {
+	private IMesh&lt;V, E, F&gt; mesh;
+	private double qmin;
+
+	public VoronoiSegSizeOptimalPlacement(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+<span class="nc" id="L21">			final double qmin) {</span>
+<span class="nc" id="L22">		this.mesh = mesh;</span>
+<span class="nc" id="L23">		this.qmin = Math.toRadians(qmin);</span>
+<span class="nc" id="L24">	}</span>
+
+	@Override
+	public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="nc" id="L28">		return mesh;</span>
+	}
+
+	@Override
+	public VPoint computePlacement(@NotNull final E edge) {
+<span class="nc" id="L33">		return computePlacement(edge, null);</span>
+	}
+
+	@Override
+	public VPoint computePlacement(@NotNull final E edge, @Nullable final VTriangle triangle) {
+<span class="nc" id="L38">		VLine line = getMesh().toLine(edge);</span>
+<span class="nc" id="L39">		VPoint midpoint = line.midPoint();</span>
+<span class="nc" id="L40">		VPoint c = triangle.getCircumcenter();</span>
+<span class="nc" id="L41">		double d = 0.5 * line.length() / Math.tan(0.5 * qmin);</span>
+
+		VPoint e;
+		VPoint x;
+		VPoint cc;
+<span class="nc bnc" id="L46" title="All 2 branches missed.">		if(!getMesh().isAtBoundary(edge)) {</span>
+<span class="nc" id="L47">			cc = getMesh().toTriangle(getMesh().getTwinFace(edge)).getCircumcenter();</span>
+		} else {
+<span class="nc" id="L49">			double incircleRadius = Math.sqrt(3) / 6.0 * line.length();</span>
+<span class="nc" id="L50">			VPoint dir = line.asVPoint().rotate(Math.PI * 0.5).setMagnitude(incircleRadius);</span>
+<span class="nc" id="L51">			cc = midpoint.add(dir);</span>
+		}
+
+<span class="nc" id="L54">		e = c.subtract(cc).norm();</span>
+<span class="nc" id="L55">		x = midpoint.add(e.scalarMultiply(d));</span>
+<span class="nc" id="L56">		return x;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FractionProbabilityNormalization.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.test</a> &gt; <span class="el_source">FractionProbabilityNormalization.java</span></div><h1>FractionProbabilityNormalization.java</h1><pre class="source lang-java linenums">package org.vadere.util.test;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.math3.util.Pair;
+
+/**
+ * Helper class to normalize fractions to probabilities so that the sum of all
+ * probabilities is 1.
+ */
+<span class="nc" id="L13">public class FractionProbabilityNormalization {</span>
+
+	public static &lt;T&gt; Map&lt;T, Double&gt; normalize(List&lt;Pair&lt;T, Double&gt;&gt; listWithFractions) {
+<span class="nc" id="L16">		double sum = 0;</span>
+<span class="nc bnc" id="L17" title="All 2 branches missed.">		for (Pair&lt;T, Double&gt; o : listWithFractions) {</span>
+<span class="nc" id="L18">			sum += o.getValue();</span>
+<span class="nc" id="L19">		}</span>
+		
+<span class="nc" id="L21">		Map&lt;T, Double&gt; map = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L22" title="All 2 branches missed.">		for (Pair&lt;T, Double&gt; o : listWithFractions) {</span>
+<span class="nc" id="L23">			map.put(o.getKey(), o.getValue() / sum);</span>
+<span class="nc" id="L24">		}</span>
+
+<span class="nc" id="L26">		return map;</span>
+	}
+	
+	public static double[] normalize(double[] fractions) {
+<span class="nc" id="L30">		double sum = 0;</span>
+<span class="nc bnc" id="L31" title="All 2 branches missed.">		for (double d : fractions) {</span>
+<span class="nc" id="L32">			sum += d;</span>
+		}
+		
+<span class="nc" id="L35">		double[] result = new double[fractions.length];</span>
+<span class="nc bnc" id="L36" title="All 2 branches missed.">		for (int i = 0; i &lt; result.length; i++) {</span>
+<span class="nc" id="L37">			result[i] = fractions[i] / sum;</span>
+		}
+		
+<span class="nc" id="L40">		return result;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

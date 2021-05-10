@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IPoint.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry.shapes</a> &gt; <span class="el_source">IPoint.java</span></div><h1>IPoint.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry.shapes;
+
+import com.github.davidmoten.rtree.geometry.Geometry;
+import com.github.davidmoten.rtree.geometry.internal.RectangleDouble;
+
+import org.vadere.util.geometry.GeometryUtils;
+
+import java.awt.geom.Rectangle2D;
+
+import static org.junit.Assert.assertEquals;
+
+/**
+ * A {@link IPoint} represents a point in the 2D Euclidean space. Note that an {@link IPoint} might
+ * be immutable (see {@link VPoint}) or mutable (see {@link MPoint}). In the mutable case operations like
+ * {@link IPoint#add(IPoint)} change the 2D-coordinates of the this point.
+ *
+ */
+<span class="pc bpc" id="L18" title="1 of 2 branches missed.">public interface IPoint extends Cloneable, Geometry {</span>
+
+	double getX();
+
+	double getY();
+
+	IPoint add(final IPoint point);
+
+	IPoint add(final double x, final double y);
+
+	IPoint addPrecise(final IPoint point);
+
+	IPoint subtract(final IPoint point);
+
+	IPoint multiply(final IPoint point);
+
+	IPoint scalarMultiply(final double factor);
+
+	IPoint rotate(final double radAngle);
+
+	default IPoint projectOnto(final IPoint b) {
+<span class="fc" id="L39">		return GeometryUtils.projectOnto(getX(), getY(), b.getX(), b.getY());</span>
+	}
+
+	/**
+	 * Computes the scalar product of this and the point.
+	 *
+	 * This does not effect the coordinates of this.
+	 *
+	 * @param point the other point
+	 * @return the scalar product of this and the other point
+	 */
+	double scalarProduct(IPoint point);
+
+	IPoint norm();
+
+	IPoint norm(double len);
+
+	 default IPoint setMagnitude(double len) {
+<span class="nc bnc" id="L57" title="All 4 branches missed.">	 	assert len &gt;= 0;</span>
+<span class="nc" id="L58">	 	double length = distanceToOrigin();</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">	 	if(length &lt;= 0) {</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">	 		if(len != 0.0) {</span>
+<span class="nc" id="L61">				 throw new IllegalArgumentException(&quot;a vector with zero length can not be set to a specific magnitude != 0.&quot;);</span>
+			 }
+			 else {
+<span class="nc" id="L64">				 return this;</span>
+			 }
+		 }
+<span class="nc" id="L67">		 return scalarMultiply(len / distanceToOrigin());</span>
+	 }
+
+	 default IPoint limit(double len) {
+<span class="nc bnc" id="L71" title="All 4 branches missed.">	 	assert len &gt;= 0;</span>
+<span class="nc" id="L72">	 	double length = distanceToOrigin();</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">	 	if(length &gt; len) {</span>
+<span class="nc" id="L74">	 		return setMagnitude(len);</span>
+	    }
+	    else {
+<span class="nc" id="L77">	    	return this;</span>
+	    }
+	 }
+
+	IPoint normZeroSafe();
+
+	/**
+	 * Computes the Euclidean distance from this to the other.
+	 *
+	 * This does not effect the coordinates of this.
+	 *
+	 * @param other the other point
+	 * @return the Euclidean distance to the other point
+	 */
+	double distance(IPoint other);
+
+	/**
+	 * Computes the Euclidean distance from this to the other (x,y).
+	 *
+	 * This does not effect the coordinates of this.
+	 *
+	 * @param x x-coordinate of the other point
+	 * @param y y-coordinate of the other point
+	 * @return the Euclidean distance to the other point
+	 */
+	double distance(double x, double y);
+
+	/**
+	 * Computes the squared Euclidean distance from this to the other.
+	 *
+	 * This does not effect the coordinates of this.
+	 *
+	 * @param other the other point
+	 * @return the squared Euclidean distance to the other point
+	 */
+	double distanceSq(IPoint other);
+
+	/**
+	 * Computes the squared Euclidean distance from this to the other (x,y).
+	 *
+	 * This does not effect the coordinates of this.
+	 *
+	 * @param x x-coordinate of the other point
+	 * @param y y-coordinate of the other point
+	 * @return the squared Euclidean distance to the other point
+	 */
+	double distanceSq(double x, double y);
+
+
+	/**
+	 * Computes the squared Euclidean distance from this to (0,0).
+	 *
+	 * This does not effect the coordinates of this.
+	 *
+	 * @return the squared Euclidean distance to (0,0)
+	 */
+	double distanceToOrigin();
+
+	/**
+	 * Computes the cross product of this and the other point.
+	 *
+	 * This does not effect the coordinates of this.
+	 *
+	 * @param point the other point
+	 * @return the cross product of this and the other
+	 */
+	default double crossProduct(IPoint point) {
+<span class="fc" id="L144">		return getX() * point.getY() - point.getX() * getY();</span>
+	}
+
+	/**
+	 * Computes the dot product of this and the other point.
+	 *
+	 * This does not effect the coordinates of this.
+	 *
+	 * @param point the other point
+	 * @return the dot product of this and the other
+	 */
+	default double dotProduct(IPoint point) {
+<span class="fc" id="L156">		return (getX() * point.getX()) + (getY() * point.getY());</span>
+	}
+
+	/**
+	 * Clones the point. This will return a copy if the point
+	 * is immutable, otherwise this will return this.
+	 *
+	 * @return a copy of the point
+	 */
+	IPoint clone();
+
+	// Methods used by the R-Tree, for this data structure a point is equal to a Rectangle where each defining point is equal (zero area)
+	@Override
+	default double distance(com.github.davidmoten.rtree.geometry.Rectangle rectangle) {
+<span class="nc" id="L170">		return mbr().distance(rectangle);</span>
+	}
+
+	@Override
+	default com.github.davidmoten.rtree.geometry.Rectangle mbr() {
+<span class="fc" id="L175">		return RectangleDouble.create(getX(), getY(), getX(), getY());</span>
+	}
+
+	@Override
+	default boolean intersects(com.github.davidmoten.rtree.geometry.Rectangle rectangle) {
+<span class="fc" id="L180">		return mbr().intersects(rectangle);</span>
+	}
+
+	@Override
+	default boolean isDoublePrecision() {
+<span class="nc" id="L185">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

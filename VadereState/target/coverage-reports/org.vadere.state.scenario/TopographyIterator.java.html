@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TopographyIterator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.scenario</a> &gt; <span class="el_source">TopographyIterator.java</span></div><h1>TopographyIterator.java</h1><pre class="source lang-java linenums">package org.vadere.state.scenario;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+
+public class TopographyIterator implements Iterator&lt;ScenarioElement&gt; {
+
+	private ArrayList&lt;Collection&lt;? extends ScenarioElement&gt;&gt; elements;
+	private Iterator&lt;? extends ScenarioElement&gt; currentIterator;
+	private int index;
+
+<span class="nc" id="L13">	public TopographyIterator(final Topography topography, final Collection&lt;? extends Agent&gt; agents) {</span>
+<span class="nc" id="L14">		elements = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L15">		index = 0;</span>
+
+<span class="nc bnc" id="L17" title="All 2 branches missed.">		if (!agents.isEmpty()) {</span>
+<span class="nc" id="L18">			elements.add(agents);</span>
+		}
+
+<span class="nc bnc" id="L21" title="All 2 branches missed.">		if (!topography.getStairs().isEmpty()) {</span>
+<span class="nc" id="L22">			elements.add(topography.getStairs());</span>
+		}
+
+<span class="nc bnc" id="L25" title="All 2 branches missed.">		if (!topography.getSources().isEmpty()) {</span>
+<span class="nc" id="L26">			elements.add(topography.getSources());</span>
+		}
+
+<span class="nc bnc" id="L29" title="All 2 branches missed.">		if (!topography.getTargets().isEmpty()) {</span>
+<span class="nc" id="L30">			elements.add(topography.getTargets());</span>
+		}
+
+<span class="nc bnc" id="L33" title="All 2 branches missed.">		if (!topography.getObstacles().isEmpty()) {</span>
+<span class="nc" id="L34">			elements.add(topography.getObstacles());</span>
+		}
+
+<span class="nc bnc" id="L37" title="All 2 branches missed.">		if (!topography.getAbsorbingAreas().isEmpty()) {</span>
+<span class="nc" id="L38">			elements.add(topography.getAbsorbingAreas());</span>
+		}
+
+<span class="nc bnc" id="L41" title="All 2 branches missed.">		if (!topography.getTargetChangers().isEmpty()) {</span>
+<span class="nc" id="L42">			elements.add(topography.getTargetChangers());</span>
+		}
+
+<span class="nc bnc" id="L45" title="All 2 branches missed.">		if (!elements.isEmpty()) {</span>
+<span class="nc" id="L46">			currentIterator = elements.get(0).iterator();</span>
+		}
+<span class="nc" id="L48">	}</span>
+
+	public TopographyIterator(final Topography topography) {
+<span class="nc" id="L51">		this(topography, topography.getElements(Agent.class));</span>
+<span class="nc" id="L52">	}</span>
+
+	@Override
+	public boolean hasNext() {
+<span class="nc bnc" id="L56" title="All 2 branches missed.">		if (elements.size() == 0) {</span>
+<span class="nc" id="L57">			return false;</span>
+		}
+
+<span class="nc bnc" id="L60" title="All 2 branches missed.">		if (index == elements.size() - 1) {</span>
+<span class="nc" id="L61">			return currentIterator.hasNext();</span>
+		}
+<span class="nc bnc" id="L63" title="All 2 branches missed.">		return index &lt; elements.size();</span>
+	}
+
+	@Override
+	public ScenarioElement next() {
+<span class="nc bnc" id="L68" title="All 2 branches missed.">		if (!currentIterator.hasNext()) {</span>
+<span class="nc" id="L69">			currentIterator = elements.get(++index).iterator();</span>
+		}
+
+<span class="nc" id="L72">		return currentIterator.next();</span>
+	}
+
+	@Override
+	public void remove() {
+<span class="nc" id="L77">		throw new UnsupportedOperationException(&quot;not yet implemented.&quot;);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

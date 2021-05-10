@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesOSM.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.models</a> &gt; <span class="el_source">AttributesOSM.java</span></div><h1>AttributesOSM.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.models;
+
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.vadere.annotation.factories.attributes.ModelAttributeClass;
+import org.vadere.state.attributes.Attributes;
+import org.vadere.state.types.MovementType;
+import org.vadere.state.types.OptimizationType;
+import org.vadere.state.types.UpdateType;
+
+/**
+ * &lt;p&gt;
+ *     This class contains all parameters for the Optimal Steps Model with the exception of parameters for the three different
+ *     potential functions (pedestrian-, target- and obstacle-potential) and without any submodel paraemters
+ *     such as the Centroid Group Model which have their own attributes class such as {@link AttributesCGM}.
+ *     Most of the parameters are used to configure the algorithm which computes the next position of an agent.
+ * &lt;/p&gt;
+ * &lt;p&gt;
+ * There exist different versions of the Optimal Steps Model which use different parameters such that not every parameter
+ * is used for every version and some parameters are only used if some other parameter has a specific value. These different
+ * versions can be found in the PhD thesis of Isabella von Sivers [4] and Michael Seitz [2].
+ * &lt;/p&gt;
+ *
+ * Each version of the OSM searches for the optimal next step by using different search algorithms / optimizers:
+ * &lt;ul&gt;
+ * &lt;li&gt;Discrete search on a circle: this is the original OSM formulation introduced in [1]. The step length is determined by the agents' speed (Eq. 6).
+ *     The optimizer searches for the next best position on the circle at finite and equidistant points.
+ * &lt;/li&gt;
+ * &lt;li&gt;Discrete search on a disc / cone: The above concept was extended to use multiple circles and, in addition, to use only points inside a cone
+ *     which is defined by the speed of an agent such that agents avoid rapid directional changes.
+ * &lt;/li&gt;
+ * &lt;li&gt;Continues search on a disc: Instead of evaluating a finite number of fixed points this optimizer searches on the whole disc such that agents
+ *     use arbitrary
+ * &lt;/li&gt;
+ * &lt;/ul&gt;
+ * &lt;p&gt;
+ * The default version of the Optimal Steps Model is the one using the optimization on the disc and potential functions representing the personal
+ * spaces see [1] or [5]. We deviate from [4] only in the concept of a minimal step length: In this implementation
+ * an agent will not move if its next position is closer than its minimal step length ({@link AttributesOSM#minStepLength}).
+ * &lt;/p&gt;
+ *
+ * Parameters for the configuring the optimization method are:
+ * &lt;ul&gt;
+ *  &lt;li&gt;{@link AttributesOSM#stepCircleResolution}&lt;/li&gt;
+ *  &lt;li&gt;{@link AttributesOSM#numberOfCircles}&lt;/li&gt;
+ *  &lt;li&gt;{@link AttributesOSM#optimizationType}&lt;/li&gt;
+ *  &lt;li&gt;{@link AttributesOSM#varyStepDirection}&lt;/li&gt;
+ * &lt;/ul&gt;
+ * Dependent on the used combination, they have different meanings! The step length velocity correlation
+ * &lt;p&gt;
+ *     s(v) = {@link AttributesOSM#stepLengthIntercept} + {@link AttributesOSM#stepLengthSlopeSpeed} * v + error (Eq. 6)
+ * &lt;/p&gt;
+ * discussed in [1].&lt;br&gt;&lt;br&gt;
+ * &lt;b&gt;Related publications:&lt;/b&gt;
+ * &lt;ol&gt;
+ *     &lt;li&gt;&lt;a href=&quot;https://doi.org/10.1103/PhysRevE.86.046108&quot;&gt;Natural discretization of pedestrian movement in continuous space&lt;/a&gt;&lt;/li&gt;
+ *     &lt;li&gt;&lt;a href=&quot;https://mediatum.ub.tum.de/?id=1293050&quot;&gt;Simulating pedestrian dynamics: Towards natural locomotion and psychological decision making&lt;/a&gt;&lt;/li&gt;
+ *     &lt;li&gt;&lt;a href=&quot;https://doi.org/10.1088/1742-5468/2014/07/P07002&quot;&gt;How update schemes influence crowd simulations&lt;/a&gt;&lt;/li&gt;
+ *     &lt;li&gt;&lt;a href=&quot;https://mediatum.ub.tum.de/doc/1303742/1303742.pdf&quot;&gt;Modellierung sozialpsychologischer Faktoren in Personenstromsimulationen - Interpersonale Distanz und soziale Identit&amp;auml;ten&lt;/a&gt;&lt;/li&gt;
+ *     &lt;li&gt;&lt;a href=&quot;https://doi.org/10.1016/j.trb.2015.01.009&quot;&gt;Dynamic Stride Length Adaptation According to Utility And Personal Space&lt;/a&gt;&lt;/li&gt;
+ * &lt;/ol&gt;
+ */
+@ModelAttributeClass
+public class AttributesOSM extends Attributes {
+
+	/**
+	 * Parameter of the optimization solver method: the number of points on the most outer circle. The number of points on any other circle will be
+	 * chosen based on the angle3D between two successive points on the most outer circle such that any angle3D between two successive points
+	 * on any circle will be almost equal. Therefore the number of points on a circle decreases with its radius.
+	 * The positioned points will be used in different ways which depends on the {@link OptimizationType}.
+	 * &lt;ul&gt;
+	 *  &lt;li&gt;&lt;tt&gt;OptimizationType.NELDER_MEAD&lt;/tt&gt; (default): each neighbouring pair of points and the agent position is used as a starting simplex&lt;/li&gt;
+	 *  &lt;li&gt;&lt;tt&gt;OptimizationType.PSO&lt;/tt&gt;: each point and the position of the agent is used as a starting position of a particle&lt;/li&gt;
+	 * 	&lt;li&gt;&lt;tt&gt;OptimizationType.DISCRETE&lt;/tt&gt;: each point and the position of the agent is used to directly evaluate the evaluation function (brute force)&lt;/li&gt;
+	 * &lt;/ul&gt;
+	 */
+<span class="nc" id="L79">	private int stepCircleResolution = 4;</span>
+
+	/**
+	 * Parameter of the optimization solver method: the number of circles. Together with the {@link AttributesOSM#stepCircleResolution}
+	 * this gives the number of points used by the optimization solver. If r is the radius of the most outer circle and k is the number
+	 * of circles the radii of the circles are r/k, 2 * r/k, ... (k-1) * r/k, r.
+	 */
+<span class="nc" id="L86">	private int numberOfCircles = 1;</span>
+
+	/**
+	 * Parameter of the optimization method: Specifies the concrete optimization solver.
+	 */
+<span class="nc" id="L91">	private OptimizationType optimizationType = OptimizationType.NELDER_MEAD;</span>
+
+	/**
+	 * If &lt;tt&gt;true&lt;/tt&gt;, introduced for every optimization process a noise term by which points will be shifted (on their circle). See Eq. 4 in [1].
+	 * If &lt;tt&gt;false&lt;/tt&gt;, there will be no noise term which might lead to artifacts, especially in case of &lt;tt&gt;OptimizationType.DISCRETE&lt;/tt&gt;.
+	 * In that case and with {@link AttributesOSM#movementType} not &lt;tt&gt;DIRECTIONAL&lt;/tt&gt;, the first point of each circle will at (r * cos(0), r * sin(0)).
+	 */
+<span class="nc" id="L98">	private boolean varyStepDirection = true;</span>
+
+	/**
+	 * This has only an effect if {@link OptimizationType} is equal &lt;tt&gt;DISCRETE&lt;/tt&gt; or &lt;tt&gt;PSO&lt;/tt&gt;, since all other optimization (on the disc) do not
+	 * use this parameter. Reduces the circles of the optimization to a segments lying inside a cone (see [2], page 76).
+	 * This does not effect the number of used points. The shape of the cone is computed by Eq. 4.6, 4.7 which
+	 * depends on the current velocity of the agent.
+	 */
+<span class="nc" id="L106">	private MovementType movementType = MovementType.ARBITRARY;</span>
+
+	/**
+	 * Used to compute the desired step length which is {@link AttributesOSM#stepLengthIntercept} + {@link AttributesOSM#stepLengthSlopeSpeed} * speed, i.e.
+	 * Eq. 6 in [1].
+	 */
+<span class="nc" id="L112">	private double stepLengthIntercept = 0.4625;</span>
+
+	/**
+	 * Used to compute the desired step length which is {@link AttributesOSM#stepLengthIntercept} + {@link AttributesOSM#stepLengthSlopeSpeed} * speed + error, i.e.
+	 * Eq. 6 in [1].
+	 */
+<span class="nc" id="L118">	private double stepLengthSlopeSpeed = 0.2345;</span>
+
+	/**
+	 * Used to compute the error term of the desired step length i.e. the standard deviation of the normal
+	 * distribution which is the distribution of the error variable (see Eq. 6 in [1]).
+	 */
+<span class="nc" id="L124">	private double stepLengthSD = 0.036;</span>
+
+	/**
+	 * Only used if {@link OptimizationType} is equal &lt;tt&gt;DISCRETE&lt;/tt&gt; or &lt;tt&gt;PSO&lt;/tt&gt;. If the potential does not improve by this
+	 * threshold, the agent will not move. This is in some sense similar to the effect of {@link AttributesOSM#minStepLength}.
+	 */
+<span class="nc" id="L130">	private double movementThreshold = 0;</span>
+
+	/**
+	 * Only used if {@link AttributesOSM#minimumStepLength} is &lt;tt&gt;true&lt;/tt&gt;. The agent will not move if the
+	 * next improvement is less than {@link AttributesOSM#minStepLength} away from its current position.
+	 * Furthermore, this will be ignored if an agent is on stairs.
+	 */
+<span class="nc" id="L137">	private double minStepLength = 0.10;</span>
+
+	/**
+	 * If &lt;tt&gt;true&lt;/tt&gt; enables the use of {@link AttributesOSM#minStepLength}. This attribute could be removed.
+	 */
+<span class="nc" id="L142">	private boolean minimumStepLength = true;</span>
+
+	/**
+	 * The maximum amount of time a foot step of an agent can take. If the foot step takes more time
+	 * its duration is reduced to {@link AttributesOSM#maxStepDuration}.
+	 */
+<span class="nc" id="L148">	private double maxStepDuration = Double.MAX_VALUE;</span>
+
+	/**
+	 * &lt;tt&gt;SpeedAdjusters&lt;/tt&gt; will only be active if this is &lt;tt&gt;true&lt;/tt&gt;. For example this has to be true if the group model is
+	 * active.
+	 */
+<span class="nc" id="L154">	private boolean dynamicStepLength = true;</span>
+
+	/**
+	 * Specifies which update schema is used. The OSM should use the event driven update schema, see [3].
+	 */
+<span class="nc" id="L159">	private UpdateType updateType = UpdateType.EVENT_DRIVEN;</span>
+
+	/**
+	 * If &lt;tt&gt;true&lt;/tt&gt; this avoids agent jumping over small walls. However, this does not fix the problem that
+	 * the target potential computation fails due to small obstacles. Since this is a quick fix and the
+	 * test is very expensive the default should be false!
+	 */
+<span class="nc" id="L166">	private boolean seeSmallWalls = false;</span>
+
+
+<span class="nc" id="L169">	private String targetPotentialModel = &quot;org.vadere.simulator.models.potential.fields.PotentialFieldTargetGrid&quot;;</span>
+<span class="nc" id="L170">	private String pedestrianPotentialModel = &quot;org.vadere.simulator.models.potential.PotentialFieldPedestrianCompactSoftshell&quot;;</span>
+<span class="nc" id="L171">	private String obstaclePotentialModel = &quot;org.vadere.simulator.models.potential.PotentialFieldObstacleCompactSoftshell&quot;;</span>
+<span class="nc" id="L172">	private List&lt;String&gt; submodels = new LinkedList&lt;&gt;();</span>
+
+<span class="nc" id="L174">	public AttributesOSM() {}</span>
+
+	// Getters...
+	public int getStepCircleResolution() {
+<span class="nc" id="L178">		return stepCircleResolution;</span>
+	}
+
+	public int getNumberOfCircles() {
+<span class="nc" id="L182">		return numberOfCircles;</span>
+	}
+
+	public double getMaxStepDuration() {
+<span class="nc" id="L186">		return maxStepDuration;</span>
+	}
+
+	public boolean isVaryStepDirection() {
+<span class="nc" id="L190">		return varyStepDirection;</span>
+	}
+
+	public double getStepLengthIntercept() {
+<span class="nc" id="L194">		return stepLengthIntercept;</span>
+	}
+
+	public double getStepLengthSlopeSpeed() {
+<span class="nc" id="L198">		return stepLengthSlopeSpeed;</span>
+	}
+
+	public double getStepLengthSD() {
+<span class="nc" id="L202">		return stepLengthSD;</span>
+	}
+
+	public double getMovementThreshold() {
+<span class="nc" id="L206">		return movementThreshold;</span>
+	}
+
+	public OptimizationType getOptimizationType() {
+<span class="nc" id="L210">		return optimizationType;</span>
+	}
+
+	public boolean isDynamicStepLength() {
+<span class="nc" id="L214">		return dynamicStepLength;</span>
+	}
+
+	public UpdateType getUpdateType() {
+<span class="nc" id="L218">		return updateType;</span>
+	}
+
+	public MovementType getMovementType() {
+<span class="nc" id="L222">		return movementType;</span>
+	}
+
+	public boolean isSeeSmallWalls() {
+<span class="nc" id="L226">		return seeSmallWalls;</span>
+	}
+
+	public boolean isMinimumStepLength() {
+<span class="nc" id="L230">		return minimumStepLength;</span>
+	}
+
+	public String getTargetPotentialModel() {
+<span class="nc" id="L234">		return targetPotentialModel;</span>
+	}
+
+	public String getPedestrianPotentialModel() {
+<span class="nc" id="L238">		return pedestrianPotentialModel;</span>
+	}
+
+	public String getObstaclePotentialModel() {
+<span class="nc" id="L242">		return obstaclePotentialModel;</span>
+	}
+
+	/**
+	 * Return a copy of the submodel class names.
+	 *
+	 * @return a copy of the submodel class names
+	 */
+	public List&lt;String&gt; getSubmodels() {
+<span class="nc" id="L251">		return new ArrayList&lt;&gt;(submodels);</span>
+	}
+
+	public double getMinStepLength() {
+<span class="nc" id="L255">		return minStepLength;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

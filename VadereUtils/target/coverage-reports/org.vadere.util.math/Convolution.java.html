@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Convolution.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.math</a> &gt; <span class="el_source">Convolution.java</span></div><h1>Convolution.java</h1><pre class="source lang-java linenums">package org.vadere.util.math;
+
+import java.util.Random;
+import java.util.function.BiFunction;
+
+import org.vadere.util.geometry.shapes.VPoint;
+
+<span class="nc" id="L8">public class Convolution {</span>
+
+	public static float[] floatGaussian1DKernel(final int size, final float sigma) {
+<span class="fc" id="L11">		return floatGaussian1DKernel(size, sigma, true, 1.0f / (float) (Math.sqrt(2.0f * Math.PI) * sigma));</span>
+	}
+
+	public static float[] floatGaussian1DKernel(final int size, final float sigma, final boolean normalize,
+			final float scaleFactor) {
+<span class="fc" id="L16">		float sum = 0;</span>
+
+<span class="pc bpc" id="L18" title="1 of 2 branches missed.">		if (size % 2 == 0) {</span>
+<span class="nc" id="L19">			throw new IllegalArgumentException(&quot;size has to be odd.&quot;);</span>
+		}
+
+<span class="fc" id="L22">		final int centerI = (size + 1) / 2 - 1;</span>
+<span class="fc" id="L23">		final float varianz = sigma * sigma;</span>
+
+<span class="fc" id="L25">		final float[] kernel = new float[size];</span>
+
+		// build the gaussian kernel
+<span class="fc bfc" id="L28" title="All 2 branches covered.">		for (int i = 0; i &lt; size; i++) {</span>
+<span class="fc" id="L29">			float functionValue = (centerI - i) * (centerI - i);</span>
+
+<span class="fc" id="L31">			float value = scaleFactor * (float) Math.exp(-functionValue / (2 * varianz));</span>
+
+<span class="fc" id="L33">			kernel[i] = value;</span>
+<span class="fc" id="L34">			sum += value;</span>
+		}
+
+<span class="pc bpc" id="L37" title="1 of 2 branches missed.">		if (normalize) {</span>
+			// normalize the kernel
+<span class="fc bfc" id="L39" title="All 2 branches covered.">			for (int i = 0; i &lt; size; i++) {</span>
+<span class="fc" id="L40">				kernel[i] = kernel[i] / sum;</span>
+			}
+		}
+
+<span class="fc" id="L44">		return kernel;</span>
+	}
+
+	public static float[] floatGaussian1DKernel(final int size, final BiFunction&lt;Integer, Integer, Float&gt; f,
+			boolean normalize) {
+<span class="nc" id="L49">		float sum = 0;</span>
+
+<span class="nc bnc" id="L51" title="All 2 branches missed.">		if (size % 2 == 0) {</span>
+<span class="nc" id="L52">			throw new IllegalArgumentException(&quot;size has to be odd.&quot;);</span>
+		}
+
+<span class="nc" id="L55">		final int centerI = (size + 1) / 2 - 1;</span>
+<span class="nc" id="L56">		final float[] kernel = new float[size];</span>
+
+		// build the gaussian kernel
+<span class="nc bnc" id="L59" title="All 2 branches missed.">		for (int i = 0; i &lt; size; i++) {</span>
+<span class="nc" id="L60">			float value = f.apply(centerI, i);</span>
+<span class="nc" id="L61">			kernel[i] = value;</span>
+<span class="nc" id="L62">			sum += value;</span>
+		}
+
+<span class="nc bnc" id="L65" title="All 2 branches missed.">		if (normalize) {</span>
+			// normalize the kernel
+<span class="nc bnc" id="L67" title="All 2 branches missed.">			for (int i = 0; i &lt; size; i++) {</span>
+<span class="nc" id="L68">				kernel[i] = kernel[i] / sum;</span>
+			}
+		}
+
+<span class="nc" id="L72">		return kernel;</span>
+	}
+
+	public static double[] generateDoubleGaussianKernel(final int size, final double sigma) {
+<span class="fc" id="L76">		return doubleGaussianKernel(size, sigma, doubleDefaultNominator);</span>
+	}
+
+	public static float[] generateFloatGaussianKernel(final int size, final float sigma) {
+<span class="fc" id="L80">		return floatGaussian2DKernel(size, sigma, defaultNominator);</span>
+	}
+
+
+	public static float[] generateDoubleDensityGaussianKernel(final int size, final float sigma) {
+<span class="nc" id="L85">		return floatGaussian2DKernel(size, sigma, densityNominator);</span>
+	}
+
+	public static float[] generdateInputMatrix(final int size) {
+<span class="fc" id="L89">		float[] matrix = new float[size];</span>
+<span class="fc bfc" id="L90" title="All 2 branches covered.">		for (int i = 0; i &lt; size; i++) {</span>
+<span class="fc" id="L91">			matrix[i] = (float) random.nextDouble();</span>
+		}
+<span class="fc" id="L93">		return matrix;</span>
+	}
+
+	public static float[] convolve(final float[] inMatrix,
+			final float[] kernelMatrix,
+			final int nWidth,
+			final int nHeight,
+			final int nFilterWidth) {
+<span class="fc" id="L101">		float[] outMatrix = new float[inMatrix.length];</span>
+
+<span class="fc bfc" id="L103" title="All 2 branches covered.">		for (int yOut = 0; yOut &lt; nHeight; yOut++) {</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">			for (int xOut = 0; xOut &lt; nWidth; xOut++) {</span>
+<span class="fc" id="L105">				final int idxOut = yOut * nWidth + xOut;</span>
+<span class="fc" id="L106">				outMatrix[idxOut] = convolve(inMatrix, kernelMatrix, nWidth, nHeight, nFilterWidth, xOut, yOut);</span>
+
+			}
+		}
+<span class="fc" id="L110">		return outMatrix;</span>
+	}
+
+	public static float[] convolveSeperate(final float[] inMatrix,
+			final float[] rowVector,
+			final float[] colVector,
+			final int nWidth,
+			final int nHeight,
+			final int nFilterWidth) {
+<span class="fc" id="L119">		float[] tmpOutMatrix = new float[inMatrix.length];</span>
+<span class="fc" id="L120">		float[] outMatrix = new float[inMatrix.length];</span>
+
+<span class="fc bfc" id="L122" title="All 2 branches covered.">		for (int yOut = 0; yOut &lt; nHeight; yOut++) {</span>
+<span class="fc bfc" id="L123" title="All 2 branches covered.">			for (int xOut = 0; xOut &lt; nWidth; xOut++) {</span>
+<span class="fc" id="L124">				final int idxOut = yOut * nWidth + xOut;</span>
+<span class="fc" id="L125">				tmpOutMatrix[idxOut] = convolveRow(inMatrix, rowVector, nWidth, nHeight, nFilterWidth, xOut, yOut);</span>
+			}
+		}
+
+<span class="fc bfc" id="L129" title="All 2 branches covered.">		for (int yOut = 0; yOut &lt; nHeight; yOut++) {</span>
+<span class="fc bfc" id="L130" title="All 2 branches covered.">			for (int xOut = 0; xOut &lt; nWidth; xOut++) {</span>
+<span class="fc" id="L131">				final int idxOut = yOut * nWidth + xOut;</span>
+<span class="fc" id="L132">				outMatrix[idxOut] = convolveCol(tmpOutMatrix, colVector, nWidth, nHeight, nFilterWidth, xOut, yOut);</span>
+			}
+		}
+<span class="fc" id="L135">		return outMatrix;</span>
+	}
+
+	public static float[] convolveCol(final float[] inMatrix,
+			final float[] rowVector,
+			final int nWidth,
+			final int nHeight,
+			final int nFilterWidth) {
+<span class="fc" id="L143">		float[] outMatrix = new float[inMatrix.length];</span>
+
+<span class="fc bfc" id="L145" title="All 2 branches covered.">		for (int yOut = 0; yOut &lt; nHeight; yOut++) {</span>
+<span class="fc bfc" id="L146" title="All 2 branches covered.">			for (int xOut = 0; xOut &lt; nWidth; xOut++) {</span>
+<span class="fc" id="L147">				final int idxOut = yOut * nWidth + xOut;</span>
+<span class="fc" id="L148">				outMatrix[idxOut] = convolveCol(inMatrix, rowVector, nWidth, nHeight, nFilterWidth, xOut, yOut);</span>
+			}
+		}
+<span class="fc" id="L151">		return outMatrix;</span>
+	}
+
+	public static float[] convolveRow(final float[] inMatrix,
+			final float[] rowVector,
+			final int nWidth,
+			final int nHeight,
+			final int nFilterWidth) {
+<span class="fc" id="L159">		float[] outMatrix = new float[inMatrix.length];</span>
+
+<span class="fc bfc" id="L161" title="All 2 branches covered.">		for (int yOut = 0; yOut &lt; nHeight; yOut++) {</span>
+<span class="fc bfc" id="L162" title="All 2 branches covered.">			for (int xOut = 0; xOut &lt; nWidth; xOut++) {</span>
+<span class="fc" id="L163">				final int idxOut = yOut * nWidth + xOut;</span>
+<span class="fc" id="L164">				outMatrix[idxOut] = convolveRow(inMatrix, rowVector, nWidth, nHeight, nFilterWidth, xOut, yOut);</span>
+			}
+		}
+
+<span class="fc" id="L168">		return outMatrix;</span>
+	}
+
+	public static float convolve(final float[] inMatrix,
+			final float[] kernelMatrix,
+			final int inWidth,
+			final int inHeight,
+			final int kernelWidth,
+			final int x,
+			final int y) {
+<span class="fc" id="L178">		float sum = 0;</span>
+
+		/**
+		 * Crop strategy: Any pixel in the output image which would require values from beyond the
+		 * edge is skipped
+		 */
+<span class="fc" id="L184">		int bottomBorder = (kernelWidth / 2 + 1) - (inHeight - y);</span>
+<span class="fc bfc" id="L185" title="All 2 branches covered.">		bottomBorder = bottomBorder &gt; 0 ? bottomBorder : 0;</span>
+<span class="fc bfc" id="L186" title="All 2 branches covered.">		int topBorder = y - (kernelWidth / 2) &lt; 0 ? y - (kernelWidth / 2) : 0;</span>
+
+<span class="fc" id="L188">		int rightBorder = (kernelWidth / 2 + 1) - (inWidth - x);</span>
+<span class="fc bfc" id="L189" title="All 2 branches covered.">		rightBorder = rightBorder &gt; 0 ? rightBorder : 0;</span>
+<span class="fc bfc" id="L190" title="All 2 branches covered.">		int leftBorder = x - (kernelWidth / 2) &lt; 0 ? x - (kernelWidth / 2) : 0;</span>
+
+<span class="fc bfc" id="L192" title="All 2 branches covered.">		for (int r = -kernelWidth / 2 - topBorder; r &lt;= kernelWidth / 2 - bottomBorder; r++) {</span>
+<span class="fc" id="L193">			final int idxFtmp = (r + kernelWidth / 2) * kernelWidth;</span>
+
+<span class="fc" id="L195">			final int yIn = y + r;</span>
+<span class="fc" id="L196">			final int idxIntmp = yIn * inWidth + x;</span>
+
+<span class="fc bfc" id="L198" title="All 2 branches covered.">			for (int c = -kernelWidth / 2 - leftBorder; c &lt;= kernelWidth / 2 - rightBorder; c++) {</span>
+<span class="fc" id="L199">				final int idxF = idxFtmp + (c + kernelWidth / 2);</span>
+<span class="fc" id="L200">				final int idxIn = idxIntmp + c;</span>
+
+<span class="pc bpc" id="L202" title="3 of 6 branches missed.">				if (idxIn &lt; inMatrix.length &amp;&amp; idxF &gt;= 0 &amp;&amp; idxIn &gt;= 0) {</span>
+<span class="fc" id="L203">					sum += kernelMatrix[idxF] * inMatrix[idxIn];</span>
+				}
+			}
+		}
+<span class="fc" id="L207">		return sum;</span>
+	}
+
+
+<span class="fc" id="L211">	private static BiFunction&lt;VPoint, VPoint, Float&gt; defaultNominator = (p1, p2) -&gt; {</span>
+<span class="fc" id="L212">		VPoint distance = p1.subtract(p2);</span>
+<span class="fc" id="L213">		return (float) (distance.x * distance.x + distance.y * distance.y);</span>
+	};
+
+<span class="fc" id="L216">	private static BiFunction&lt;VPoint, VPoint, Double&gt; doubleDefaultNominator = (p1, p2) -&gt; {</span>
+<span class="fc" id="L217">		VPoint distance = p1.subtract(p2);</span>
+<span class="fc" id="L218">		return (distance.x * distance.x + distance.y * distance.y);</span>
+	};
+
+<span class="fc" id="L221">	private static BiFunction&lt;VPoint, VPoint, Float&gt; densityNominator =</span>
+<span class="nc" id="L222">			(p1, p2) -&gt; (float) Math.sqrt(defaultNominator.apply(p1, p2));</span>
+
+<span class="fc" id="L224">	private static Random random = new Random();</span>
+
+	private static double[] doubleGaussianKernel(final int size,
+			final double sigma,
+			final BiFunction&lt;VPoint, VPoint, Double&gt; fDistance) {
+<span class="fc" id="L229">		double sum = 0;</span>
+
+<span class="pc bpc" id="L231" title="1 of 2 branches missed.">		if (size % 2 == 0) {</span>
+<span class="nc" id="L232">			throw new IllegalArgumentException(&quot;size has to be odd.&quot;);</span>
+		}
+
+<span class="fc" id="L235">		final int centerX = (size + 1) / 2 - 1;</span>
+<span class="fc" id="L236">		final int centerY = centerX;</span>
+<span class="fc" id="L237">		final VPoint pCenter = new VPoint(centerX, centerY);</span>
+<span class="fc" id="L238">		final double varianz = sigma * sigma;</span>
+<span class="fc" id="L239">		final double scaleFactor = 1.0 / (2.0 * Math.PI * varianz);</span>
+<span class="fc" id="L240">		final double[] kernel = new double[size * size];</span>
+
+		// build the gaussian kernel
+<span class="fc bfc" id="L243" title="All 2 branches covered.">		for (int x = 0; x &lt; size; x++) {</span>
+<span class="fc bfc" id="L244" title="All 2 branches covered.">			for (int y = 0; y &lt; size; y++) {</span>
+<span class="fc" id="L245">				double functionValue = fDistance.apply(new VPoint(x, y), pCenter);</span>
+
+<span class="fc" id="L247">				double value = scaleFactor * Math.exp(-functionValue / (2 * varianz));</span>
+
+<span class="fc" id="L249">				kernel[y * size + x] = value;</span>
+<span class="fc" id="L250">				sum += value;</span>
+			}
+		}
+
+		// normalize the kernel
+<span class="fc bfc" id="L255" title="All 2 branches covered.">		for (int x = 0; x &lt; size; x++) {</span>
+<span class="fc bfc" id="L256" title="All 2 branches covered.">			for (int y = 0; y &lt; size; y++) {</span>
+<span class="fc" id="L257">				kernel[y * size + x] = kernel[y * size + x] / sum;</span>
+			}
+		}
+<span class="fc" id="L260">		return kernel;</span>
+	}
+
+	private static float[] floatGaussian2DKernel(final int size,
+			final float sigma,
+			final BiFunction&lt;VPoint, VPoint, Float&gt; fDistance) {
+<span class="fc" id="L266">		float sum = 0;</span>
+
+<span class="pc bpc" id="L268" title="1 of 2 branches missed.">		if (size % 2 == 0) {</span>
+<span class="nc" id="L269">			throw new IllegalArgumentException(&quot;size has to be odd.&quot;);</span>
+		}
+
+<span class="fc" id="L272">		final int centerX = (size + 1) / 2 - 1;</span>
+<span class="fc" id="L273">		final int centerY = centerX;</span>
+<span class="fc" id="L274">		final VPoint pCenter = new VPoint(centerX, centerY);</span>
+<span class="fc" id="L275">		final float varianz = sigma * sigma;</span>
+<span class="fc" id="L276">		final float scaleFactor = 1.0f / (2.0f * (float) Math.PI * varianz);</span>
+<span class="fc" id="L277">		final float[] kernel = new float[size * size];</span>
+
+		// build the gaussian kernel
+<span class="fc bfc" id="L280" title="All 2 branches covered.">		for (int x = 0; x &lt; size; x++) {</span>
+<span class="fc bfc" id="L281" title="All 2 branches covered.">			for (int y = 0; y &lt; size; y++) {</span>
+<span class="fc" id="L282">				float functionValue = fDistance.apply(new VPoint(x, y), pCenter);</span>
+
+<span class="fc" id="L284">				float value = scaleFactor * (float) Math.exp(-functionValue / (2 * varianz));</span>
+
+<span class="fc" id="L286">				kernel[y * size + x] = value;</span>
+<span class="fc" id="L287">				sum += value;</span>
+			}
+		}
+
+		// normalize the kernel
+<span class="fc bfc" id="L292" title="All 2 branches covered.">		for (int x = 0; x &lt; size; x++) {</span>
+<span class="fc bfc" id="L293" title="All 2 branches covered.">			for (int y = 0; y &lt; size; y++) {</span>
+<span class="fc" id="L294">				kernel[y * size + x] = kernel[y * size + x] / sum;</span>
+			}
+		}
+<span class="fc" id="L297">		return kernel;</span>
+	}
+
+	private static float convolveRow(final float[] inMatrix,
+			final float[] kernelVector,
+			final int inWidth,
+			final int inHeight,
+			final int kernelWidth,
+			final int x, final int y) {
+<span class="fc" id="L306">		float sum = 0;</span>
+<span class="fc" id="L307">		int bottomBorder = (kernelWidth / 2 + 1) - (inHeight - y);</span>
+<span class="fc bfc" id="L308" title="All 2 branches covered.">		bottomBorder = bottomBorder &gt; 0 ? bottomBorder : 0;</span>
+<span class="fc bfc" id="L309" title="All 2 branches covered.">		int topBorder = y - (kernelWidth / 2) &lt; 0 ? y - (kernelWidth / 2) : 0;</span>
+
+<span class="fc bfc" id="L311" title="All 2 branches covered.">		for (int r = -kernelWidth / 2 - topBorder; r &lt;= kernelWidth / 2 - bottomBorder; r++) {</span>
+<span class="fc" id="L312">			final int idxF = (r + kernelWidth / 2);</span>
+<span class="fc" id="L313">			final int yIn = y * inWidth;</span>
+<span class="fc" id="L314">			final int idxIn = yIn + x + r * inWidth;</span>
+
+			// if(idxIn &lt; inMatrix.length &amp;&amp; idxF &gt;= 0 &amp;&amp; idxIn &gt;= 0) {
+<span class="fc" id="L317">			sum += kernelVector[idxF] * inMatrix[idxIn];</span>
+			// }
+		}
+
+<span class="fc" id="L321">		return sum;</span>
+	}
+
+	private static float convolveCol(final float[] inMatrix,
+			final float[] kernelVector,
+			final int inWidth,
+			final int inHeight,
+			final int kernelWidth,
+			final int x, final int y) {
+<span class="fc" id="L330">		float sum = 0;</span>
+<span class="fc" id="L331">		int rightBorder = (kernelWidth / 2 + 1) - (inWidth - x);</span>
+<span class="fc bfc" id="L332" title="All 2 branches covered.">		rightBorder = rightBorder &gt; 0 ? rightBorder : 0;</span>
+<span class="fc bfc" id="L333" title="All 2 branches covered.">		int leftBorder = x - (kernelWidth / 2) &lt; 0 ? x - (kernelWidth / 2) : 0;</span>
+
+<span class="fc bfc" id="L335" title="All 2 branches covered.">		for (int r = -kernelWidth / 2 - leftBorder; r &lt;= kernelWidth / 2 - rightBorder; r++) {</span>
+<span class="fc" id="L336">			final int idxF = (r + kernelWidth / 2);</span>
+<span class="fc" id="L337">			final int yIn = y * inWidth;</span>
+<span class="fc" id="L338">			final int idxIn = yIn + x + r;</span>
+
+<span class="pc bpc" id="L340" title="3 of 6 branches missed.">			if (idxIn &lt; inMatrix.length &amp;&amp; idxF &gt;= 0 &amp;&amp; idxIn &gt;= 0) {</span>
+<span class="fc" id="L341">				sum += kernelVector[idxF] * inMatrix[idxIn];</span>
+			}
+		}
+
+<span class="fc" id="L345">		return sum;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

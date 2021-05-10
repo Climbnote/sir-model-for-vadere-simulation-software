@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GeometryPrinter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.io</a> &gt; <span class="el_source">GeometryPrinter.java</span></div><h1>GeometryPrinter.java</h1><pre class="source lang-java linenums">package org.vadere.util.io;
+
+import java.util.LinkedList;
+import java.util.List;
+
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.Geometry;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+
+/**
+ * Prints a {@link Geometry} or a double array in a MATLAB friendly format to
+ * the console.
+ * 
+ */
+<span class="nc" id="L16">public class GeometryPrinter {</span>
+
+	/**
+	 * Print the given geometry in a MATLAB friendly format to the console.
+	 * 
+	 * @param toVisualize
+	 * @param gridSideLen
+	 *        Side length of the grid for MATLABs mesh(...) function.
+	 * @param minX
+	 *        minimum x value of the geometry
+	 * @param minY
+	 *        minimum y value of the geometry
+	 * @param width
+	 *        width of the geometry
+	 * @param height
+	 *        height of the geometry
+	 */
+	public static String geometry2string(Geometry toVisualize, int gridSideLen,
+			double minX, double minY, double width, double height) {
+		// units per grid side
+<span class="nc" id="L36">		double gridBinSideLen = Math.sqrt(height * width) / gridSideLen;</span>
+
+		// initialize array
+<span class="nc" id="L39">		StringBuilder resultStringBuilder = new StringBuilder(&quot;&quot;);</span>
+
+		// collect all polygons from the geometry
+<span class="nc" id="L42">		List&lt;VPolygon&gt; polygons = new LinkedList&lt;VPolygon&gt;();</span>
+<span class="nc" id="L43">		polygons.addAll(toVisualize.getPolygons());</span>
+
+		// create grid, initially with zeros
+<span class="nc" id="L46">		double[][] grid = new double[gridSideLen][gridSideLen];</span>
+
+		// draw 1.0 on each line
+<span class="nc bnc" id="L49" title="All 2 branches missed.">		for (VPolygon p : polygons) {</span>
+<span class="nc" id="L50">			List&lt;VPoint&gt; pointList = p.getPoints();</span>
+<span class="nc bnc" id="L51" title="All 2 branches missed.">			if (pointList.isEmpty()) {</span>
+<span class="nc" id="L52">				continue;</span>
+			}
+
+			// add first point at the end to get a closed loop
+<span class="nc" id="L56">			pointList.add(pointList.get(0));</span>
+
+			// draw lines on grid
+<span class="nc bnc" id="L59" title="All 2 branches missed.">			for (int i = 0; i &lt; pointList.size() - 1; i++) {</span>
+<span class="nc" id="L60">				VPoint p1 = pointList.get(i);</span>
+<span class="nc" id="L61">				VPoint p2 = pointList.get(i + 1);</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">				for (double f = 0.0; f &lt; 1.0; f += 1.0 / (p1.distance(p2) / (0.5 * gridBinSideLen))) {</span>
+<span class="nc" id="L63">					VPoint currP = GeometryUtils.interpolate(p1, p2, f);</span>
+<span class="nc" id="L64">					int gridX = (int) ((currP.getX() - minX) / width * (gridSideLen - 1));</span>
+<span class="nc" id="L65">					int gridY = (int) ((currP.getY() - minY) / height * (gridSideLen - 1));</span>
+<span class="nc bnc" id="L66" title="All 8 branches missed.">					if (gridX &gt;= 0 &amp;&amp; gridX &lt; gridSideLen &amp;&amp; gridY &gt;= 0</span>
+							&amp;&amp; gridY &lt; gridSideLen) {
+<span class="nc" id="L68">						grid[gridX][gridY] = 1.0;</span>
+					}
+				}
+			}
+<span class="nc" id="L72">		}</span>
+
+		// build string
+<span class="nc bnc" id="L75" title="All 2 branches missed.">		for (int r = 0; r &lt; gridSideLen; r++) {</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">			for (int c = 0; c &lt; gridSideLen; c++) {</span>
+<span class="nc" id="L77">				resultStringBuilder.append(grid[r][c]);</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">				if (c &lt; gridSideLen - 1) {</span>
+<span class="nc" id="L79">					resultStringBuilder.append(&quot;,&quot;);</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">				} else if (r &lt; gridSideLen - 1) {</span>
+<span class="nc" id="L81">					resultStringBuilder.append(System.lineSeparator());</span>
+				}
+			}
+		}
+
+		// close array
+<span class="nc" id="L87">		resultStringBuilder.append(&quot;&quot;);</span>
+
+		// return result
+<span class="nc" id="L90">		return (resultStringBuilder.toString());</span>
+	}
+
+	/**
+	 * Prints a given double grid to a string.
+	 * 
+	 * @param grid
+	 * @return
+	 */
+	public static String grid2string(double[][] grid) {
+
+<span class="fc" id="L101">		StringBuilder sb = new StringBuilder(&quot;&quot;);</span>
+
+<span class="fc bfc" id="L103" title="All 2 branches covered.">		for (int r = 0; r &lt; grid.length; r++) {</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">			for (int c = 0; c &lt; grid[0].length; c++) {</span>
+<span class="fc" id="L105">				sb.append(grid[r][c]);</span>
+<span class="fc bfc" id="L106" title="All 2 branches covered.">				if (c &lt; grid.length - 1) {</span>
+<span class="fc" id="L107">					sb.append(&quot;,&quot;);</span>
+				}
+			}
+<span class="fc bfc" id="L110" title="All 2 branches covered.">			if (r &lt; grid.length - 1) {</span>
+<span class="fc" id="L111">				sb.append(&quot;\n&quot;);</span>
+			}
+		}
+<span class="fc" id="L114">		sb.append(&quot;&quot;);</span>
+<span class="fc" id="L115">		return sb.toString();</span>
+	}
+
+	/**
+	 * Prints a given double grid to a string.
+	 * 
+	 * @param grid
+	 * @return
+	 */
+	public static String grid2string(double[][][] grid) {
+
+<span class="nc" id="L126">		StringBuilder sb = new StringBuilder(&quot;&quot;);</span>
+
+<span class="nc bnc" id="L128" title="All 2 branches missed.">		for (int r = 0; r &lt; grid.length; r++) {</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">			for (int c = 0; c &lt; grid[0].length; c++) {</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">				for (int d = 0; d &lt; grid[0][0].length; d++) {</span>
+<span class="nc" id="L131">					sb.append(grid[r][c][d]);</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">					if (d &lt; grid.length - 1) {</span>
+<span class="nc" id="L133">						sb.append(&quot;,&quot;);</span>
+					}
+				}
+<span class="nc" id="L136">				sb.append(&quot;;&quot;);</span>
+			}
+<span class="nc bnc" id="L138" title="All 2 branches missed.">			if (r &lt; grid.length - 1) {</span>
+<span class="nc" id="L139">				sb.append(&quot;\n&quot;);</span>
+			}
+		}
+<span class="nc" id="L142">		sb.append(&quot;&quot;);</span>
+<span class="nc" id="L143">		return sb.toString();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

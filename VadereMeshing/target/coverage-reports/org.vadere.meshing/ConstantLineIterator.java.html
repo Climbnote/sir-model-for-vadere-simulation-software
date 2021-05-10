@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConstantLineIterator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing</a> &gt; <span class="el_source">ConstantLineIterator.java</span></div><h1>ConstantLineIterator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing;
+
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+
+import java.awt.geom.Line2D;
+import java.util.Iterator;
+
+public class ConstantLineIterator implements Iterator&lt;IPoint&gt; {
+
+	private final Line2D.Double line;
+	private final double delta;
+	private VPoint startPoint;
+	private VPoint currentPoint;
+	private VPoint endPoint;
+	private VPoint deltaPoint;
+	private double slope;
+	private double lineLength;
+
+	private double dx;
+	private double dy;
+	private int counter;
+	private int numberOfSegments;
+
+<span class="fc" id="L26">	public ConstantLineIterator(final Line2D.Double line, final double delta) {</span>
+<span class="fc" id="L27">		this.line = line;</span>
+
+<span class="pc bpc" id="L29" title="1 of 2 branches missed.">		if(line.getX1() &lt; line.getX2()) {</span>
+<span class="fc" id="L30">			startPoint = new VPoint(line.getX1(), line.getY1());</span>
+<span class="fc" id="L31">			endPoint = new VPoint(line.getX2(), line.getY2());</span>
+		}
+<span class="nc bnc" id="L33" title="All 2 branches missed.">		else if(line.getX1() == line.getX2()) {</span>
+<span class="nc bnc" id="L34" title="All 2 branches missed.">			if(line.getY1() &lt; line.getY2()) {</span>
+<span class="nc" id="L35">				startPoint = new VPoint(line.getX1(), line.getY1());</span>
+<span class="nc" id="L36">				endPoint = new VPoint(line.getX2(), line.getY2());</span>
+			}
+<span class="nc bnc" id="L38" title="All 2 branches missed.">			else if(line.getY1() &gt; line.getY2()) {</span>
+<span class="nc" id="L39">				startPoint = new VPoint(line.getX2(), line.getY2());</span>
+<span class="nc" id="L40">				endPoint = new VPoint(line.getX1(), line.getY1());</span>
+			}
+			else {
+<span class="nc" id="L43">				throw new IllegalArgumentException(line + &quot; is not a feasible line.&quot;);</span>
+			}
+		}
+		else {
+<span class="nc" id="L47">			startPoint = new VPoint(line.getX2(), line.getY2());</span>
+<span class="nc" id="L48">			endPoint = new VPoint(line.getX1(), line.getY1());</span>
+		}
+
+<span class="fc" id="L51">		lineLength = startPoint.distance(endPoint);</span>
+
+<span class="fc" id="L53">		numberOfSegments = (int)Math.floor(lineLength / delta) - 3;</span>
+<span class="fc" id="L54">		this.delta = lineLength / numberOfSegments;</span>
+
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">		if(line.getX1() == line.getX2()) {</span>
+<span class="nc" id="L57">			dx = 0;</span>
+<span class="nc" id="L58">			dy = this.delta;</span>
+<span class="nc" id="L59">			slope = 0;</span>
+		}
+
+<span class="pc bpc" id="L62" title="1 of 2 branches missed.">		if(line.getY1() == line.getY2()) {</span>
+<span class="nc" id="L63">			dx = this.delta;</span>
+<span class="nc" id="L64">			dy = 0;</span>
+<span class="nc" id="L65">			slope = 0;</span>
+		}
+
+<span class="pc bpc" id="L68" title="2 of 4 branches missed.">		if(line.getX1() != line.getX2() &amp;&amp; line.getY1() != line.getY2()) {</span>
+<span class="fc" id="L69">			double len = startPoint.distance(endPoint);</span>
+<span class="fc" id="L70">			slope = new VLine(startPoint, endPoint).slope();</span>
+<span class="fc" id="L71">			dx = Math.sqrt((this.delta * this.delta) / (1 + slope*slope));</span>
+<span class="fc" id="L72">			dy = dx * slope;</span>
+
+		}
+
+<span class="fc" id="L76">		deltaPoint = new VPoint(dx, dy);</span>
+<span class="fc" id="L77">		currentPoint = null;</span>
+<span class="fc" id="L78">	}</span>
+
+	@Override
+	public boolean hasNext() {
+<span class="fc bfc" id="L82" title="All 4 branches covered.">		return currentPoint == null || !currentPoint.equals(endPoint);</span>
+	}
+
+	@Override
+	public IPoint next() {
+		// first point
+<span class="fc bfc" id="L88" title="All 2 branches covered.">		if(currentPoint == null) {</span>
+<span class="fc" id="L89">			counter++;</span>
+<span class="fc" id="L90">			currentPoint = startPoint;</span>
+		}
+<span class="fc bfc" id="L92" title="All 2 branches covered.">		else if(counter &lt; numberOfSegments) {</span>
+<span class="fc" id="L93">			counter++;</span>
+<span class="fc" id="L94">			currentPoint = currentPoint.add(deltaPoint);</span>
+		} // last point
+		else {
+<span class="fc" id="L97">			currentPoint = endPoint;</span>
+		}
+
+<span class="pc bpc" id="L100" title="1 of 2 branches missed.">		if(slope != 0) {</span>
+			// this is more accurate for slope != 0.
+<span class="fc" id="L102">			return new VPoint(currentPoint.getX(), startPoint.getY() + slope * (currentPoint.getX() - startPoint.getX()));</span>
+		}
+		else {
+<span class="nc" id="L105">			return currentPoint;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

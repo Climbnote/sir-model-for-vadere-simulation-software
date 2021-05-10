@@ -1,0 +1,2 @@
+JMH S 35 org.vadere.util.math.PerformanceExp S 61 org.vadere.util.math.generated.PerformanceExp_testExp_jmhTest S 7 testExp S 10 Throughput E A 1 1 1 E E E E E E E E E E E E E E U 12 MILLISECONDS E E 
+JMH S 35 org.vadere.util.math.PerformanceExp S 63 org.vadere.util.math.generated.PerformanceExp_testExpAp_jmhTest S 9 testExpAp S 10 Throughput E A 1 1 1 E E E E E E E E E E E E E E U 12 MILLISECONDS E E 

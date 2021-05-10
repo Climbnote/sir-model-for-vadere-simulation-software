@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesTestPedestrianEvacuationTimeProcessor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.processor</a> &gt; <span class="el_source">AttributesTestPedestrianEvacuationTimeProcessor.java</span></div><h1>AttributesTestPedestrianEvacuationTimeProcessor.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.processor;
+
+import org.jetbrains.annotations.NotNull;
+
+/**
+ * @author Benedikt Zoennchen
+ */
+<span class="nc" id="L8">public class AttributesTestPedestrianEvacuationTimeProcessor extends AttributesTestProcessor {</span>
+	private int pedestrianEvacuationTimeProcessorId;
+<span class="nc" id="L10">	private Double maximalEvacuationTime = Double.POSITIVE_INFINITY;</span>
+<span class="nc" id="L11">	private Double minimalEvacuationTime = 0.0;</span>
+
+	public int getPedestrianEvacuationTimeProcessorId() {
+<span class="nc" id="L14">		return this.pedestrianEvacuationTimeProcessorId;</span>
+	}
+
+	public double getMaximalEvacuationTime() {
+<span class="nc" id="L18">		return maximalEvacuationTime;</span>
+	}
+
+	public double getMinimalEvacuationTime() {
+<span class="nc" id="L22">		return minimalEvacuationTime;</span>
+	}
+
+	public void setPedestrianEvacuationTimeProcessorId(final int pedestrianEvacuationTimeProcessorId) {
+<span class="nc" id="L26">		checkSealed();</span>
+<span class="nc" id="L27">		this.pedestrianEvacuationTimeProcessorId = pedestrianEvacuationTimeProcessorId;</span>
+<span class="nc" id="L28">	}</span>
+
+	public void setMaximalEvacuationTime(@NotNull final Double maximalEvacuationTime) {
+<span class="nc" id="L31">		checkSealed();</span>
+<span class="nc" id="L32">		this.maximalEvacuationTime = maximalEvacuationTime;</span>
+<span class="nc" id="L33">	}</span>
+
+	public void setMinimalEvacuationTime(@NotNull final Double minimalEvacuationTime) {
+<span class="nc" id="L36">		checkSealed();</span>
+<span class="nc" id="L37">		this.minimalEvacuationTime = minimalEvacuationTime;</span>
+<span class="nc" id="L38">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

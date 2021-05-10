@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FrontalPlacement.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">FrontalPlacement.java</span></div><h1>FrontalPlacement.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.IPlacementStrategy;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VTriangle;
+
+import java.util.function.Function;
+
+public class FrontalPlacement&lt;P extends IPoint, CE, CF, V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements IPlacementStrategy&lt;V, E ,F&gt; {
+	private IMesh&lt;V, E, F&gt; mesh;
+	private DelaunayPlacement&lt;V, E, F&gt; delaunayPlacement;
+	private VoronoiSegPlacement&lt;V, E, F&gt; voronoiSegPlacement;
+	private VoronoiSegSizeOptimalPlacement&lt;P, CE, CF, V, E, F&gt; voronoiSegSizeOptimalPlacement;
+
+	public FrontalPlacement(@NotNull final IMesh&lt;V, E, F&gt; mesh,
+	                        @NotNull final Function&lt;IPoint, Double&gt; circumRadiusFunc,
+<span class="nc" id="L24">	                        final double qmin) {</span>
+<span class="nc" id="L25">		this.mesh = mesh;</span>
+<span class="nc" id="L26">		this.delaunayPlacement = new DelaunayPlacement&lt;&gt;(mesh);</span>
+<span class="nc" id="L27">		this.voronoiSegPlacement = new VoronoiSegPlacement&lt;&gt;(mesh, circumRadiusFunc);</span>
+<span class="nc" id="L28">		this.voronoiSegSizeOptimalPlacement = new VoronoiSegSizeOptimalPlacement&lt;&gt;(mesh, qmin);</span>
+<span class="nc" id="L29">	}</span>
+
+	@Override
+	public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="nc" id="L33">		return mesh;</span>
+	}
+
+	@Override
+	public VPoint computePlacement(@NotNull final E edge, final VTriangle triangle) {
+<span class="nc" id="L38">		VLine line = getMesh().toLine(edge);</span>
+<span class="nc" id="L39">		VPoint midpoint = line.midPoint();</span>
+<span class="nc" id="L40">		VPoint x1 = delaunayPlacement.computePlacement(edge, triangle);</span>
+<span class="nc" id="L41">		VPoint x2 = voronoiSegPlacement.computePlacement(edge, triangle);</span>
+<span class="nc" id="L42">		VPoint x3 = voronoiSegSizeOptimalPlacement.computePlacement(edge, triangle);</span>
+
+
+<span class="nc" id="L45">		double d1 = x1.distance(midpoint);</span>
+<span class="nc" id="L46">		double d2 = x2.distance(midpoint);</span>
+<span class="nc" id="L47">		double d3 = x3.distance(midpoint);</span>
+
+<span class="nc bnc" id="L49" title="All 6 branches missed.">		if(d2 &lt;= d1 &amp;&amp; d2 &lt;= d3 &amp;&amp; d2 &gt;= 0.5 * line.length()) {</span>
+<span class="nc" id="L50">			return x2;</span>
+<span class="nc bnc" id="L51" title="All 2 branches missed.">		} else if(d3 &lt;= d1) {</span>
+<span class="nc" id="L52">			return x3;</span>
+		} else {
+<span class="nc" id="L54">			return x1;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

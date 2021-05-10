@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataTriangle.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry</a> &gt; <span class="el_source">DataTriangle.java</span></div><h1>DataTriangle.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry;
+
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.TreeSet;
+
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.util.geometry.shapes.VTriangle;
+
+/**
+ * A triangle with additional double data at each point.
+ */
+public class DataTriangle extends VTriangle {
+
+	private static final long serialVersionUID = -8474888965422993293L;
+
+	/**
+	 * The point where the distance is measured from.
+	 */
+	public DataPoint measurePoint;
+
+	/**
+	 * Creates a triangle. Points must be given in ccw order.
+	 * 
+	 * @param p1
+	 * @param p2
+	 * @param p3
+	 * @param mp
+	 *        datapoint, holding the data of this triangle
+	 */
+	public DataTriangle(VPoint p1, VPoint p2, VPoint p3, DataPoint mp) {
+<span class="nc" id="L35">		super(p1, p2, p3);</span>
+
+<span class="nc" id="L37">		this.measurePoint = mp;</span>
+<span class="nc" id="L38">	}</span>
+
+	/**
+	 * @param p1
+	 * @param p2
+	 * @param p3
+	 */
+	public DataTriangle(DataPoint p1, DataPoint p2, DataPoint p3) {
+<span class="nc" id="L46">		super(p1, p2, p3);</span>
+
+<span class="nc" id="L48">		recalculateMeasurePoint();</span>
+<span class="nc" id="L49">	}</span>
+
+	/**
+	 * Recalculates the measure point based on the data stored in the DataPoint
+	 * s.
+	 */
+	private void recalculateMeasurePoint() {
+		// set measure point for gradient computations
+<span class="nc" id="L57">		TreeSet&lt;DataPoint&gt; points = new TreeSet&lt;DataPoint&gt;(</span>
+<span class="nc" id="L58">				DataPoint.getPointComparator());</span>
+<span class="nc" id="L59">		points.add((DataPoint) p1);</span>
+<span class="nc" id="L60">		points.add((DataPoint) p2);</span>
+<span class="nc" id="L61">		points.add((DataPoint) p3);</span>
+
+		// set lowest point as measure point
+<span class="nc" id="L64">		this.setMeasurePoint(points.first());</span>
+<span class="nc" id="L65">	}</span>
+
+	/**
+	 * Sets the measure point.
+	 * 
+	 * @param newMeasurePoint
+	 */
+	public void setMeasurePoint(DataPoint newMeasurePoint) {
+<span class="nc" id="L73">		this.measurePoint = newMeasurePoint;</span>
+<span class="nc" id="L74">	}</span>
+
+	public double evaluateAtMeasurePoint(VPoint toEval) {
+<span class="nc" id="L77">		return this.measurePoint.getData() + this.measurePoint.distance(toEval);</span>
+	}
+
+	/**
+	 * Converts the given triangle in a DataTriangle. Note that if the triangle
+	 * is already a DataTriangle, the data values are NOT copied but also set to
+	 * 0.0.
+	 * 
+	 * @param triangle
+	 */
+	public DataTriangle(VTriangle triangle) {
+<span class="nc" id="L88">		this(triangle, 0.0);</span>
+<span class="nc" id="L89">	}</span>
+
+	/**
+	 * Converts the given triangle in a DataTriangle. Note that if the triangle
+	 * is already a DataTriangle, the data values are NOT copied but also set to
+	 * initialData.
+	 * 
+	 * @param triangle
+	 *        the triangle to copy
+	 * @param initialData
+	 *        data to set at each vertex
+	 */
+	public DataTriangle(VTriangle triangle, double initialData) {
+<span class="nc" id="L102">		this(new DataPoint(triangle.p1, initialData), new DataPoint(</span>
+				triangle.p2, initialData), new DataPoint(triangle.p3,
+						initialData));
+<span class="nc" id="L105">	}</span>
+
+	/**
+	 * A new DataTriangle from {@link VPoint} points. The measure point is set
+	 * to 0,0 with data 0.
+	 * 
+	 * @param p1
+	 * @param p2
+	 * @param p3
+	 */
+	public DataTriangle(VPoint p1, VPoint p2, VPoint p3) {
+<span class="nc" id="L116">		this(p1, p2, p3, new DataPoint(0, 0));</span>
+<span class="nc" id="L117">	}</span>
+
+	/**
+	 * Get data at a specified point that must equal one of the triangles
+	 * vertices.
+	 * 
+	 * @param p
+	 *        p1,p2 or p3 specified in the constructor.
+	 * @throws IllegalArgumentException
+	 *         if the point does not lie on any of the three vertices.
+	 * @return the data value at that point
+	 */
+	public double getDataAt(VPoint p) {
+<span class="nc bnc" id="L130" title="All 2 branches missed.">		if (p == this.p1) {</span>
+<span class="nc" id="L131">			return ((DataPoint) p1).getData();</span>
+		}
+<span class="nc bnc" id="L133" title="All 2 branches missed.">		if (p == this.p2) {</span>
+<span class="nc" id="L134">			return ((DataPoint) p2).getData();</span>
+		}
+<span class="nc bnc" id="L136" title="All 2 branches missed.">		if (p == this.p3) {</span>
+<span class="nc" id="L137">			return ((DataPoint) p3).getData();</span>
+		}
+<span class="nc" id="L139">		throw new IllegalArgumentException(p</span>
+				+ &quot; does not lie on any of the vertices of the given triangle.&quot;);
+	}
+
+	/**
+	 * Set the data at the given point.
+	 * 
+	 * @param p
+	 *        must be one of the vertices of this triangle. if p is not any
+	 *        of the vertices, nothing happens.
+	 * @param data
+	 *        new data at p
+	 */
+	public void setDataAt(VPoint p, double data) {
+<span class="nc bnc" id="L153" title="All 2 branches missed.">		if (p.equals(this.p1)) {</span>
+<span class="nc" id="L154">			((DataPoint) p1).setData(data);</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">		} else if (p.equals(this.p2)) {</span>
+<span class="nc" id="L156">			((DataPoint) p2).setData(data);</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">		} else if (p.equals(this.p3)) {</span>
+<span class="nc" id="L158">			((DataPoint) p3).setData(data);</span>
+		}
+
+<span class="nc" id="L161">		recalculateMeasurePoint();</span>
+		// else
+		// throw new IllegalArgumentException(p +
+		// &quot; does not lie on any of the vertices of the given triangle.&quot;);
+<span class="nc" id="L165">	}</span>
+
+	public double evaluateAt(VPoint toEval) {
+		// plane spanned by v1 and v2
+<span class="nc" id="L169">		VPoint v1 = new VPoint(p2.x - p1.x, p2.y - p1.y);</span>
+<span class="nc" id="L170">		VPoint v2 = new VPoint(p3.x - p1.x, p3.y - p1.y);</span>
+
+<span class="nc" id="L172">		double[] v1d = new double[] {v1.x, v1.y,</span>
+<span class="nc" id="L173">				((DataPoint) p1).getData() - ((DataPoint) p2).getData()};</span>
+<span class="nc" id="L174">		double[] v2d = new double[] {v2.x, v2.y,</span>
+<span class="nc" id="L175">				((DataPoint) p1).getData() - ((DataPoint) p3).getData()};</span>
+
+<span class="nc" id="L177">		double[] cross = new double[3];</span>
+<span class="nc" id="L178">		GeometryUtils.cross(v1d, v2d, cross);</span>
+<span class="nc" id="L179">		double k = cross[2] * ((DataPoint) p1).getData();</span>
+
+<span class="nc" id="L181">		VPoint p1_minus_toEval = new VPoint(p1.x - toEval.x, p1.y - toEval.y);</span>
+
+<span class="nc" id="L183">		return 1</span>
+				/ cross[2]
+				* (k - cross[0] * p1_minus_toEval.x - cross[1]
+						* p1_minus_toEval.y);
+	}
+
+	public Collection&lt;? extends DataPoint&gt; getDataPoints() {
+<span class="nc" id="L190">		List&lt;DataPoint&gt; dataPoints = new LinkedList&lt;DataPoint&gt;();</span>
+<span class="nc" id="L191">		dataPoints.add((DataPoint) p1);</span>
+<span class="nc" id="L192">		dataPoints.add((DataPoint) p2);</span>
+<span class="nc" id="L193">		dataPoints.add((DataPoint) p3);</span>
+
+<span class="nc" id="L195">		return dataPoints;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

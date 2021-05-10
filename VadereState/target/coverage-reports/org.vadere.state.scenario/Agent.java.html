@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Agent.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.scenario</a> &gt; <span class="el_source">Agent.java</span></div><h1>Agent.java</h1><pre class="source lang-java linenums">package org.vadere.state.scenario;
+
+import org.apache.commons.math3.random.JDKRandomGenerator;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.vadere.state.attributes.Attributes;
+import org.vadere.state.attributes.scenario.AttributesAgent;
+import org.vadere.util.geometry.shapes.VCircle;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VShape;
+import org.vadere.util.geometry.shapes.Vector2D;
+import org.vadere.util.math.TruncatedNormalDistribution;
+
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
+
+public abstract class Agent extends DynamicElement {
+
+    // Member Variables
+    private AttributesAgent attributes;
+
+	/**
+	 * Source where the agent was spawned. The SourceController should
+	 * set this field. It may be &lt;code&gt;null&lt;/code&gt; when the agent is created
+	 * in different way.
+	 */
+	private Source source;
+	private LinkedList&lt;Integer&gt; targetIds;
+    private int nextTargetListIndex;
+    /** Indicates if current target is an agent or a (static) target. */
+    private boolean isCurrentTargetAnAgent;
+
+	private VPoint position;
+	private Vector2D velocity;
+	private double freeFlowSpeed;
+
+	private LinkedList&lt;Agent&gt; followers;
+
+	// TODO: Maybe, add also a List&lt;Agent&gt; of followers for an agent.
+
+	// Constructors
+<span class="fc" id="L43">	public Agent(AttributesAgent attributesAgent) {</span>
+<span class="fc" id="L44">        attributes = attributesAgent;</span>
+
+<span class="fc" id="L46">		position = new VPoint(0, 0);</span>
+<span class="fc" id="L47">		velocity = new Vector2D(0, 0);</span>
+<span class="fc" id="L48">		targetIds = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L49">		nextTargetListIndex = 0;</span>
+<span class="fc" id="L50">		isCurrentTargetAnAgent = false;</span>
+
+<span class="fc" id="L52">		followers = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L53">	}</span>
+
+	public Agent(AttributesAgent attributesAgent, Random random) {
+<span class="fc" id="L56">		this(attributesAgent);</span>
+
+<span class="pc bpc" id="L58" title="1 of 2 branches missed.">		if (attributesAgent.getSpeedDistributionStandardDeviation() == 0) {</span>
+<span class="nc" id="L59">			freeFlowSpeed = attributesAgent.getSpeedDistributionMean();</span>
+		} else {
+<span class="fc" id="L61">			final RandomGenerator rng = new JDKRandomGenerator(random.nextInt());</span>
+<span class="fc" id="L62">			final TruncatedNormalDistribution speedDistribution = new TruncatedNormalDistribution(rng,</span>
+<span class="fc" id="L63">					attributesAgent.getSpeedDistributionMean(),</span>
+<span class="fc" id="L64">					attributesAgent.getSpeedDistributionStandardDeviation(),</span>
+<span class="fc" id="L65">					attributesAgent.getMinimumSpeed(),</span>
+<span class="fc" id="L66">					attributesAgent.getMaximumSpeed(),</span>
+					100);
+<span class="fc" id="L68">			freeFlowSpeed = speedDistribution.sample();</span>
+		}
+<span class="fc" id="L70">	}</span>
+
+	public Agent(Agent other) {
+<span class="nc" id="L73">		this(other.attributes);</span>
+
+<span class="nc" id="L75">		this.setTargets(new LinkedList&lt;&gt;(other.targetIds));</span>
+<span class="nc" id="L76">		this.setNextTargetListIndex(other.nextTargetListIndex);</span>
+<span class="nc" id="L77">		this.isCurrentTargetAnAgent = other.isCurrentTargetAnAgent;</span>
+
+<span class="nc" id="L79">		this.position = other.position;</span>
+<span class="nc" id="L80">		this.velocity = other.velocity;</span>
+<span class="nc" id="L81">		this.freeFlowSpeed = other.freeFlowSpeed;</span>
+
+<span class="nc" id="L83">		this.setFollowers(new LinkedList&lt;&gt;(other.followers));</span>
+<span class="nc" id="L84">	}</span>
+
+	// Getters
+    @Override
+    public AttributesAgent getAttributes() {
+<span class="nc" id="L89">        return attributes;</span>
+    }
+
+    @Override
+    public int getId() {
+<span class="nc" id="L94">        return attributes.getId();</span>
+    }
+
+	@Override
+	public void setId(int id) {
+<span class="nc" id="L99">		attributes.setId(id);</span>
+<span class="nc" id="L100">	}</span>
+
+	public Source getSource() {
+<span class="nc" id="L103">        return source;</span>
+    }
+
+    public LinkedList&lt;Integer&gt; getTargets() {
+<span class="fc" id="L107">        return targetIds;</span>
+    }
+
+    /**
+     * Get the index pointing to the next target in the target list.
+     *
+     * Usually this index is &gt;= 0 and &lt;= {@link #getTargets()}&lt;code&gt;.size()&lt;/code&gt;. Targets are
+     * never removed from the target list. This index is incremented instead.
+     *
+     * In deprecated usage this index is -1. This means, the next target is always the first target
+     * in the list. Once a target is reached it is remove from the list.
+     *
+     */
+    public int getNextTargetListIndex() {
+<span class="fc" id="L121">        return nextTargetListIndex;</span>
+    }
+
+    /**
+     * Get the id of the next target. Please call {@link #hasNextTarget()} first, to check if there
+     * is a next target. If there is no next target, an exception is thrown.
+     *
+     */
+    public int getNextTargetId() {
+        // Deprecated target list usage
+<span class="fc bfc" id="L131" title="All 2 branches covered.">        if (nextTargetListIndex == -1) {</span>
+<span class="fc" id="L132">            return targetIds.getFirst();</span>
+        }
+
+        // The right way:
+<span class="fc" id="L136">        return targetIds.get(nextTargetListIndex);</span>
+    }
+
+    public boolean isCurrentTargetAnAgent() {
+<span class="nc" id="L140">        return isCurrentTargetAnAgent;</span>
+    }
+
+	public Vector2D getVelocity() {
+<span class="nc" id="L144">		return velocity;</span>
+	}
+
+	public double getFreeFlowSpeed() {
+<span class="nc" id="L148">		return freeFlowSpeed;</span>
+	}
+
+	public double getSpeedDistributionMean() {
+<span class="nc" id="L152">		return attributes.getSpeedDistributionMean();</span>
+	}
+
+	public double getAcceleration() {
+<span class="nc" id="L156">		return attributes.getAcceleration();</span>
+	}
+
+	public double getRadius() {
+<span class="nc" id="L160">		return attributes.getRadius();</span>
+	}
+
+	@Override
+	public VPoint getPosition() {
+<span class="nc" id="L165">		return position;</span>
+	}
+	
+	@Override
+	public VShape getShape() {
+<span class="nc" id="L170">		return new VCircle(position, attributes.getRadius());</span>
+	}
+
+	public LinkedList&lt;Agent&gt; getFollowers() {
+<span class="nc" id="L174">		return followers;</span>
+	}
+
+	// Setters
+	@Override
+	public void setAttributes(Attributes attributes) {
+<span class="nc" id="L180">		this.attributes = (AttributesAgent) attributes;</span>
+<span class="nc" id="L181">	}</span>
+
+	public void setSource(Source source) {
+<span class="nc" id="L184">		this.source = source;</span>
+<span class="nc" id="L185">	}</span>
+
+    public void setTargets(LinkedList&lt;Integer&gt; targetIds) {
+<span class="nc" id="L188">        this.targetIds = targetIds;</span>
+<span class="nc" id="L189">    }</span>
+
+    /**
+     * Set the index pointing to the next target in the target list.
+     *
+     * Set the index to 0 to set the first target in the target list as next target. Use
+     * {@link #incrementNextTargetListIndex()} to proceed to the next target.
+     *
+     * Set the index to -1 if you really have to use the deprecated target list approach.
+     *
+     * @see #getNextTargetListIndex()
+     */
+    public void setNextTargetListIndex(int nextTargetListIndex) {
+<span class="fc" id="L202">        this.nextTargetListIndex = nextTargetListIndex;</span>
+<span class="fc" id="L203">    }</span>
+
+    public void setIsCurrentTargetAnAgent(boolean isCurrentTargetAnAgent) {
+<span class="nc" id="L206">        this.isCurrentTargetAnAgent = isCurrentTargetAnAgent;</span>
+<span class="nc" id="L207">    }</span>
+
+	public void setPosition(VPoint position) {
+<span class="fc" id="L210">		this.position = position;</span>
+<span class="fc" id="L211">	}</span>
+
+	public void setVelocity(final Vector2D velocity) {
+<span class="nc" id="L214">		this.velocity = velocity;</span>
+<span class="nc" id="L215">	}</span>
+
+	// TODO [task=refactoring] remove again!
+	public void setFreeFlowSpeed(double freeFlowSpeed) {
+<span class="nc" id="L219">		this.freeFlowSpeed = freeFlowSpeed;</span>
+<span class="nc" id="L220">	}</span>
+
+    @Override
+    public void setShape(VShape newShape) {
+<span class="nc" id="L224">        position = newShape.getCentroid();</span>
+<span class="nc" id="L225">    }</span>
+
+	// Methods
+    public abstract Agent clone();
+
+    /**
+     *  Initially set pedestrians will not have source id set.
+     */
+    public boolean hasSource(){
+<span class="nc bnc" id="L234" title="All 2 branches missed.">        return source != null;</span>
+    }
+
+    public void addTarget(Target target) {
+<span class="nc" id="L238">        targetIds.add(target.getId());</span>
+<span class="nc" id="L239">    }</span>
+
+    public void incrementNextTargetListIndex() {
+        // Deprecated target list usage
+<span class="fc bfc" id="L243" title="All 2 branches covered.">        if (nextTargetListIndex == -1) {</span>
+<span class="fc" id="L244">            throw new IllegalStateException(&quot;nextTargetListIndex is -1. this indicates the deprecated usage of &quot;</span>
+                    + &quot;the target list. you have to set the index to 0 before you can start incrementing.&quot;);
+        }
+
+<span class="fc" id="L248">        nextTargetListIndex++;</span>
+<span class="fc" id="L249">    }</span>
+
+    public boolean hasNextTarget() {
+        // Deprecated target list usage
+<span class="fc bfc" id="L253" title="All 2 branches covered.">        if (nextTargetListIndex == -1) {</span>
+<span class="fc bfc" id="L254" title="All 2 branches covered.">            return !targetIds.isEmpty();</span>
+        }
+
+        // The right way:
+<span class="fc bfc" id="L258" title="All 2 branches covered.">        return nextTargetListIndex &lt; targetIds.size();</span>
+    }
+
+    public void setSingleTarget(int targetId, boolean targetIsAgent) {
+<span class="nc" id="L262">    	LinkedList&lt;Integer&gt; nextTarget = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L263">    	nextTarget.add(targetId);</span>
+
+<span class="nc" id="L265">    	setTargets(nextTarget);</span>
+<span class="nc" id="L266">    	setNextTargetListIndex(0);</span>
+<span class="nc" id="L267">    	setIsCurrentTargetAnAgent(targetIsAgent);</span>
+<span class="nc" id="L268">	}</span>
+
+	// Static Methods
+    /**
+     * Converts a Iterable of Agent to a List of VPoint positions.
+     *
+     * @param agents
+     * @return a List of VPoint positions of the agents
+     */
+    public static List&lt;VPoint&gt; getPositions(final Iterable&lt;Agent&gt; agents) {
+<span class="nc" id="L278">        List&lt;VPoint&gt; agentPositions = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L279" title="All 2 branches missed.">        if (agents != null) {</span>
+<span class="nc bnc" id="L280" title="All 2 branches missed.">            for (Agent agent : agents) {</span>
+<span class="nc" id="L281">                agentPositions.add(agent.getPosition());</span>
+<span class="nc" id="L282">            }</span>
+        }
+
+<span class="nc" id="L285">        return agentPositions;</span>
+    }
+
+	public void setFollowers(LinkedList&lt;Agent&gt; followers) {
+<span class="nc" id="L289">		this.followers = followers;</span>
+<span class="nc" id="L290">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

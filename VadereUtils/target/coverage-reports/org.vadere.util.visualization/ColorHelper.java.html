@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ColorHelper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.visualization</a> &gt; <span class="el_source">ColorHelper.java</span></div><h1>ColorHelper.java</h1><pre class="source lang-java linenums">package org.vadere.util.visualization;
+
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
+public class ColorHelper {
+
+	private final static int LOW = 0;
+	private final static int HIGH = 255;
+	private final static int HALF = (HIGH + 1) / 2;
+	// public final static int MAX_VALUE = 60;
+	private static int factor;
+<span class="nc" id="L18">	private final static Map&lt;Integer, Color&gt; map = initNumberToColorMap();</span>
+	private int maxValue;
+
+<span class="nc" id="L21">	private static Random random = new Random();</span>
+
+<span class="nc" id="L23">	public ColorHelper(final int maxValue) {</span>
+<span class="nc" id="L24">		this.maxValue = maxValue;</span>
+<span class="nc" id="L25">	}</span>
+
+	public static Color randomColor() {
+<span class="nc" id="L28">		return new Color(random.nextInt(256), random.nextInt(256), random.nextInt(256));</span>
+	}
+
+	public Color numberToColor(final double value) {
+<span class="nc bnc" id="L32" title="All 2 branches missed.">		if (value &lt; 0) {</span>
+<span class="nc" id="L33">			return numberToColorPercentage(0);</span>
+<span class="nc bnc" id="L34" title="All 2 branches missed.">		} else if (value &gt; maxValue) {</span>
+<span class="nc" id="L35">			return numberToColorPercentage(1);</span>
+		} else {
+<span class="nc" id="L37">			return numberToColorPercentage(value / maxValue);</span>
+		}
+	}
+
+	public static Color numberToHurColor(final float hue) {
+//		System.out.printf(&quot;groupId: %d | hue: %f%n&quot;,groupId, hue);
+<span class="nc" id="L43">		return new Color(Color.HSBtoRGB(hue, 1f, 0.75f));</span>
+	}
+
+	public int getMaxValue() {
+<span class="nc" id="L47">		return maxValue;</span>
+	}
+
+	public static Color numberToColorPercentage(final double value) {
+<span class="nc bnc" id="L51" title="All 4 branches missed.">		if (value &lt; 0 || value &gt; 1) {</span>
+<span class="nc" id="L52">			return null;</span>
+		}
+<span class="nc" id="L54">		Double d = value * factor;</span>
+<span class="nc" id="L55">		int index = d.intValue();</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">		if (index == factor) {</span>
+<span class="nc" id="L57">			index--;</span>
+		}
+<span class="nc" id="L59">		return map.get(index);</span>
+	}
+
+	private static Map&lt;Integer, Color&gt; initNumberToColorMap() {
+<span class="nc" id="L63">		HashMap&lt;Integer, Color&gt; localMap = new HashMap&lt;Integer, Color&gt;();</span>
+<span class="nc" id="L64">		int r = LOW;</span>
+<span class="nc" id="L65">		int g = LOW;</span>
+<span class="nc" id="L66">		int b = HALF;</span>
+
+		// factor (increment or decrement)
+<span class="nc" id="L69">		int rF = 0;</span>
+<span class="nc" id="L70">		int gF = 0;</span>
+<span class="nc" id="L71">		int bF = 1;</span>
+
+<span class="nc" id="L73">		int count = 0;</span>
+		// 1276 steps
+		while (true) {
+<span class="nc" id="L76">			localMap.put(count++, new Color(r, g, b));</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">			if (b == HIGH) {</span>
+<span class="nc" id="L78">				gF = 1; // increment green</span>
+			}
+<span class="nc bnc" id="L80" title="All 2 branches missed.">			if (g == HIGH) {</span>
+<span class="nc" id="L81">				bF = -1; // decrement blue</span>
+				// rF = +1; // increment red
+			}
+<span class="nc bnc" id="L84" title="All 2 branches missed.">			if (b == LOW) {</span>
+<span class="nc" id="L85">				rF = +1; // increment red</span>
+			}
+<span class="nc bnc" id="L87" title="All 2 branches missed.">			if (r == HIGH) {</span>
+<span class="nc" id="L88">				gF = -1; // decrement green</span>
+			}
+<span class="nc bnc" id="L90" title="All 4 branches missed.">			if (g == LOW &amp;&amp; b == LOW) {</span>
+<span class="nc" id="L91">				rF = -1; // decrement red</span>
+			}
+<span class="nc bnc" id="L93" title="All 6 branches missed.">			if (r &lt; HALF &amp;&amp; g == LOW &amp;&amp; b == LOW) {</span>
+<span class="nc" id="L94">				break; // finish</span>
+			}
+<span class="nc" id="L96">			r += rF;</span>
+<span class="nc" id="L97">			g += gF;</span>
+<span class="nc" id="L98">			b += bF;</span>
+<span class="nc" id="L99">			r = rangeCheck(r);</span>
+<span class="nc" id="L100">			g = rangeCheck(g);</span>
+<span class="nc" id="L101">			b = rangeCheck(b);</span>
+		}
+<span class="nc" id="L103">		initList(localMap);</span>
+<span class="nc" id="L104">		return localMap;</span>
+	}
+
+	/**
+	 * @param localMap
+	 */
+	private static void initList(final HashMap&lt;Integer, Color&gt; localMap) {
+<span class="nc" id="L111">		List&lt;Integer&gt; list = new ArrayList&lt;Integer&gt;(localMap.keySet());</span>
+<span class="nc" id="L112">		Collections.sort(list);</span>
+<span class="nc" id="L113">		Integer min = list.get(0);</span>
+<span class="nc" id="L114">		Integer max = list.get(list.size() - 1);</span>
+<span class="nc" id="L115">		factor = max + 1;</span>
+<span class="nc" id="L116">	}</span>
+
+	/**
+	 * @param value
+	 * @return
+	 */
+	private static int rangeCheck(final int value) {
+<span class="nc bnc" id="L123" title="All 2 branches missed.">		if (value &gt; HIGH) {</span>
+<span class="nc" id="L124">			return HIGH;</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">		} else if (value &lt; LOW) {</span>
+<span class="nc" id="L126">			return LOW;</span>
+		}
+<span class="nc" id="L128">		return value;</span>
+	}
+
+	/**
+	 * @param c Base color
+	 * @return Color which has enough contrast to be distinct from the base color
+	 */
+	public static Color getContrasColor(final Color c) {
+<span class="nc" id="L136">		return new Color(Math.abs(190 - c.getRed()),</span>
+<span class="nc" id="L137">				Math.abs(190 - c.getGreen()),</span>
+<span class="nc" id="L138">				Math.abs(190 - c.getBlue()));</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

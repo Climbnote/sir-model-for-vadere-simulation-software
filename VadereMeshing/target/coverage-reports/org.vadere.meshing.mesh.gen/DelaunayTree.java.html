@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DelaunayTree.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">DelaunayTree.java</span></div><h1>DelaunayTree.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+
+import org.apache.commons.lang3.tuple.Triple;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IPointLocator;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.shapes.IPoint;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+/**
+ * An implementation of the so called Delaunay Tree which does not suppport deletion of points from the
+ * triangulation {@link IIncrementalTriangulation}.
+ *
+ * The Delaunay Tree see Computational Geometry: Algorithms and Applications (berg-2008) page 191.
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public class DelaunayTree&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements IPointLocator&lt;V, E, F&gt; {
+	private DAG&lt;DAGElement&lt;V, E, F&gt;&gt; dag;
+	private final HashMap&lt;F, DAG&lt;DAGElement&lt;V, E, F&gt;&gt;&gt; map;
+	private final IMesh&lt;V, E, F&gt; mesh;
+<span class="fc" id="L34">	private double eps = 0.0000001;</span>
+
+<span class="fc" id="L36">	public DelaunayTree(final IIncrementalTriangulation&lt;V, E, F&gt; triangulation) {</span>
+<span class="fc" id="L37">		this.mesh = triangulation.getMesh();</span>
+<span class="fc" id="L38">		this.map = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L39">	}</span>
+
+	private void checkRoot() {
+<span class="fc bfc" id="L42" title="All 2 branches covered.">		if(dag == null) {</span>
+<span class="fc" id="L43">			F face = mesh.getFace();</span>
+
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">			if(mesh.isBoundary(face)) {</span>
+<span class="nc" id="L46">				face = mesh.getTwinFace(mesh.getEdge(face));</span>
+			}
+<span class="fc" id="L48">			this.dag = new DAG&lt;&gt;(new DAGElement&lt;&gt;(face, mesh.toTriple(face)));</span>
+<span class="fc" id="L49">			this.map.put(face, dag);</span>
+		}
+<span class="fc" id="L51">	}</span>
+
+	@Override
+	public F locatePoint(final IPoint point) {
+<span class="fc" id="L55">		checkRoot();</span>
+
+<span class="fc" id="L57">		Set&lt;DAG&lt;DAGElement&lt;V, E, F&gt;&gt;&gt; leafs = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L58">		LinkedList&lt;DAG&lt;DAGElement&lt;V, E, F&gt;&gt;&gt; nodesToVisit = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L59">		nodesToVisit.add(dag);</span>
+
+<span class="pc bpc" id="L61" title="1 of 2 branches missed.">		while(!nodesToVisit.isEmpty()) {</span>
+<span class="fc" id="L62">			DAG&lt;DAGElement&lt;V, E, F&gt;&gt; currentNode = nodesToVisit.removeLast();</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">			if(currentNode.getElement().getTriangle().isPartOf(point, eps)) {</span>
+<span class="pc bpc" id="L64" title="1 of 4 branches missed.">				if(currentNode.isLeaf() &amp;&amp; !mesh.isDestroyed(currentNode.getElement().getFace())) {</span>
+<span class="fc" id="L65">					leafs.add(currentNode);</span>
+
+					// if we are not interested in insertion we just want to find one triangle.
+<span class="fc" id="L68">					return currentNode.getElement().getFace();</span>
+				}
+				else {
+<span class="fc" id="L71">					nodesToVisit.addAll(currentNode.getChildren());</span>
+				}
+			}
+<span class="fc" id="L74">		}</span>
+
+<span class="nc" id="L76">		throw new IllegalArgumentException(point + &quot; is invalid, it can not be located by &quot; + this);</span>
+	}
+
+	@Override
+	public Optional&lt;F&gt; locate(final IPoint point) {
+<span class="nc" id="L81">		checkRoot();</span>
+<span class="nc" id="L82">		return Optional.of(locatePoint(point));</span>
+	}
+
+    @Override
+    public Optional&lt;F&gt; locate(double x, double y) {
+<span class="nc" id="L87">        return locate(mesh.createPoint(x, y));</span>
+    }
+
+	@Override
+	public Type getType() {
+<span class="nc" id="L92">		return Type.DELAUNAY_TREE;</span>
+	}
+
+	@Override
+	public void postSplitTriangleEvent(F original, F f1, F f2, F f3, V v) {
+<span class="fc" id="L97">		DAG&lt;DAGElement&lt;V, E, F&gt;&gt; faceDag = map.remove(original);</span>
+
+<span class="fc" id="L99">		F face = f1;</span>
+<span class="fc" id="L100">		List&lt;V&gt; points1 = mesh.getVertices(face);</span>
+<span class="fc" id="L101">		DAG&lt;DAGElement&lt;V, E, F&gt;&gt; newFaceDag1 = new DAG&lt;&gt;(new DAGElement&lt;V, E, F&gt;(face, Triple.of(points1.get(0), points1.get(1), points1.get(2))));</span>
+<span class="fc" id="L102">		faceDag.addChild(newFaceDag1);</span>
+<span class="fc" id="L103">		map.put(face, newFaceDag1);</span>
+
+<span class="fc" id="L105">		face = f2;</span>
+<span class="fc" id="L106">		List&lt;V&gt; points2 = mesh.getVertices(face);</span>
+<span class="fc" id="L107">		DAG&lt;DAGElement&lt;V, E, F&gt;&gt; newFaceDag2 = new DAG&lt;&gt;(new DAGElement&lt;V, E, F&gt;(face, Triple.of(points2.get(0), points2.get(1), points2.get(2))));</span>
+<span class="fc" id="L108">		faceDag.addChild(newFaceDag2);</span>
+<span class="fc" id="L109">		map.put(face, newFaceDag2);</span>
+
+<span class="fc" id="L111">		face = f3;</span>
+<span class="fc" id="L112">		List&lt;V&gt; points3 = mesh.getVertices(face);</span>
+<span class="fc" id="L113">		DAG&lt;DAGElement&lt;V, E, F&gt;&gt; newFaceDag3 = new DAG&lt;&gt;(new DAGElement&lt;V, E, F&gt;(face, Triple.of(points3.get(0), points3.get(1), points3.get(2))));</span>
+<span class="fc" id="L114">		faceDag.addChild(newFaceDag3);</span>
+<span class="fc" id="L115">		map.put(face, newFaceDag3);</span>
+<span class="fc" id="L116">	}</span>
+
+	@Override
+	public void postSplitHalfEdgeEvent(E originalEdge, F original, F f1, F f2, V v) {
+<span class="fc" id="L120">		checkRoot();</span>
+<span class="fc" id="L121">		DAG&lt;DAGElement&lt;V, E, F&gt;&gt; faceDag = map.remove(original);</span>
+
+<span class="fc" id="L123">		F face = f1;</span>
+<span class="fc" id="L124">		List&lt;V&gt; points1 = mesh.getVertices(face);</span>
+<span class="fc" id="L125">		DAG&lt;DAGElement&lt;V, E, F&gt;&gt; newFaceDag1 = new DAG&lt;&gt;(new DAGElement&lt;V, E, F&gt;(face, Triple.of(points1.get(0), points1.get(1), points1.get(2))));</span>
+<span class="fc" id="L126">		faceDag.addChild(newFaceDag1);</span>
+<span class="fc" id="L127">		map.put(face, newFaceDag1);</span>
+
+<span class="fc" id="L129">		face = f2;</span>
+<span class="fc" id="L130">		List&lt;V&gt; points2 = mesh.getVertices(face);</span>
+<span class="fc" id="L131">		DAG&lt;DAGElement&lt;V, E, F&gt;&gt; newFaceDag2 = new DAG&lt;&gt;(new DAGElement&lt;V, E, F&gt;(face, Triple.of(points2.get(0), points2.get(1), points2.get(2))));</span>
+<span class="fc" id="L132">		faceDag.addChild(newFaceDag2);</span>
+<span class="fc" id="L133">		map.put(face, newFaceDag2);</span>
+<span class="fc" id="L134">	}</span>
+
+	@Override
+	public void postFlipEdgeEvent(final F f1, final F f2) {
+<span class="fc" id="L138">		checkRoot();</span>
+<span class="fc" id="L139">		DAG&lt;DAGElement&lt;V, E, F&gt;&gt; f1Dag = map.remove(f1);</span>
+<span class="fc" id="L140">		DAG&lt;DAGElement&lt;V, E, F&gt;&gt; f2Dag = map.remove(f2);</span>
+<span class="fc" id="L141">		List&lt;V&gt; points1 = mesh.getVertices(f1);</span>
+<span class="fc" id="L142">		List&lt;V&gt; points2 = mesh.getVertices(f2);</span>
+
+<span class="fc" id="L144">		DAG&lt;DAGElement&lt;V, E, F&gt;&gt; newf1Dag = new DAG&lt;&gt;(new DAGElement&lt;V, E, F&gt;(f1, Triple.of(points1.get(0), points1.get(1), points1.get(2))));</span>
+<span class="fc" id="L145">		DAG&lt;DAGElement&lt;V, E, F&gt;&gt; newf2Dag = new DAG&lt;&gt;(new DAGElement&lt;V, E, F&gt;(f2, Triple.of(points2.get(0), points2.get(1), points2.get(2))));</span>
+
+<span class="fc" id="L147">		f1Dag.addChild(newf1Dag);</span>
+<span class="fc" id="L148">		f1Dag.addChild(newf2Dag);</span>
+
+<span class="fc" id="L150">		f2Dag.addChild(newf1Dag);</span>
+<span class="fc" id="L151">		f2Dag.addChild(newf2Dag);</span>
+
+<span class="fc" id="L153">		map.put(f1, newf1Dag);</span>
+<span class="fc" id="L154">		map.put(f2, newf2Dag);</span>
+<span class="fc" id="L155">	}</span>
+
+	@Override
+<span class="fc" id="L158">	public void postInsertEvent(V vertex) {}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

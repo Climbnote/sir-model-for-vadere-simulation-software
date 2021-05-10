@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EikMeshPoly.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.examples</a> &gt; <span class="el_source">EikMeshPoly.java</span></div><h1>EikMeshPoly.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.examples;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.gen.MeshRenderer;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PMesh;
+import org.vadere.meshing.mesh.gen.PVertex;
+import org.vadere.meshing.mesh.impl.PMeshPanel;
+import org.vadere.meshing.mesh.impl.PSLG;
+import org.vadere.meshing.mesh.triangulation.DistanceFunctionApproxBF;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.EdgeLengthFunctionApprox;
+import org.vadere.meshing.mesh.triangulation.improver.eikmesh.impl.PEikMesh;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.PRuppertsTriangulator;
+import org.vadere.meshing.utils.color.Colors;
+import org.vadere.meshing.utils.io.poly.MeshPolyReader;
+import org.vadere.meshing.utils.io.poly.MeshPolyWriter;
+import org.vadere.meshing.utils.io.poly.PSLGGenerator;
+import org.vadere.meshing.utils.io.tex.TexGraphGenerator;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.math.IDistanceFunction;
+
+import java.awt.*;
+import java.io.*;
+import java.util.Collection;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
+<span class="nc" id="L29">public class EikMeshPoly {</span>
+<span class="nc" id="L30">	private static final Color lightBlue = new Color(0.8584083044982699f, 0.9134486735870818f, 0.9645674740484429f);</span>
+
+	public static void main(String... args) throws InterruptedException, IOException {
+<span class="nc bnc" id="L33" title="All 2 branches missed.">		if (args.length == 0) {</span>
+<span class="nc" id="L34">			System.out.println(&quot;Please provide \&quot;.obstacles.poly\&quot; file!&quot;);</span>
+		}
+
+<span class="nc bnc" id="L37" title="All 2 branches missed.">		for (String fileName : args) {</span>
+<span class="nc" id="L38">			meshPoly(fileName);</span>
+		}
+<span class="nc" id="L40">	}</span>
+
+	public static void meshPoly(@NotNull final String fileName) throws IOException, InterruptedException {
+<span class="nc" id="L43">		final InputStream inputStream = new FileInputStream(new File(fileName));</span>
+
+<span class="nc" id="L45">		System.out.println(String.format(&quot;Meshing %s...&quot;, fileName));</span>
+
+<span class="nc" id="L47">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L48">		EdgeLengthFunctionApprox edgeLengthFunctionApprox = new EdgeLengthFunctionApprox(pslg);</span>
+<span class="nc" id="L49">		edgeLengthFunctionApprox.smooth(0.4);</span>
+<span class="nc" id="L50">		edgeLengthFunctionApprox.printPython();</span>
+
+<span class="nc" id="L52">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L53">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+<span class="nc" id="L54">		IDistanceFunction distanceFunction = IDistanceFunction.create(segmentBound, holes);</span>
+<span class="nc" id="L55">		IDistanceFunction distanceFunctionApproximation = new DistanceFunctionApproxBF(pslg, distanceFunction, () -&gt; new PMesh());</span>
+
+<span class="nc" id="L57">		var ruppert = new PRuppertsTriangulator(</span>
+				pslg,
+<span class="nc" id="L59">				p -&gt; Double.POSITIVE_INFINITY,</span>
+				0,
+				true
+		);
+<span class="nc" id="L63">		ruppert.generate();</span>
+
+
+<span class="nc" id="L66">		Collection&lt;VPolygon&gt; polygons = pslg.getAllPolygons();</span>
+		//polygons.add(targetShape);
+
+		// (3) use EikMesh to improve the mesh
+<span class="nc" id="L70">		double h0 = 5.0;</span>
+<span class="nc" id="L71">		var meshImprover = new PEikMesh(</span>
+				distanceFunctionApproximation,
+<span class="nc" id="L73">				p -&gt; edgeLengthFunctionApprox.apply(p),</span>
+				h0,
+<span class="nc" id="L75">				pslg.getBoundingBox(),</span>
+				polygons
+		);
+
+<span class="nc" id="L79">		Function&lt;PVertex, Color&gt; vertexColorFunction = v -&gt; {</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">			if(meshImprover.isSlidePoint(v)){</span>
+<span class="nc" id="L81">				return Colors.BLUE;</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">			} else if(meshImprover.isFixPoint(v)) {</span>
+<span class="nc" id="L83">				return Colors.RED;</span>
+			} else {
+<span class="nc" id="L85">				return Color.BLACK;</span>
+			}
+		};
+
+<span class="nc" id="L89">		Predicate&lt;PFace&gt; alertPredicate = f -&gt;{</span>
+<span class="nc bnc" id="L90" title="All 4 branches missed.">			return !meshImprover.getMesh().isBoundary(f) &amp;&amp; distanceFunction.apply(meshImprover.getMesh().toTriangle(f).midPoint()) &gt; 0;</span>
+		};
+
+<span class="nc" id="L93">		var meshRenderer = new MeshRenderer&lt;&gt;(meshImprover.getMesh(), f -&gt; false, f -&gt; Color.WHITE, e -&gt; Color.GRAY, vertexColorFunction);</span>
+<span class="nc" id="L94">		var meshPanel = new PMeshPanel(meshRenderer, 1000, 800);</span>
+<span class="nc" id="L95">		meshPanel.display(&quot;Combined distance functions &quot; + h0);</span>
+<span class="nc" id="L96">		meshImprover.improve();</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">		while (!meshImprover.isFinished()) {</span>
+<span class="nc" id="L98">			synchronized (meshImprover.getMesh()) {</span>
+<span class="nc" id="L99">				meshImprover.improve();</span>
+<span class="nc" id="L100">			}</span>
+			//Thread.sleep(500);
+<span class="nc" id="L102">			meshPanel.repaint();</span>
+		}
+<span class="nc" id="L104">		System.out.println(String.format(&quot;Mesh generation complete: %d vertices&quot;, meshImprover.getMesh().getNumberOfVertices()));</span>
+
+<span class="nc" id="L106">		System.out.println(&quot;Writing TikZ file...&quot;);</span>
+<span class="nc" id="L107">		write(toTexDocument(TexGraphGenerator.toTikz(meshImprover.getMesh(),  f-&gt; lightBlue, null, vertexColorFunction,1.0f, true)), fileName + &quot;.tex&quot;);</span>
+<span class="nc" id="L108">		System.out.println(&quot;Writing TikZ file finished&quot;);</span>
+
+<span class="nc" id="L110">		System.out.println(&quot;Writing Poly file...&quot;);</span>
+<span class="nc" id="L111">		MeshPolyWriter&lt;PVertex, PHalfEdge, PFace&gt; meshPolyWriter = new MeshPolyWriter&lt;&gt;();</span>
+<span class="nc" id="L112">		String[] splitName = fileName.split(&quot;\\.&quot;);</span>
+<span class="nc" id="L113">		write(meshPolyWriter.to2DPoly(meshImprover.getMesh()), fileName + &quot;_tri.poly&quot;);</span>
+<span class="nc" id="L114">		System.out.println(&quot;Writing Poly file finished.&quot;);</span>
+<span class="nc" id="L115">	}</span>
+
+	public static void displayPolyFile(@NotNull final String fileName) throws IOException {
+<span class="nc" id="L118">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(fileName);</span>
+<span class="nc" id="L119">		MeshPolyReader&lt;PVertex, PHalfEdge, PFace&gt; meshPolyWriter = new MeshPolyReader&lt;&gt;(() -&gt; new PMesh());</span>
+<span class="nc" id="L120">		var mesh = meshPolyWriter.readMesh(inputStream);</span>
+<span class="nc" id="L121">		var meshPanel = new PMeshPanel(mesh, 1000, 800);</span>
+<span class="nc" id="L122">		meshPanel.display(&quot;&quot;);</span>
+<span class="nc" id="L123">	}</span>
+
+	public static void fmmPolyFile(@NotNull final String fileName) throws IOException {
+<span class="nc" id="L126">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(fileName);</span>
+<span class="nc" id="L127">		MeshPolyReader&lt;PVertex, PHalfEdge, PFace&gt; meshPolyWriter = new MeshPolyReader&lt;&gt;(() -&gt; new PMesh());</span>
+<span class="nc" id="L128">		var mesh = meshPolyWriter.readMesh(inputStream);</span>
+<span class="nc" id="L129">		var meshPanel = new PMeshPanel(mesh, 1000, 800);</span>
+<span class="nc" id="L130">		meshPanel.display(&quot;&quot;);</span>
+<span class="nc" id="L131">	}</span>
+
+	private static void write(final String string, final String filename) throws IOException {
+<span class="nc" id="L134">		File outputFile = new File(filename);</span>
+<span class="nc" id="L135">		try(FileWriter fileWriter = new FileWriter(outputFile)) {</span>
+<span class="nc" id="L136">			fileWriter.write(string);</span>
+		}
+<span class="nc" id="L138">	}</span>
+
+	private static String toTexDocument(final String tikz) {
+<span class="nc" id="L141">		return &quot;\\documentclass[usenames,dvipsnames]{standalone}\n&quot; +</span>
+				&quot;\\usepackage[utf8]{inputenc}\n&quot; +
+				&quot;\\usepackage{amsmath}\n&quot; +
+				&quot;\\usepackage{amsfonts}\n&quot; +
+				&quot;\\usepackage{amssymb}\n&quot; +
+				&quot;\\usepackage{calc}\n&quot; +
+				&quot;\\usepackage{graphicx}\n&quot; +
+				&quot;\\usepackage{tikz}\n&quot; +
+				&quot;\\usepackage{xcolor}\n&quot; +
+				&quot;\n&quot; +
+				&quot;%\\clip (-0.200000,-0.100000) rectangle (1.2,0.8);\n&quot; +
+				&quot;\\begin{document}&quot;+
+				tikz
+				+
+				&quot;\\end{document}&quot;;
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

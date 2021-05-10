@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RectangleLimits.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.voronoi</a> &gt; <span class="el_source">RectangleLimits.java</span></div><h1>RectangleLimits.java</h1><pre class="source lang-java linenums">package org.vadere.util.voronoi;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.vadere.util.geometry.shapes.VPoint;
+
+/* ToDo: Remove class. */
+public class RectangleLimits {
+	public final double xLow;
+	public final double yLow;
+	public final double xHigh;
+	public final double yHigh;
+
+	public final List&lt;VPoint&gt; corners;
+
+	public RectangleLimits(double xLimitLow, double yLimitLow,
+<span class="nc" id="L18">			double xLimitHigh, double yLimitHigh) {</span>
+
+<span class="nc" id="L20">		this.xLow = xLimitLow;</span>
+<span class="nc" id="L21">		this.yLow = yLimitLow;</span>
+<span class="nc" id="L22">		this.xHigh = xLimitHigh;</span>
+<span class="nc" id="L23">		this.yHigh = yLimitHigh;</span>
+
+<span class="nc" id="L25">		corners = new ArrayList&lt;VPoint&gt;(4);</span>
+
+<span class="nc" id="L27">		corners.add(new VPoint(xLimitLow, yLimitHigh));</span>
+<span class="nc" id="L28">		corners.add(new VPoint(xLimitLow, yLimitLow));</span>
+<span class="nc" id="L29">		corners.add(new VPoint(xLimitHigh, yLimitLow));</span>
+<span class="nc" id="L30">		corners.add(new VPoint(xLimitHigh, yLimitHigh));</span>
+<span class="nc" id="L31">	}</span>
+
+	public boolean isInside(VPoint site) {
+<span class="nc" id="L34">		boolean result = true;</span>
+
+<span class="nc" id="L36">		VPoint position = site;</span>
+
+<span class="nc bnc" id="L38" title="All 8 branches missed.">		if (position.x &lt; xLow || position.x &gt; xHigh || position.y &lt; yLow</span>
+				|| position.y &gt; yHigh) {
+<span class="nc" id="L40">			result = false;</span>
+		}
+
+<span class="nc" id="L43">		return result;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

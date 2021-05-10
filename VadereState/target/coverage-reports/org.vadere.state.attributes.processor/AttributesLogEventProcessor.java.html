@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesLogEventProcessor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.processor</a> &gt; <span class="el_source">AttributesLogEventProcessor.java</span></div><h1>AttributesLogEventProcessor.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.processor;
+
+<span class="nc" id="L3">public class AttributesLogEventProcessor extends AttributesProcessor {</span>
+	
+	/**
+	 * The compartment to observe. Index 0 and the last index denote
+	 * half-compartments which should not be observed.
+	 */
+<span class="nc" id="L9">	private int compartmentIndex = 1;</span>
+	
+<span class="nc" id="L11">	private int surveyId = 1;</span>
+	/**
+	 * Offset to add to the pedestrian ID in order to prevent duplicate person
+	 * IDs from different log event processors.
+	 */
+<span class="nc" id="L16">	private int personIdOffset = 0;</span>
+	/**
+	 * Log event ID for initializing the ID counter to prevent duplicate log
+	 * event IDs from different log event processors.
+	 */
+<span class="nc" id="L21">	private int firstLogEventId = 1;</span>
+
+	public int getCompartmentIndex() {
+<span class="nc" id="L24">		return compartmentIndex;</span>
+	}
+
+	public int getSurveyId() {
+<span class="nc" id="L28">		return surveyId;</span>
+	}
+
+	public int getPersonIdOffset() {
+<span class="nc" id="L32">		return personIdOffset;</span>
+	}
+
+	public int getFirstLogEventId() {
+<span class="nc" id="L36">		return firstLogEventId;</span>
+	}
+
+	public void setCompartmentIndex(int compartmentIndex) {
+<span class="nc" id="L40">		checkSealed();</span>
+<span class="nc" id="L41">		this.compartmentIndex = compartmentIndex;</span>
+<span class="nc" id="L42">	}</span>
+
+	public void setSurveyId(int surveyId) {
+<span class="nc" id="L45">		checkSealed();</span>
+<span class="nc" id="L46">		this.surveyId = surveyId;</span>
+<span class="nc" id="L47">	}</span>
+
+	public void setPersonIdOffset(int personIdOffset) {
+<span class="nc" id="L50">		checkSealed();</span>
+<span class="nc" id="L51">		this.personIdOffset = personIdOffset;</span>
+<span class="nc" id="L52">	}</span>
+
+	public void setFirstLogEventId(int firstLogEventId) {
+<span class="nc" id="L55">		checkSealed();</span>
+<span class="nc" id="L56">		this.firstLogEventId = firstLogEventId;</span>
+<span class="nc" id="L57">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

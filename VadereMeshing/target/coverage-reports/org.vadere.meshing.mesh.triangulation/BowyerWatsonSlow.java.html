@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BowyerWatsonSlow.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation</a> &gt; <span class="el_source">BowyerWatsonSlow.java</span></div><h1>BowyerWatsonSlow.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation;
+
+import org.apache.commons.lang3.tuple.ImmutableTriple;
+import org.apache.commons.lang3.tuple.Triple;
+import org.vadere.meshing.mesh.gen.IncrementalTriangulation;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VCircle;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.geometry.shapes.VTriangle;
+
+import javax.swing.*;
+import java.awt.*;
+import java.util.*;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+/**
+ * @author Benedikt Zoennchen
+ *
+ * This class is for computing the Delaunay triangulation using the Bowyer-Watson algorithm.
+ * In average the algorithm should perfom in O(n log(n)) but in degenerated cases its runtime can be in O(n^2)
+ * where n is the number of points. This implementation is only used to compare results since it is an easy
+ * version of the Bowyer-Watson algorithm. It can be used to check for correctness of more sophisticated
+ * implementations line {@link IncrementalTriangulation}.
+ *
+ * @see &lt;a href=&quot;https://en.wikipedia.org/wiki/Delaunay_triangulation&quot;&gt;Delaunay triangulation&lt;/a&gt;
+ * @see &lt;a href=&quot;https://en.wikipedia.org/wiki/Bowyer%E2%80%93Watson_algorithm&quot;&gt;Bowyer-Watson algorithm&lt;/a&gt;
+ */
+@Deprecated
+public class BowyerWatsonSlow {
+
+	/**
+	 * a {@link List} of triples {@link Triple} each defining a triangle.
+	 */
+    private List&lt;Triple&lt;IPoint, IPoint, IPoint&gt;&gt; triangles;
+
+	/**
+	 * a {@link Collection} containing all points of the triangulation.
+	 */
+	private Collection&lt;IPoint&gt; points;
+
+	/**
+	 * the so called virtual points i.e. points that are not part of the actual triangulation but
+	 * help by constructing it.
+	 */
+    private List&lt;IPoint&gt; virtualPoints;
+
+	/**
+	 * indicates if the computation has been executed.
+	 */
+	private boolean finished;
+
+	/**
+	 * The default constructor.
+	 *  @param points            a {@link Collections} of points which will be part of the Delaunay triangulation
+	 *
+	 */
+<span class="nc" id="L62">    public BowyerWatsonSlow(final Collection&lt;IPoint&gt; points) {</span>
+<span class="nc" id="L63">        this.points = points;</span>
+<span class="nc" id="L64">	    this.finished = false;</span>
+<span class="nc" id="L65">    }</span>
+
+    private VPoint create(final double x, final double y) {
+<span class="nc" id="L68">    	return new VPoint(x, y);</span>
+    }
+
+	/**
+	 * Computes the Delaunay triangulation of the points.
+	 */
+	public void execute() {
+		// construct a new point which is upper right point of all points
+<span class="nc" id="L76">	    IPoint max = points.parallelStream().reduce(create(Double.MIN_VALUE,Double.MIN_VALUE), (a, b) -&gt; create(Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY())));</span>
+
+	    // construct a new point which is lower left of all points.
+<span class="nc" id="L79">	    IPoint min = points.parallelStream().reduce(create(Double.MAX_VALUE,Double.MAX_VALUE), (a, b) -&gt; create(Math.min(a.getX(), b.getX()), Math.min(a.getY(), b.getY())));</span>
+
+	    // construct a bound containing all points by using the upper right and lower left point.
+<span class="nc" id="L82">	    VRectangle bound = new VRectangle(min.getX(), min.getY(), max.getX()-min.getX(), max.getY()- min.getY());</span>
+
+	    // initialize the the computation by constructing a super triangle
+<span class="nc" id="L85">	    init(bound);</span>
+
+	    // compute the triangulation by inserting all points
+<span class="nc" id="L88">        points.stream().forEach(point -&gt; insert(point));</span>
+
+        // remove the super triangle and its faces / triangles
+<span class="nc" id="L91">        cleanUp();</span>
+
+<span class="nc" id="L93">        finished = true;</span>
+<span class="nc" id="L94">    }</span>
+
+    public List&lt;VTriangle&gt; getTriangles() {
+<span class="nc bnc" id="L97" title="All 2 branches missed.">		if(!finished) {</span>
+<span class="nc" id="L98">			execute();</span>
+		}
+<span class="nc" id="L100">	    return streamTriangles().collect(Collectors.toList());</span>
+    }
+
+    public Stream&lt;VTriangle&gt; streamTriangles() {
+<span class="nc" id="L104">	    return streamTriples().map(tripple -&gt; new VTriangle(</span>
+<span class="nc" id="L105">			    new VPoint(tripple.getLeft()),</span>
+<span class="nc" id="L106">			    new VPoint(tripple.getMiddle()),</span>
+<span class="nc" id="L107">			    new VPoint(tripple.getRight())));</span>
+    }
+
+    public Set&lt;VLine&gt; getEdges() {
+<span class="nc bnc" id="L111" title="All 2 branches missed.">	    if(!finished) {</span>
+<span class="nc" id="L112">		    execute();</span>
+	    }
+<span class="nc" id="L114">        return triangles.parallelStream().map(triple -&gt; pointsToTriangle(triple)).flatMap(triangle -&gt; triangle.streamLines()).collect(Collectors.toSet());</span>
+    }
+
+	private void init(final VRectangle bound) {
+<span class="nc" id="L118">		triangles = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L119">		virtualPoints = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L120">		Triple&lt;IPoint, IPoint, IPoint&gt; superTriangle = getSuperTriangle(bound);</span>
+<span class="nc" id="L121">		triangles.add(superTriangle);</span>
+<span class="nc" id="L122">		virtualPoints.add(superTriangle.getLeft());</span>
+<span class="nc" id="L123">		virtualPoints.add(superTriangle.getMiddle());</span>
+<span class="nc" id="L124">		virtualPoints.add(superTriangle.getRight());</span>
+<span class="nc" id="L125">	}</span>
+
+    private Triple&lt;IPoint, IPoint, IPoint&gt; getSuperTriangle(final VRectangle bound) {
+<span class="nc" id="L128">        double gap = 1.0;</span>
+<span class="nc" id="L129">        double max = Math.max(bound.getWidth(), bound.getHeight());</span>
+<span class="nc" id="L130">        IPoint p1 = create(bound.getX() - max - gap, bound.getY() - gap);</span>
+<span class="nc" id="L131">        IPoint p2 = create(bound.getX() + 2 * max + gap, bound.getY() - gap);</span>
+<span class="nc" id="L132">        IPoint p3 = create(bound.getX() + (max+2*gap)/2, bound.getY() + 2 * max+ gap);</span>
+<span class="nc" id="L133">        return ImmutableTriple.of(p1, p2, p3);</span>
+    }
+
+    private void insert(final IPoint point) {
+<span class="nc" id="L137">        HashSet&lt;Line&gt; edges = new HashSet&lt;&gt;();</span>
+
+	    // This is way to expensive O(n) instead of O(log(n))
+<span class="nc" id="L140">        Map&lt;Boolean, List&lt;Triple&lt;IPoint, IPoint, IPoint&gt;&gt;&gt; partition = triangles.parallelStream().collect(Collectors.partitioningBy(t -&gt; pointsToTriangle(t).isInCircumscribedCycle(point)));</span>
+
+<span class="nc" id="L142">	    List&lt;Triple&lt;IPoint, IPoint, IPoint&gt;&gt; badTriangles = partition.get(true);</span>
+<span class="nc" id="L143">        triangles = partition.get(false);</span>
+        IntStream s;
+
+<span class="nc" id="L146">        HashSet&lt;Line&gt; toRemove = new HashSet&lt;&gt;();</span>
+
+	    // duplicated edges
+<span class="nc" id="L149">        badTriangles.stream().flatMap(t -&gt; getEdges(t).stream()).forEach(line -&gt; {</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">            if(!edges.add(line)) {</span>
+<span class="nc" id="L151">                toRemove.add(line);</span>
+            }
+<span class="nc" id="L153">        });</span>
+
+<span class="nc" id="L155">        toRemove.stream().forEach(removeEdge -&gt; edges.remove(removeEdge));</span>
+
+	    // identifier ?
+<span class="nc" id="L158">        edges.stream().forEach(edge -&gt; triangles.add(Triple.of(edge.p1, edge.p2, point)));</span>
+<span class="nc" id="L159">    }</span>
+
+
+    private List&lt;Line&gt; getEdges(Triple&lt;IPoint, IPoint, IPoint&gt; triangle) {
+<span class="nc" id="L163">	    List&lt;Line&gt; list = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L164">	    list.add(new Line(triangle.getLeft(), triangle.getMiddle()));</span>
+<span class="nc" id="L165">	    list.add(new Line(triangle.getMiddle(), triangle.getRight()));</span>
+<span class="nc" id="L166">	    list.add(new Line(triangle.getRight(), triangle.getLeft()));</span>
+<span class="nc" id="L167">	    return list;</span>
+    }
+
+    private void cleanUp() {
+<span class="nc bnc" id="L171" title="All 2 branches missed.">        triangles = triangles.stream().filter(triangle -&gt; !isTriangleConnectedToInitialPoints(triangle)).collect(Collectors.toList());</span>
+<span class="nc" id="L172">    }</span>
+
+    private boolean isTriangleConnectedToInitialPoints(final Triple&lt;IPoint, IPoint, IPoint&gt; trianglePoints) {
+<span class="nc" id="L175">        return Stream.of(pointsToTriangle(trianglePoints).getLines()).anyMatch(edge -&gt; {</span>
+<span class="nc" id="L176">            VPoint p1 = new VPoint(edge.getP1().getX(), edge.getP1().getY());</span>
+<span class="nc" id="L177">            VPoint p2 = new VPoint(edge.getP2().getX(), edge.getP2().getY());</span>
+<span class="nc bnc" id="L178" title="All 4 branches missed.">            return virtualPoints.stream().anyMatch(initPoint -&gt; p1.equals(initPoint) || p2.equals(initPoint));</span>
+        });
+    }
+
+    private VTriangle pointsToTriangle(Triple&lt;IPoint, IPoint, IPoint&gt; points) {
+<span class="nc" id="L183">	    return new VTriangle(</span>
+<span class="nc" id="L184">			    new VPoint(points.getLeft().getX(), points.getLeft().getY()),</span>
+<span class="nc" id="L185">			    new VPoint(points.getMiddle().getX(), points.getMiddle().getY()),</span>
+<span class="nc" id="L186">			    new VPoint(points.getRight().getX(), points.getRight().getY()));</span>
+    }
+
+	public Stream&lt;Triple&lt;IPoint, IPoint, IPoint&gt;&gt; streamTriples() {
+<span class="nc bnc" id="L190" title="All 2 branches missed.">		if(!finished) {</span>
+<span class="nc" id="L191">			execute();</span>
+		}
+<span class="nc" id="L193">		return triangles.stream();</span>
+	}
+
+	public Stream&lt;IPoint&gt; streamPoints() {
+<span class="nc bnc" id="L197" title="All 2 branches missed.">		if(!finished) {</span>
+<span class="nc" id="L198">			execute();</span>
+		}
+<span class="nc" id="L200">		return points.stream();</span>
+	}
+
+	private class Line {
+		final IPoint p1;
+		final IPoint p2;
+
+<span class="nc" id="L207">		private Line(IPoint p1, IPoint p2) {</span>
+<span class="nc" id="L208">			this.p1 = p1;</span>
+<span class="nc" id="L209">			this.p2 = p2;</span>
+<span class="nc" id="L210">		}</span>
+
+	    @Override
+	    public boolean equals(Object o) {
+<span class="nc bnc" id="L214" title="All 2 branches missed.">		    if (this == o) return true;</span>
+<span class="nc bnc" id="L215" title="All 4 branches missed.">		    if (o == null || getClass() != o.getClass()) return false;</span>
+
+<span class="nc" id="L217">		    Line line = (Line) o;</span>
+
+<span class="nc bnc" id="L219" title="All 8 branches missed.">		    return (p1.equals(line.p1) &amp;&amp; p2.equals(line.p2)) || (p2.equals(line.p1) &amp;&amp; p1.equals(line.p2));</span>
+
+	    }
+
+	    @Override
+	    public int hashCode() {
+<span class="nc" id="L225">		    return p1.hashCode() * p2.hashCode();</span>
+	    }
+    }
+
+
+
+
+
+
+
+    // TODO: the following code can be deleted, this is only for visual checks
+    public static void main(String[] args) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L238">        int height = 1000;</span>
+<span class="nc" id="L239">        int width = 1000;</span>
+<span class="nc" id="L240">        int max = Math.max(height, width);</span>
+
+<span class="nc" id="L242">        Set&lt;IPoint&gt; points = new HashSet&lt;&gt;();</span>
+		/*points.add(new VPoint(20,20));
+		points.add(new VPoint(20,40));
+		points.add(new VPoint(75,53));
+		points.add(new VPoint(80,70));*/
+
+<span class="nc" id="L248">        Random r = new Random(1);</span>
+<span class="nc bnc" id="L249" title="All 2 branches missed.">        for(int i=0; i&lt;100; i++) {</span>
+<span class="nc" id="L250">            VPoint point = new VPoint(width*r.nextDouble(), height*r.nextDouble());</span>
+<span class="nc" id="L251">            points.add(point);</span>
+        }
+
+<span class="nc" id="L254">        BowyerWatsonSlow bw = new BowyerWatsonSlow(points);</span>
+<span class="nc" id="L255">        bw.execute();</span>
+<span class="nc" id="L256">        Set&lt;VLine&gt; edges = bw.getEdges();</span>
+
+<span class="nc" id="L258">        JFrame window = new JFrame();</span>
+<span class="nc" id="L259">        window.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);</span>
+<span class="nc" id="L260">        window.setBounds(0, 0, max, max);</span>
+<span class="nc" id="L261">        window.getContentPane().add(new Lines(edges, points, max));</span>
+<span class="nc" id="L262">        window.setVisible(true);</span>
+<span class="nc" id="L263">    }</span>
+
+    private static class Lines extends JComponent{
+        private Set&lt;VLine&gt; edges;
+        private Set&lt;IPoint&gt; points;
+        private final int max;
+
+<span class="nc" id="L270">        public Lines(final Set&lt;VLine&gt; edges, final Set&lt;IPoint&gt; points, final int max){</span>
+<span class="nc" id="L271">            this.edges = edges;</span>
+<span class="nc" id="L272">            this.points = points;</span>
+<span class="nc" id="L273">            this.max = max;</span>
+<span class="nc" id="L274">        }</span>
+
+        public void paint(Graphics g) {
+<span class="nc" id="L277">            Graphics2D g2 = (Graphics2D) g;</span>
+<span class="nc" id="L278">            g2.setBackground(Color.white);</span>
+<span class="nc" id="L279">            g2.setStroke(new BasicStroke(1.0f));</span>
+<span class="nc" id="L280">            g2.setColor(Color.gray);</span>
+
+<span class="nc" id="L282">            edges.stream().forEach(edge -&gt; {</span>
+<span class="nc" id="L283">                Shape k = new VLine(edge.getP1().getX(), edge.getP1().getY(), edge.getP2().getX(), edge.getP2().getY());</span>
+<span class="nc" id="L284">                g2.draw(k);</span>
+<span class="nc" id="L285">            });</span>
+
+<span class="nc" id="L287">            points.stream().forEach(point -&gt; {</span>
+<span class="nc" id="L288">                VCircle k = new VCircle(point.getX(), point.getY(), 1.0);</span>
+<span class="nc" id="L289">                g2.draw(k);</span>
+<span class="nc" id="L290">            });</span>
+
+<span class="nc" id="L292">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

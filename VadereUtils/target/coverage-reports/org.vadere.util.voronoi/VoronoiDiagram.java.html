@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VoronoiDiagram.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.voronoi</a> &gt; <span class="el_source">VoronoiDiagram.java</span></div><h1>VoronoiDiagram.java</h1><pre class="source lang-java linenums">package org.vadere.util.voronoi;
+
+import java.util.LinkedList;
+import java.util.List;
+import java.util.PriorityQueue;
+
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VRectangle;
+
+/**
+ * The Voronoi Diagram is constructed according to the algorithm described in
+ * the book Computational Geometry by Mark de Berg et al. (2008) pages 151ff.
+ * The algorithm is commonly known as &quot;Fortune's algorithm&quot; and uses the
+ * paradigm of a sweep line. Notice: Understanding how the Voronoi Diagram is
+ * constructed with this code without understanding the algorithm in advance
+ * seems hardly possible to me.
+ */
+public class VoronoiDiagram {
+
+	private final RectangleLimits limits;
+
+	private PriorityQueue&lt;Event&gt; eventQueue;
+	private BeachLine beachLine;
+	private List&lt;Face&gt; faces;
+
+	/*
+	 * Handle degenerating case where the first rising sites lay on a horizonal
+	 * line.
+	 */
+	private boolean siteOnHorizontalLine;
+	private double lastY;
+
+<span class="nc" id="L33">	public VoronoiDiagram(RectangleLimits limits) {</span>
+<span class="nc" id="L34">		this.limits = limits;</span>
+<span class="nc" id="L35">	}</span>
+
+	/*
+	 * voronoiDiagramArea has to contain left lower and right upper coordinates
+	 * of area a jts diagram shall be created for.
+	 */
+<span class="nc" id="L41">	public VoronoiDiagram(final List&lt;VPoint&gt; bounds) {</span>
+<span class="nc" id="L42">		this.limits = new RectangleLimits(bounds.get(0).x, bounds.get(0).y,</span>
+<span class="nc" id="L43">				bounds.get(1).x, bounds.get(1).y);</span>
+<span class="nc" id="L44">	}</span>
+
+<span class="nc" id="L46">	public VoronoiDiagram(final VRectangle rectangle) {</span>
+<span class="nc" id="L47">		this.limits = new RectangleLimits(rectangle.x, rectangle.y,</span>
+				rectangle.x + rectangle.width, rectangle.y + rectangle.height);
+<span class="nc" id="L49">	}</span>
+
+	public void computeVoronoiDiagram(Iterable&lt;? extends VPoint&gt; positions) {
+<span class="nc bnc" id="L52" title="All 2 branches missed.">		if (positions == null) {</span>
+<span class="nc" id="L53">			return;</span>
+		}
+
+<span class="nc" id="L56">		this.eventQueue = new PriorityQueue&lt;Event&gt;();</span>
+<span class="nc" id="L57">		this.beachLine = new BeachLine(limits);</span>
+<span class="nc" id="L58">		this.faces = new LinkedList&lt;Face&gt;();</span>
+
+<span class="nc bnc" id="L60" title="All 2 branches missed.">		for (VPoint position : positions) {</span>
+			/*
+			 * ped.prenatal(): only consider pedestrians, that have already
+			 * moved away from the source to avoid conflicts. sst: prenatal
+			 * removed; It may be better to not to compute the density at areas
+			 * with equal positions of pedestrians as this isn't a real
+			 * situation anyway. Avoid overlapping of pedestrians or do not
+			 * measure density at sources at least (where this case may occur).
+			 */
+<span class="nc bnc" id="L69" title="All 2 branches missed.">			if ( /* !ped.prenatal() &amp;&amp; */limits.isInside(position)) {</span>
+<span class="nc" id="L70">				eventQueue.add(new EventSite(position));</span>
+			}
+<span class="nc" id="L72">		}</span>
+
+<span class="nc bnc" id="L74" title="All 2 branches missed.">		if (!eventQueue.isEmpty()) {</span>
+<span class="nc" id="L75">			lastY = eventQueue.iterator().next().getYCoordinate();</span>
+<span class="nc" id="L76">			siteOnHorizontalLine = true;</span>
+		}
+
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		while (!eventQueue.isEmpty()) {</span>
+<span class="nc" id="L80">			Event event = eventQueue.remove();</span>
+
+<span class="nc bnc" id="L82" title="All 2 branches missed.">			if (event.getClass() == EventSite.class) {</span>
+<span class="nc" id="L83">				handleSiteEvent((EventSite) event);</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">			} else if (event.getClass() == EventCircle.class) {</span>
+<span class="nc" id="L85">				handleCircleEvent((EventCircle) event);</span>
+			} else {
+<span class="nc" id="L87">				throw new IllegalStateException(</span>
+						&quot;Only Site and Circle Events are reasonable.&quot;);
+			}
+<span class="nc" id="L90">		}</span>
+
+<span class="nc bnc" id="L92" title="All 2 branches missed.">		for (Face f : faces) {</span>
+<span class="nc" id="L93">			f.handleOpenFace();</span>
+<span class="nc" id="L94">		}</span>
+<span class="nc" id="L95">	}</span>
+
+	private void handleSiteEvent(EventSite event) {
+
+<span class="nc" id="L99">		int siteId = event.getSiteId();</span>
+<span class="nc" id="L100">		VPoint site = event.getSite();</span>
+
+		// step 1
+<span class="nc bnc" id="L103" title="All 2 branches missed.">		if (beachLine.isEmpty()) {</span>
+<span class="nc" id="L104">			beachLine.setRoot(siteId, site, faces);</span>
+		} else {
+			// handle degenerating case
+<span class="nc bnc" id="L107" title="All 4 branches missed.">			if (siteOnHorizontalLine &amp;&amp; (site.y != lastY)) {</span>
+<span class="nc" id="L108">				siteOnHorizontalLine = false;</span>
+			}
+
+			// step 2
+<span class="nc" id="L112">			BeachLineLeaf arc = beachLine.getArcAboveSite(site);</span>
+<span class="nc" id="L113">			removeCircleEvent(arc);</span>
+
+			// step 3
+<span class="nc" id="L116">			BeachLineLeaf newLeaf = beachLine.addSite(siteId, site, arc, faces,</span>
+					siteOnHorizontalLine);
+
+			// TODO [priority=low] [task=optimization] Rebalancing the trees, to improve computation speed.
+
+			// step 4
+<span class="nc" id="L122">			HalfEdge.handleSiteEventEdges(faces, newLeaf, arc,</span>
+					siteOnHorizontalLine);
+
+			// step 5
+<span class="nc" id="L126">			checkForCircleEvent(newLeaf.getPredecessor());</span>
+<span class="nc" id="L127">			checkForCircleEvent(newLeaf.getSuccessor());</span>
+		}
+<span class="nc" id="L129">	}</span>
+
+	private void handleCircleEvent(EventCircle event) {
+
+<span class="nc" id="L133">		BeachLineLeaf gamma = event.getBeachLineLeaf();</span>
+
+		// step 2
+<span class="nc" id="L136">		VPoint vertex = new VPoint(event.getXCoordinate(),</span>
+<span class="nc" id="L137">				event.getYCoordinate());</span>
+
+<span class="nc" id="L139">		BeachLineInternal rightNode = beachLine.getRightBreakPoint(gamma);</span>
+<span class="nc" id="L140">		BeachLineInternal leftNode = beachLine.getLeftBreakPoint(gamma);</span>
+
+<span class="nc" id="L142">		HalfEdge newHalfEdge = HalfEdge.handleCircleEventEdges(leftNode,</span>
+				rightNode, vertex);
+
+		// step 1
+<span class="nc" id="L146">		BeachLineInternal newBreakPoint = beachLine.deleteLeaf(gamma);</span>
+<span class="nc" id="L147">		newBreakPoint.setHalfEdge(newHalfEdge);</span>
+
+		// TODO [priority=low] [task=optimization] rebalancing
+
+<span class="nc" id="L151">		BeachLineLeaf predecessorLeaf = gamma.getPredecessor();</span>
+<span class="nc" id="L152">		removeCircleEvent(predecessorLeaf);</span>
+
+<span class="nc" id="L154">		BeachLineLeaf successorLeaf = gamma.getSuccessor();</span>
+<span class="nc" id="L155">		removeCircleEvent(successorLeaf);</span>
+
+		// step 3
+<span class="nc" id="L158">		checkForCircleEvent(predecessorLeaf);</span>
+<span class="nc" id="L159">		checkForCircleEvent(successorLeaf);</span>
+<span class="nc" id="L160">	}</span>
+
+	private void checkForCircleEvent(BeachLineLeaf leaf) {
+
+<span class="nc bnc" id="L164" title="All 4 branches missed.">		if (leaf != null &amp;&amp; leaf.hasCircleEvent()) {</span>
+<span class="nc" id="L165">			leaf.createCircleEvent();</span>
+<span class="nc" id="L166">			eventQueue.add(leaf.getCircleEvent());</span>
+		}
+<span class="nc" id="L168">	}</span>
+
+	private void removeCircleEvent(BeachLineLeaf leaf) {
+<span class="nc" id="L171">		EventCircle circleEvent = leaf.removeCircleEvent();</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">		if (circleEvent != null) {</span>
+<span class="nc" id="L173">			eventQueue.remove(circleEvent);</span>
+		}
+<span class="nc" id="L175">	}</span>
+
+	public List&lt;Face&gt; getFaces() {
+<span class="nc" id="L178">		return faces;</span>
+	}
+
+	public RectangleLimits getLimits() {
+<span class="nc" id="L182">		return limits;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,1431 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AMesh.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">AMesh.java</span></div><h1>AMesh.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.vadere.meshing.mesh.inter.IEdgeContainerBoolean;
+import org.vadere.meshing.mesh.inter.IEdgeContainerDouble;
+import org.vadere.meshing.mesh.inter.IEdgeContainerObject;
+import org.vadere.meshing.mesh.inter.IVertexContainerBoolean;
+import org.vadere.meshing.mesh.inter.IVertexContainerDouble;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IPointLocator;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IVertexContainerObject;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.meshing.SpaceFillingCurve;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.logging.Logger;
+
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * An array-based implementation of {@link IMesh}.
+ *
+ * @author Benedikt Zoennchen
+ */
+<span class="pc bpc" id="L35" title="1 of 2 branches missed.">public class AMesh implements IMesh&lt;AVertex, AHalfEdge, AFace&gt;, Cloneable {</span>
+<span class="fc" id="L36">	private final static Logger log = Logger.getLogger(AMesh.class);</span>
+	private List&lt;AFace&gt; faces;
+	private boolean elementRemoved;
+	private int numberOfVertices;
+	private int numberOfEdges;
+	private int numberOfFaces;
+	private int numberOfHoles;
+	private List&lt;AFace&gt; holes;
+	private AFace boundary;
+	private List&lt;AHalfEdge&gt; edges;
+	private List&lt;AVertex&gt; vertices;
+
+	//TODO: test the new property structure!
+	private Map&lt;String, AObjectArrayList&lt;?&gt;&gt; verticesData;
+	private Map&lt;String, AObjectArrayList&lt;?&gt;&gt; halfEdgesData;
+	private Map&lt;String, AObjectArrayList&lt;?&gt;&gt; facesData;
+	private ArrayList&lt;DoubleArrayList&gt; verticesIndexedDoubleData;
+	private Map&lt;String, DoubleArrayList&gt; verticesDoubleData;
+	private Map&lt;String, DoubleArrayList&gt; facesDoubleData;
+	private Map&lt;String, DoubleArrayList&gt; halfEdgesDoubleData;
+	private Map&lt;String, BooleanArrayList&gt; verticesBooleanData;
+	private Map&lt;String, BooleanArrayList&gt; facesBooleanData;
+	private Map&lt;String, BooleanArrayList&gt; halfEdgesBooleanData;
+
+<span class="fc" id="L60">	public AMesh() {</span>
+<span class="fc" id="L61">		clear();</span>
+<span class="fc" id="L62">	}</span>
+
+	@Override
+	public void clear() {
+<span class="fc" id="L66">		this.faces = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L67">		this.holes = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L68">		this.edges = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L69">		this.vertices = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L70">		this.boundary = new AFace(-1, true);</span>
+<span class="fc" id="L71">		this.elementRemoved = false;</span>
+<span class="fc" id="L72">		this.numberOfFaces = 0;</span>
+<span class="fc" id="L73">		this.numberOfEdges = 0;</span>
+<span class="fc" id="L74">		this.numberOfVertices = 0;</span>
+<span class="fc" id="L75">		this.numberOfHoles = 0;</span>
+
+<span class="fc" id="L77">		this.verticesData = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L78">		this.halfEdgesData = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L79">		this.facesData = new HashMap&lt;&gt;();</span>
+
+<span class="fc" id="L81">		this.verticesIndexedDoubleData = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L82">		this.verticesDoubleData = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L83">		this.halfEdgesDoubleData = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L84">		this.facesDoubleData = new HashMap&lt;&gt;();</span>
+
+<span class="fc" id="L86">		this.verticesBooleanData = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L87">		this.halfEdgesBooleanData = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L88">		this.facesBooleanData = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L89">	}</span>
+
+	@Override
+	public IMesh&lt;AVertex, AHalfEdge, AFace&gt; construct() {
+<span class="nc" id="L93">		return new AMesh();</span>
+	}
+
+	@Override
+	public AHalfEdge getNext(@NotNull final AHalfEdge halfEdge) {
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">		if(halfEdge.getNext() == -1) {</span>
+<span class="nc" id="L99">			return null;</span>
+		}
+<span class="fc" id="L101">		return edges.get(halfEdge.getNext());</span>
+	}
+
+	@Override
+	public AHalfEdge getPrev(@NotNull final AHalfEdge halfEdge) {
+<span class="pc bpc" id="L106" title="1 of 2 branches missed.">		if(halfEdge.getPrevious() == -1) {</span>
+<span class="nc" id="L107">			return null;</span>
+		}
+<span class="fc" id="L109">		return edges.get(halfEdge.getPrevious());</span>
+	}
+
+	@Override
+	public AHalfEdge getTwin(@NotNull final AHalfEdge halfEdge) {
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">		if(halfEdge.getTwin() == -1) {</span>
+<span class="nc" id="L115">			return null;</span>
+		}
+<span class="fc" id="L117">		return edges.get(halfEdge.getTwin());</span>
+	}
+
+	@Override
+	public AFace getFace(@NotNull final AHalfEdge halfEdge) {
+<span class="fc" id="L122">		int edgeId = halfEdge.getFace();</span>
+<span class="pc bpc" id="L123" title="1 of 2 branches missed.">		if (edgeId == -1) {</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">			if (halfEdge.isDestroyed()) {</span>
+<span class="nc" id="L125">				throw new IllegalArgumentException(halfEdge + &quot; is already destroyed.&quot;);</span>
+			}
+<span class="nc" id="L127">			return boundary;</span>
+		} else {
+<span class="fc" id="L129">			return faces.get(halfEdge.getFace());</span>
+		}
+	}
+
+	@Override
+	public AHalfEdge getEdge(@NotNull final AVertex vertex) {
+<span class="pc bpc" id="L135" title="1 of 2 branches missed.">		if(vertex.getEdge() == -1) {</span>
+<span class="nc" id="L136">			return null;</span>
+		}
+<span class="fc" id="L138">		return edges.get(vertex.getEdge());</span>
+	}
+
+	@Override
+	public double getX(@NotNull AVertex vertex) {
+<span class="nc" id="L143">		return vertex.getX();</span>
+	}
+
+	@Override
+	public double getY(@NotNull AVertex vertex) {
+<span class="nc" id="L148">		return vertex.getY();</span>
+	}
+
+	@Override
+	public void setCoords(@NotNull AVertex vertex, double x, double y) {
+<span class="nc" id="L153">		vertex.setPoint(new VPoint(x, y));</span>
+<span class="nc" id="L154">	}</span>
+
+	@Override
+	public AHalfEdge getEdge(@NotNull final AFace face) {
+<span class="fc" id="L158">		return edges.get(face.getEdge());</span>
+	}
+
+	@Override
+	public IPoint getPoint(@NotNull final AHalfEdge halfEdge) {
+<span class="nc" id="L163">		return getVertex(halfEdge).getPoint();</span>
+	}
+
+	@Override
+	public AVertex getVertex(@NotNull final AHalfEdge halfEdge) {
+<span class="pc bpc" id="L168" title="1 of 2 branches missed.">		if(halfEdge.getEnd() == -1) {</span>
+<span class="nc" id="L169">			return null;</span>
+		}
+<span class="fc" id="L171">		return vertices.get(halfEdge.getEnd());</span>
+	}
+
+	// the vertex should not be contained in vertices, only the up/down
+	@Override
+	public AVertex getDown(@NotNull final AVertex vertex) {
+<span class="nc" id="L177">		return vertices.get(vertex.getDown());</span>
+	}
+
+	// the vertex should not be contained in vertices, only the up/down
+	@Override
+	public void setDown(@NotNull final AVertex up, @NotNull AVertex down) {
+<span class="nc" id="L183">		up.setDown(down.getId());</span>
+<span class="nc" id="L184">	}</span>
+
+	@Override
+	public IPoint getPoint(@NotNull final AVertex vertex) {
+<span class="nc" id="L188">		return vertex.getPoint();</span>
+	}
+
+	@Override
+	public boolean getBooleanData(@NotNull final AVertex vertex, @NotNull final String name) {
+<span class="nc bnc" id="L193" title="All 2 branches missed.">		if(!verticesBooleanData.containsKey(name)) {</span>
+<span class="nc" id="L194">			return false;</span>
+		} else {
+<span class="nc" id="L196">			BooleanArrayList dataArray = verticesBooleanData.get(name);</span>
+<span class="nc bnc" id="L197" title="All 4 branches missed.">			assert dataArray.size() == vertices.size();</span>
+<span class="nc" id="L198">			return dataArray.getBoolean(vertex.getId());</span>
+		}
+	}
+
+	@Override
+	public double getDoubleData(@NotNull final AVertex vertex, @NotNull final String name) {
+<span class="nc bnc" id="L204" title="All 2 branches missed.">		if(!verticesDoubleData.containsKey(name)) {</span>
+<span class="nc" id="L205">			return 0.0;</span>
+		} else {
+<span class="nc" id="L207">			DoubleArrayList dataArray = verticesDoubleData.get(name);</span>
+<span class="nc bnc" id="L208" title="All 4 branches missed.">			assert dataArray.size() == vertices.size();</span>
+<span class="nc" id="L209">			return dataArray.getDouble(vertex.getId());</span>
+		}
+	}
+
+	@Override
+	public double getDoubleData(@NotNull final AVertex vertex, @NotNull final int index) {
+<span class="nc bnc" id="L215" title="All 2 branches missed.">		if(verticesIndexedDoubleData.size() &lt;= index) {</span>
+<span class="nc" id="L216">			return 0.0;</span>
+		} else {
+<span class="nc" id="L218">			DoubleArrayList dataArray = verticesIndexedDoubleData.get(index);</span>
+<span class="nc bnc" id="L219" title="All 4 branches missed.">			assert dataArray.size() == vertices.size();</span>
+<span class="nc" id="L220">			return dataArray.getDouble(vertex.getId());</span>
+		}
+	}
+
+	@Override
+	public boolean getBooleanData(@NotNull final AHalfEdge edge, @NotNull final String name) {
+<span class="nc bnc" id="L226" title="All 2 branches missed.">		if(!halfEdgesBooleanData.containsKey(name)) {</span>
+<span class="nc" id="L227">			return false;</span>
+		} else {
+<span class="nc" id="L229">			BooleanArrayList dataArray = halfEdgesBooleanData.get(name);</span>
+<span class="nc bnc" id="L230" title="All 4 branches missed.">			assert dataArray.size() == edges.size();</span>
+<span class="nc" id="L231">			return dataArray.getBoolean(edge.getId());</span>
+		}
+	}
+
+	@Override
+	public double getDoubleData(@NotNull final AHalfEdge edge, @NotNull final String name) {
+<span class="nc bnc" id="L237" title="All 2 branches missed.">		if(!halfEdgesDoubleData.containsKey(name)) {</span>
+<span class="nc" id="L238">			return 0.0;</span>
+		} else {
+<span class="nc" id="L240">			DoubleArrayList dataArray = halfEdgesDoubleData.get(name);</span>
+<span class="nc bnc" id="L241" title="All 4 branches missed.">			assert dataArray.size() == edges.size();</span>
+<span class="nc" id="L242">			return dataArray.getDouble(edge.getId());</span>
+		}
+	}
+
+	@Override
+	public boolean getBooleanData(@NotNull final AFace face, @NotNull final String name) {
+<span class="nc bnc" id="L248" title="All 2 branches missed.">		if(!facesBooleanData.containsKey(name)) {</span>
+<span class="nc" id="L249">			return false;</span>
+		} else {
+<span class="nc" id="L251">			BooleanArrayList dataArray = facesBooleanData.get(name);</span>
+<span class="nc bnc" id="L252" title="All 4 branches missed.">			assert dataArray.size() == faces.size();</span>
+<span class="nc" id="L253">			return dataArray.getBoolean(face.getId());</span>
+		}
+	}
+
+	@Override
+	public double getDoubleData(@NotNull final AFace face, @NotNull final String name) {
+<span class="nc bnc" id="L259" title="All 2 branches missed.">		if(!facesDoubleData.containsKey(name)) {</span>
+<span class="nc" id="L260">			return 0.0;</span>
+		} else {
+<span class="nc" id="L262">			DoubleArrayList dataArray = facesDoubleData.get(name);</span>
+<span class="nc bnc" id="L263" title="All 4 branches missed.">			assert dataArray.size() == faces.size();</span>
+<span class="nc" id="L264">			return dataArray.getDouble(face.getId());</span>
+		}
+	}
+
+	@Override
+	public &lt;CV&gt; Optional&lt;CV&gt; getData(@NotNull final AVertex vertex, @NotNull final String name, @NotNull Class&lt;CV&gt; clazz) {
+<span class="nc bnc" id="L270" title="All 2 branches missed.">		if(!verticesData.containsKey(name)) {</span>
+<span class="nc" id="L271">			return Optional.ofNullable(null);</span>
+		} else {
+<span class="nc" id="L273">			ObjectArrayList&lt;CV&gt; dataArray = (ObjectArrayList&lt;CV&gt;) verticesData.get(name);</span>
+<span class="nc bnc" id="L274" title="All 4 branches missed.">			assert dataArray.size() == vertices.size();</span>
+<span class="nc" id="L275">			return Optional.ofNullable(dataArray.get(vertex.getId()));</span>
+		}
+	}
+
+	@Override
+	public &lt;CV&gt; void setData(@NotNull final AVertex vertex, @NotNull final String name, @Nullable final CV data) {
+<span class="nc bnc" id="L281" title="All 2 branches missed.">		if(!verticesData.containsKey(name)) {</span>
+<span class="nc" id="L282">			AObjectArrayList&lt;CV&gt; dataArray = new AObjectArrayList&lt;&gt;();</span>
+<span class="nc" id="L283">			fill(dataArray, vertices.size());</span>
+<span class="nc" id="L284">			verticesData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L286">		AObjectArrayList&lt;CV&gt; dataArray = (AObjectArrayList&lt;CV&gt;) verticesData.get(name);</span>
+<span class="nc bnc" id="L287" title="All 4 branches missed.">		assert dataArray.size() == vertices.size();</span>
+<span class="nc" id="L288">		dataArray.set(vertex.getId(), data);</span>
+<span class="nc" id="L289">	}</span>
+
+	@Override
+	public &lt;CE&gt; Optional&lt;CE&gt; getData(@NotNull final AHalfEdge edge, @NotNull final String name, @NotNull Class&lt;CE&gt; clazz) {
+<span class="nc bnc" id="L293" title="All 2 branches missed.">		if(!halfEdgesData.containsKey(name)) {</span>
+<span class="nc" id="L294">			return Optional.ofNullable(null);</span>
+		} else {
+<span class="nc" id="L296">			AObjectArrayList&lt;CE&gt; dataArray = (AObjectArrayList&lt;CE&gt;) halfEdgesData.get(name);</span>
+<span class="nc bnc" id="L297" title="All 4 branches missed.">			assert dataArray.size() == edges.size();</span>
+<span class="nc" id="L298">			return Optional.ofNullable(dataArray.get(edge.getId()));</span>
+		}
+	}
+
+	@Override
+	public &lt;CE&gt; void setData(@NotNull final AHalfEdge edge, @NotNull final String name, @Nullable final CE data) {
+<span class="nc bnc" id="L304" title="All 2 branches missed.">		if(!halfEdgesData.containsKey(name)) {</span>
+<span class="nc" id="L305">			AObjectArrayList&lt;CE&gt; dataArray = new AObjectArrayList&lt;&gt;();</span>
+<span class="nc" id="L306">			fill(dataArray, edges.size());</span>
+<span class="nc" id="L307">			halfEdgesData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L309">		AObjectArrayList&lt;CE&gt; dataArray = (AObjectArrayList&lt;CE&gt;) halfEdgesData.get(name);</span>
+<span class="nc bnc" id="L310" title="All 4 branches missed.">		assert dataArray.size() == edges.size();</span>
+<span class="nc" id="L311">		dataArray.set(edge.getId(), data);</span>
+<span class="nc" id="L312">	}</span>
+
+	@Override
+	public &lt;CF&gt; Optional&lt;CF&gt; getData(@NotNull final AFace face, @NotNull final String name, @NotNull Class&lt;CF&gt; clazz) {
+<span class="nc bnc" id="L316" title="All 2 branches missed.">		if(!facesData.containsKey(name)) {</span>
+<span class="nc" id="L317">			return Optional.ofNullable(null);</span>
+		} else {
+<span class="nc" id="L319">			AObjectArrayList&lt;CF&gt; dataArray = (AObjectArrayList&lt;CF&gt;) facesData.get(name);</span>
+<span class="nc bnc" id="L320" title="All 4 branches missed.">			assert dataArray.size() == vertices.size();</span>
+<span class="nc" id="L321">			return Optional.ofNullable(dataArray.get(face.getId()));</span>
+		}
+	}
+
+	@Override
+	public &lt;CF&gt; void setData(@NotNull final AFace face, @NotNull final String name, @Nullable final CF data) {
+<span class="nc bnc" id="L327" title="All 2 branches missed.">		if(!facesData.containsKey(name)) {</span>
+<span class="nc" id="L328">			AObjectArrayList&lt;CF&gt; dataArray = new AObjectArrayList&lt;&gt;();</span>
+<span class="nc" id="L329">			fill(dataArray, faces.size());</span>
+<span class="nc" id="L330">			facesData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L332">		AObjectArrayList&lt;CF&gt; dataArray = (AObjectArrayList&lt;CF&gt;) facesData.get(name);</span>
+<span class="nc bnc" id="L333" title="All 4 branches missed.">		assert dataArray.size() == faces.size();</span>
+<span class="nc" id="L334">		dataArray.set(face.getId(), data);</span>
+<span class="nc" id="L335">	}</span>
+
+	@Override
+	public void setDoubleData(@NotNull final AFace face, @NotNull final String name, final double data) {
+<span class="nc bnc" id="L339" title="All 2 branches missed.">		if(!facesDoubleData.containsKey(name)) {</span>
+<span class="nc" id="L340">			DoubleArrayList dataArray = new DoubleArrayList(faces.size());</span>
+<span class="nc" id="L341">			dataArray.size(faces.size());</span>
+<span class="nc" id="L342">			facesDoubleData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L344">		DoubleArrayList dataArray = facesDoubleData.get(name);</span>
+<span class="nc bnc" id="L345" title="All 4 branches missed.">		assert dataArray.size() == faces.size();</span>
+<span class="nc" id="L346">		dataArray.set(face.getId(), data);</span>
+<span class="nc" id="L347">	}</span>
+
+	@Override
+	public void setDoubleData(@NotNull final AVertex vertex, @NotNull final String name, final double data) {
+<span class="nc bnc" id="L351" title="All 2 branches missed.">		if(!verticesDoubleData.containsKey(name)) {</span>
+<span class="nc" id="L352">			DoubleArrayList dataArray = new DoubleArrayList(vertices.size());</span>
+<span class="nc" id="L353">			dataArray.size(vertices.size());</span>
+<span class="nc" id="L354">			verticesDoubleData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L356">		DoubleArrayList dataArray = verticesDoubleData.get(name);</span>
+<span class="nc bnc" id="L357" title="All 4 branches missed.">		assert dataArray.size() == vertices.size();</span>
+<span class="nc" id="L358">		dataArray.set(vertex.getId(), data);</span>
+<span class="nc" id="L359">	}</span>
+
+	@Override
+	public void setDoubleData(@NotNull final AVertex vertex, @NotNull final int index, final double data) {
+<span class="nc bnc" id="L363" title="All 2 branches missed.">		if(verticesIndexedDoubleData.size() &lt;= index) {</span>
+<span class="nc bnc" id="L364" title="All 2 branches missed.">			for(int i = verticesIndexedDoubleData.size(); i &lt;= index; i++) {</span>
+<span class="nc" id="L365">				DoubleArrayList dataArray = new DoubleArrayList(vertices.size());</span>
+<span class="nc" id="L366">				dataArray.size(vertices.size());</span>
+<span class="nc" id="L367">				verticesIndexedDoubleData.add(dataArray);</span>
+			}
+		}
+<span class="nc" id="L370">		DoubleArrayList dataArray = verticesIndexedDoubleData.get(index);</span>
+<span class="nc bnc" id="L371" title="All 4 branches missed.">		assert dataArray.size() == vertices.size();</span>
+<span class="nc" id="L372">		dataArray.set(vertex.getId(), data);</span>
+<span class="nc" id="L373">	}</span>
+
+	private &lt;CE&gt; AObjectArrayList&lt;CE&gt; getObjectArrayEdge(@NotNull final String name, @NotNull final Class&lt;CE&gt; clazz) {
+<span class="nc bnc" id="L376" title="All 2 branches missed.">		if(!halfEdgesData.containsKey(name)) {</span>
+<span class="nc" id="L377">			AObjectArrayList&lt;CE&gt; dataArray = new AObjectArrayList&lt;&gt;();</span>
+<span class="nc" id="L378">			fill(dataArray, edges.size());</span>
+<span class="nc" id="L379">			halfEdgesData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L381">		return (AObjectArrayList&lt;CE&gt;)halfEdgesData.get(name);</span>
+	}
+
+	private &lt;CE&gt; AObjectArrayList&lt;CE&gt; getObjectArrayVertex(@NotNull final String name, @NotNull final Class&lt;CE&gt; clazz) {
+<span class="nc bnc" id="L385" title="All 2 branches missed.">		if(!verticesData.containsKey(name)) {</span>
+<span class="nc" id="L386">			AObjectArrayList&lt;CE&gt; dataArray = new AObjectArrayList&lt;&gt;();</span>
+<span class="nc" id="L387">			fill(dataArray, vertices.size());</span>
+<span class="nc" id="L388">			verticesData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L390">		return (AObjectArrayList&lt;CE&gt;)verticesData.get(name);</span>
+	}
+
+	private DoubleArrayList getDoubleArrayEdge(@NotNull final String name) {
+<span class="nc bnc" id="L394" title="All 2 branches missed.">		if(!halfEdgesDoubleData.containsKey(name)) {</span>
+<span class="nc" id="L395">			DoubleArrayList dataArray = new DoubleArrayList(edges.size());</span>
+<span class="nc" id="L396">			dataArray.size(edges.size());</span>
+<span class="nc" id="L397">			halfEdgesDoubleData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L399">		return halfEdgesDoubleData.get(name);</span>
+	}
+
+	private DoubleArrayList getDoubleArrayVertex(@NotNull final String name) {
+<span class="nc bnc" id="L403" title="All 2 branches missed.">		if(!verticesDoubleData.containsKey(name)) {</span>
+<span class="nc" id="L404">			DoubleArrayList dataArray = new DoubleArrayList(vertices.size());</span>
+<span class="nc" id="L405">			dataArray.size(vertices.size());</span>
+<span class="nc" id="L406">			verticesDoubleData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L408">		return verticesDoubleData.get(name);</span>
+	}
+
+	private DoubleArrayList getDoubleArrayFace(@NotNull final String name) {
+<span class="nc bnc" id="L412" title="All 2 branches missed.">		if(!facesDoubleData.containsKey(name)) {</span>
+<span class="nc" id="L413">			DoubleArrayList dataArray = new DoubleArrayList(faces.size());</span>
+<span class="nc" id="L414">			dataArray.size(faces.size());</span>
+<span class="nc" id="L415">			facesDoubleData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L417">		return facesDoubleData.get(name);</span>
+	}
+
+	private BooleanArrayList getBooleanArrayEdge(@NotNull final String name) {
+<span class="nc bnc" id="L421" title="All 2 branches missed.">		if(!halfEdgesBooleanData.containsKey(name)) {</span>
+<span class="nc" id="L422">			BooleanArrayList dataArray = new BooleanArrayList(edges.size());</span>
+<span class="nc" id="L423">			dataArray.size(edges.size());</span>
+<span class="nc" id="L424">			halfEdgesBooleanData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L426">		return halfEdgesBooleanData.get(name);</span>
+	}
+
+	private BooleanArrayList getBooleanArrayVertex(@NotNull final String name) {
+<span class="nc bnc" id="L430" title="All 2 branches missed.">		if(!verticesBooleanData.containsKey(name)) {</span>
+<span class="nc" id="L431">			BooleanArrayList dataArray = new BooleanArrayList(vertices.size());</span>
+<span class="nc" id="L432">			dataArray.size(vertices.size());</span>
+<span class="nc" id="L433">			verticesBooleanData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L435">		return verticesBooleanData.get(name);</span>
+	}
+
+	private BooleanArrayList getBooleanArrayFace(@NotNull final String name) {
+<span class="nc bnc" id="L439" title="All 2 branches missed.">		if(!facesBooleanData.containsKey(name)) {</span>
+<span class="nc" id="L440">			BooleanArrayList dataArray = new BooleanArrayList(faces.size());</span>
+<span class="nc" id="L441">			dataArray.size(faces.size());</span>
+<span class="nc" id="L442">			facesBooleanData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L444">		return facesBooleanData.get(name);</span>
+	}
+
+	@Override
+	public void setDoubleData(@NotNull final AHalfEdge edge, @NotNull final String name, final double data) {
+<span class="nc" id="L449">		DoubleArrayList dataArray = getDoubleArrayEdge(name);</span>
+<span class="nc bnc" id="L450" title="All 4 branches missed.">		assert dataArray.size() == edges.size();</span>
+<span class="nc" id="L451">		dataArray.set(edge.getId(), data);</span>
+<span class="nc" id="L452">	}</span>
+
+	@Override
+	public void setBooleanData(@NotNull final AFace face, @NotNull final String name, final boolean data) {
+<span class="nc bnc" id="L456" title="All 2 branches missed.">		if(!facesBooleanData.containsKey(name)) {</span>
+<span class="nc" id="L457">			BooleanArrayList dataArray = new BooleanArrayList(faces.size());</span>
+<span class="nc" id="L458">			dataArray.size(faces.size());</span>
+<span class="nc" id="L459">			facesBooleanData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L461">		BooleanArrayList dataArray = facesBooleanData.get(name);</span>
+<span class="nc bnc" id="L462" title="All 4 branches missed.">		assert dataArray.size() == faces.size();</span>
+<span class="nc" id="L463">		dataArray.set(face.getId(), data);</span>
+<span class="nc" id="L464">	}</span>
+
+	@Override
+	public void setBooleanData(@NotNull final AVertex vertex, @NotNull final String name, final boolean data) {
+<span class="nc bnc" id="L468" title="All 2 branches missed.">		if(!verticesBooleanData.containsKey(name)) {</span>
+<span class="nc" id="L469">			BooleanArrayList dataArray = new BooleanArrayList(vertices.size());</span>
+<span class="nc" id="L470">			dataArray.size(vertices.size());</span>
+<span class="nc" id="L471">			verticesBooleanData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L473">		BooleanArrayList dataArray = verticesBooleanData.get(name);</span>
+<span class="nc bnc" id="L474" title="All 4 branches missed.">		assert dataArray.size() == vertices.size();</span>
+<span class="nc" id="L475">		dataArray.set(vertex.getId(), data);</span>
+<span class="nc" id="L476">	}</span>
+
+	@Override
+	public void setBooleanData(@NotNull final AHalfEdge edge, @NotNull final String name, final boolean data) {
+<span class="nc bnc" id="L480" title="All 2 branches missed.">		if(!halfEdgesBooleanData.containsKey(name)) {</span>
+<span class="nc" id="L481">			BooleanArrayList dataArray = new BooleanArrayList(edges.size());</span>
+<span class="nc" id="L482">			dataArray.size(edges.size());</span>
+<span class="nc" id="L483">			halfEdgesBooleanData.put(name, dataArray);</span>
+		}
+<span class="nc" id="L485">		BooleanArrayList dataArray = halfEdgesBooleanData.get(name);</span>
+<span class="nc bnc" id="L486" title="All 4 branches missed.">		assert dataArray.size() == edges.size();</span>
+<span class="nc" id="L487">		dataArray.set(edge.getId(), data);</span>
+<span class="nc" id="L488">	}</span>
+
+	private void fill(@NotNull final ObjectArrayList&lt;?&gt; data, final int n) {
+<span class="nc bnc" id="L491" title="All 2 branches missed.">		for(int i = 0; i &lt; n; i++) {</span>
+<span class="nc" id="L492">			data.add(null);</span>
+		}
+<span class="nc" id="L494">	}</span>
+
+	@Override
+	public AFace getFace() {
+<span class="nc bnc" id="L498" title="All 4 branches missed.">		return faces.stream().filter(f -&gt; !isDestroyed(f)).filter(f -&gt; !isBoundary(f)).findAny().get();</span>
+	}
+
+	@Override
+	public boolean isBoundary(@NotNull AFace face) {
+<span class="nc" id="L503">		return face.isBorder();</span>
+	}
+
+	@Override
+	public boolean isBoundary(@NotNull AHalfEdge halfEdge) {
+<span class="nc bnc" id="L508" title="All 4 branches missed.">		return halfEdge.getFace() == boundary.getId() || isBoundary(getFace(halfEdge));</span>
+	}
+
+	@Override
+	public boolean isHole(@NotNull AFace face) {
+<span class="nc bnc" id="L513" title="All 4 branches missed.">		return isBoundary(face) &amp;&amp; face != boundary;</span>
+	}
+
+	@Override
+	public boolean isDestroyed(@NotNull AFace face) {
+<span class="nc" id="L518">		return face.isDestroyed();</span>
+	}
+
+	@Override
+	public boolean isDestroyed(@NotNull AHalfEdge edge) {
+<span class="fc" id="L523">		return edge.isDestroyed();</span>
+	}
+
+	@Override
+	public boolean isDestroyed(@NotNull AVertex vertex) {
+<span class="nc" id="L528">		return vertex.isDestroyed();</span>
+	}
+
+	@Override
+	public void setTwin(@NotNull AHalfEdge halfEdge, @NotNull AHalfEdge twin) {
+<span class="fc" id="L533">		halfEdge.setTwin(twin.getId());</span>
+<span class="fc" id="L534">		twin.setTwin(halfEdge.getId());</span>
+<span class="fc" id="L535">	}</span>
+
+	@Override
+	public void setNext(@NotNull AHalfEdge halfEdge, @NotNull AHalfEdge next) {
+<span class="fc" id="L539">		halfEdge.setNext(next.getId());</span>
+<span class="fc" id="L540">		next.setPrevious(halfEdge.getId());</span>
+<span class="fc" id="L541">	}</span>
+
+	@Override
+	public void setPrev(@NotNull AHalfEdge halfEdge, @NotNull AHalfEdge prev) {
+<span class="nc" id="L545">		halfEdge.setPrevious(prev.getId());</span>
+<span class="nc" id="L546">		prev.setNext(halfEdge.getId());</span>
+<span class="nc" id="L547">	}</span>
+
+	@Override
+	public void setFace(@NotNull AHalfEdge halfEdge, @NotNull AFace face) {
+<span class="nc" id="L551">		halfEdge.setFace(face.getId());</span>
+<span class="nc" id="L552">	}</span>
+
+	@Override
+	public void setEdge(@NotNull AFace face, @NotNull AHalfEdge edge) {
+<span class="fc" id="L556">		face.setEdge(edge.getId());</span>
+<span class="fc" id="L557">	}</span>
+
+	@Override
+	public void setEdge(@NotNull AVertex vertex, @NotNull AHalfEdge edge) {
+<span class="pc bpc" id="L561" title="2 of 4 branches missed.">		assert edge.getEnd() == vertex.getId();</span>
+<span class="pc bpc" id="L562" title="1 of 2 branches missed.">		if(edge.getEnd() != vertex.getId()) {</span>
+<span class="nc" id="L563">			throw new IllegalArgumentException(&quot;end of the edge is not equals to the vertex:&quot; + vertex.getId() + &quot; != &quot; + edge.getEnd());</span>
+		}
+<span class="fc" id="L565">		vertex.setEdge(edge.getId());</span>
+<span class="fc" id="L566">	}</span>
+
+	@Override
+	public void setVertex(@NotNull AHalfEdge halfEdge, @NotNull AVertex vertex) {
+<span class="nc" id="L570">		halfEdge.setEnd(vertex.getId());</span>
+<span class="nc" id="L571">	}</span>
+
+	@Override
+	public AHalfEdge createEdge(@NotNull AVertex vertex) {
+<span class="nc" id="L575">		int id = edges.size();</span>
+<span class="nc" id="L576">		AHalfEdge edge = new AHalfEdge(id, vertex.getId());</span>
+<span class="nc" id="L577">		edges.add(edge);</span>
+<span class="nc bnc" id="L578" title="All 2 branches missed.">		for (ObjectArrayList edgeProperty : halfEdgesData.values()) {</span>
+<span class="nc" id="L579">			edgeProperty.add(null);</span>
+<span class="nc" id="L580">		}</span>
+<span class="nc bnc" id="L581" title="All 2 branches missed.">		for(DoubleArrayList edgeDoubleProperty : halfEdgesDoubleData.values()) {</span>
+<span class="nc" id="L582">			edgeDoubleProperty.add(0.0);</span>
+<span class="nc" id="L583">		}</span>
+<span class="nc bnc" id="L584" title="All 2 branches missed.">		for(BooleanArrayList edgeBooleanProperty : halfEdgesBooleanData.values()) {</span>
+<span class="nc" id="L585">			edgeBooleanProperty.add(false);</span>
+<span class="nc" id="L586">		}</span>
+<span class="nc" id="L587">		numberOfEdges++;</span>
+<span class="nc" id="L588">		return edge;</span>
+	}
+
+	@Override
+	public AHalfEdge createEdge(@NotNull final AVertex vertex, @NotNull final AFace face) {
+<span class="fc" id="L593">		int id = edges.size();</span>
+<span class="fc" id="L594">		AHalfEdge edge = new AHalfEdge(id, vertex.getId(), face.getId());</span>
+<span class="fc" id="L595">		edges.add(edge);</span>
+<span class="pc bpc" id="L596" title="1 of 2 branches missed.">		for (ObjectArrayList edgeProperty : halfEdgesData.values()) {</span>
+<span class="nc" id="L597">			edgeProperty.add(null);</span>
+<span class="nc" id="L598">		}</span>
+<span class="pc bpc" id="L599" title="1 of 2 branches missed.">		for(DoubleArrayList edgeDoubleProperty : halfEdgesDoubleData.values()) {</span>
+<span class="nc" id="L600">			edgeDoubleProperty.add(0.0);</span>
+<span class="nc" id="L601">		}</span>
+<span class="pc bpc" id="L602" title="1 of 2 branches missed.">		for(BooleanArrayList edgeBooleanProperty : halfEdgesBooleanData.values()) {</span>
+<span class="nc" id="L603">			edgeBooleanProperty.add(false);</span>
+<span class="nc" id="L604">		}</span>
+<span class="fc" id="L605">		numberOfEdges++;</span>
+<span class="fc" id="L606">		return edge;</span>
+	}
+
+	@Override
+	public AFace createFace() {
+<span class="fc" id="L611">		return createFace(false);</span>
+	}
+
+	@Override
+	public AFace createFace(boolean hole) {
+<span class="fc" id="L616">		int id = faces.size();</span>
+<span class="fc" id="L617">		AFace face = new AFace(id, -1, hole);</span>
+<span class="fc" id="L618">		faces.add(face);</span>
+<span class="pc bpc" id="L619" title="1 of 2 branches missed.">		for (ObjectArrayList faceProperty : facesData.values()) {</span>
+<span class="nc" id="L620">			faceProperty.add(null);</span>
+<span class="nc" id="L621">		}</span>
+
+<span class="pc bpc" id="L623" title="1 of 2 branches missed.">		for(DoubleArrayList faceDoubleProperty : facesDoubleData.values()) {</span>
+<span class="nc" id="L624">			faceDoubleProperty.add(0.0);</span>
+<span class="nc" id="L625">		}</span>
+
+<span class="pc bpc" id="L627" title="1 of 2 branches missed.">		for(BooleanArrayList faceBooleanProperty : facesBooleanData.values()) {</span>
+<span class="nc" id="L628">			faceBooleanProperty.add(false);</span>
+<span class="nc" id="L629">		}</span>
+
+<span class="fc bfc" id="L631" title="All 2 branches covered.">		if(!hole) {</span>
+<span class="fc" id="L632">			numberOfFaces++;</span>
+		}
+		else {
+<span class="fc" id="L635">			holes.add(face);</span>
+<span class="fc" id="L636">			numberOfHoles++;</span>
+		}
+<span class="fc" id="L638">		return face;</span>
+	}
+
+	@Override
+	public IPoint createPoint(final double x, final double y) {
+<span class="fc" id="L643">		return new VPoint(x, y);</span>
+	}
+
+	@Override
+	public AVertex createVertex(final double x, final double y) {
+<span class="fc" id="L648">		return createVertex(createPoint(x, y));</span>
+	}
+
+	@Override
+	public AVertex createVertex(@NotNull final IPoint point) {
+<span class="fc" id="L653">		int id = vertices.size();</span>
+<span class="pc bpc" id="L654" title="1 of 2 branches missed.">		for (ObjectArrayList vertexProperty : verticesData.values()) {</span>
+<span class="nc" id="L655">			vertexProperty.add(null);</span>
+<span class="nc" id="L656">		}</span>
+<span class="pc bpc" id="L657" title="1 of 2 branches missed.">		for(DoubleArrayList vertexDoubleProperty : verticesDoubleData.values()) {</span>
+<span class="nc" id="L658">			vertexDoubleProperty.add(0.0);</span>
+<span class="nc" id="L659">		}</span>
+<span class="pc bpc" id="L660" title="1 of 2 branches missed.">		for(BooleanArrayList vertexBooleanProperty : verticesBooleanData.values()) {</span>
+<span class="nc" id="L661">			vertexBooleanProperty.add(false);</span>
+<span class="nc" id="L662">		}</span>
+<span class="fc" id="L663">		return new AVertex(id, point);</span>
+	}
+
+	@Override
+	public AFace getBorder() {
+<span class="nc" id="L668">		return boundary;</span>
+	}
+
+	@Override
+	public void insert(@NotNull final AVertex vertex) {
+<span class="nc bnc" id="L673" title="All 2 branches missed.">		if (vertex.getId() != vertices.size()) {</span>
+<span class="nc" id="L674">			throw new IllegalArgumentException(vertex.getId() + &quot; != &quot; + vertices.size());</span>
+		} else {
+<span class="nc" id="L676">			numberOfVertices++;</span>
+<span class="nc" id="L677">			vertices.add(vertex);</span>
+		}
+<span class="nc" id="L679">	}</span>
+
+	@Override
+	public void insertVertex(@NotNull final AVertex vertex) {
+<span class="pc bpc" id="L683" title="1 of 2 branches missed.">		if (vertex.getId() != vertices.size()) {</span>
+<span class="nc" id="L684">			throw new IllegalArgumentException(vertex.getId() + &quot; != &quot; + vertices.size());</span>
+		} else {
+<span class="fc" id="L686">			numberOfVertices++;</span>
+<span class="fc" id="L687">			vertices.add(vertex);</span>
+		}
+<span class="fc" id="L689">	}</span>
+
+	@Override
+	public void toHole(@NotNull AFace face) {
+<span class="nc bnc" id="L693" title="All 4 branches missed.">		assert !isDestroyed(face);</span>
+<span class="nc bnc" id="L694" title="All 2 branches missed.">		if(!isHole(face)) {</span>
+<span class="nc" id="L695">			holes.add(face);</span>
+<span class="nc" id="L696">			face.setBorder(true);</span>
+<span class="nc" id="L697">			numberOfHoles++;</span>
+<span class="nc" id="L698">			numberOfFaces--;</span>
+		}
+<span class="nc" id="L700">	}</span>
+
+	// these methods assume that all elements are contained in the mesh!
+	@Override
+	public void destroyFace(@NotNull final AFace face) {
+<span class="nc bnc" id="L705" title="All 2 branches missed.">		if (!isDestroyed(face)) {</span>
+<span class="nc" id="L706">			elementRemoved = true;</span>
+<span class="nc" id="L707">			numberOfFaces--;</span>
+
+<span class="nc bnc" id="L709" title="All 2 branches missed.">			if(isHole(face)) {</span>
+<span class="nc" id="L710">				numberOfHoles--;</span>
+			}
+
+<span class="nc" id="L713">			face.destroy();</span>
+		}
+<span class="nc" id="L715">	}</span>
+
+	@Override
+	public void destroyEdge(@NotNull final AHalfEdge edge) {
+<span class="nc bnc" id="L719" title="All 2 branches missed.">		if (!isDestroyed(edge)) {</span>
+<span class="nc" id="L720">			elementRemoved = true;</span>
+<span class="nc" id="L721">			numberOfEdges--;</span>
+<span class="nc" id="L722">			edge.destroy();</span>
+		}
+<span class="nc" id="L724">	}</span>
+
+	@Override
+	public void destroyVertex(@NotNull final AVertex vertex) {
+<span class="nc bnc" id="L728" title="All 2 branches missed.">		if (!isDestroyed(vertex)) {</span>
+<span class="nc" id="L729">			elementRemoved = true;</span>
+<span class="nc" id="L730">			numberOfVertices--;</span>
+<span class="nc" id="L731">			vertex.destroy();</span>
+		}
+<span class="nc" id="L733">	}</span>
+
+	@Override
+	public void setPoint(@NotNull final AVertex vertex, @NotNull final IPoint point) {
+<span class="nc" id="L737">		vertex.setPoint(point);</span>
+<span class="nc" id="L738">	}</span>
+
+	@Override
+	public Stream&lt;AFace&gt; streamFaces(@NotNull final Predicate&lt;AFace&gt; predicate) {
+<span class="nc" id="L742">		return faces.stream().filter(f -&gt; isAlive(f)).filter(predicate);</span>
+	}
+
+	@Override
+	public Stream&lt;AFace&gt; streamHoles() {
+<span class="nc bnc" id="L747" title="All 2 branches missed.">		return holes.stream().filter(f -&gt; !isDestroyed(f));</span>
+	}
+
+	@Override
+	public Stream&lt;AHalfEdge&gt; streamEdges() {
+<span class="pc bpc" id="L752" title="1 of 2 branches missed.">		return edges.stream().filter(e -&gt; !isDestroyed(e));</span>
+	}
+
+	@Override
+	public Stream&lt;AHalfEdge&gt; streamEdgesParallel() {
+<span class="nc bnc" id="L757" title="All 2 branches missed.">		return edges.parallelStream().filter(e -&gt; !e.isDestroyed());</span>
+	}
+
+	@Override
+	public Stream&lt;AVertex&gt; streamVertices() {
+<span class="nc bnc" id="L762" title="All 2 branches missed.">		return vertices.stream().filter(v -&gt; !v.isDestroyed());</span>
+	}
+
+	@Override
+	public Stream&lt;AVertex&gt; streamVerticesParallel() {
+<span class="nc bnc" id="L767" title="All 2 branches missed.">		return vertices.parallelStream().filter(v -&gt; !v.isDestroyed());</span>
+	}
+
+	@Override
+	public Iterable&lt;AHalfEdge&gt; getEdgeIt() {
+<span class="nc" id="L772">		return () -&gt; streamEdges().iterator();</span>
+	}
+
+	@Override
+	public AVertex getRandomVertex(@NotNull Random random) {
+<span class="nc" id="L777">		int startIndex = random.nextInt(vertices.size());</span>
+<span class="nc" id="L778">		int index = startIndex;</span>
+
+		// look above
+<span class="nc bnc" id="L781" title="All 4 branches missed.">		while (index &lt; vertices.size() &amp;&amp; isDestroyed(vertices.get(index))) {</span>
+<span class="nc" id="L782">			index++;</span>
+		}
+
+		// look below
+<span class="nc bnc" id="L786" title="All 2 branches missed.">		if(isDestroyed(vertices.get(index))) {</span>
+<span class="nc" id="L787">			index = startIndex - 1;</span>
+
+<span class="nc bnc" id="L789" title="All 4 branches missed.">			while (index &gt;= 0 &amp;&amp; isDestroyed(vertices.get(index))) {</span>
+<span class="nc" id="L790">				index--;</span>
+			}
+		}
+
+<span class="nc" id="L794">		return vertices.get(index);</span>
+	}
+
+	@Override
+	public int getNumberOfVertices() {
+<span class="nc" id="L799">		return numberOfVertices;</span>
+	}
+
+	@Override
+	public int getNumberOfFaces() {
+<span class="nc" id="L804">		return numberOfFaces;</span>
+	}
+
+	@Override
+	public int getNumberOfEdges() {
+<span class="nc" id="L809">		return numberOfEdges;</span>
+	}
+
+	@Override
+	public int getNumberOfHoles() {
+<span class="nc" id="L814">		return numberOfHoles;</span>
+	}
+
+	@Override
+	public boolean tryLock(@NotNull AVertex vertex) {
+<span class="nc" id="L819">		return vertex.getLock().tryLock();</span>
+	}
+
+	@Override
+	public void unlock(@NotNull AVertex vertex) {
+<span class="nc" id="L824">		vertex.getLock().unlock();</span>
+<span class="nc" id="L825">	}</span>
+
+	@Override
+    public synchronized AMesh clone() {
+        try {
+<span class="nc" id="L830">            AMesh clone = (AMesh)super.clone();</span>
+
+<span class="nc" id="L832">            List&lt;AFace&gt; cFaces = faces.stream().map(f -&gt; f.clone()).collect(Collectors.toList());</span>
+<span class="nc" id="L833">            List&lt;AHalfEdge&gt; cEdges = edges.stream().map(e -&gt; e.clone()).collect(Collectors.toList());</span>
+<span class="nc" id="L834">            List&lt;AVertex&gt; cVertices = vertices.stream().map(v -&gt; v.clone()).collect(Collectors.toList());</span>
+
+<span class="nc" id="L836">            clone.faces = cFaces;</span>
+<span class="nc" id="L837">            clone.edges = cEdges;</span>
+<span class="nc" id="L838">            clone.vertices = cVertices;</span>
+
+            // here we assume that the point-constructor is stateless!
+<span class="nc" id="L841">            clone.boundary = boundary.clone();</span>
+
+            // no deep copy of object properties
+<span class="nc" id="L844">	        clone.facesData = facesData;</span>
+<span class="nc" id="L845">	        clone.verticesData = verticesData;</span>
+<span class="nc" id="L846">	        clone.halfEdgesData = halfEdgesData;</span>
+
+	        // deep copy of primitive properties
+<span class="nc" id="L849">	        Map&lt;String, DoubleArrayList&gt; clonedFacesDoubleData = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L850" title="All 2 branches missed.">	        for(var entry : facesDoubleData.entrySet()) {</span>
+<span class="nc" id="L851">		        clonedFacesDoubleData.put(entry.getKey(), entry.getValue().clone());</span>
+<span class="nc" id="L852">	        }</span>
+<span class="nc" id="L853">	        clone.facesDoubleData = clonedFacesDoubleData;</span>
+
+<span class="nc" id="L855">	        Map&lt;String, DoubleArrayList&gt; clonedHalfEdgesDoubleData = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L856" title="All 2 branches missed.">	        for(var entry : halfEdgesDoubleData.entrySet()) {</span>
+<span class="nc" id="L857">		        clonedHalfEdgesDoubleData.put(entry.getKey(), entry.getValue().clone());</span>
+<span class="nc" id="L858">	        }</span>
+<span class="nc" id="L859">	        clone.halfEdgesDoubleData = clonedHalfEdgesDoubleData;</span>
+
+<span class="nc" id="L861">	        Map&lt;String, DoubleArrayList&gt; clonedVerticessDoubleData = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L862" title="All 2 branches missed.">	        for(var entry : verticesDoubleData.entrySet()) {</span>
+<span class="nc" id="L863">		        clonedVerticessDoubleData.put(entry.getKey(), entry.getValue().clone());</span>
+<span class="nc" id="L864">	        }</span>
+<span class="nc" id="L865">	        clone.verticesDoubleData = clonedVerticessDoubleData;</span>
+
+<span class="nc" id="L867">	        ArrayList&lt;DoubleArrayList&gt; clonedVerticessIndexedDoubleData = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L868" title="All 2 branches missed.">	        for(var entry : verticesIndexedDoubleData) {</span>
+<span class="nc" id="L869">		        clonedVerticessIndexedDoubleData.add(entry.clone());</span>
+<span class="nc" id="L870">	        }</span>
+<span class="nc" id="L871">	        clone.verticesIndexedDoubleData = clonedVerticessIndexedDoubleData;</span>
+
+<span class="nc" id="L873">	        Map&lt;String, BooleanArrayList&gt; clonedFacesBooleanData = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L874" title="All 2 branches missed.">	        for(var entry : facesBooleanData.entrySet()) {</span>
+<span class="nc" id="L875">		        clonedFacesBooleanData.put(entry.getKey(), entry.getValue().clone());</span>
+<span class="nc" id="L876">	        }</span>
+<span class="nc" id="L877">	        clone.facesBooleanData = clonedFacesBooleanData;</span>
+
+<span class="nc" id="L879">	        Map&lt;String, BooleanArrayList&gt; clonedHalfEdgesBooleanData = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L880" title="All 2 branches missed.">	        for(var entry : halfEdgesBooleanData.entrySet()) {</span>
+<span class="nc" id="L881">		        clonedHalfEdgesBooleanData.put(entry.getKey(), entry.getValue().clone());</span>
+<span class="nc" id="L882">	        }</span>
+<span class="nc" id="L883">	        clone.halfEdgesBooleanData = clonedHalfEdgesBooleanData;</span>
+
+<span class="nc" id="L885">	        Map&lt;String, BooleanArrayList&gt; clonedVerticessBooleanData = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L886" title="All 2 branches missed.">	        for(var entry : verticesBooleanData.entrySet()) {</span>
+<span class="nc" id="L887">		        clonedVerticessBooleanData.put(entry.getKey(), entry.getValue().clone());</span>
+<span class="nc" id="L888">	        }</span>
+<span class="nc" id="L889">	        clone.verticesBooleanData = clonedVerticessBooleanData;</span>
+
+<span class="nc" id="L891">            return clone;</span>
+
+<span class="nc" id="L893">        } catch (CloneNotSupportedException e) {</span>
+<span class="nc" id="L894">            throw new InternalError(e.getMessage());</span>
+        }
+    }
+
+	@Override
+	public IIncrementalTriangulation&lt;AVertex, AHalfEdge, AFace&gt; toTriangulation(final @NotNull IPointLocator.Type type) {
+<span class="nc" id="L900">		return IIncrementalTriangulation.createATriangulation(type, this);</span>
+	}
+
+	public void setPositions(final List&lt;IPoint&gt; positions) {
+<span class="nc bnc" id="L904" title="All 4 branches missed.">		assert positions.size() == numberOfVertices;</span>
+<span class="nc bnc" id="L905" title="All 2 branches missed.">		if (positions.size() != numberOfVertices) {</span>
+<span class="nc" id="L906">			throw new IllegalArgumentException(&quot;not equally many positions than vertices: &quot; + positions.size() + &quot; != &quot; + numberOfVertices);</span>
+		}
+
+<span class="nc" id="L909">		int j = 0;</span>
+<span class="nc bnc" id="L910" title="All 2 branches missed.">		for (AVertex vertex : vertices) {</span>
+<span class="nc bnc" id="L911" title="All 2 branches missed.">			if (!vertex.isDestroyed()) {</span>
+<span class="nc" id="L912">				vertex.setPoint(positions.get(j));</span>
+<span class="nc" id="L913">				j++;</span>
+			}
+<span class="nc" id="L915">		}</span>
+<span class="nc" id="L916">	}</span>
+
+    /**
+     * &lt;p&gt;Rearranges all indices of faces, vertices and halfEdges of the mesh according to
+     * the {@link Iterable} faceOrder. All indices start at 0 and will be incremented one by one.
+     * For example, the vertices of the first face of faceOrder will receive id 0,1 and 2.&lt;/p&gt;
+     *
+     * &lt;p&gt;Note: that every mapping id to vertex or id to halfEdge or id to face has to be recomputed!&lt;/p&gt;
+     * &lt;p&gt;Assumption: faceOrder contains all faces of this mesh.&lt;/p&gt;
+     * &lt;p&gt;Invariant: the geometry i.e. the connectivity and the vertex positions will not change.&lt;/p&gt;
+     *
+     * @param faceOrder the new order
+     */
+    public void arrangeMemory(@NotNull final Iterable&lt;AFace&gt; faceOrder) {
+        // clone the old one!
+<span class="nc" id="L931">        AMesh cMesh = clone();</span>
+
+        // merge some of them?
+<span class="nc" id="L934">        int nullIdentifier = -2;</span>
+
+        // rebuild
+<span class="nc" id="L937">        faces.clear();</span>
+<span class="nc" id="L938">        edges.clear();</span>
+<span class="nc" id="L939">        vertices.clear();</span>
+<span class="nc" id="L940">        holes.clear();</span>
+
+<span class="nc" id="L942">        int[] edgeMap = new int[cMesh.edges.size()];</span>
+<span class="nc" id="L943">        int[] vertexMap = new int[cMesh.vertices.size()];</span>
+<span class="nc" id="L944">        int[] faceMap = new int[cMesh.faces.size()];</span>
+
+<span class="nc" id="L946">        Arrays.fill(edgeMap, nullIdentifier);</span>
+<span class="nc" id="L947">        Arrays.fill(vertexMap, nullIdentifier);</span>
+<span class="nc" id="L948">        Arrays.fill(faceMap, nullIdentifier);</span>
+
+        // adjust all id's in order of faceOrder
+<span class="nc bnc" id="L951" title="All 2 branches missed.">        for(AFace face : faceOrder) {</span>
+<span class="nc" id="L952">            copyFace(face, vertexMap, edgeMap, faceMap, cMesh);</span>
+<span class="nc" id="L953">        }</span>
+
+	    // adjust all id's not contained in faceOrder in any order
+<span class="nc bnc" id="L956" title="All 2 branches missed.">	    for(AFace face : cMesh.faces) {</span>
+<span class="nc bnc" id="L957" title="All 2 branches missed.">        	if(!isDestroyed(face)) {</span>
+<span class="nc" id="L958">		        copyFace(face, vertexMap, edgeMap, faceMap, cMesh);</span>
+	        }
+<span class="nc" id="L960">	    }</span>
+
+        // repair the rest
+<span class="nc bnc" id="L963" title="All 2 branches missed.">        for(AFace face : faces) {</span>
+<span class="nc" id="L964">	        face.setEdge(edgeMap[face.getEdge()]);</span>
+<span class="nc" id="L965">        }</span>
+
+<span class="nc bnc" id="L967" title="All 2 branches missed.">        for(AHalfEdge halfEdge : edges) {</span>
+<span class="nc bnc" id="L968" title="All 2 branches missed.">        	if(vertexMap[halfEdge.getEnd()] == nullIdentifier) {</span>
+<span class="nc" id="L969">		        vertexMap[halfEdge.getEnd()] = vertices.size();</span>
+	        }
+<span class="nc" id="L971">            halfEdge.setEnd(vertexMap[halfEdge.getEnd()]);</span>
+
+            // boundary face
+<span class="nc bnc" id="L974" title="All 2 branches missed.">            if(halfEdge.getFace() != boundary.getId()) {</span>
+<span class="nc" id="L975">                halfEdge.setFace(faceMap[halfEdge.getFace()]);</span>
+            }
+            else {
+<span class="nc" id="L978">                halfEdge.setFace(boundary.getId());</span>
+            }
+
+<span class="nc" id="L981">            halfEdge.setTwin(edgeMap[halfEdge.getTwin()]);</span>
+<span class="nc" id="L982">            halfEdge.setPrevious(edgeMap[halfEdge.getPrevious()]);</span>
+<span class="nc" id="L983">            halfEdge.setNext(edgeMap[halfEdge.getNext()]);</span>
+<span class="nc" id="L984">        }</span>
+
+<span class="nc bnc" id="L986" title="All 2 branches missed.">        for(AVertex vertex : vertices) {</span>
+<span class="nc" id="L987">            vertex.setDown(vertexMap[vertex.getDown()]);</span>
+<span class="nc" id="L988">            vertex.setEdge(edgeMap[vertex.getEdge()]);</span>
+<span class="nc" id="L989">        }</span>
+
+        // fix the boundary
+<span class="nc" id="L992">        boundary.setEdge(edgeMap[boundary.getEdge()]);</span>
+
+        // fix properties
+<span class="nc" id="L995">	    rearrangeFacesData(faceMap, nullIdentifier);</span>
+<span class="nc" id="L996">	    rearrangeHalfEdgesData(edgeMap, nullIdentifier);</span>
+<span class="nc" id="L997">	    rearrangeVerticesData(vertexMap, nullIdentifier);</span>
+<span class="nc" id="L998">    }</span>
+
+	@Override
+	public &lt;CV&gt; IVertexContainerObject&lt;AVertex, AHalfEdge, AFace, CV&gt; getObjectVertexContainer(@NotNull final String name, final Class&lt;CV&gt; clazz) {
+<span class="nc" id="L1002">		return new IVertexContainerObject&lt;&gt;() {</span>
+<span class="nc" id="L1003">			private final ObjectArrayList&lt;CV&gt; list = getObjectArrayVertex(name, clazz);</span>
+
+			@Override
+			public CV getValue(@NotNull final AVertex v) {
+<span class="nc" id="L1007">				return list.get(v.getId());</span>
+			}
+
+			@Override
+			public void setValue(@NotNull final AVertex v, CV value) {
+<span class="nc" id="L1012">				list.set(v.getId(), value);</span>
+<span class="nc" id="L1013">			}</span>
+		};
+	}
+
+	@Override
+	public &lt;CV&gt; IEdgeContainerObject&lt;AVertex, AHalfEdge, AFace, CV&gt; getObjectEdgeContainer(@NotNull final String name, final Class&lt;CV&gt; clazz) {
+<span class="nc" id="L1019">		return new IEdgeContainerObject&lt;&gt;() {</span>
+<span class="nc" id="L1020">			private final ObjectArrayList&lt;CV&gt; list = getObjectArrayEdge(name, clazz);</span>
+
+			@Override
+			public CV getValue(@NotNull final AHalfEdge edge) {
+<span class="nc" id="L1024">				return list.get(edge.getId());</span>
+			}
+
+			@Override
+			public void setValue(@NotNull final AHalfEdge edge, CV value) {
+<span class="nc" id="L1029">				list.set(edge.getId(), value);</span>
+<span class="nc" id="L1030">			}</span>
+		};
+	}
+
+	@Override
+	public IEdgeContainerBoolean&lt;AVertex, AHalfEdge, AFace&gt; getBooleanEdgeContainer(@NotNull final String name) {
+<span class="nc" id="L1036">		return new IEdgeContainerBoolean&lt;&gt;() {</span>
+<span class="nc" id="L1037">			private final BooleanArrayList list = getBooleanArrayEdge(name);</span>
+
+			@Override
+			public boolean getValue(@NotNull final AHalfEdge vertex) {
+<span class="nc" id="L1041">				return list.getBoolean(vertex.getId());</span>
+			}
+
+			@Override
+			public void setValue(@NotNull final AHalfEdge vertex, final boolean value) {
+<span class="nc" id="L1046">				list.set(vertex.getId(), value);</span>
+<span class="nc" id="L1047">			}</span>
+		};
+	}
+
+	@Override
+	public IEdgeContainerDouble&lt;AVertex, AHalfEdge, AFace&gt; getDoubleEdgeContainer(@NotNull final String name) {
+<span class="nc" id="L1053">    	return new IEdgeContainerDouble&lt;&gt;() {</span>
+<span class="nc" id="L1054">			private final DoubleArrayList list = getDoubleArrayEdge(name);</span>
+
+			@Override
+			public double getValue(@NotNull final AHalfEdge edge) {
+<span class="nc" id="L1058">				return list.getDouble(edge.getId());</span>
+			}
+
+			@Override
+			public void setValue(@NotNull final AHalfEdge edge, final double value) {
+<span class="nc" id="L1063">				list.set(edge.getId(), value);</span>
+<span class="nc" id="L1064">			}</span>
+		};
+	}
+
+	@Override
+	public IVertexContainerDouble&lt;AVertex, AHalfEdge, AFace&gt; getDoubleVertexContainer(@NotNull final String name) {
+<span class="nc" id="L1070">		return new IVertexContainerDouble&lt;&gt;() {</span>
+<span class="nc" id="L1071">			private DoubleArrayList list = getDoubleArrayVertex(name);</span>
+
+			@Override
+			public double getValue(@NotNull final AVertex vertex) {
+<span class="nc" id="L1075">				return list.getDouble(vertex.getId());</span>
+			}
+
+			@Override
+			public void setValue(@NotNull final AVertex vertex, final double value) {
+<span class="nc" id="L1080">				list.set(vertex.getId(), value);</span>
+<span class="nc" id="L1081">			}</span>
+
+			@Override
+			public void reset() {
+<span class="nc" id="L1085">				verticesDoubleData.remove(name);</span>
+<span class="nc" id="L1086">				list = getDoubleArrayVertex(name);</span>
+<span class="nc" id="L1087">			}</span>
+		};
+	}
+
+	@Override
+	public IVertexContainerBoolean&lt;AVertex, AHalfEdge, AFace&gt; getBooleanVertexContainer(@NotNull String name) {
+<span class="nc" id="L1093">		return new IVertexContainerBoolean&lt;&gt;() {</span>
+<span class="nc" id="L1094">			private final BooleanArrayList list = getBooleanArrayVertex(name);</span>
+
+			@Override
+			public boolean getValue(@NotNull final AVertex vertex) {
+<span class="nc" id="L1098">				return list.getBoolean(vertex.getId());</span>
+			}
+
+			@Override
+			public void setValue(@NotNull final AVertex vertex, final boolean value) {
+<span class="nc" id="L1103">				list.set(vertex.getId(), value);</span>
+<span class="nc" id="L1104">			}</span>
+		};
+	}
+
+	private void rearrangeVerticesData(@NotNull int[] vertexMap, int nullIdentifier) {
+<span class="nc" id="L1109">	    int numberOfDestroyed = 0;</span>
+<span class="nc bnc" id="L1110" title="All 2 branches missed.">    	for(int i = 0; i &lt; vertexMap.length; i++) {</span>
+<span class="nc bnc" id="L1111" title="All 2 branches missed.">	    	if(vertexMap[i] != nullIdentifier) {</span>
+<span class="nc bnc" id="L1112" title="All 2 branches missed.">			    for(var list : verticesData.values()) {</span>
+<span class="nc" id="L1113">				    list.swap(vertexMap[i], i);</span>
+<span class="nc" id="L1114">			    }</span>
+
+<span class="nc bnc" id="L1116" title="All 2 branches missed.">			    for(var list : verticesDoubleData.values()) {</span>
+<span class="nc" id="L1117">				    double tmp = list.getDouble(vertexMap[i]);</span>
+<span class="nc" id="L1118">				    list.set(vertexMap[i], list.getDouble(i));</span>
+<span class="nc" id="L1119">				    list.set(i, tmp);</span>
+<span class="nc" id="L1120">			    }</span>
+
+<span class="nc bnc" id="L1122" title="All 2 branches missed.">			    for(var list : verticesIndexedDoubleData) {</span>
+<span class="nc" id="L1123">				    double tmp = list.getDouble(vertexMap[i]);</span>
+<span class="nc" id="L1124">				    list.set(vertexMap[i], list.getDouble(i));</span>
+<span class="nc" id="L1125">				    list.set(i, tmp);</span>
+<span class="nc" id="L1126">			    }</span>
+
+<span class="nc bnc" id="L1128" title="All 2 branches missed.">			    for(var list : verticesBooleanData.values()) {</span>
+<span class="nc" id="L1129">				    boolean tmp = list.getBoolean(vertexMap[i]);</span>
+<span class="nc" id="L1130">				    list.set(vertexMap[i], list.getBoolean(i));</span>
+<span class="nc" id="L1131">				    list.set(i, tmp);</span>
+<span class="nc" id="L1132">			    }</span>
+		    } else {
+<span class="nc" id="L1134">			    numberOfDestroyed++;</span>
+		    }
+	    }
+
+<span class="nc bnc" id="L1138" title="All 2 branches missed.">	    for(var list : verticesDoubleData.values()) {</span>
+<span class="nc" id="L1139">	    	list.size(vertexMap.length - numberOfDestroyed);</span>
+<span class="nc" id="L1140">	    	list.trim(vertexMap.length - numberOfDestroyed);</span>
+<span class="nc" id="L1141">	    }</span>
+
+<span class="nc bnc" id="L1143" title="All 2 branches missed.">	    for(var list : verticesIndexedDoubleData) {</span>
+<span class="nc" id="L1144">		    list.size(vertexMap.length - numberOfDestroyed);</span>
+<span class="nc" id="L1145">		    list.trim(vertexMap.length - numberOfDestroyed);</span>
+<span class="nc" id="L1146">	    }</span>
+
+<span class="nc bnc" id="L1148" title="All 2 branches missed.">	    for(var list : verticesBooleanData.values()) {</span>
+<span class="nc" id="L1149">			list.size(vertexMap.length- numberOfDestroyed);</span>
+<span class="nc" id="L1150">		    list.trim(vertexMap.length- numberOfDestroyed);</span>
+<span class="nc" id="L1151">	    }</span>
+
+<span class="nc bnc" id="L1153" title="All 2 branches missed.">	    for(var list : verticesData.values()) {</span>
+<span class="nc" id="L1154">	    	list.size(vertexMap.length - numberOfDestroyed);</span>
+<span class="nc" id="L1155">	    	list.trim(vertexMap.length- numberOfDestroyed);</span>
+<span class="nc" id="L1156">	    }</span>
+<span class="nc" id="L1157">    }</span>
+
+	private void rearrangeHalfEdgesData(@NotNull int[] edgeMap, int nullIdentifier) {
+<span class="nc" id="L1160">		int numberOfDestroyed = 0;</span>
+<span class="nc bnc" id="L1161" title="All 2 branches missed.">    	for(int i = 0; i &lt; edgeMap.length; i++) {</span>
+<span class="nc bnc" id="L1162" title="All 2 branches missed.">			if(edgeMap[i] != nullIdentifier) {</span>
+<span class="nc bnc" id="L1163" title="All 2 branches missed.">				for(var list : halfEdgesData.values()) {</span>
+<span class="nc" id="L1164">					list.swap(edgeMap[i], i);</span>
+<span class="nc" id="L1165">				}</span>
+
+<span class="nc bnc" id="L1167" title="All 2 branches missed.">				for(var list : halfEdgesDoubleData.values()) {</span>
+<span class="nc" id="L1168">					double tmp = list.getDouble(edgeMap[i]);</span>
+<span class="nc" id="L1169">					list.set(edgeMap[i], list.getDouble(i));</span>
+<span class="nc" id="L1170">					list.set(i, tmp);</span>
+<span class="nc" id="L1171">				}</span>
+
+<span class="nc bnc" id="L1173" title="All 2 branches missed.">				for(var list : halfEdgesBooleanData.values()) {</span>
+<span class="nc" id="L1174">					boolean tmp = list.getBoolean(edgeMap[i]);</span>
+<span class="nc" id="L1175">					list.set(edgeMap[i], list.getBoolean(i));</span>
+<span class="nc" id="L1176">					list.set(i, tmp);</span>
+<span class="nc" id="L1177">				}</span>
+			} else {
+<span class="nc" id="L1179">				numberOfDestroyed++;</span>
+			}
+		}
+
+
+<span class="nc bnc" id="L1184" title="All 2 branches missed.">		for(var list : halfEdgesDoubleData.values()) {</span>
+<span class="nc" id="L1185">			list.trim(edgeMap.length - numberOfDestroyed);</span>
+<span class="nc" id="L1186">		}</span>
+
+<span class="nc bnc" id="L1188" title="All 2 branches missed.">		for(var list : halfEdgesBooleanData.values()) {</span>
+<span class="nc" id="L1189">			list.trim(edgeMap.length - numberOfDestroyed);</span>
+<span class="nc" id="L1190">		}</span>
+
+<span class="nc bnc" id="L1192" title="All 2 branches missed.">		for(var list : halfEdgesData.values()) {</span>
+<span class="nc" id="L1193">			list.trim(edgeMap.length - numberOfDestroyed);</span>
+<span class="nc" id="L1194">		}</span>
+<span class="nc" id="L1195">	}</span>
+
+    private void rearrangeFacesData(@NotNull int[] faceMap,  int nullIdentifier) {
+<span class="nc" id="L1198">    	int numberOfDestroyed = 0;</span>
+<span class="nc bnc" id="L1199" title="All 2 branches missed.">	    for(int i = 0; i &lt; faceMap.length; i++) {</span>
+<span class="nc bnc" id="L1200" title="All 2 branches missed.">	    	if(faceMap[i] != nullIdentifier) {</span>
+<span class="nc bnc" id="L1201" title="All 2 branches missed.">			    for(var list : facesData.values()) {</span>
+<span class="nc" id="L1202">				    list.swap(faceMap[i], i);</span>
+<span class="nc" id="L1203">			    }</span>
+
+<span class="nc bnc" id="L1205" title="All 2 branches missed.">			    for(var list : facesDoubleData.values()) {</span>
+<span class="nc" id="L1206">				    double tmp = list.getDouble(faceMap[i]);</span>
+<span class="nc" id="L1207">				    list.set(faceMap[i], list.getDouble(i));</span>
+<span class="nc" id="L1208">				    list.set(i, tmp);</span>
+<span class="nc" id="L1209">			    }</span>
+
+<span class="nc bnc" id="L1211" title="All 2 branches missed.">			    for(var list : facesBooleanData.values()) {</span>
+<span class="nc" id="L1212">				    boolean tmp = list.getBoolean(faceMap[i]);</span>
+<span class="nc" id="L1213">				    list.set(faceMap[i], list.getBoolean(i));</span>
+<span class="nc" id="L1214">				    list.set(i, tmp);</span>
+<span class="nc" id="L1215">			    }</span>
+		    } else {
+<span class="nc" id="L1217">			    numberOfDestroyed++;</span>
+		    }
+	    }
+
+<span class="nc bnc" id="L1221" title="All 2 branches missed.">	    for(var list : facesDoubleData.values()) {</span>
+<span class="nc" id="L1222">	    	list.trim(faceMap.length - numberOfDestroyed);</span>
+<span class="nc" id="L1223">	    }</span>
+
+<span class="nc bnc" id="L1225" title="All 2 branches missed.">	    for(var list : facesBooleanData.values()) {</span>
+<span class="nc" id="L1226">	    	list.trim(faceMap.length - numberOfDestroyed);</span>
+<span class="nc" id="L1227">	    }</span>
+
+<span class="nc bnc" id="L1229" title="All 2 branches missed.">	    for(var list : facesData.values()) {</span>
+<span class="nc" id="L1230">	    	list.trim(faceMap.length - numberOfDestroyed);</span>
+<span class="nc" id="L1231">	    }</span>
+<span class="nc" id="L1232">    }</span>
+
+    private void copyFace(@NotNull final AFace face, @NotNull int[] vertexMap, @NotNull int[] edgeMap, @NotNull int[] faceMap, @NotNull final AMesh cMesh) {
+	    // merge some of them?
+<span class="nc" id="L1236">	    int nullIdentifier = -2;</span>
+
+	    // face not jet copied
+<span class="nc bnc" id="L1239" title="All 2 branches missed.">	    if(faceMap[face.getId()] == nullIdentifier) {</span>
+<span class="nc" id="L1240">		    AFace fClone = face.clone();</span>
+
+		    // 1. face
+<span class="nc" id="L1243">		    faceMap[face.getId()] = faces.size();</span>
+<span class="nc" id="L1244">		    fClone.setId(faces.size());</span>
+<span class="nc" id="L1245">		    faces.add(fClone);</span>
+
+<span class="nc bnc" id="L1247" title="All 2 branches missed.">		    if(cMesh.isHole(face)){</span>
+<span class="nc" id="L1248">		    	holes.add(fClone);</span>
+			}
+
+		    // 2. vertices
+<span class="nc bnc" id="L1252" title="All 2 branches missed.">		    for(AVertex v : cMesh.getVertexIt(face)) {</span>
+<span class="nc bnc" id="L1253" title="All 2 branches missed.">			    if(vertexMap[v.getId()] == nullIdentifier) {</span>
+<span class="nc" id="L1254">				    vertexMap[v.getId()] = vertices.size();</span>
+<span class="nc" id="L1255">				    AVertex cVertex = v.clone();</span>
+<span class="nc" id="L1256">				    cVertex.setId(vertices.size());</span>
+<span class="nc" id="L1257">				    vertices.add(cVertex);</span>
+			    }
+<span class="nc" id="L1259">		    }</span>
+
+		    // 3. edges
+<span class="nc bnc" id="L1262" title="All 2 branches missed.">		    for(AHalfEdge halfEdge : cMesh.getEdgeIt(face)) {</span>
+
+			    // origin
+<span class="nc bnc" id="L1265" title="All 2 branches missed.">			    if(edgeMap[halfEdge.getId()] == nullIdentifier) {</span>
+<span class="nc" id="L1266">				    edgeMap[halfEdge.getId()] = edges.size();</span>
+<span class="nc" id="L1267">				    AHalfEdge cHalfEdge = halfEdge.clone();</span>
+<span class="nc" id="L1268">				    cHalfEdge.setId(edges.size());</span>
+<span class="nc" id="L1269">				    edges.add(cHalfEdge);</span>
+			    }
+
+			    // twin
+<span class="nc" id="L1273">			    halfEdge = cMesh.getTwin(halfEdge);</span>
+<span class="nc bnc" id="L1274" title="All 2 branches missed.">			    if(edgeMap[halfEdge.getId()] == nullIdentifier) {</span>
+				    // origin
+<span class="nc" id="L1276">				    edgeMap[halfEdge.getId()] = edges.size();</span>
+<span class="nc" id="L1277">				    AHalfEdge cHalfEdge = halfEdge.clone();</span>
+<span class="nc" id="L1278">				    cHalfEdge.setId(edges.size());</span>
+<span class="nc" id="L1279">				    edges.add(cHalfEdge);</span>
+			    }
+<span class="nc" id="L1281">		    }</span>
+	    }
+<span class="nc" id="L1283">    }</span>
+
+    /**
+     * &lt;p&gt;This method rearranges the indices of faces, vertices and edges according to their positions.
+     * After the call, neighbouring faces are near arrange inside the face {@link ArrayList}.&lt;/p&gt;
+     *
+     * &lt;p&gt;Note: that any mapping id to vertex or id to halfEdge or id to face has to be recomputed!&lt;/p&gt;
+     */
+    private void spatialSort() {
+        // get the bound for the space filling curve!
+<span class="nc" id="L1293">        double maxX = Double.MIN_VALUE;</span>
+<span class="nc" id="L1294">        double maxY = Double.MIN_VALUE;</span>
+<span class="nc" id="L1295">        double minX = Double.MAX_VALUE;</span>
+<span class="nc" id="L1296">        double minY = Double.MAX_VALUE;</span>
+
+<span class="nc" id="L1298">        List&lt;VPoint&gt; centroids = new ArrayList&lt;&gt;(this.numberOfFaces);</span>
+
+<span class="nc bnc" id="L1300" title="All 2 branches missed.">	    for (AFace face : faces) {</span>
+<span class="nc" id="L1301">		    VPoint incenter = GeometryUtils.getPolygonCentroid(getVertices(face));</span>
+<span class="nc" id="L1302">		    centroids.add(incenter);</span>
+<span class="nc" id="L1303">		    maxX = Math.max(maxX, incenter.getX());</span>
+<span class="nc" id="L1304">		    maxY = Math.max(maxY, incenter.getY());</span>
+
+<span class="nc" id="L1306">		    minX = Math.min(minX, incenter.getX());</span>
+<span class="nc" id="L1307">		    minY = Math.min(minY, incenter.getY());</span>
+<span class="nc" id="L1308">	    }</span>
+
+<span class="nc" id="L1310">        SpaceFillingCurve spaceFillingCurve = new SpaceFillingCurve(new VRectangle(minX, minY, maxX-minX, maxY-minY));</span>
+
+        // TODO: implement faster sorting using radix sort see: http://www.diss.fu-berlin.de/diss/servlets/MCRFileNodeServlet/FUDISS_derivate_000000003494/2_kap2.pdf?hosts=
+        // page 18
+<span class="nc" id="L1314">        List&lt;AFace&gt; sortedFaces = new ArrayList&lt;&gt;(faces.size());</span>
+<span class="nc" id="L1315">        sortedFaces.addAll(this.faces);</span>
+<span class="nc" id="L1316">        sortedFaces.sort((f1, f2) -&gt; {</span>
+<span class="nc" id="L1317">	        double i1 = spaceFillingCurve.compute(centroids.get(f1.getId()));</span>
+<span class="nc" id="L1318">	        double i2 = spaceFillingCurve.compute(centroids.get(f2.getId()));</span>
+<span class="nc" id="L1319">	        return Double.compare(i1, i2);</span>
+        });
+<span class="nc" id="L1321">        arrangeMemory(sortedFaces);</span>
+<span class="nc" id="L1322">    }</span>
+
+
+
+	/**
+	 * &lt;p&gt;Removes all destroyed object from this mesh and re-arranges all indices.&lt;/p&gt;
+     *
+     * &lt;p&gt;Note: that any mapping id to vertex or id to halfEdge or id to face has to be recomputed!&lt;/p&gt;
+	 */
+	public void garbageCollection() {
+<span class="nc" id="L1332">		int nullIdentifier = -2;</span>
+<span class="nc" id="L1333">		int[] faceIdMap = new int[faces.size()];</span>
+<span class="nc" id="L1334">		int[] edgeIdMap = new int[edges.size()];</span>
+<span class="nc" id="L1335">		int[] vertexIdMap = new int[vertices.size()];</span>
+
+<span class="nc" id="L1337">		Arrays.fill(faceIdMap, nullIdentifier);</span>
+<span class="nc" id="L1338">		Arrays.fill(edgeIdMap, nullIdentifier);</span>
+<span class="nc" id="L1339">		Arrays.fill(vertexIdMap, nullIdentifier);</span>
+
+<span class="nc" id="L1341">		int i = 0;</span>
+<span class="nc" id="L1342">		int j = 0;</span>
+<span class="nc bnc" id="L1343" title="All 2 branches missed.">		for (AFace face : faces) {</span>
+<span class="nc bnc" id="L1344" title="All 2 branches missed.">			if (face.isDestroyed()) {</span>
+<span class="nc" id="L1345">				j--;</span>
+			} else {
+<span class="nc" id="L1347">				faceIdMap[i] = j;</span>
+			}
+<span class="nc" id="L1349">			i++;</span>
+<span class="nc" id="L1350">			j++;</span>
+<span class="nc" id="L1351">		}</span>
+
+<span class="nc" id="L1353">		i = 0;</span>
+<span class="nc" id="L1354">		j = 0;</span>
+<span class="nc bnc" id="L1355" title="All 2 branches missed.">		for (AHalfEdge edge : edges) {</span>
+<span class="nc bnc" id="L1356" title="All 2 branches missed.">			if (edge.isDestroyed()) {</span>
+<span class="nc" id="L1357">				j--;</span>
+			} else {
+<span class="nc" id="L1359">				edgeIdMap[i] = j;</span>
+			}
+<span class="nc" id="L1361">			i++;</span>
+<span class="nc" id="L1362">			j++;</span>
+<span class="nc" id="L1363">		}</span>
+
+<span class="nc" id="L1365">		i = 0;</span>
+<span class="nc" id="L1366">		j = 0;</span>
+<span class="nc bnc" id="L1367" title="All 2 branches missed.">		for (AVertex vertex : vertices) {</span>
+<span class="nc bnc" id="L1368" title="All 2 branches missed.">			if (vertex.isDestroyed()) {</span>
+<span class="nc" id="L1369">				j--;</span>
+			} else {
+<span class="nc" id="L1371">				vertexIdMap[i] = j;</span>
+			}
+<span class="nc" id="L1373">			i++;</span>
+<span class="nc" id="L1374">			j++;</span>
+<span class="nc" id="L1375">		}</span>
+
+<span class="nc bnc" id="L1377" title="All 2 branches missed.">		faces = faces.stream().filter(f -&gt; !f.isDestroyed()).collect(Collectors.toList());</span>
+<span class="nc bnc" id="L1378" title="All 2 branches missed.">		edges = edges.stream().filter(e -&gt; !e.isDestroyed()).collect(Collectors.toList());</span>
+<span class="nc bnc" id="L1379" title="All 2 branches missed.">		vertices = vertices.stream().filter(v -&gt; !v.isDestroyed()).collect(Collectors.toList());</span>
+
+<span class="nc" id="L1381">		i = 0;</span>
+<span class="nc bnc" id="L1382" title="All 2 branches missed.">		for (AFace face : faces) {</span>
+<span class="nc" id="L1383">			face.setId(faceIdMap[face.getId()]);</span>
+<span class="nc" id="L1384">			face.setEdge(edgeIdMap[face.getEdge()]);</span>
+<span class="nc bnc" id="L1385" title="All 4 branches missed.">			assert face.getId() == i;</span>
+<span class="nc" id="L1386">			i++;</span>
+<span class="nc" id="L1387">		}</span>
+
+<span class="nc" id="L1389">		i = 0;</span>
+<span class="nc bnc" id="L1390" title="All 2 branches missed.">		for (AVertex vertex : vertices) {</span>
+<span class="nc" id="L1391">			vertex.setId(vertexIdMap[vertex.getId()]);</span>
+<span class="nc" id="L1392">			vertex.setEdge(edgeIdMap[vertex.getEdge()]);</span>
+<span class="nc bnc" id="L1393" title="All 4 branches missed.">			assert vertex.getId() == i;</span>
+<span class="nc" id="L1394">			i++;</span>
+<span class="nc" id="L1395">		}</span>
+
+<span class="nc" id="L1397">		i = 0;</span>
+<span class="nc bnc" id="L1398" title="All 2 branches missed.">		for (AHalfEdge edge : edges) {</span>
+<span class="nc" id="L1399">			edge.setId(edgeIdMap[edge.getId()]);</span>
+<span class="nc" id="L1400">			edge.setEnd(vertexIdMap[edge.getEnd()]);</span>
+<span class="nc" id="L1401">			edge.setNext(edgeIdMap[edge.getNext()]);</span>
+<span class="nc" id="L1402">			edge.setPrevious(edgeIdMap[edge.getPrevious()]);</span>
+<span class="nc" id="L1403">			edge.setTwin(edgeIdMap[edge.getTwin()]);</span>
+<span class="nc bnc" id="L1404" title="All 2 branches missed.">			if (edge.getFace() != boundary.getId()) {</span>
+<span class="nc" id="L1405">				edge.setFace(faceIdMap[edge.getFace()]);</span>
+			}
+
+<span class="nc bnc" id="L1408" title="All 4 branches missed.">			assert edge.getId() == i;</span>
+<span class="nc" id="L1409">			i++;</span>
+<span class="nc" id="L1410">		}</span>
+
+		// fix properties
+<span class="nc" id="L1413">		rearrangeFacesData(faceIdMap, nullIdentifier);</span>
+<span class="nc" id="L1414">		rearrangeHalfEdgesData(edgeIdMap, nullIdentifier);</span>
+<span class="nc" id="L1415">		rearrangeVerticesData(vertexIdMap, nullIdentifier);</span>
+
+<span class="nc bnc" id="L1417" title="All 8 branches missed.">		assert (getNumberOfVertices() == vertices.size()) &amp;&amp; (getNumberOfEdges() == edges.size()) &amp;&amp; (getNumberOfFaces() == faces.size()-holes.size());</span>
+<span class="nc" id="L1418">	}</span>
+
+	/**
+	 * &lt;p&gt;Creates a very simple mesh consisting of two triangles ((-100, 0), (100, 0), (0, 1)) and ((0, -1), (-100, 0), (100, 0)).&lt;/p&gt;
+	 *
+	 * @return the created mesh
+	 */
+	public static AMesh createSimpleTriMesh() {
+<span class="nc" id="L1426">		AMesh mesh = new AMesh();</span>
+<span class="nc" id="L1427">		IMesh.createSimpleTriMesh(mesh);</span>
+<span class="nc" id="L1428">		return mesh;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DAG.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">DAG.java</span></div><h1>DAG.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+import org.jetbrains.annotations.NotNull;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Predicate;
+
+/**
+ * Directed Acyclic graph. Each node of the DAG is a DAG itself.
+ *
+ * @param &lt;E&gt; type of the elements of the DAG.
+ */
+public class DAG&lt;E&gt; {
+
+	/**
+	 * The element of this DAG-Node.
+	 */
+	private final E element;
+
+	/**
+	 * The children of the DAG-Node.
+	 */
+	private final List&lt;DAG&lt;E&gt;&gt; children;
+
+	/**
+	 * Default constructor.
+	 * @param element the element of the Dag-node
+	 */
+<span class="fc" id="L35">	public DAG(@NotNull final E element) {</span>
+<span class="fc" id="L36">		this.element = element;</span>
+<span class="fc" id="L37">		children = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L38">	}</span>
+
+	/**
+	 * Returns all child nodes of the DAG.
+	 * @return all child nodes of the DAG
+	 */
+	public List&lt;DAG&lt;E&gt;&gt; getChildren() {
+<span class="fc" id="L45">		return children;</span>
+	}
+
+	/**
+	 * Adds a new element as child node to the DAG.
+	 * @param child a new element
+	 */
+	public void addChild(E child) {
+<span class="nc" id="L53">		this.children.add(new DAG&lt;E&gt;(child));</span>
+<span class="nc" id="L54">	}</span>
+
+	/**
+	 * Adds a new Node to as child node to the DAG.
+	 * @param child a new child node
+	 */
+	public void addChild(DAG&lt;E&gt; child) {
+<span class="fc" id="L61">		this.children.add(child);</span>
+<span class="fc" id="L62">	}</span>
+
+	/**
+	 * Returns the element of the DAG.
+	 * @return the element of the DAG
+	 */
+	public E getElement() {
+<span class="fc" id="L69">		return element;</span>
+	}
+
+	public Collection&lt;E&gt; collectLeafs() {
+<span class="nc" id="L73">		Collection&lt;E&gt; leafs = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L74">		LinkedList&lt;DAG&lt;E&gt;&gt; nodesToVisit = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L75">		nodesToVisit.add(this);</span>
+
+<span class="nc bnc" id="L77" title="All 2 branches missed.">		while (!nodesToVisit.isEmpty()) {</span>
+<span class="nc" id="L78">			DAG&lt;E&gt; currentNode = nodesToVisit.removeLast();</span>
+<span class="nc" id="L79">			nodesToVisit.addAll(currentNode.children);</span>
+
+<span class="nc bnc" id="L81" title="All 2 branches missed.">			if(currentNode.isLeaf())</span>
+<span class="nc" id="L82">				leafs.add(currentNode.getElement());</span>
+<span class="nc" id="L83">		}</span>
+
+<span class="nc" id="L85">		return leafs;</span>
+	}
+
+	/**
+	 * Test whether this DAG-Node is a child or not.
+	 *
+	 * @return true if this node is a child node, false otherwise.
+	 */
+	public boolean isLeaf(){
+<span class="fc" id="L94">		return children.isEmpty();</span>
+	}
+
+	/**
+	 * Finds the first DAG-node element in a dept first fashion.
+	 *
+	 * @param test the predicate the element of the DAG-node has to fulfill.
+	 *
+	 * @return (optional) the first DAG-node element in a dept first fashion
+	 */
+	public Optional&lt;E&gt; findFirstElement(final Predicate&lt;E&gt; test){
+<span class="nc" id="L105">		Optional&lt;DAG&lt;E&gt;&gt; optDag = findFirst(test);</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		if(optDag.isPresent()) {</span>
+<span class="nc" id="L107">			return Optional.of(optDag.get().getElement());</span>
+		}
+		else {
+<span class="nc" id="L110">			return Optional.empty();</span>
+		}
+	}
+
+	/**
+	 * Finds the first DAG-node in a dept first fashion.
+	 * @param test the predicate the element of the DAG-node has to fulfill.
+	 *
+	 * @return (optional) the first DAG-node in a dept first fashion.
+	 */
+	public Optional&lt;DAG&lt;E&gt;&gt; findFirst(final Predicate&lt;E&gt; test){
+<span class="nc" id="L121">		LinkedList&lt;DAG&lt;E&gt;&gt; nodesToVisit = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L122">		nodesToVisit.add(this);</span>
+
+<span class="nc bnc" id="L124" title="All 2 branches missed.">		while(!nodesToVisit.isEmpty()) {</span>
+<span class="nc" id="L125">			DAG&lt;E&gt; currentNode = nodesToVisit.removeLast();</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">			if(test.test(currentNode.getElement())) {</span>
+<span class="nc" id="L127">				return Optional.of(currentNode);</span>
+			}
+<span class="nc" id="L129">			nodesToVisit.addAll(currentNode.children);</span>
+<span class="nc" id="L130">		}</span>
+
+<span class="nc" id="L132">		return Optional.empty();</span>
+	}
+
+	/**
+	 * Returns the last node of a path of elements that satisfy the test.
+	 * The path will be constructed in a dept first fashion, therefore there
+	 * may exist other paths.
+	 *
+	 * @param test the test that has to be satisfied
+	 * @return the last node of a path of elements that satisfy the test
+	 */
+	public Optional&lt;DAG&lt;E&gt;&gt; matchFirst(final Predicate&lt;E&gt; test) {
+
+<span class="nc" id="L145">		DAG&lt;E&gt; currentNode = this;</span>
+
+<span class="nc bnc" id="L147" title="All 2 branches missed.">		if(!test.test(currentNode.getElement())){</span>
+<span class="nc" id="L148">			return Optional.empty();</span>
+		}
+		else {
+<span class="nc bnc" id="L151" title="All 2 branches missed.">			while(!currentNode.isLeaf()) {</span>
+<span class="nc" id="L152">				Optional&lt;DAG&lt;E&gt;&gt; opt = currentNode.children.stream().filter(node -&gt; test.test(node.getElement())).findFirst();</span>
+
+				// we stop at the last path element we found
+<span class="nc bnc" id="L155" title="All 2 branches missed.">				if(!opt.isPresent()) {</span>
+<span class="nc" id="L156">					return Optional.of(currentNode);</span>
+				}
+				else {
+<span class="nc" id="L159">					currentNode = opt.get();</span>
+				}
+<span class="nc" id="L161">			}</span>
+		}
+
+<span class="nc" id="L164">		return Optional.of(currentNode);</span>
+	}
+
+	/**
+	 * Returns a set of Dag elements containing all leafs such that there is a path
+	 * to the leaf and for each node on the path the condition is feasible including
+	 * the leaf itself.
+	 *
+	 * @param test a condition which has to be feasible for the path from leaf to leaf
+	 * @return a set of leaf Dag elements
+	 */
+	public Set&lt;DAG&lt;E&gt;&gt; matchAll(final Predicate&lt;E&gt; test) {
+<span class="nc" id="L176">		Set&lt;DAG&lt;E&gt;&gt; leafs = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L177">		LinkedList&lt;DAG&lt;E&gt;&gt; nodesToVisit = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L178">		nodesToVisit.add(this);</span>
+
+<span class="nc bnc" id="L180" title="All 2 branches missed.">		while(!nodesToVisit.isEmpty()) {</span>
+<span class="nc" id="L181">			DAG&lt;E&gt; currentNode = nodesToVisit.removeLast();</span>
+
+<span class="nc bnc" id="L183" title="All 2 branches missed.">			if(test.test(currentNode.getElement())) {</span>
+<span class="nc" id="L184">				nodesToVisit.addAll(currentNode.children);</span>
+
+<span class="nc bnc" id="L186" title="All 2 branches missed.">				if(currentNode.isLeaf()) {</span>
+<span class="nc" id="L187">					leafs.add(currentNode);</span>
+				}
+			}
+<span class="nc" id="L190">		}</span>
+
+<span class="nc" id="L192">		return leafs;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

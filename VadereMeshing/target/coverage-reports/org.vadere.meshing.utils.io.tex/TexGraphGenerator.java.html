@@ -1,0 +1,655 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TexGraphGenerator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.utils.io.tex</a> &gt; <span class="el_source">TexGraphGenerator.java</span></div><h1>TexGraphGenerator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.utils.io.tex;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VTriangle;
+
+import java.awt.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+
+/**
+ * @author Benedikt Zoennchen
+ */
+<span class="nc" id="L30">public class TexGraphGenerator {</span>
+
+	public static final String STANDALONE_HEADER =&quot;\\documentclass{standalone}\n&quot; +
+			&quot;\\usepackage{tikz}\n&quot; +
+			&quot;\\begin{document}&quot;;
+
+	public static final String STANDALONE_FOOTER = &quot;\\end{document}\n&quot;;
+<span class="fc" id="L37">	private static final Color DEFAULT_VERTEX_COLOR = Color.BLACK;</span>
+<span class="fc" id="L38">	private static final Color DEFAULT_EDGE_COLOR = Color.BLACK;</span>
+<span class="fc" id="L39">	private static final Color DEFAULT_FACE_COLOR = Color.WHITE;</span>
+
+
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; String toTikz(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh, final float scaling){
+<span class="nc" id="L44">		return toTikz(mesh, scaling, false);</span>
+	}
+
+
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; String toTikz(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh, boolean standalone){
+<span class="nc" id="L50">		return toTikz(mesh, f -&gt; DEFAULT_FACE_COLOR, null, null, 1.0f, false);</span>
+				//toTikz(mesh, 1.0f, standalone);
+	}
+
+	public static String toTikz(@NotNull final Collection&lt;VLine&gt; lines) {
+<span class="fc" id="L55">		return toTikz(lines, Collections.EMPTY_LIST, true, 1.0);</span>
+	}
+
+	public static String toTikz(
+			@NotNull final Collection&lt;VLine&gt; lines,
+			@NotNull final Collection&lt;VPolygon&gt; polygons,
+			boolean drawVertices,
+			final double scaling) {
+<span class="fc" id="L63">		StringBuilder builder = new StringBuilder();</span>
+
+<span class="fc" id="L65">		builder.append(&quot;\\documentclass{standalone}\n&quot;);</span>
+<span class="fc" id="L66">		builder.append(&quot;\\usepackage{tikz}\n\n&quot;);</span>
+
+<span class="fc" id="L68">		builder.append(&quot;% Color Definitions\n&quot;);</span>
+<span class="fc" id="L69">		String colorTextPattern = &quot;\\definecolor{%s}{RGB}{%d,%d,%d}\n&quot;;</span>
+<span class="fc" id="L70">		builder.append(String.format(Locale.US, colorTextPattern, &quot;vertexColor1&quot;, DEFAULT_EDGE_COLOR.getRed(), DEFAULT_EDGE_COLOR.getGreen(), DEFAULT_EDGE_COLOR.getBlue()));</span>
+<span class="fc" id="L71">		builder.append(String.format(Locale.US, colorTextPattern, &quot;vertexColor1Fill&quot;, DEFAULT_EDGE_COLOR.getRed(), DEFAULT_EDGE_COLOR.getGreen(), DEFAULT_EDGE_COLOR.getBlue()));</span>
+<span class="fc" id="L72">		builder.append(String.format(Locale.US, colorTextPattern, &quot;faceColor1&quot;, DEFAULT_EDGE_COLOR.getRed(), DEFAULT_EDGE_COLOR.getGreen(), DEFAULT_EDGE_COLOR.getBlue()));</span>
+<span class="fc" id="L73">		builder.append(String.format(Locale.US, colorTextPattern, &quot;faceColor1Fill&quot;, DEFAULT_FACE_COLOR.getRed(), DEFAULT_FACE_COLOR.getGreen(), DEFAULT_FACE_COLOR.getBlue()));</span>
+<span class="fc" id="L74">		builder.append(String.format(Locale.US, colorTextPattern, &quot;edgeColor1&quot;, DEFAULT_EDGE_COLOR.getRed(), DEFAULT_EDGE_COLOR.getGreen(), DEFAULT_EDGE_COLOR.getBlue()));</span>
+
+<span class="fc" id="L76">		builder.append(&quot;\\pgfmathsetmacro{\\circleSize}{1.5pt}&quot;);</span>
+<span class="fc" id="L77">		builder.append(&quot;\\begin{document}\n&quot;);</span>
+<span class="fc" id="L78">		builder.append(&quot;% Change scaling to [x=1mm,y=1mm] if TeX reports \&quot;Dimension too large\&quot;.\n&quot;);</span>
+<span class="fc" id="L79">		builder.append(&quot;\\begin{tikzpicture}\n&quot;);</span>
+<span class="fc" id="L80">		builder.append(&quot;[x=1cm,y=1cm]\n&quot;);</span>
+
+<span class="fc bfc" id="L82" title="All 2 branches covered.">		for(VLine line : lines) {</span>
+<span class="fc" id="L83">			String colorName = &quot;edgeColor1&quot;;</span>
+<span class="fc" id="L84">			builder.append(&quot;\\draw[color=&quot;+colorName+&quot;](&quot;+toString(line.getX1())+&quot;,&quot;+toString(line.getY1())+&quot;) -- (&quot;+toString(line.getX2())+&quot;,&quot;+toString(line.getY2())+&quot;);\n&quot;);</span>
+<span class="fc" id="L85">		}</span>
+
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">		for(VPolygon polygon : polygons) {</span>
+<span class="nc" id="L88">			String colorName = &quot;faceColor1&quot;;</span>
+			//String tikzColor = &quot;{rgb,255:red,&quot;+c.getRed()+&quot;;green,&quot;+c.getGreen()+&quot;;blue,&quot;+c.getBlue()+&quot;}&quot;;
+<span class="nc" id="L90">			List&lt;VPoint&gt; points = polygon.getPoints();</span>
+<span class="nc" id="L91">			VPoint first = points.get(0);</span>
+<span class="nc" id="L92">			String poly = points.stream().map(v -&gt; &quot;(&quot;+toString(v.getX())+&quot;,&quot;+toString(v.getY())+&quot;)&quot;).reduce((s1, s2) -&gt; s1 + &quot;--&quot; + s2).get() + &quot;-- (&quot;+toString(first.getX())+&quot;,&quot;+toString(first.getY())+&quot;)&quot;;</span>
+
+			//builder.append(&quot;\\fill[fill=&quot;+tikzColor+&quot;]&quot; + poly + &quot;;\n&quot;);
+<span class="nc" id="L95">			builder.append(&quot;\\filldraw[color=&quot;+colorName+&quot;,fill=&quot;+colorName+&quot;Fill]&quot; + poly + &quot;;\n&quot;);</span>
+<span class="nc" id="L96">		}</span>
+
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">		if(drawVertices) {</span>
+<span class="fc" id="L99">			String colorName = &quot;vertexColor1&quot;;</span>
+<span class="pc bpc" id="L100" title="1 of 2 branches missed.">			for(VPolygon polygon : polygons) {</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">				for (VPoint point : polygon.getPath()) {</span>
+					//String tikzColor = &quot;{rgb,255:red,&quot;+c.getRed()+&quot;;green,&quot;+c.getGreen()+&quot;;blue,&quot;+c.getBlue()+&quot;}&quot;;
+<span class="nc" id="L103">					builder.append(&quot;\\draw[color=&quot; + colorName + &quot;, fill=&quot; + colorName + &quot;Fill](&quot; + toString(point.getX()) + &quot;,&quot; + toString(point.getY()) + &quot;) circle (\\circleSize);\n&quot;);</span>
+<span class="nc" id="L104">				}</span>
+<span class="nc" id="L105">			}</span>
+
+<span class="fc bfc" id="L107" title="All 2 branches covered.">			for(VLine linne : lines) {</span>
+<span class="fc" id="L108">				builder.append(&quot;\\draw[color=&quot; + colorName + &quot;, fill=&quot; + colorName + &quot;Fill](&quot; + toString(linne.getP1().getX()) + &quot;,&quot; + toString(linne.getP1().getY()) + &quot;) circle (\\circleSize);\n&quot;);</span>
+<span class="fc" id="L109">				builder.append(&quot;\\draw[color=&quot; + colorName + &quot;, fill=&quot; + colorName + &quot;Fill](&quot; + toString(linne.getP2().getX()) + &quot;,&quot; + toString(linne.getP2().getY()) + &quot;) circle (\\circleSize);\n&quot;);</span>
+<span class="fc" id="L110">			}</span>
+		}
+
+
+<span class="fc" id="L114">		builder.append(&quot;\\end{tikzpicture}\n&quot;);</span>
+<span class="fc" id="L115">		builder.append(&quot;\\end{document}\n&quot;);</span>
+<span class="fc" id="L116">		return builder.toString();</span>
+	}
+
+
+	/**
+	 * Transforms a {@link IMesh} into a tikz string. The tikz graphic is scaled by the scaling.
+	 *
+	 * @param mesh      the mesh
+	 * @param scaling   the scaling of the tikz graphics
+	 *
+	 * @param &lt;V&gt; the type of the vertices
+	 * @param &lt;E&gt; the type of the half-edges
+	 * @param &lt;F&gt; the type of the faces
+	 *
+	 * @return a string representing a tikz graphic
+	 */
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; String toTikz(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh, final float scaling, final boolean standalone){
+<span class="nc" id="L134">		return toTikz(mesh, f -&gt; DEFAULT_FACE_COLOR, null, null, 1.0f, true);</span>
+	}
+
+	private static String toString(final double z) {
+<span class="fc" id="L138">		return String.format(Locale.ENGLISH, &quot;%.4f&quot;, z);</span>
+	}
+
+	/**
+	 * Transforms a {@link IMesh} into a tikz string. The tikz graphic is scaled by the scaling.
+	 *
+	 * @param mesh      the mesh
+	 *
+	 * @param &lt;V&gt; the type of the vertices
+	 * @param &lt;E&gt; the type of the half-edges
+	 * @param &lt;F&gt; the type of the faces
+	 *
+	 * @return a string representing a tikz graphics
+	 */
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; String toTikz(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh){
+<span class="nc" id="L154">		return toTikz(mesh, 1.0f);</span>
+	}
+
+	/**
+	 * Transforms a {@link IMesh} into a tikz string. The tikz graphic is scaled by the scaling. Each face
+	 * of the mesh is filled by the color defined by the coloring-function.
+	 *
+	 * @param mesh      the mesh
+	 * @param coloring  the coloring function
+	 * @param scaling   the scaling of the tikz graphics
+	 *
+	 * @param &lt;V&gt; the type of the vertices
+	 * @param &lt;E&gt; the type of the half-edges
+	 * @param &lt;F&gt; the type of the faces
+	 *
+	 * @return a string representing a tikz graphics
+	 */
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; String toTikz(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final Function&lt;F, Color&gt; coloring,
+			@Nullable final Function&lt;E, Color&gt; edgeColorFunction,
+			final float scaling,
+			final boolean drawVertices) {
+<span class="nc" id="L177">		return toTikz(mesh, coloring, edgeColorFunction, null, scaling, drawVertices);</span>
+	}
+
+
+	private static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; Map&lt;Color, String&gt; buildFaceColorMap(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final Function&lt;F, Color&gt; coloring) {
+
+<span class="nc" id="L185">		Map&lt;Color, String&gt; bidiMap = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L187">		int counter = 1;</span>
+<span class="nc bnc" id="L188" title="All 2 branches missed.">		for(F face : mesh.getFaces()) {</span>
+<span class="nc" id="L189">			Color c = coloring.apply(face);</span>
+<span class="nc bnc" id="L190" title="All 2 branches missed.">			if(!bidiMap.containsKey(c)) {</span>
+<span class="nc" id="L191">				bidiMap.put(c, &quot;faceColor&quot;+counter);</span>
+<span class="nc" id="L192">				counter++;</span>
+			}
+<span class="nc" id="L194">		}</span>
+<span class="nc" id="L195">		return bidiMap;</span>
+	}
+
+	private static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; Map&lt;Color, String&gt; buildEdgeColorMap(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@Nullable final Function&lt;E, Color&gt; coloring) {
+
+<span class="nc" id="L202">		Map&lt;Color, String&gt; bidiMap = new HashMap&lt;&gt;();</span>
+
+<span class="nc bnc" id="L204" title="All 2 branches missed.">		if(coloring == null) {</span>
+<span class="nc" id="L205">			bidiMap.put(DEFAULT_EDGE_COLOR, &quot;edgeColor&quot;+1);</span>
+		} else {
+<span class="nc" id="L207">			int counter = 1;</span>
+<span class="nc bnc" id="L208" title="All 2 branches missed.">			for(E edge : mesh.getEdges()) {</span>
+<span class="nc" id="L209">				Color c = coloring.apply(edge);</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">				if(!bidiMap.containsKey(c)) {</span>
+<span class="nc" id="L211">					bidiMap.put(c, &quot;edgeColor&quot;+counter);</span>
+<span class="nc" id="L212">					counter++;</span>
+				}
+<span class="nc" id="L214">			}</span>
+		}
+
+<span class="nc" id="L217">		return bidiMap;</span>
+	}
+
+	private static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; Map&lt;Color, String&gt; buildVertexColorMap(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@Nullable final Function&lt;V, Color&gt; coloring) {
+
+<span class="nc" id="L224">		Map&lt;Color, String&gt; bidiMap = new HashMap&lt;&gt;();</span>
+
+<span class="nc bnc" id="L226" title="All 2 branches missed.">		if(coloring == null) {</span>
+<span class="nc" id="L227">			bidiMap.put(DEFAULT_VERTEX_COLOR, &quot;vertexColor&quot;+1);</span>
+		} else {
+<span class="nc" id="L229">			int counter = 1;</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">			for(V vertex : mesh.getVertices()) {</span>
+<span class="nc" id="L231">				Color c = coloring.apply(vertex);</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">				if(!bidiMap.containsKey(c)) {</span>
+<span class="nc" id="L233">					bidiMap.put(c, &quot;vertexColor&quot;+counter);</span>
+<span class="nc" id="L234">					counter++;</span>
+				}
+<span class="nc" id="L236">			}</span>
+		}
+
+<span class="nc" id="L239">		return bidiMap;</span>
+	}
+
+	private static void prolog(@NotNull final StringBuilder builder,
+                             @NotNull final Map&lt;Color, String&gt; faceColorBidiMap,
+                             @NotNull final Map&lt;Color, String&gt; edgeColorBidiMap,
+                             @NotNull final Map&lt;Color, String&gt; vertexColorBidiMap) {
+<span class="nc" id="L246">		builder.append(&quot;\\documentclass{standalone}\n&quot;);</span>
+<span class="nc" id="L247">		builder.append(&quot;\\usepackage{tikz}\n\n&quot;);</span>
+<span class="nc" id="L248">		colorDefinitions(builder, faceColorBidiMap, edgeColorBidiMap, vertexColorBidiMap);</span>
+<span class="nc" id="L249">		builder.append(&quot;\\pgfmathsetmacro{\\circleSize}{0.01pt}&quot;);</span>
+<span class="nc" id="L250">		builder.append(&quot;\\begin{document}\n&quot;);</span>
+<span class="nc" id="L251">		builder.append(&quot;% Change scaling to [x=1mm,y=1mm] if TeX reports \&quot;Dimension too large\&quot;.\n&quot;);</span>
+<span class="nc" id="L252">		builder.append(&quot;\\begin{tikzpicture}\n&quot;);</span>
+<span class="nc" id="L253">		builder.append(&quot;[x=10cm,y=10cm]\n&quot;);</span>
+		//generateTikzStyles() +
+<span class="nc" id="L255">	}</span>
+
+	private static void ending(@NotNull final StringBuilder builder) {
+<span class="nc" id="L258">		builder.append(&quot;\\end{tikzpicture}\n&quot;);</span>
+<span class="nc" id="L259">		builder.append(&quot;\\end{document}\n&quot;);</span>
+<span class="nc" id="L260">	}</span>
+
+
+	private static void colorDefinitions(
+			@NotNull final StringBuilder builder,
+	                              @NotNull final Map&lt;Color, String&gt; faceColorBidiMap,
+	                              @NotNull final Map&lt;Color, String&gt; edgeColorBidiMap,
+	                              @NotNull final Map&lt;Color, String&gt; vertexColorBidiMap) {
+
+<span class="nc" id="L269">		builder.append(&quot;% Color Definitions\n&quot;);</span>
+<span class="nc" id="L270">		String colorTextPattern = &quot;\\definecolor{%s}{RGB}{%d,%d,%d}\n&quot;;</span>
+
+<span class="nc bnc" id="L272" title="All 2 branches missed.">		for(Object object : faceColorBidiMap.keySet()) {</span>
+<span class="nc" id="L273">			Color c = (Color)object;</span>
+<span class="nc" id="L274">			String name = faceColorBidiMap.get(c);</span>
+<span class="nc" id="L275">			builder.append(String.format(Locale.US, colorTextPattern, name, c.getRed(), c.getGreen(), c.getBlue()));</span>
+<span class="nc" id="L276">			builder.append(String.format(Locale.US, colorTextPattern, name+&quot;Fill&quot;, c.getRed(), c.getGreen(), c.getBlue()));</span>
+<span class="nc" id="L277">		}</span>
+
+<span class="nc bnc" id="L279" title="All 2 branches missed.">		for(Object object : edgeColorBidiMap.keySet()) {</span>
+<span class="nc" id="L280">			Color c = (Color)object;</span>
+<span class="nc" id="L281">			String name = edgeColorBidiMap.get(c);</span>
+<span class="nc" id="L282">			builder.append(String.format(Locale.US, colorTextPattern, name, c.getRed(), c.getGreen(), c.getBlue()));</span>
+<span class="nc" id="L283">		}</span>
+
+<span class="nc bnc" id="L285" title="All 2 branches missed.">		for(Object object : vertexColorBidiMap.keySet()) {</span>
+<span class="nc" id="L286">			Color c = (Color)object;</span>
+<span class="nc" id="L287">			String name = vertexColorBidiMap.get(c);</span>
+<span class="nc" id="L288">			builder.append(String.format(Locale.US, colorTextPattern, name, c.getRed(), c.getGreen(), c.getBlue()));</span>
+<span class="nc" id="L289">			builder.append(String.format(Locale.US, colorTextPattern, name+&quot;Fill&quot;, c.getRed(), c.getGreen(), c.getBlue()));</span>
+<span class="nc" id="L290">		}</span>
+
+<span class="nc" id="L292">		builder.append(&quot;\n&quot;);</span>
+<span class="nc" id="L293">	}</span>
+
+	/**
+	 * Transforms a {@link IMesh} into a tikz string. The tikz graphic is scaled by the scaling. Each face
+	 * of the mesh is filled by the color defined by the coloring-function.
+	 *
+	 * @param mesh      the mesh
+	 * @param coloring  the coloring function
+	 * @param scaling   the scaling of the tikz graphics
+	 *
+	 * @param &lt;V&gt; the type of the vertices
+	 * @param &lt;E&gt; the type of the half-edges
+	 * @param &lt;F&gt; the type of the faces
+	 *
+	 * @return a string representing a tikz graphics
+	 */
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; String toTikz(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final Function&lt;F, Color&gt; coloring,
+			@Nullable final Function&lt;E, Color&gt; edgeColorFunction,
+			@Nullable final Function&lt;V, Color&gt; vertexColorFunction,
+			final float scaling,
+			final boolean drawVertices) {
+
+<span class="nc" id="L317">		StringBuilder builder = new StringBuilder();</span>
+		// key = color, value = name (String)
+<span class="nc" id="L319">		Map&lt;Color, String&gt; faceColorBidiMap = buildFaceColorMap(mesh, coloring);</span>
+<span class="nc" id="L320">		Map&lt;Color, String&gt; edgeColorBidiMap = buildEdgeColorMap(mesh, edgeColorFunction);</span>
+<span class="nc" id="L321">		Map&lt;Color, String&gt; vertexColorBidiMap = buildVertexColorMap(mesh, vertexColorFunction);</span>
+
+<span class="nc" id="L323">		prolog(builder, faceColorBidiMap, edgeColorBidiMap, vertexColorBidiMap);</span>
+
+<span class="nc bnc" id="L325" title="All 2 branches missed.">		for(F face : mesh.getFaces()) {</span>
+<span class="nc" id="L326">			Color c = coloring.apply(face);</span>
+<span class="nc" id="L327">			String colorName = faceColorBidiMap.get(c);</span>
+			//String tikzColor = &quot;{rgb,255:red,&quot;+c.getRed()+&quot;;green,&quot;+c.getGreen()+&quot;;blue,&quot;+c.getBlue()+&quot;}&quot;;
+<span class="nc" id="L329">			V first = mesh.streamVertices(face).findFirst().get();</span>
+<span class="nc" id="L330">			String poly = mesh.streamVertices(face).map(v -&gt; &quot;(&quot;+toString(v.getX())+&quot;,&quot;+toString(v.getY())+&quot;)&quot;).reduce((s1, s2) -&gt; s1 + &quot;--&quot; + s2).get() + &quot;-- (&quot;+toString(first.getX())+&quot;,&quot;+toString(first.getY())+&quot;)&quot;;</span>
+
+			//builder.append(&quot;\\fill[fill=&quot;+tikzColor+&quot;]&quot; + poly + &quot;;\n&quot;);
+<span class="nc bnc" id="L333" title="All 2 branches missed.">			if(edgeColorFunction != null) {</span>
+<span class="nc" id="L334">				builder.append(&quot;\\filldraw[fill=&quot;+colorName+&quot;]&quot; + poly + &quot;;\n&quot;);</span>
+			}
+			else {
+<span class="nc" id="L337">				builder.append(&quot;\\filldraw[color=&quot;+colorName+&quot;,fill=&quot;+colorName+&quot;Fill]&quot; + poly + &quot;;\n&quot;);</span>
+			}
+<span class="nc" id="L339">		}</span>
+
+
+<span class="nc bnc" id="L342" title="All 2 branches missed.">		for (E edge : mesh.getEdges()) {</span>
+<span class="nc bnc" id="L343" title="All 2 branches missed.">			Color c = edgeColorFunction != null ? edgeColorFunction.apply(edge) : DEFAULT_EDGE_COLOR;</span>
+<span class="nc" id="L344">			String colorName = edgeColorBidiMap.get(c);</span>
+<span class="nc" id="L345">			VLine line = mesh.toLine(edge);</span>
+			//String tikzColor = &quot;{rgb,255:red,&quot;+c.getRed()+&quot;;green,&quot;+c.getGreen()+&quot;;blue,&quot;+c.getBlue()+&quot;}&quot;;
+<span class="nc" id="L347">			builder.append(&quot;\\draw[color=&quot;+colorName+&quot;](&quot;+toString(line.getX1())+&quot;,&quot;+toString(line.getY1())+&quot;) -- (&quot;+toString(line.getX2())+&quot;,&quot;+toString(line.getY2())+&quot;);\n&quot;);</span>
+<span class="nc" id="L348">		}</span>
+
+
+<span class="nc bnc" id="L351" title="All 2 branches missed.">		if(drawVertices) {</span>
+<span class="nc bnc" id="L352" title="All 2 branches missed.">			for(V vertex : mesh.getVertices()) {</span>
+<span class="nc bnc" id="L353" title="All 2 branches missed.">				Color c = vertexColorFunction != null ? vertexColorFunction.apply(vertex) : DEFAULT_VERTEX_COLOR;</span>
+<span class="nc" id="L354">				String colorName = vertexColorBidiMap.get(c);</span>
+				//String tikzColor = &quot;{rgb,255:red,&quot;+c.getRed()+&quot;;green,&quot;+c.getGreen()+&quot;;blue,&quot;+c.getBlue()+&quot;}&quot;;
+<span class="nc" id="L356">				builder.append(&quot;\\draw[color=&quot;+colorName+&quot;, fill=&quot;+colorName+&quot;Fill](&quot;+toString(vertex.getX())+&quot;,&quot;+toString(vertex.getY())+&quot;) circle (\\circleSize);\n&quot;);</span>
+<span class="nc" id="L357">			}</span>
+		}
+
+		/*for(F face : mesh.getFaces()) {
+			String poly = mesh.streamVertices(face).map(v -&gt; &quot;(&quot;+v.getX()+&quot;,&quot;+v.getY()+&quot;)&quot;).reduce((s1, s2) -&gt; s1 + &quot;--&quot; + s2).get();
+			builder.append(&quot;\\draw[black,thick]&quot; + poly + &quot;;\n&quot;);
+		}*/
+
+<span class="nc" id="L365">		ending(builder);</span>
+<span class="nc" id="L366">		return builder.toString();</span>
+	}
+
+	/**
+	 * Transforms a {@link IMesh} into a tikz string. The tikz graphic is scaled by the scaling. Each face
+	 * of the mesh is filled by the color defined by the coloring-function.
+	 *
+	 * @param mesh      the mesh
+	 * @param coloring  the coloring function
+	 * @param scaling   the scaling of the tikz graphics
+	 *
+	 * @param &lt;P&gt; the type of the points (containers)
+	 * @param &lt;CE&gt; the type of container of the half-edges
+	 * @param &lt;CF&gt; the type of the container of the faces
+	 * @param &lt;V&gt; the type of the vertices
+	 * @param &lt;E&gt; the type of the half-edges
+	 * @param &lt;F&gt; the type of the faces
+	 *
+	 * @return a string representing a tikz graphics
+	 */
+	public static &lt;P extends IPoint, CE, CF, V extends IVertex, E extends IHalfEdge, F extends IFace&gt; String toTikz(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final Function&lt;F, Color&gt; coloring,
+			final float scaling) {
+<span class="nc" id="L390">		return toTikz(mesh, coloring, null, scaling, false);</span>
+	}
+
+	/**
+	 * Transforms a {@link IMesh} into a tikz string. The tikz graphic is scaled by the scaling. Each face
+	 * of the mesh is filled by the color defined by the coloring-function.
+	 *
+	 * @param mesh      the mesh
+	 * @param coloring  the coloring function
+	 * @param scaling   the scaling of the tikz graphics
+	 * @param line      a line which will be additionally be drawn
+	 *
+	 * @param &lt;V&gt; the type of the vertices
+	 * @param &lt;E&gt; the type of the half-edges
+	 * @param &lt;F&gt; the type of the faces
+	 *
+	 * @return a string representing a tikz graphics
+	 */
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; String toTikz(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final Function&lt;F, Color&gt; coloring,
+			final float scaling,
+			final VLine line) {
+
+<span class="nc" id="L414">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc" id="L415">		builder.append(&quot;\\begin{tikzpicture}[scale=&quot;+scaling+&quot;]\n&quot;);</span>
+
+<span class="nc bnc" id="L417" title="All 2 branches missed.">		for(F face : mesh.getFaces()) {</span>
+<span class="nc" id="L418">			Color c = coloring.apply(face);</span>
+<span class="nc" id="L419">			String tikzColor = &quot;{rgb,255:red,&quot;+c.getRed()+&quot;;green,&quot;+c.getGreen()+&quot;;blue,&quot;+c.getBlue()+&quot;}&quot;;</span>
+<span class="nc" id="L420">			V first = mesh.streamVertices(face).findFirst().get();</span>
+<span class="nc" id="L421">			String poly = mesh.streamVertices(face).map(v -&gt; &quot;(&quot;+toString(v.getX())+&quot;,&quot;+toString(v.getY())+&quot;)&quot;).reduce((s1, s2) -&gt; s1 + &quot;--&quot; + s2).get() + &quot;-- (&quot;+toString(first.getX())+&quot;,&quot;+toString(first.getY())+&quot;)&quot;;</span>
+
+			//builder.append(&quot;\\fill[fill=&quot;+tikzColor+&quot;]&quot; + poly + &quot;;\n&quot;);
+<span class="nc" id="L424">			builder.append(&quot;\\filldraw[color=gray,fill=&quot;+tikzColor+&quot;]&quot; + poly + &quot;;\n&quot;);</span>
+<span class="nc" id="L425">		}</span>
+
+		/*for(F face : mesh.getFaces()) {
+			String poly = mesh.streamVertices(face).map(v -&gt; &quot;(&quot;+v.getX()+&quot;,&quot;+v.getY()+&quot;)&quot;).reduce((s1, s2) -&gt; s1 + &quot;--&quot; + s2).get();
+			builder.append(&quot;\\draw[black,thick]&quot; + poly + &quot;;\n&quot;);
+		}*/
+
+<span class="nc" id="L432">		builder.append(&quot;\\draw (&quot;+toString(line.getX1()) + &quot;,&quot; + toString(line.getY1()) + &quot;) -- (&quot;+ toString(line.getX2()) +&quot;,&quot; + toString(line.getY2())+&quot;);&quot;);</span>
+<span class="nc" id="L433">		builder.append(&quot;\\end{tikzpicture}&quot;);</span>
+<span class="nc" id="L434">		return builder.toString();</span>
+	}
+
+
+	public static String toTikz(
+			@NotNull final Collection&lt;VTriangle&gt; faces,
+			@NotNull final Function&lt;VTriangle, Color&gt; coloring,
+			@Nullable final Function&lt;VLine, Color&gt; edgeColorFunction,
+			@Nullable final Function&lt;VPoint, Color&gt; vertexColoring,
+			final float scaling,
+			boolean drawVertices) {
+
+<span class="nc" id="L446">		List&lt;VLine&gt; edges = faces.stream().flatMap(tri -&gt; Arrays.stream(tri.getLines())).collect(Collectors.toList());</span>
+<span class="nc" id="L447">		List&lt;VPoint&gt; points = faces.stream().flatMap(tri -&gt; tri.getPoints().stream()).distinct().collect(Collectors.toList());</span>
+<span class="nc" id="L448">		StringBuilder builder = new StringBuilder();</span>
+
+<span class="nc" id="L450">		Map&lt;Color, String&gt; faceColorMap = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L451">		int counter = 1;</span>
+<span class="nc bnc" id="L452" title="All 2 branches missed.">		for(VTriangle face : faces) {</span>
+<span class="nc" id="L453">			Color c = coloring.apply(face);</span>
+<span class="nc bnc" id="L454" title="All 2 branches missed.">			if(!faceColorMap.containsKey(c)) {</span>
+<span class="nc" id="L455">				faceColorMap.put(c, &quot;faceColor&quot;+counter);</span>
+<span class="nc" id="L456">				counter++;</span>
+			}
+<span class="nc" id="L458">		}</span>
+
+<span class="nc" id="L460">		Map&lt;Color, String&gt; edgeColorMap = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L461" title="All 2 branches missed.">		if(coloring == null) {</span>
+<span class="nc" id="L462">			edgeColorMap.put(DEFAULT_EDGE_COLOR, &quot;edgeColor&quot;+1);</span>
+		} else {
+<span class="nc" id="L464">			counter = 1;</span>
+<span class="nc bnc" id="L465" title="All 2 branches missed.">			for(VLine edge : edges) {</span>
+<span class="nc" id="L466">				Color c = edgeColorFunction.apply(edge);</span>
+<span class="nc bnc" id="L467" title="All 2 branches missed.">				if(!edgeColorMap.containsKey(c)) {</span>
+<span class="nc" id="L468">					edgeColorMap.put(c, &quot;edgeColor&quot;+counter);</span>
+<span class="nc" id="L469">					counter++;</span>
+				}
+<span class="nc" id="L471">			}</span>
+		}
+
+<span class="nc" id="L474">		Map&lt;Color, String&gt; vertexColorMap = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L475" title="All 2 branches missed.">		if(coloring == null) {</span>
+<span class="nc" id="L476">			vertexColorMap.put(DEFAULT_VERTEX_COLOR, &quot;vertexColor&quot;+1);</span>
+		} else {
+<span class="nc" id="L478">			counter = 1;</span>
+<span class="nc bnc" id="L479" title="All 2 branches missed.">			for(VPoint vertex : points) {</span>
+<span class="nc" id="L480">				Color c = vertexColoring.apply(vertex);</span>
+<span class="nc bnc" id="L481" title="All 2 branches missed.">				if(!vertexColorMap.containsKey(c)) {</span>
+<span class="nc" id="L482">					vertexColorMap.put(c, &quot;vertexColor&quot;+counter);</span>
+<span class="nc" id="L483">					counter++;</span>
+				}
+<span class="nc" id="L485">			}</span>
+		}
+
+<span class="nc" id="L488">		prolog(builder, faceColorMap, edgeColorMap, vertexColorMap);</span>
+
+<span class="nc bnc" id="L490" title="All 2 branches missed.">		for(VTriangle face : faces) {</span>
+<span class="nc" id="L491">			Color c = coloring.apply(face);</span>
+<span class="nc" id="L492">			String colorName = faceColorMap.get(c);</span>
+			//String tikzColor = &quot;{rgb,255:red,&quot;+c.getRed()+&quot;;green,&quot;+c.getGreen()+&quot;;blue,&quot;+c.getBlue()+&quot;}&quot;;
+<span class="nc" id="L494">			VPoint first = face.p1;</span>
+<span class="nc" id="L495">			String poly = face.streamPoints().map(v -&gt; &quot;(&quot;+toString(v.getX())+&quot;,&quot;+toString(v.getY())+&quot;)&quot;).reduce((s1, s2) -&gt; s1 + &quot;--&quot; + s2).get() + &quot;-- (&quot;+toString(first.getX())+&quot;,&quot;+toString(first.getY())+&quot;)&quot;;</span>
+
+			//builder.append(&quot;\\fill[fill=&quot;+tikzColor+&quot;]&quot; + poly + &quot;;\n&quot;);
+<span class="nc bnc" id="L498" title="All 2 branches missed.">			if(edgeColorFunction != null) {</span>
+<span class="nc" id="L499">				builder.append(&quot;\\filldraw[fill=&quot;+colorName+&quot;]&quot; + poly + &quot;;\n&quot;);</span>
+			}
+			else {
+<span class="nc" id="L502">				builder.append(&quot;\\filldraw[color=&quot;+colorName+&quot;,fill=&quot;+colorName+&quot;Fill]&quot; + poly + &quot;;\n&quot;);</span>
+			}
+<span class="nc" id="L504">		}</span>
+
+
+<span class="nc bnc" id="L507" title="All 2 branches missed.">		for (VLine edge : edges) {</span>
+<span class="nc bnc" id="L508" title="All 2 branches missed.">			Color c = edgeColorFunction != null ? edgeColorFunction.apply(edge) : DEFAULT_EDGE_COLOR;</span>
+<span class="nc" id="L509">			String colorName = edgeColorMap.get(c);</span>
+<span class="nc" id="L510">			VLine line = edge;</span>
+			//String tikzColor = &quot;{rgb,255:red,&quot;+c.getRed()+&quot;;green,&quot;+c.getGreen()+&quot;;blue,&quot;+c.getBlue()+&quot;}&quot;;
+<span class="nc" id="L512">			builder.append(&quot;\\draw[color=&quot;+colorName+&quot;](&quot;+toString(line.getX1())+&quot;,&quot;+toString(line.getY1())+&quot;) -- (&quot;+toString(line.getX2())+&quot;,&quot;+toString(line.getY2())+&quot;);\n&quot;);</span>
+<span class="nc" id="L513">		}</span>
+
+
+<span class="nc bnc" id="L516" title="All 2 branches missed.">		if(drawVertices) {</span>
+<span class="nc bnc" id="L517" title="All 2 branches missed.">			for(VPoint vertex : points) {</span>
+<span class="nc bnc" id="L518" title="All 2 branches missed.">				Color c = vertexColoring != null ? vertexColoring.apply(vertex) : DEFAULT_VERTEX_COLOR;</span>
+<span class="nc" id="L519">				String colorName = vertexColorMap.get(c);</span>
+				//String tikzColor = &quot;{rgb,255:red,&quot;+c.getRed()+&quot;;green,&quot;+c.getGreen()+&quot;;blue,&quot;+c.getBlue()+&quot;}&quot;;
+<span class="nc" id="L521">				builder.append(&quot;\\draw[color=&quot;+colorName+&quot;, fill=&quot;+colorName+&quot;Fill](&quot;+toString(vertex.getX())+&quot;,&quot;+toString(vertex.getY())+&quot;) circle (\\circleSize);\n&quot;);</span>
+<span class="nc" id="L522">			}</span>
+		}
+
+<span class="nc" id="L525">		ending(builder);</span>
+<span class="nc" id="L526">		return builder.toString();</span>
+	}
+
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; String toTikz(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			@NotNull final List&lt;F&gt; faces) {
+<span class="nc" id="L532">			return toTikz(mesh, DEFAULT_FACE_COLOR, faces, Color.BLACK);</span>
+	}
+
+	/**
+	 * Helper method to draw the space filling curve.
+	 *
+	 * @param mesh  the mesh which used to access components of each face
+	 * @param faces the list of faces
+	 *
+	 * @param &lt;V&gt; the type of the vertices
+	 * @param &lt;E&gt; the type of the half-edges
+	 * @param &lt;F&gt; the type of the faces
+	 *
+	 * @return a string representing a tikz graphics
+	 */
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; String toTikz(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh,
+			Color faceColor,
+			@NotNull final List&lt;F&gt; faces,
+			Color curveColor) {
+<span class="nc" id="L552">		StringBuilder builder = new StringBuilder();</span>
+
+<span class="nc" id="L554">		builder.append(&quot;\\documentclass{standalone}\n&quot;);</span>
+<span class="nc" id="L555">		builder.append(&quot;\\usepackage{tikz}\n\n&quot;);</span>
+
+<span class="nc" id="L557">		builder.append(&quot;% Color Definitions\n&quot;);</span>
+<span class="nc" id="L558">		String colorTextPattern = &quot;\\definecolor{%s}{RGB}{%d,%d,%d}\n&quot;;</span>
+<span class="nc" id="L559">		builder.append(String.format(Locale.US, colorTextPattern, &quot;face1&quot;, faceColor.getRed(), faceColor.getGreen(), faceColor.getBlue()));</span>
+<span class="nc" id="L560">		builder.append(String.format(Locale.US, colorTextPattern, &quot;face1Fill&quot;, faceColor.getRed(), faceColor.getGreen(), faceColor.getBlue()));</span>
+
+<span class="nc" id="L562">		builder.append(String.format(Locale.US, colorTextPattern, &quot;edge1&quot;, DEFAULT_EDGE_COLOR.getRed(), DEFAULT_EDGE_COLOR.getGreen(), DEFAULT_EDGE_COLOR.getBlue()));</span>
+<span class="nc" id="L563">		builder.append(String.format(Locale.US, colorTextPattern, &quot;edge1Fill&quot;, DEFAULT_EDGE_COLOR.getRed(), DEFAULT_EDGE_COLOR.getGreen(), DEFAULT_EDGE_COLOR.getBlue()));</span>
+
+<span class="nc" id="L565">		builder.append(String.format(Locale.US, colorTextPattern, &quot;curveColor&quot;, curveColor.getRed(), curveColor.getGreen(), curveColor.getBlue()));</span>
+
+<span class="nc" id="L567">		builder.append(&quot;\\pgfmathsetmacro{\\circleSize}{1.5pt}&quot;);</span>
+<span class="nc" id="L568">		builder.append(&quot;\\begin{document}\n&quot;);</span>
+<span class="nc" id="L569">		builder.append(&quot;% Change scaling to [x=1mm,y=1mm] if TeX reports \&quot;Dimension too large\&quot;.\n&quot;);</span>
+<span class="nc" id="L570">		builder.append(&quot;\\begin{tikzpicture}\n&quot;);</span>
+<span class="nc" id="L571">		builder.append(&quot;[x=1cm,y=1cm]\n&quot;);</span>
+
+
+<span class="nc" id="L574">		builder.append(&quot;\\draw[curveColor, thick] &quot;);</span>
+
+<span class="nc bnc" id="L576" title="All 2 branches missed.">		for(F face : faces) {</span>
+<span class="nc" id="L577">			List&lt;VLine&gt; lines = mesh.streamEdges(face).map(e -&gt; mesh.toLine(e)).collect(Collectors.toList());</span>
+
+<span class="nc bnc" id="L579" title="All 2 branches missed.">			for(VLine line : lines) {</span>
+<span class="nc" id="L580">				builder.append(&quot;(&quot;+toString(line.getX1())+&quot;,&quot;+toString(line.getY1())+&quot;) -- (&quot;+toString(line.getX2())+&quot;,&quot;+toString(line.getY2())+&quot;)\n&quot;);</span>
+<span class="nc" id="L581">			}</span>
+<span class="nc" id="L582">		}</span>
+
+<span class="nc" id="L584">		builder.append(&quot;;\n&quot;);</span>
+<span class="nc" id="L585">		builder.append(&quot;\n&quot;);</span>
+
+<span class="nc" id="L587">		builder.append(&quot;\\draw[curveColor, thick] &quot;);</span>
+<span class="nc" id="L588">		VPoint prefIncenter = null;</span>
+<span class="nc" id="L589">		VLine firstLine = null;</span>
+<span class="nc" id="L590">		VLine lastLine = null;</span>
+<span class="nc bnc" id="L591" title="All 2 branches missed.">		for(F face : faces) {</span>
+<span class="nc" id="L592">			List&lt;E&gt; edges = mesh.getEdges(face);</span>
+
+			// is triangle
+<span class="nc bnc" id="L595" title="All 2 branches missed.">			if(edges.size() == 3) {</span>
+<span class="nc" id="L596">				VTriangle triangle = mesh.toTriangle(face);</span>
+<span class="nc" id="L597">				VPoint incenter = triangle.getIncenter();</span>
+
+<span class="nc bnc" id="L599" title="All 2 branches missed.">				if(prefIncenter != null) {</span>
+<span class="nc" id="L600">					builder.append(&quot;(&quot;+toString(prefIncenter.getX())+&quot;,&quot;+toString(prefIncenter.getY())+&quot;) -- (&quot;+toString(incenter.getX())+&quot;,&quot;+toString(incenter.getY())+&quot;)\n&quot;);</span>
+<span class="nc bnc" id="L601" title="All 2 branches missed.">					if(firstLine == null) {</span>
+<span class="nc" id="L602">						firstLine = new VLine(prefIncenter, incenter);</span>
+					}
+
+<span class="nc" id="L605">					lastLine = new VLine(prefIncenter, incenter);</span>
+				}
+
+<span class="nc" id="L608">				prefIncenter = incenter;</span>
+			}
+<span class="nc" id="L610">		}</span>
+
+<span class="nc" id="L612">		builder.append(&quot;;\n&quot;);</span>
+<span class="nc bnc" id="L613" title="All 4 branches missed.">		if(firstLine != null &amp;&amp; lastLine != null) {</span>
+<span class="nc" id="L614">			builder.append(&quot;\\draw[-{Latex[length=3mm]}, curveColor](&quot;+toString(firstLine.getX1())+&quot;,&quot;+toString(firstLine.getY1())+&quot;) -- (&quot;+toString(firstLine.getX2())+&quot;,&quot;+toString(firstLine.getY2())+&quot;);\n&quot;);</span>
+<span class="nc" id="L615">			builder.append(&quot;\\draw[-{Latex[length=3mm]}, curveColor](&quot;+toString(lastLine.getX1())+&quot;,&quot;+toString(lastLine.getY1())+&quot;) -- (&quot;+toString(lastLine.getX2())+&quot;,&quot;+toString(lastLine.getY2())+&quot;);\n&quot;);</span>
+		}
+<span class="nc" id="L617">		builder.append(&quot;\\end{tikzpicture}&quot;);</span>
+<span class="nc" id="L618">		return builder.toString();</span>
+	}
+
+}
+
+/*
+
+%% vertices
+\draw[fill=black] (0,0) circle (3pt);
+\draw[fill=black] (4,0) circle (3pt);
+\draw[fill=black] (2,1) circle (3pt);
+\draw[fill=black] (2,3) circle (3pt);
+%% vertex labels
+\node at (-0.5,0) {1};
+\node at (4.5,0) {2};
+\node at (2.5,1.2) {3};
+\node at (2,3.3) {4};
+
+\begin{tikzpicture}[thick,scale=0.8]
+    % The following path utilizes several useful tricks and features:
+    % 1) The foreach statement is put inside a path, so all the edges
+    %    will in fact be a the same path.
+    % 2) The node construct is used to draw the nodes. Nodes are special
+    %    in the way that they are drawn *after* the path is drawn. This
+    %    is very useful in this case because the nodes will be drawn on
+    %    top of the path and therefore hide all edge joins.
+    % 3) Simple arithmetics can be used when specifying coordinates.
+    \draw \foreach \x in {0,36,...,324}
+    {
+        (\x:2) node {}  -- (\x+108:2)
+        (\x-10:3) node {} -- (\x+5:4)
+        (\x-10:3) -- (\x+36:2)
+        (\x-10:3) --(\x+170:3)
+        (\x+5:4) node {} -- (\x+41:4)
+    };
+\end{tikzpicture}
+ */
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

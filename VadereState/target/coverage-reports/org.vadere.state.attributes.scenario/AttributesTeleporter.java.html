@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesTeleporter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.scenario</a> &gt; <span class="el_source">AttributesTeleporter.java</span></div><h1>AttributesTeleporter.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.scenario;
+
+import org.vadere.util.geometry.shapes.Vector2D;
+import org.vadere.state.attributes.Attributes;
+import org.vadere.util.geometry.shapes.VPoint;
+
+public class AttributesTeleporter extends Attributes {
+<span class="nc" id="L8">	private Vector2D shift = new Vector2D(0, 0);</span>
+<span class="nc" id="L9">	private VPoint position = new VPoint(0, 0);</span>
+
+<span class="nc" id="L11">	public AttributesTeleporter() {}</span>
+
+	// Getters...
+
+	public Vector2D getTeleporterShift() {
+<span class="nc" id="L16">		return shift;</span>
+	}
+
+	public VPoint getTeleporterPosition() {
+<span class="nc" id="L20">		return position;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

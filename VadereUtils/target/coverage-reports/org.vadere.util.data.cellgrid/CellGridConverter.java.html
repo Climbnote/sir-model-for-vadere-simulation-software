@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CellGridConverter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.data.cellgrid</a> &gt; <span class="el_source">CellGridConverter.java</span></div><h1>CellGridConverter.java</h1><pre class="source lang-java linenums">package org.vadere.util.data.cellgrid;
+
+
+import org.vadere.util.logging.Logger;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+<span class="nc" id="L13">public class CellGridConverter {</span>
+<span class="nc" id="L14">	private static Logger logger = Logger.getLogger(CellGridConverter.class);</span>
+
+	public static List&lt;CellGrid&gt; fromOutputProcessorFile(final File file, final double width, final double height)
+			throws IOException {
+<span class="nc" id="L18">		return fromOutputProcessorFile(file, width, height, &quot; &quot;);</span>
+	}
+
+	public static List&lt;CellGrid&gt; fromOutputProcessorFile(final File file, final double width, final double height,
+			final String seperator) throws IOException {
+<span class="nc" id="L23">		List&lt;CellGrid&gt; gridPerStep = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L24">		BufferedReader reader = new BufferedReader(new FileReader(file));</span>
+<span class="nc" id="L25">		String line = null;</span>
+
+<span class="nc" id="L27">		Double resolution = null;</span>
+<span class="nc" id="L28">		CellGrid grid = null;</span>
+<span class="nc" id="L29">		int timeStep = -1;</span>
+<span class="nc" id="L30">		int y = -1;</span>
+<span class="nc" id="L31">		boolean firstLine = true;</span>
+
+
+<span class="nc bnc" id="L34" title="All 2 branches missed.">		while ((line = reader.readLine()) != null) {</span>
+<span class="nc" id="L35">			y++;</span>
+<span class="nc" id="L36">			String[] splitLine = line.split(seperator);</span>
+
+			// first line is the headline
+<span class="nc bnc" id="L39" title="All 2 branches missed.">			if (!firstLine) {</span>
+<span class="nc bnc" id="L40" title="All 2 branches missed.">				if (resolution == null) {</span>
+<span class="nc" id="L41">					resolution = width / (splitLine.length - 2);</span>
+				}
+
+<span class="nc" id="L44">				int newTimeStep = Integer.parseInt(splitLine[0]);</span>
+<span class="nc" id="L45">				int row = Integer.parseInt(splitLine[1]);</span>
+
+<span class="nc bnc" id="L47" title="All 2 branches missed.">				if (newTimeStep != timeStep) {</span>
+<span class="nc" id="L48">					timeStep = newTimeStep;</span>
+<span class="nc" id="L49">					y = 0;</span>
+<span class="nc" id="L50">					grid = new CellGrid(width, height, resolution, new CellState());</span>
+<span class="nc" id="L51">					gridPerStep.add(grid);</span>
+				}
+
+<span class="nc bnc" id="L54" title="All 2 branches missed.">				for (int x = 2; x &lt; splitLine.length; x++) {</span>
+<span class="nc" id="L55">					CellState state = new CellState(Double.parseDouble(splitLine[x]), PathFindingTag.Undefined);</span>
+<span class="nc" id="L56">					grid.setValue(x - 2, y, state);</span>
+				}
+
+<span class="nc bnc" id="L59" title="All 2 branches missed.">				if (timeStep != gridPerStep.size()) {</span>
+<span class="nc" id="L60">					logger.warn(&quot;wrong time step   in List&lt;CellGrid&gt; &quot; + timeStep + &quot; != &quot; + gridPerStep.size());</span>
+				}
+<span class="nc" id="L62">			} else {</span>
+<span class="nc" id="L63">				firstLine = false;</span>
+			}
+<span class="nc" id="L65">		}</span>
+
+<span class="nc" id="L67">		reader.close();</span>
+
+<span class="nc" id="L69">		return gridPerStep;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

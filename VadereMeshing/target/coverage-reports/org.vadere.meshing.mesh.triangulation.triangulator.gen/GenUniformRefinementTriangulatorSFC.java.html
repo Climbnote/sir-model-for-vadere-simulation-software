@@ -1,0 +1,940 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GenUniformRefinementTriangulatorSFC.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">GenUniformRefinementTriangulatorSFC.java</span></div><h1>GenUniformRefinementTriangulatorSFC.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IMeshSupplier;
+import org.vadere.meshing.mesh.inter.IPointLocator;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.ITriEventListener;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.IRefiner;
+import org.vadere.meshing.utils.io.tex.TexGraphGenerator;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.logging.Logger;
+import org.vadere.util.math.IDistanceFunction;
+import org.vadere.util.geometry.shapes.*;
+import org.vadere.meshing.mesh.triangulation.edgeLengthFunctions.IEdgeLengthFunction;
+
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+/**
+ * &lt;p&gt;Triangulation creator: This class is realises an algorithm which refineSimplex2D a given triangulation
+ * (which might be empty), by recursively splitting existing triangles (starting with the super triangle if
+ * the triangulation is empty) into parts. In each step for each triangle the longest edge is split which generates
+ * two new triangles (four for one edge which is part of two triangles). While splitting we generate the Sierpinski
+ * Space Filling Curve (SFC) which gives an order of the generated triangles such that geometrically close triangles
+ * will be close in the SFC which is therefore memory efficient. The data structure of the SFC {@link GenSpaceFillingCurve}
+ * is a linked list of nodes {@link SFCNode}. Each {@link SFCNode} contains a half-edge {@link E} and a direction. The half-edge
+ * is the edge of the triangle which is part of the curve and the direction tells us if the curves is in the direction of the
+ * half-edge or in the reverse direction. After each split this direction changes to the opposite. After the refinement is finished
+ * the mesh is updated based on the SFC i.e. vertices, edges, points and faces are re-arranged to get a cache friendly and memory
+ * efficient data arrangement.&lt;/p&gt;
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public class GenUniformRefinementTriangulatorSFC&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements IRefiner&lt;V, E, F&gt;, ITriEventListener&lt;V, E, F&gt; {
+
+<span class="nc" id="L45">	private static final Logger logger = Logger.getLogger(GenUniformRefinementTriangulatorSFC.class);</span>
+
+	/**
+	 * A collection of obstacle shapes i.e. areas defining the holes of the triangulation.
+	 * This can be empty since the holes are also defined by the distance function. However,
+	 * the refinement can maybe stop earlier if this information is provided.
+	 */
+	private final Collection&lt;? extends VShape&gt; boundary;
+
+	/**
+	 * The bounding box containing the whole triangulation.
+	 */
+	private final VRectangle bbox;
+
+	/**
+	 * The relative edge length function. If a uniform triangulation should be computed set
+	 * lenFunc equlas to edge -&gt; 1.0.
+	 */
+	private final IEdgeLengthFunction lenFunc;
+
+	/**
+	 * The triangulation which will be constructed.
+	 */
+	private IIncrementalTriangulation&lt;V, E, F&gt; triangulation;
+
+	/**
+	 * The mesh supplier to construct an empty mesh which containing the data (points, vertices, edges, faces).
+	 */
+	private final IMeshSupplier&lt;V, E, F&gt; meshSupplier;
+
+	private final Map&lt;V, VLine&gt; projections;
+
+	private final Collection&lt;E&gt; constrains;
+
+	private final Collection&lt;IPoint&gt; fixPoints;
+
+	/**
+	 * The set of inserted points.
+	 */
+	private Set&lt;IPoint&gt; points;
+
+	/**
+	 * The candidates which will be refined in the next iteration.
+	 */
+	private ArrayList&lt;SFCNode&lt;V, E, F&gt;&gt; candidates;
+
+	/**
+	 * A distance function which has to be negative at positions which should be triangulated
+	 * and positive outside.
+	 */
+	private final IDistanceFunction distFunc;
+
+	/**
+	 * Indicates if the refinement has finished.
+	 */
+	private boolean finished;
+
+	/**
+	 * A random number generator.
+	 */
+<span class="nc" id="L105">	private final Random random = new Random(0);</span>
+
+	/**
+	 * The space filling curve.
+	 */
+	private final GenSpaceFillingCurve&lt;V, E, F&gt; sfc;
+
+	/**
+	 * The mesh which containing the data (points, vertices, edges, faces).
+	 */
+	private final IMesh&lt;V, E, F&gt; mesh;
+
+	private boolean initialized;
+
+	private boolean refinementFinished;
+
+	private Collection&lt;V&gt; insertedFixPoints;
+
+	private double smallestEdgeLength;
+
+	private final double minEdgeLen;
+
+	/**
+	 * &lt;p&gt;The default constructor.&lt;/p&gt;
+	 *  @param meshSupplier          a {@link IMeshSupplier} required to generate a new and empty mesh.
+	 * @param bound                 the bounding box containing all boundaries and the topography with respect to the distance function distFunc
+	 * @param boundary              the boundaries e.g. obstacles
+	 * @param lenFunc               an edge length function
+	 * @param distFunc              a signed distance function
+	 * @param fixPoints             a collection of fix points
+	 */
+	public GenUniformRefinementTriangulatorSFC(
+			final IMeshSupplier&lt;V, E, F&gt; meshSupplier,
+			final VRectangle bound,
+			final Collection&lt;? extends VShape&gt; boundary,
+			final IEdgeLengthFunction lenFunc,
+			final IDistanceFunction distFunc,
+			final Collection&lt;IPoint&gt; fixPoints) {
+
+<span class="nc" id="L144">		this(meshSupplier, bound, boundary, lenFunc, Double.POSITIVE_INFINITY, distFunc, fixPoints);</span>
+<span class="nc" id="L145">	}</span>
+
+	public GenUniformRefinementTriangulatorSFC(
+			final IMeshSupplier&lt;V, E, F&gt; meshSupplier,
+			final VRectangle bound,
+			final Collection&lt;? extends VShape&gt; boundary,
+			final IEdgeLengthFunction lenFunc,
+			final double h0,
+			final IDistanceFunction distFunc,
+<span class="nc" id="L154">			final Collection&lt;IPoint&gt; fixPoints) {</span>
+<span class="nc" id="L155">		this.fixPoints = fixPoints;</span>
+<span class="nc" id="L156">		this.smallestEdgeLength = Double.POSITIVE_INFINITY;</span>
+<span class="nc" id="L157">		this.meshSupplier = meshSupplier;</span>
+<span class="nc" id="L158">		this.initialized = false;</span>
+<span class="nc" id="L159">		this.refinementFinished = false;</span>
+<span class="nc" id="L160">		this.distFunc = distFunc;</span>
+<span class="nc" id="L161">		this.boundary = boundary;</span>
+<span class="nc" id="L162">		this.lenFunc = lenFunc;</span>
+<span class="nc" id="L163">		this.bbox = bound;</span>
+<span class="nc" id="L164">		this.points = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L165">		this.candidates = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L166">		this.sfc = new GenSpaceFillingCurve&lt;&gt;();</span>
+<span class="nc" id="L167">		this.mesh = meshSupplier.get();</span>
+<span class="nc" id="L168">		this.insertedFixPoints = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L169">		this.projections = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L170">		this.constrains = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L171">		this.minEdgeLen = h0;</span>
+<span class="nc" id="L172">	}</span>
+
+	public GenUniformRefinementTriangulatorSFC(
+			final IMeshSupplier&lt;V, E, F&gt; meshSupplier,
+			final VRectangle bound,
+			final Collection&lt;? extends VShape&gt; boundary,
+			final IEdgeLengthFunction lenFunc,
+			final IDistanceFunction distFunc) {
+<span class="nc" id="L180">		this(meshSupplier, bound, boundary, lenFunc, distFunc, Collections.EMPTY_LIST);</span>
+<span class="nc" id="L181">	}</span>
+
+	public GenUniformRefinementTriangulatorSFC(
+			final IMeshSupplier&lt;V, E, F&gt; meshSupplier,
+			final VRectangle bound,
+			final IEdgeLengthFunction lenFunc,
+			final IDistanceFunction distFunc,
+			final Collection&lt;IPoint&gt; fixPoints) {
+<span class="nc" id="L189">		this(meshSupplier, bound, new ArrayList&lt;&gt;(), lenFunc, distFunc);</span>
+<span class="nc" id="L190">	}</span>
+
+	public GenUniformRefinementTriangulatorSFC(
+			final IMeshSupplier&lt;V, E, F&gt; meshSupplier,
+			final VRectangle bound,
+			final IEdgeLengthFunction lenFunc,
+			final IDistanceFunction distFunc) {
+<span class="nc" id="L197">		this(meshSupplier, bound, new ArrayList&lt;&gt;(), lenFunc, distFunc);</span>
+<span class="nc" id="L198">	}</span>
+
+	/**
+	 * &lt;p&gt;Constructs the starting point of this algorithm:
+	 * A triangulation containing 2 triangles which are the result
+	 * of splitting a square which contains the bounding box.&lt;/p&gt;
+	 *
+	 * @return a triangulation consisting of two triangles containing the bounding box
+	 */
+    public IIncrementalTriangulation&lt;V, E, F&gt; init() {
+<span class="nc" id="L208">	    initialized = true;</span>
+<span class="nc" id="L209">    	double xMin = bbox.getMinX();</span>
+<span class="nc" id="L210">	    double yMin = bbox.getMinY();</span>
+
+<span class="nc" id="L212">	    double xMax = bbox.getMaxX();</span>
+<span class="nc" id="L213">	    double yMax = bbox.getMaxY();</span>
+
+<span class="nc" id="L215">	    double max = Math.max(xMax-xMin, yMax-yMin);</span>
+
+<span class="nc" id="L217">	    V p0 = mesh.insertVertex(xMin, yMin);</span>
+<span class="nc" id="L218">	    V p1 = mesh.insertVertex(xMin+max, yMin);</span>
+<span class="nc" id="L219">	    V p2 = mesh.insertVertex(xMin, yMin+max);</span>
+<span class="nc" id="L220">	    V p3 = mesh.insertVertex(xMin+max, yMin+max);</span>
+
+	    // counter clockwise!
+<span class="nc" id="L223">	    F square = mesh.createFace(p0, p1, p3, p2);</span>
+<span class="nc" id="L224">	    F tri = mesh.createFace();</span>
+
+	    // start divide the square into 2 triangles
+<span class="nc" id="L227">	    E edge = mesh.createEdge(p1);</span>
+<span class="nc" id="L228">	    E twin = mesh.createEdge(p2);</span>
+
+<span class="nc" id="L230">	    mesh.setTwin(edge, twin);</span>
+
+<span class="nc" id="L232">	    E start = mesh.getEdge(p2);</span>
+<span class="nc bnc" id="L233" title="All 2 branches missed.">	    if(mesh.isBoundary(start)) {</span>
+<span class="nc" id="L234">		    start = mesh.getPrev(mesh.getTwin(start));</span>
+	    }
+
+<span class="nc" id="L237">	    E next = mesh.getNext(start);</span>
+<span class="nc" id="L238">	    E prev = mesh.getPrev(start);</span>
+<span class="nc" id="L239">	    E nnext = mesh.getNext(next);</span>
+
+<span class="nc" id="L241">	    mesh.setPrev(edge, start);</span>
+<span class="nc" id="L242">	    mesh.setNext(edge, prev);</span>
+
+<span class="nc" id="L244">	    mesh.setNext(twin, next);</span>
+<span class="nc" id="L245">	    mesh.setPrev(twin, nnext);</span>
+
+<span class="nc" id="L247">	    mesh.setFace(edge, square);</span>
+<span class="nc" id="L248">	    mesh.setFace(twin, tri);</span>
+<span class="nc" id="L249">	    mesh.setFace(mesh.getNext(twin), tri);</span>
+<span class="nc" id="L250">	    mesh.setFace(mesh.getPrev(twin), tri);</span>
+
+<span class="nc" id="L252">	    F borderFace = mesh.getTwinFace(mesh.getEdge(square));</span>
+<span class="nc" id="L253">	    mesh.setEdge(borderFace, mesh.getTwin(start));</span>
+
+<span class="nc" id="L255">	    mesh.setEdge(tri, twin);</span>
+<span class="nc" id="L256">	    mesh.setEdge(square, edge);</span>
+		// end divide the square into 2 triangles
+
+<span class="nc" id="L259">	    E halfEdge = getLongestEdge(mesh.getFace());</span>
+<span class="nc" id="L260">	    SFCNode&lt;V, E, F&gt; node1 = new SFCNode&lt;&gt;(halfEdge, SFCDirection.FORWARD);</span>
+<span class="nc" id="L261">	    SFCNode&lt;V, E, F&gt; node2 = new SFCNode&lt;&gt;(getMesh().getTwin(halfEdge), SFCDirection.FORWARD);</span>
+
+<span class="nc" id="L263">	    candidates.add(node1);</span>
+<span class="nc" id="L264">	    candidates.add(node2);</span>
+<span class="nc" id="L265">	    sfc.insertFirst(node1);</span>
+<span class="nc" id="L266">	    sfc.insertNext(node2, node1);</span>
+<span class="nc" id="L267">	    triangulation = mesh.toTriangulation(IPointLocator.Type.JUMP_AND_WALK);</span>
+<span class="nc" id="L268">	    return triangulation;</span>
+    }
+
+    @Override
+    public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="nc" id="L273">    	return mesh;</span>
+    }
+
+	/**
+	 * &lt;p&gt;Applies one iteration in the construction of the space filling curve i.e. the next level will be
+	 * reached. If there are n candidates at most 2*n new candidates will be created:
+	 *
+	 * &lt;ol&gt;
+	 *     &lt;li&gt;update the SFC:  if the node k is a candidate which is not complete the node will be replaces in the
+	 * 	                        SFC by two new nodes. The order of these two nodes and the directions depends on the
+	 * 	                        direction of k.&lt;/li&gt;
+	 * 	    &lt;li&gt;
+	 * 	        refineSimplex2D edges:   After the SFC is updated we can refineSimplex2D edges. This won't destroy the edges of the nodes of
+	 * 	                        the SFC.
+	 * 	    &lt;/li&gt;
+	 * &lt;/ol&gt;
+	 *
+	 * We have to do step (1) before step (2) since an edge split, splits two half-edges which are not necessarily
+	 * neighbours in the SFC. Therefore, the split order is not equals to the order of the SFC.
+	 * &lt;/p&gt;
+	 *
+	 * @param refinePredicate the predicate which determines if the edge will be refined further.
+	 */
+	private void nextSFCLevel(@NotNull final Predicate&lt;E&gt; refinePredicate) {
+		//System.out.println(curveToTikz());
+		//List&lt;SFCNode&lt;P, V, E ,F&gt;&gt; candidates = sfc.asList();
+<span class="nc" id="L299">		ArrayList&lt;SFCNode&lt;V, E ,F&gt;&gt; newCandidates = new ArrayList&lt;&gt;(candidates.size() * 2);</span>
+		//Map&lt;E, SFCNode&lt;P, V, E, F&gt;&gt; newEdgeToNode = new HashMap&lt;&gt;();
+
+<span class="nc" id="L302">		ArrayList&lt;E&gt; toRefineEdges = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L303">		boolean tFinished = true;</span>
+
+		// 1. update CFS before refinement!
+<span class="nc bnc" id="L306" title="All 2 branches missed.">		for(SFCNode&lt;V, E ,F&gt; node : candidates) {</span>
+<span class="nc" id="L307">			E edge = node.getEdge();</span>
+
+<span class="nc bnc" id="L309" title="All 2 branches missed.">			if(refinePredicate.test(edge)) {</span>
+<span class="nc" id="L310">				toRefineEdges.add(edge);</span>
+<span class="nc" id="L311">				tFinished = false;</span>
+<span class="nc" id="L312">				SFCDirection dir = node.getDirection();</span>
+<span class="nc" id="L313">				E t1 = getMesh().getNext(edge);</span>
+<span class="nc" id="L314">				E t2 = getMesh().getPrev(edge);</span>
+
+<span class="nc" id="L316">				SFCNode&lt;V, E ,F&gt; element1 = new SFCNode&lt;&gt;(t1, dir.next());</span>
+<span class="nc" id="L317">				SFCNode&lt;V, E ,F&gt; element2 = new SFCNode&lt;&gt;(t2, dir.next());</span>
+
+<span class="nc bnc" id="L319" title="All 2 branches missed.">				if(dir == SFCDirection.FORWARD) {</span>
+<span class="nc" id="L320">					newCandidates.add(element2);</span>
+<span class="nc" id="L321">					newCandidates.add(element1);</span>
+<span class="nc" id="L322">					sfc.replace(element2, element1, node);</span>
+				}
+				else {
+<span class="nc" id="L325">					newCandidates.add(element1);</span>
+<span class="nc" id="L326">					newCandidates.add(element2);</span>
+<span class="nc" id="L327">					sfc.replace(element1, element2, node);</span>
+				}
+
+				//newEdgeToNode.put(t1, element1);
+				//newEdgeToNode.put(t2, element2);
+			}
+			else {
+				//newEdgeToNode.put(edge, node);
+			}
+<span class="nc" id="L336">		}</span>
+
+		// 2. refineSimplex2D
+<span class="nc bnc" id="L339" title="All 2 branches missed.">		for(E edge : toRefineEdges) {</span>
+			// to avoid duplicated splits
+<span class="nc bnc" id="L341" title="All 2 branches missed.">			if(validEdge(edge)) {</span>
+<span class="nc" id="L342">				refine(edge);</span>
+			}
+<span class="nc" id="L344">		}</span>
+<span class="nc" id="L345">		refinementFinished = tFinished;</span>
+<span class="nc" id="L346">		candidates = newCandidates;</span>
+<span class="nc" id="L347">	}</span>
+
+	private V splitEdge(@NotNull final E edge) {
+<span class="nc bnc" id="L350" title="All 2 branches missed.">		if(!getMesh().isBoundary(edge)) {</span>
+<span class="nc" id="L351">			SFCNode&lt;V, E, F&gt; node = sfc.getNode(edge);</span>
+<span class="nc" id="L352">			SFCDirection dir = node.getDirection();</span>
+<span class="nc" id="L353">			E t1 = getMesh().getNext(edge);</span>
+<span class="nc" id="L354">			E t2 = getMesh().getPrev(edge);</span>
+
+<span class="nc" id="L356">			SFCNode&lt;V, E ,F&gt; element1 = new SFCNode&lt;&gt;(t1, dir.next());</span>
+<span class="nc" id="L357">			SFCNode&lt;V, E ,F&gt; element2 = new SFCNode&lt;&gt;(t2, dir.next());</span>
+
+<span class="nc bnc" id="L359" title="All 2 branches missed.">			if(dir == SFCDirection.FORWARD) {</span>
+<span class="nc" id="L360">				sfc.replace(element2, element1, node);</span>
+			}
+			else {
+<span class="nc" id="L363">				sfc.replace(element1, element2, node);</span>
+			}
+		}
+
+
+<span class="nc" id="L368">		E twin = getMesh().getTwin(edge);</span>
+<span class="nc bnc" id="L369" title="All 2 branches missed.">		if(!getMesh().isBoundary(twin)) {</span>
+<span class="nc" id="L370">			SFCNode&lt;V, E, F&gt; node = sfc.getNode(twin);</span>
+<span class="nc" id="L371">			SFCDirection dir = node.getDirection();</span>
+<span class="nc" id="L372">			E t1 = getMesh().getNext(edge);</span>
+<span class="nc" id="L373">			E t2 = getMesh().getPrev(edge);</span>
+
+<span class="nc" id="L375">			SFCNode&lt;V, E ,F&gt; element1 = new SFCNode&lt;&gt;(t1, dir.next());</span>
+<span class="nc" id="L376">			SFCNode&lt;V, E ,F&gt; element2 = new SFCNode&lt;&gt;(t2, dir.next());</span>
+
+<span class="nc bnc" id="L378" title="All 2 branches missed.">			if(dir == SFCDirection.FORWARD) {</span>
+<span class="nc" id="L379">				sfc.replace(element2, element1, node);</span>
+			}
+			else {
+<span class="nc" id="L382">				sfc.replace(element1, element2, node);</span>
+			}
+		}
+
+<span class="nc" id="L386">		return refine(edge);</span>
+	}
+
+	private void nextSFCLevel() {
+<span class="nc bnc" id="L390" title="All 4 branches missed.">		nextSFCLevel(edge -&gt; !isCompleted(edge) &amp;&amp; triangulation.isLongestEdge(edge));</span>
+<span class="nc" id="L391">	}</span>
+
+	private void nextSFCLevel(double ran) {
+<span class="nc bnc" id="L394" title="All 4 branches missed.">		nextSFCLevel(edge -&gt; (random.nextDouble() &lt; ran) &amp;&amp; triangulation.isLongestEdge(edge));</span>
+<span class="nc" id="L395">	}</span>
+
+	/**
+	 * &lt;p&gt;There are two half-edges for each edge but we want to have only one half-edge for each edge
+	 * for a split. This method helps do filter one of those edges.&lt;/p&gt;
+	 *
+	 * @param edge the half-edge
+	 * @return true if this half-edge is valid (which means its twin is invalid), false otherwise
+	 */
+	private boolean validEdge(@NotNull E edge) {
+<span class="nc bnc" id="L405" title="All 2 branches missed.">		if (getMesh().isAtBoundary(edge)) {</span>
+<span class="nc" id="L406">			return true;</span>
+		}
+<span class="nc" id="L408">		IPoint p1 = getMesh().getPoint(getMesh().getPrev(edge));</span>
+<span class="nc" id="L409">		IPoint p2 = getMesh().getPoint(edge);</span>
+<span class="nc bnc" id="L410" title="All 6 branches missed.">		return (p1.getX() &gt; p2.getX() || (p1.getX() == p2.getX() &amp;&amp; p1.getY() &gt; p2.getY()));</span>
+	}
+
+	/**
+	 * &lt;p&gt;Applies the next step of the algorithm i.e. for the first call it initializes the algorithm,
+	 * all calls afterwards until the refinement has finished the next SFC-level is constructed, if
+	 * the refinement has finished the finish part is executed.&lt;/p&gt;
+	 */
+	@Override
+	public void refine() {
+<span class="nc bnc" id="L420" title="All 2 branches missed.">		if(!initialized) {</span>
+<span class="nc" id="L421">			init();</span>
+<span class="nc" id="L422">			initialized = true;</span>
+		}
+
+<span class="nc bnc" id="L425" title="All 2 branches missed.">		if(!refinementFinished) {</span>
+<span class="nc" id="L426">			nextSFCLevel();</span>
+		}
+<span class="nc bnc" id="L428" title="All 2 branches missed.">		else if(!finished) {</span>
+<span class="nc" id="L429">			finish();</span>
+		}
+<span class="nc" id="L431">	}</span>
+
+	/**
+	 * &lt;p&gt;Returns true if the refinement is finished.&lt;/p&gt;
+	 *
+	 * @return true if the refinement is finished, otherwise false
+	 */
+    public boolean isFinished() {
+<span class="nc" id="L439">        return finished;</span>
+    }
+
+	/**
+	 * &lt;p&gt;Returns the triangulation of this refinement.&lt;/p&gt;
+	 *
+	 * @return the triangulation of this refinement
+	 */
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; getTriangulation() {
+<span class="nc bnc" id="L449" title="All 2 branches missed.">		if(triangulation == null) {</span>
+<span class="nc" id="L450">			init();</span>
+		}
+<span class="nc" id="L452">		return triangulation;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Starts the refinement.&lt;/p&gt;
+	 *
+	 * @return returns the refined triangulation
+	 */
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate() {
+<span class="nc" id="L461">		return generate(true);</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate(boolean finalize) {
+<span class="nc bnc" id="L466" title="All 2 branches missed.">		if(!isFinished()) {</span>
+<span class="nc" id="L467">			logger.info(&quot;start triangulation generation&quot;);</span>
+<span class="nc" id="L468">			init();</span>
+
+<span class="nc bnc" id="L470" title="All 2 branches missed.">			while (!isFinished()) {</span>
+<span class="nc" id="L471">				refine();</span>
+			}
+
+<span class="nc bnc" id="L474" title="All 2 branches missed.">			if(finalize) {</span>
+<span class="nc" id="L475">				finish();</span>
+			}
+<span class="nc" id="L477">			logger.info(&quot;end triangulation generation&quot;);</span>
+		}
+<span class="nc" id="L479">		return triangulation;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Refines an edge, i.e. splits the edge at its midpoint if the midpoint is not already contained in
+	 * the list of points. The triangulation notifies its listeners about this event.&lt;/p&gt;
+	 *
+	 * @param edge the edge which will be refined / split
+	 * @return returns the vertex inserted
+	 */
+	private V refine(final E edge) {
+		//TODO: magic number 0.01
+<span class="nc" id="L491">		VLine line = getMesh().toLine(edge);</span>
+<span class="nc" id="L492">		IPoint midPoint = line.midPoint(random.nextDouble() * 0.01);</span>
+
+<span class="nc" id="L494">		V v = getMesh().createVertex(midPoint.getX(), midPoint.getY());</span>
+<span class="nc" id="L495">		IPoint p = getMesh().getPoint(v);</span>
+
+<span class="nc bnc" id="L497" title="All 2 branches missed.">		if(!points.contains(p)) {</span>
+<span class="nc" id="L498">			points.add(p);</span>
+<span class="nc" id="L499">			E newEdge = triangulation.getAnyEdge(triangulation.splitEdge(v, edge, false));</span>
+<span class="nc" id="L500">			triangulation.insertEvent(newEdge);</span>
+<span class="nc" id="L501">			smallestEdgeLength = Math.min(smallestEdgeLength, line.length() / 2.0);</span>
+<span class="nc" id="L502">		}</span>
+		else {
+<span class="nc" id="L504">			throw new IllegalStateException(p + &quot; point already exist.&quot;);</span>
+		}
+<span class="nc" id="L506">		return v;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Called after the splitting is completed. This method creates all holes, removes triangles outside the bounding box,
+	 * inserts fix points and re-arranges the mesh data structure such that it is cache friendly.&lt;/p&gt;
+	 */
+	public void finish() {
+<span class="nc bnc" id="L514" title="All 2 branches missed.">		if(!finished) {</span>
+<span class="nc" id="L515">			synchronized (getMesh()) {</span>
+				//nextSFCLevel(0.2);
+<span class="nc" id="L517">				triangulation.addTriEventListener(this);</span>
+<span class="nc" id="L518">				finished = true;</span>
+				// TODO: adjust sierpinsky order, idea: construct a tree -&gt; locate the face using the tree -&gt; replace the face by the three new faces
+<span class="nc" id="L520">				insertFixPoints(fixPoints);</span>
+<span class="nc" id="L521">				triangulation.finish();</span>
+
+				// the following calls are quite expensive
+<span class="nc" id="L524">				establishConstrains();</span>
+<span class="nc" id="L525">				List&lt;F&gt; sierpinksyFaceOrder = sfc.asList().stream().map(node -&gt; getMesh().getFace(node.getEdge())).collect(Collectors.toList());</span>
+<span class="nc" id="L526">				shrinkBorder();</span>
+<span class="nc" id="L527">				createHoles();</span>
+<span class="nc" id="L528">				adjustBoundaryVertexEdges();</span>
+				//triangulation.smoothBorder();
+
+<span class="nc bnc" id="L531" title="All 4 branches missed.">				sierpinksyFaceOrder.removeIf(face -&gt; getMesh().isDestroyed(face) || getMesh().isHole(face));</span>
+<span class="nc" id="L532">				List&lt;F&gt; holes = getMesh().streamHoles().collect(Collectors.toList());</span>
+<span class="nc" id="L533">				logger.info(&quot;#holes:&quot; + holes.size());</span>
+<span class="nc" id="L534">				sierpinksyFaceOrder.addAll(holes);</span>
+<span class="nc" id="L535">				logger.info(&quot;#sier-faces:&quot; + sierpinksyFaceOrder.size() + &quot;, #vertices&quot; + getMesh().getNumberOfVertices());</span>
+
+<span class="nc" id="L537">				getMesh().arrangeMemory(sierpinksyFaceOrder);</span>
+<span class="nc" id="L538">				triangulation.removeTriEventListener(this);</span>
+<span class="nc" id="L539">				getMesh().garbageCollection();</span>
+<span class="nc" id="L540">				logger.info(&quot;#sier-faces:&quot; + sierpinksyFaceOrder.size() + &quot;, #faces&quot; + getMesh().getNumberOfFaces());</span>
+<span class="nc" id="L541">			}</span>
+		}
+<span class="nc" id="L543">    }</span>
+
+	private void insertFixPoints(@NotNull final Collection&lt;IPoint&gt; fixPoints) {
+		//int count = 1;
+<span class="nc bnc" id="L547" title="All 2 branches missed.">		for(IPoint point : fixPoints) {</span>
+<span class="nc" id="L548">			V vertex = getMesh().createVertex(point);</span>
+			//assert getMesh().getFaces().stream().noneMatch(f -&gt; getNode(f) == null) : &quot;count &quot; + count;
+<span class="nc" id="L550">			V insertedVertex = getMesh().getVertex(getTriangulation().insertVertex(vertex, false));</span>
+<span class="nc" id="L551">			getMesh().setBooleanData(vertex, &quot;fixPoint&quot;, true);</span>
+			//getMesh().getFaces().stream().filter(f -&gt; getNode(f) == null).forEach(f -&gt; System.out.println(f));
+			//assert getMesh().getFaces().stream().noneMatch(f -&gt; getNode(f) == null) : &quot;count &quot; + count;
+			//count++;
+<span class="nc" id="L555">		}</span>
+<span class="nc" id="L556">	}</span>
+
+	@Override
+	public Collection&lt;V&gt; getFixPoints() {
+<span class="nc" id="L560">		return getMesh().streamVertices().filter(v -&gt; getMesh().getBooleanData(v, &quot;fixPoint&quot;)).collect(Collectors.toList());</span>
+	}
+
+
+	/**
+	 * &lt;p&gt;Insert fix points i.e. point that has to be in the triangulation and which will not be
+	 * moved. If there is a point p very close to the fix, instead of
+	 * inserting the fix point, the point p will be moved to the position of the fix point
+	 * and will be marked as fix point.&lt;/p&gt;
+	 *
+	 * @param fixPoints a collection of fix points.
+	 */
+	/*private Map&lt;V, VPoint&gt; insertFixPoints(@NotNull final Collection&lt;VPoint&gt; fixPoints) {
+		Map&lt;V, VPoint&gt; fixPointRelation = new HashMap&lt;&gt;();
+		for(VPoint fixPoint : fixPoints) {
+			Optional&lt;F&gt; optFace = triangulation.locate(fixPoint.getX(), fixPoint.getY());
+			if(optFace.isPresent()) {
+				assert triangulation.contains(fixPoint.getX(), fixPoint.getY(), optFace.get());
+				F face = optFace.get();
+				V closestPoint = null;
+				double distance = Double.MAX_VALUE;
+				for(V v : getMesh().getVertexIt(face)) {
+					P q = getMesh().getPoint(v);
+					double tmpDistance = Math.abs(distFunc.apply(q)- distFunc.apply(fixPoint));
+					if(!fixPointRelation.containsKey(v) &amp;&amp; (closestPoint == null ||  tmpDistance &lt; distance)) {
+						closestPoint = v;
+						distance = tmpDistance;
+					}
+				}
+				assert closestPoint != null;
+
+				// we have a problem here!
+				if(closestPoint == null) {
+					throw new IllegalArgumentException(&quot;fix points are to close together: use another set of fix points or a finer mesh&quot;);
+					//V vertex = splitEdge(getLongestEdge(face));
+					//fixPointRelation.put(vertex, fixPoint);
+				} else {
+					fixPointRelation.put(closestPoint, fixPoint);
+				}
+			}
+		}
+		return fixPointRelation;
+    }*/
+
+	/**
+	 * &lt;p&gt;Returns the longest edge of a face.&lt;/p&gt;
+	 *
+	 * @param face the face
+	 * @return  the lonngest edge of a face.
+	 */
+	private E getLongestEdge(F face) {
+<span class="nc bnc" id="L611" title="All 2 branches missed.">	    return getMesh().streamEdges(face).reduce((e1, e2) -&gt; getMesh().toLine(e1).length() &gt; getMesh().toLine(e2).length() ? e1 : e2).get();</span>
+    }
+
+	/**
+	 * &lt;p&gt;Shrinks the border such that there are no more triangles outside the boundary i.e. where the distance is positive.
+	 * Note the border is part of the whole boundary which is defined by the border and the holes.&lt;/p&gt;
+	 */
+	private void shrinkBorder() {
+<span class="nc bnc" id="L619" title="All 2 branches missed.">		Predicate&lt;F&gt; removePredicate = face -&gt; distFunc.apply(triangulation.getMesh().toMidpoint(face)) &gt; 0;</span>
+<span class="nc" id="L620">		triangulation.shrinkBorder(removePredicate, true, false);</span>
+<span class="nc" id="L621">	}</span>
+
+	@Override
+	public Map&lt;V, VLine&gt; getProjections() {
+<span class="nc" id="L625">		return projections;</span>
+	}
+
+	@Override
+	public Collection&lt;E&gt; getConstrains() {
+<span class="nc" id="L630">		return constrains;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Creates holes everywhere where the distance function is positive. Neighbouring holes will be merged.&lt;/p&gt;
+	 */
+	/*private void createHoles() {
+		List&lt;F&gt; faces = triangulation.getMesh().getFaces();
+		for(F face : faces) {
+			if(!triangulation.getMesh().isDestroyed(face) &amp;&amp; !triangulation.getMesh().isHole(face)) {
+				triangulation.createHole(face, f -&gt; distFunc.apply(triangulation.getMesh().toTriangle(f).midPoint()) &gt; 0, true);
+			}
+		}
+	}*/
+
+
+
+	private void establishConstrains() {
+<span class="nc" id="L648">		List&lt;VLine&gt; lines = boundary.stream().flatMap(shape -&gt; shape.lines().stream()).collect(Collectors.toList());</span>
+		//GenConstrainedDelaunayTriangulator&lt;V, E, F&gt; cdt = new GenConstrainedDelaunayTriangulator&lt;&gt;(getTriangulation(), lines, true);
+		//GenConstrainSplitter&lt;V, E, F&gt; cdt = new GenConstrainSplitter&lt;&gt;(getTriangulation(), lines, minEdgeLen / 2);
+
+<span class="nc" id="L652">		GenConstrainSplitter&lt;V, E, F&gt; cdt = new GenConstrainSplitter&lt;&gt;(getTriangulation(), lines, GeometryUtils.DOUBLE_EPS, sfc);</span>
+<span class="nc" id="L653">		cdt.generate(false);</span>
+<span class="nc" id="L654">		getTriangulation().setCanIllegalPredicate(e -&gt; true);</span>
+<span class="nc" id="L655">		projections.putAll(cdt.getProjections());</span>
+<span class="nc" id="L656">		constrains.addAll(cdt.getConstrains());</span>
+
+<span class="nc" id="L658">	}</span>
+
+	private void createHoles() {
+<span class="nc" id="L661">		List&lt;F&gt; faces = triangulation.getMesh().getFaces();</span>
+<span class="nc bnc" id="L662" title="All 2 branches missed.">		for(F face : faces) {</span>
+<span class="nc bnc" id="L663" title="All 4 branches missed.">			if(!triangulation.getMesh().isDestroyed(face) &amp;&amp; !triangulation.getMesh().isHole(face)) {</span>
+<span class="nc bnc" id="L664" title="All 2 branches missed.">				triangulation.createHole(face, f -&gt; distFunc.apply(triangulation.getMesh().toMidpoint(f)) &gt; 0, true, false);</span>
+			}
+<span class="nc" id="L666">		}</span>
+<span class="nc" id="L667">	}</span>
+
+	private void adjustBoundaryVertexEdges() {
+<span class="nc bnc" id="L670" title="All 2 branches missed.">		for(F hole : getMesh().getHoles()) {</span>
+<span class="nc bnc" id="L671" title="All 2 branches missed.">			for(V v : getMesh().getVertexIt(hole)) {</span>
+<span class="nc" id="L672">				triangulation.adjustVertex(v);</span>
+<span class="nc" id="L673">			}</span>
+<span class="nc" id="L674">		}</span>
+
+<span class="nc bnc" id="L676" title="All 2 branches missed.">		for(V v : getMesh().getVertexIt(getMesh().getBorder())) {</span>
+<span class="nc" id="L677">			triangulation.adjustVertex(v);</span>
+<span class="nc" id="L678">		}</span>
+<span class="nc" id="L679">	}</span>
+
+	/*private void createHoles() {
+		List&lt;F&gt; faces = triangulation.getMesh().getFaces();
+		for(F face : faces) {
+			if(!triangulation.getMesh().isDestroyed(face) &amp;&amp; !triangulation.getMesh().isHole(face)) {
+				triangulation.createHole(face, f -&gt; intersect(triangulation.getMesh().toTriangle(f)), true);
+			}
+		}
+	}*/
+
+	private boolean intersect(@NotNull final VPoint p1, @NotNull final VPoint p2) {
+<span class="nc" id="L691">		double dist1 = distFunc.apply(p1);</span>
+<span class="nc" id="L692">		double dist2 = distFunc.apply(p2);</span>
+<span class="nc" id="L693">		double dist = GeometryUtils.distance(p1.x, p1.y, p2.x, p2.y);</span>
+
+<span class="nc bnc" id="L695" title="All 2 branches missed.">		if(dist+dist1+dist1 &gt; 0){</span>
+<span class="nc" id="L696">			VPoint dir = p2.subtract(p1).norm();</span>
+<span class="nc" id="L697">			VPoint start = p1.add(dir.setMagnitude(-dist1));</span>
+<span class="nc" id="L698">			VPoint end = p2.subtract(dir.setMagnitude(-dist2));</span>
+<span class="nc" id="L699">			double len = start.distance(end);</span>
+<span class="nc bnc" id="L700" title="All 2 branches missed.">			for(double dx = smallestEdgeLength * 0.2; dx &lt; len; dx += smallestEdgeLength) {</span>
+<span class="nc" id="L701">				VPoint dxy = dir.setMagnitude(dx);</span>
+
+<span class="nc bnc" id="L703" title="All 2 branches missed.">				if(distFunc.apply(start.add(dxy)) &gt; smallestEdgeLength * 0.2) {</span>
+<span class="nc" id="L704">					return true;</span>
+				}
+			}
+		}
+<span class="nc" id="L708">		return false;</span>
+	}
+
+	private boolean intersect(@NotNull final VTriangle triangle) {
+<span class="nc bnc" id="L712" title="All 2 branches missed.">		if(distFunc.apply(triangle.midPoint()) &gt; 0) {</span>
+<span class="nc" id="L713">			return true;</span>
+		}
+
+<span class="nc" id="L716">		double d1 = distFunc.apply(triangle.p1);</span>
+<span class="nc" id="L717">		double d2 = distFunc.apply(triangle.p2);</span>
+<span class="nc" id="L718">		double d3 = distFunc.apply(triangle.p3);</span>
+
+<span class="nc bnc" id="L720" title="All 12 branches missed.">		if((d1 &gt; smallestEdgeLength &amp;&amp; d2 &gt; smallestEdgeLength) || (d1 &gt; smallestEdgeLength &amp;&amp; d3 &gt; smallestEdgeLength) || (d2 &gt; smallestEdgeLength &amp;&amp; d3 &gt; smallestEdgeLength)) {</span>
+<span class="nc" id="L721">			return true;</span>
+		}
+
+		/*boolean i1 = d1 &gt; smallestEdgeLength &amp;&amp; d2 &gt; smallestEdgeLength &amp;&amp; intersect(triangle.p1, triangle.p2);
+		boolean i2 = d2 &gt; smallestEdgeLength &amp;&amp; d3 &gt; smallestEdgeLength &amp;&amp; intersect(triangle.p2, triangle.p3);
+		boolean i3 = d3 &gt; smallestEdgeLength &amp;&amp; d1 &gt; smallestEdgeLength &amp;&amp; intersect(triangle.p3, triangle.p1);
+		return (i1 &amp;&amp; i2) || (i1 &amp;&amp; i3) || (i2 &amp;&amp; i3);*/
+<span class="nc" id="L728">		return false;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Removes acute angles at the boundary of holes.&lt;/p&gt;
+	 */
+	private void smoothHoles() {
+<span class="nc bnc" id="L735" title="All 2 branches missed.">		for(F hole : getMesh().getHoles()) {</span>
+<span class="nc bnc" id="L736" title="All 2 branches missed.">			for(E edge : getMesh().getEdges(hole)) {</span>
+<span class="nc bnc" id="L737" title="All 2 branches missed.">				if(getMesh().isBoundary(edge)) {</span>
+
+<span class="nc" id="L739">					VPoint p = getMesh().toPoint(edge);</span>
+<span class="nc" id="L740">					VPoint q = getMesh().toPoint(getMesh().getNext(edge));</span>
+<span class="nc" id="L741">					VPoint r = getMesh().toPoint(getMesh().getPrev(edge));</span>
+
+<span class="nc bnc" id="L743" title="All 2 branches missed.">					if(GeometryUtils.isCCW(r, p, q)) {</span>
+<span class="nc" id="L744">						double angle = GeometryUtils.angle(r, p, q);</span>
+<span class="nc bnc" id="L745" title="All 2 branches missed.">						if(angle &lt; 0.5*Math.PI) {</span>
+<span class="nc" id="L746">							triangulation.createFaceAtBoundary(edge);</span>
+						}
+					}
+				}
+<span class="nc" id="L750">			}</span>
+<span class="nc" id="L751">		}</span>
+<span class="nc" id="L752">	}</span>
+
+	/**
+	 * &lt;p&gt;Tests if a specific edge is complete i.e. it should not be split into two edges.&lt;/p&gt;
+	 *
+	 * @param edge the half-edge representing the edge of the mesh.
+	 * @return true, if the edge should not be split, false otherwise
+	 */
+	private boolean isCompleted(@NotNull E edge) {
+<span class="nc bnc" id="L761" title="All 2 branches missed.">		if(getMesh().isBoundary(edge)){</span>
+<span class="nc" id="L762">			edge = getMesh().getTwin(edge);</span>
+		}
+
+<span class="nc" id="L765">		return isSmallEnough(edge) /* || isOutside(edge) || isEdgeOutsideBBox(edge) || isEdgeInsideHole(edge);*/;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Tests if a specific edge is small enough.&lt;/p&gt;
+	 *
+	 * @param edge the half-edge representing the edge
+	 * @return true, if the edge is small enough, false otherwise
+	 */
+	private boolean isSmallEnough(@NotNull final E edge) {
+<span class="nc" id="L775">		VLine line = getMesh().toLine(edge);</span>
+<span class="nc" id="L776">		LinkedList&lt;VLine&gt; lines = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L777">		lines.addFirst(line);</span>
+<span class="nc bnc" id="L778" title="All 2 branches missed.">		while (!lines.isEmpty()) {</span>
+<span class="nc" id="L779">			VLine l = lines.poll();</span>
+
+<span class="nc bnc" id="L781" title="All 2 branches missed.">			if(line.length() &gt; lenFunc.apply(l.midPoint())) {</span>
+<span class="nc" id="L782">				return false;</span>
+			}
+
+<span class="nc bnc" id="L785" title="All 2 branches missed.">			if(l.length() &gt; minEdgeLen) {</span>
+<span class="nc" id="L786">				lines.addLast(new VLine(l.getVPoint1(), l.midPoint()));</span>
+<span class="nc" id="L787">				lines.addLast(new VLine(l.getVPoint2(), l.midPoint()));</span>
+			}
+<span class="nc" id="L789">		}</span>
+
+<span class="nc" id="L791">		return true;</span>
+	}
+
+	/**
+	 * &lt;p&gt;Returns true if all neighbouring faces (one or two) of the edge represented by the half-edge
+	 * are not contained in the bounding box. In this case the refinement can stop.&lt;/p&gt;
+	 *
+	 * @param edge the half-edge
+	 * @return true if all neighbouring faces (one or two) of the edge are not contained in the bounding box
+	 */
+	private boolean isNeighbouringFacesContainedInBoundingBox(@NotNull final E edge) {
+<span class="nc" id="L802">		F face = getMesh().getFace(edge);</span>
+<span class="nc" id="L803">		F twin = getMesh().getTwinFace(edge);</span>
+
+<span class="nc" id="L805">		VTriangle triangle = getMesh().toTriangle(face);</span>
+<span class="nc bnc" id="L806" title="All 6 branches missed.">		return (!triangle.intersectsRectangleLine(bbox) &amp;&amp; (getMesh().isBoundary(twin) || !getMesh().toTriangle(twin).intersectsRectangleLine(bbox)));</span>
+	}
+
+	/**
+	 * &lt;p&gt;Returns true if all neighbouring faces (one or two) of the edge represented by the half-edge
+	 * are not contained in an obstacle shape. In this case the refinement can stop.&lt;/p&gt;
+	 *
+	 * @param edge the half-edge
+	 * @return true if all neighbouring faces (one or two) of the edge are not contained an obstacle face
+	 */
+	private boolean isNeighbouringFacesContainedInObstacle(@NotNull final E edge) {
+<span class="nc bnc" id="L817" title="All 2 branches missed.">		if(boundary.isEmpty()) {</span>
+<span class="nc" id="L818">			return false;</span>
+		}
+		else {
+<span class="nc" id="L821">			F face = getMesh().getFace(edge);</span>
+<span class="nc" id="L822">			F twin = getMesh().getTwinFace(edge);</span>
+
+<span class="nc" id="L824">			VTriangle triangle = getMesh().toTriangle(face);</span>
+<span class="nc" id="L825">			return boundary.stream()</span>
+<span class="nc bnc" id="L826" title="All 6 branches missed.">					.anyMatch(shape -&gt; shape.contains(triangle.getBounds2D()) &amp;&amp; (getMesh().isBoundary(twin) || shape.contains(getMesh().toTriangle(twin).getBounds2D())));</span>
+		}
+	}
+
+	/*
+	 * This does not work at the moment: TODO: split if edge is not small enough (also if it is not the longest edge).
+	 * If the edge is not the longest edge split the as long as it is the case!
+	 */
+	private boolean isOutside(@NotNull E edge) {
+<span class="nc" id="L835">		IPoint p1 = getMesh().getPoint(edge);</span>
+<span class="nc" id="L836">		IPoint p2 = getMesh().getPoint(getMesh().getNext(edge));</span>
+<span class="nc" id="L837">		IPoint p3 = getMesh().getPoint(getMesh().getNext(getMesh().getTwin(edge)));</span>
+
+<span class="nc" id="L839">		IPoint midPoint = getMesh().toLine(edge).midPoint();</span>
+
+<span class="nc" id="L841">		double len = Math.max(midPoint.distance(p1), midPoint.distance(p2));</span>
+<span class="nc" id="L842">		len = Math.max(len, midPoint.distance(p3));</span>
+
+<span class="nc bnc" id="L844" title="All 2 branches missed.">		return distFunc.apply(midPoint) &gt;= len;</span>
+	}
+
+    private String curveToTikz() {
+<span class="nc" id="L848">		return TexGraphGenerator.toTikz(getMesh(), sfc.asList().stream().map(node -&gt; getMesh().getFace(node.getEdge())).collect(Collectors.toList()));</span>
+    }
+
+
+	@Override
+	public void postSplitTriangleEvent(F original, F f1, F f2, F f3, V v) {
+<span class="nc" id="L854">		E e1 = getMesh().getEdge(f1);</span>
+<span class="nc" id="L855">		E e2 = getMesh().getEdge(f2);</span>
+<span class="nc" id="L856">		E e3 = getMesh().getEdge(f3);</span>
+
+<span class="nc bnc" id="L858" title="All 2 branches missed.">		for(E edge : getMesh().getEdgeIt(f1)) {</span>
+<span class="nc" id="L859">			SFCNode&lt;V, E, F&gt; node = sfc.getNode(edge);</span>
+<span class="nc bnc" id="L860" title="All 2 branches missed.">			if(node != null) {</span>
+<span class="nc" id="L861">				SFCNode&lt;V, E ,F&gt; element1 = new SFCNode&lt;&gt;(e1, node.getDirection().next());</span>
+<span class="nc" id="L862">				SFCNode&lt;V, E ,F&gt; element2 = new SFCNode&lt;&gt;(e2, node.getDirection().next());</span>
+<span class="nc" id="L863">				SFCNode&lt;V, E ,F&gt; element3 = new SFCNode&lt;&gt;(e3, node.getDirection().next());</span>
+<span class="nc" id="L864">				sfc.replace(element1, element2, element3, node);</span>
+<span class="nc" id="L865">				return;</span>
+			}
+<span class="nc" id="L867">		}</span>
+
+<span class="nc bnc" id="L869" title="All 2 branches missed.">		for(E edge : getMesh().getEdgeIt(f2)) {</span>
+<span class="nc" id="L870">			SFCNode&lt;V, E, F&gt; node = sfc.getNode(edge);</span>
+<span class="nc bnc" id="L871" title="All 2 branches missed.">			if(node != null) {</span>
+<span class="nc" id="L872">				SFCNode&lt;V, E ,F&gt; element1 = new SFCNode&lt;&gt;(e1, node.getDirection().next());</span>
+<span class="nc" id="L873">				SFCNode&lt;V, E ,F&gt; element2 = new SFCNode&lt;&gt;(e2, node.getDirection().next());</span>
+<span class="nc" id="L874">				SFCNode&lt;V, E ,F&gt; element3 = new SFCNode&lt;&gt;(e3, node.getDirection().next());</span>
+<span class="nc" id="L875">				sfc.replace(element1, element2, element3, node);</span>
+<span class="nc" id="L876">				return;</span>
+			}
+<span class="nc" id="L878">		}</span>
+
+<span class="nc bnc" id="L880" title="All 2 branches missed.">		for(E edge : getMesh().getEdgeIt(f3)) {</span>
+<span class="nc" id="L881">			SFCNode&lt;V, E, F&gt; node = sfc.getNode(edge);</span>
+<span class="nc bnc" id="L882" title="All 2 branches missed.">			if(node != null) {</span>
+<span class="nc" id="L883">				SFCNode&lt;V, E ,F&gt; element1 = new SFCNode&lt;&gt;(e1, node.getDirection().next());</span>
+<span class="nc" id="L884">				SFCNode&lt;V, E ,F&gt; element2 = new SFCNode&lt;&gt;(e2, node.getDirection().next());</span>
+<span class="nc" id="L885">				SFCNode&lt;V, E ,F&gt; element3 = new SFCNode&lt;&gt;(e3, node.getDirection().next());</span>
+<span class="nc" id="L886">				sfc.replace(element1, element2, element3, node);</span>
+<span class="nc" id="L887">				return;</span>
+			}
+<span class="nc" id="L889">		}</span>
+<span class="nc" id="L890">	}</span>
+
+	@Override
+	public void postSplitHalfEdgeEvent(E originalEdge, F original, F f1, F f2, V v) {
+<span class="nc" id="L894">		SFCNode&lt;V, E, F&gt; node = getNode(f1, f2);</span>
+<span class="nc" id="L895">		SFCDirection dir = node.getDirection();</span>
+
+<span class="nc" id="L897">		E e1 = getMesh().getEdge(f1);</span>
+<span class="nc" id="L898">		E e2 = getMesh().getEdge(f2);</span>
+
+<span class="nc" id="L900">		SFCNode&lt;V, E ,F&gt; element1 = new SFCNode&lt;&gt;(e1, dir.next());</span>
+<span class="nc" id="L901">		SFCNode&lt;V, E ,F&gt; element2 = new SFCNode&lt;&gt;(e2, dir.next());</span>
+
+<span class="nc" id="L903">		sfc.replace(element1, element2, node);</span>
+<span class="nc" id="L904">	}</span>
+
+	private SFCNode&lt;V, E ,F&gt; getNode(F f1, F f2) {
+<span class="nc bnc" id="L907" title="All 2 branches missed.">		for(E edge : getMesh().getEdgeIt(f1)) {</span>
+<span class="nc" id="L908">			SFCNode&lt;V, E, F&gt; node = sfc.getNode(edge);</span>
+<span class="nc bnc" id="L909" title="All 2 branches missed.">			if(node != null) {</span>
+<span class="nc" id="L910">				return node;</span>
+			}
+<span class="nc" id="L912">		}</span>
+
+<span class="nc bnc" id="L914" title="All 2 branches missed.">		for(E edge : getMesh().getEdgeIt(f2)) {</span>
+<span class="nc" id="L915">			SFCNode&lt;V, E, F&gt; node = sfc.getNode(edge);</span>
+<span class="nc bnc" id="L916" title="All 2 branches missed.">			if(node != null) {</span>
+<span class="nc" id="L917">				return node;</span>
+			}
+<span class="nc" id="L919">		}</span>
+
+<span class="nc" id="L921">		return null;</span>
+	}
+
+	private SFCNode&lt;V, E ,F&gt; getNode(F f1) {
+<span class="nc bnc" id="L925" title="All 2 branches missed.">		for(E edge : getMesh().getEdgeIt(f1)) {</span>
+<span class="nc" id="L926">			SFCNode&lt;V, E, F&gt; node = sfc.getNode(edge);</span>
+<span class="nc bnc" id="L927" title="All 2 branches missed.">			if(node != null) {</span>
+<span class="nc" id="L928">				return node;</span>
+			}
+<span class="nc" id="L930">		}</span>
+<span class="nc" id="L931">		return null;</span>
+	}
+
+	@Override
+<span class="nc" id="L935">	public void postFlipEdgeEvent(F f1, F f2) {}</span>
+
+	@Override
+<span class="nc" id="L938">	public void postInsertEvent(V vertex) {}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

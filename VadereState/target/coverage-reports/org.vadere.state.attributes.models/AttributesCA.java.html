@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesCA.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.models</a> &gt; <span class="el_source">AttributesCA.java</span></div><h1>AttributesCA.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.models;
+
+import org.vadere.annotation.factories.attributes.ModelAttributeClass;
+import org.vadere.state.attributes.Attributes;
+import org.vadere.state.types.MovementType;
+import org.vadere.state.types.OptimizationType;
+import org.vadere.state.types.UpdateType;
+
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * This class contains a default parameter setting for emulating the cellular automaton with the Optimal Steps Model
+ *
+ * @author hm-mgoedel
+ */
+
+@ModelAttributeClass
+public class AttributesCA extends AttributesOSM {
+
+	/** Von-Neumann neighbourhood is realized with stepCircleResolution = 4 and numberOfCircles = 1
+	 * One advantage of von-Neumann neighbourhood compared to Moore neighbourhood is that the step size to the next cell
+	 * is the same for all neighbors with von-Neumann neighbourhood.
+	 */
+<span class="nc" id="L26">	private int stepCircleResolution = 4;</span>
+<span class="nc" id="L27">	private int numberOfCircles = 1;</span>
+
+	// Discrete is used so that purely the defined positions will be used (enforce grid)
+<span class="nc" id="L30">	private OptimizationType optimizationType = OptimizationType.DISCRETE;</span>
+
+	// enforce a static grid
+<span class="nc" id="L33">	private boolean varyStepDirection = false;</span>
+
+<span class="nc" id="L35">	private MovementType movementType = MovementType.ARBITRARY;</span>
+
+
+	// this should be equivalent to the cell size that is used with the CA
+	// todo: fix this to the pedestrian's radius?
+<span class="nc" id="L40">	private double stepLengthIntercept = 0.4;</span>
+
+<span class="nc" id="L42">	private double stepLengthSlopeSpeed = 0.0;</span>
+
+	// standard deviation = 0 to enforce the same step length for each agent (enforce grid)
+<span class="nc" id="L45">	private double stepLengthSD = 0.0;</span>
+
+<span class="nc" id="L47">	private double movementThreshold = 0;</span>
+
+
+	// step length can only be zero or one grid cell, a minimum step length is not meaningful in CA
+<span class="nc" id="L51">	private double minStepLength = 0.0;</span>
+<span class="nc" id="L52">	private boolean minimumStepLength = false;</span>
+<span class="nc" id="L53">	private boolean dynamicStepLength = false;</span>
+
+
+<span class="nc" id="L56">	private double maxStepDuration = Double.MAX_VALUE;</span>
+
+
+
+<span class="nc" id="L60">	private UpdateType updateType = UpdateType.PARALLEL;</span>
+
+	/**
+	 * If &lt;tt&gt;true&lt;/tt&gt; this avoids agent jumping over small walls. However, this does not fix the problem that
+	 * the target potential computation fails due to small obstacles. Since this is a quick fix and the
+	 * test is very expensive the default should be false!
+	 */
+<span class="nc" id="L67">	private boolean seeSmallWalls = false;</span>
+
+
+<span class="nc" id="L70">	private String targetPotentialModel = &quot;org.vadere.simulator.models.potential.fields.PotentialFieldTargetGrid&quot;;</span>
+<span class="nc" id="L71">	private String pedestrianPotentialModel = &quot;org.vadere.simulator.models.potential.PotentialFieldPedestrianCA&quot;;</span>
+<span class="nc" id="L72">	private String obstaclePotentialModel = &quot;org.vadere.simulator.models.potential.PotentialFieldObstacleCA&quot;;</span>
+<span class="nc" id="L73">	private List&lt;String&gt; submodels = new LinkedList&lt;&gt;();</span>
+
+<span class="nc" id="L75">	public AttributesCA() {}</span>
+
+	// Getters...
+	public int getStepCircleResolution() {
+<span class="nc" id="L79">		return stepCircleResolution;</span>
+	}
+
+	public int getNumberOfCircles() {
+<span class="nc" id="L83">		return numberOfCircles;</span>
+	}
+
+	public double getMaxStepDuration() {
+<span class="nc" id="L87">		return maxStepDuration;</span>
+	}
+
+	public boolean isVaryStepDirection() {
+<span class="nc" id="L91">		return varyStepDirection;</span>
+	}
+
+	public double getStepLengthIntercept() {
+<span class="nc" id="L95">		return stepLengthIntercept;</span>
+	}
+
+	public double getStepLengthSlopeSpeed() {
+<span class="nc" id="L99">		return stepLengthSlopeSpeed;</span>
+	}
+
+	public double getStepLengthSD() {
+<span class="nc" id="L103">		return stepLengthSD;</span>
+	}
+
+	public double getMovementThreshold() {
+<span class="nc" id="L107">		return movementThreshold;</span>
+	}
+
+	public OptimizationType getOptimizationType() {
+<span class="nc" id="L111">		return optimizationType;</span>
+	}
+
+	public boolean isDynamicStepLength() {
+<span class="nc" id="L115">		return dynamicStepLength;</span>
+	}
+
+	public UpdateType getUpdateType() {
+<span class="nc" id="L119">		return updateType;</span>
+	}
+
+	public MovementType getMovementType() {
+<span class="nc" id="L123">		return movementType;</span>
+	}
+
+	public boolean isSeeSmallWalls() {
+<span class="nc" id="L127">		return seeSmallWalls;</span>
+	}
+
+	public boolean isMinimumStepLength() {
+<span class="nc" id="L131">		return minimumStepLength;</span>
+	}
+
+	public String getTargetPotentialModel() {
+<span class="nc" id="L135">		return targetPotentialModel;</span>
+	}
+
+	public String getPedestrianPotentialModel() {
+<span class="nc" id="L139">		return pedestrianPotentialModel;</span>
+	}
+
+	public String getObstaclePotentialModel() {
+<span class="nc" id="L143">		return obstaclePotentialModel;</span>
+	}
+
+	/**
+	 * Return a copy of the submodel class names.
+	 *
+	 * @return a copy of the submodel class names
+	 */
+	public List&lt;String&gt; getSubmodels() {
+<span class="nc" id="L152">		return new ArrayList&lt;&gt;(submodels);</span>
+	}
+
+	public double getMinStepLength() {
+<span class="nc" id="L156">		return minStepLength;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

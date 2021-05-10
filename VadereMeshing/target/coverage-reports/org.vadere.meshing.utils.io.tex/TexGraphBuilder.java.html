@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TexGraphBuilder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.utils.io.tex</a> &gt; <span class="el_source">TexGraphBuilder.java</span></div><h1>TexGraphBuilder.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.utils.io.tex;
+
+import org.vadere.util.visualization.ColorHelper;
+import org.vadere.meshing.utils.color.ColorFunctions;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.utils.debug.TriCanvas;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+
+/**
+ * Builder class for Tikz Graphics used in tex / latex documents.
+ * @author Stefan Schuhbaeck
+ */
+public class TexGraphBuilder&lt;P extends IPoint, CE, CF, V extends IVertex, E extends IHalfEdge, F extends IFace&gt; {
+
+	private StringBuilder sb;
+	private boolean generated;
+	private DrawType drawType;
+	private ColorFunctions&lt;P, CE, CF, V, E, F&gt; colorFunctions;
+	private BiFunction&lt;IMesh&lt;V, E, F&gt;, F, StringBuilder&gt; drawFace;
+	private ArrayList&lt;Consumer&lt;StringBuilder&gt;&gt; decorator;
+	private IMesh&lt;V, E, F&gt; mesh;
+	/**
+	 * @param mesh           Mesh to draw
+	 * @param scaling        Scaling factor
+	 * @param colorFunctions {@link ColorFunctions} object used for color information
+	 */
+<span class="nc" id="L37">	public TexGraphBuilder(IMesh&lt;V, E, F&gt; mesh, float scaling, ColorFunctions&lt;P, CE, CF, V, E, F&gt; colorFunctions) {</span>
+<span class="nc" id="L38">		this.drawType = DrawType.faceFillDraw;</span>
+<span class="nc" id="L39">		this.sb = new StringBuilder();</span>
+<span class="nc" id="L40">		this.mesh = mesh;</span>
+<span class="nc" id="L41">		this.colorFunctions = colorFunctions;</span>
+<span class="nc" id="L42">		decorator = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L43">		initDrawFace();</span>
+<span class="nc" id="L44">		sb.append(&quot;\\begin{tikzpicture}[scale=&quot;).append(scaling).append(&quot;]\n&quot;);</span>
+<span class="nc" id="L45">	}</span>
+
+	/**
+	 * RGB color syntax for tikz
+	 *
+	 * @param c color object
+	 * @return tikz syntax String (without newline)
+	 */
+	private static String color(Color c) {
+<span class="nc" id="L54">		return &quot;{rgb,255:red,&quot; + c.getRed() + &quot;;green,&quot; + c.getGreen() + &quot;;blue,&quot; + c.getBlue() + &quot;}&quot;;</span>
+	}
+
+	//statics
+
+	/**
+	 * Label for face numbers / ids
+	 *
+	 * @param color color of the text used to represent the face id.
+	 * @param x     x coordinate of the text node
+	 * @param y     y coordinate of the text node
+	 * @param text  the text used
+	 * @return line used for tikzpicture (contains newline character)
+	 */
+	public static StringBuilder label(String color, String x, String y, String text) {
+<span class="nc" id="L69">		StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L70">		sb.append(&quot;\\draw(&quot;).append(x).append(&quot;,&quot;).append(y).append(&quot;) &quot;);</span>
+<span class="nc" id="L71">		sb.append(&quot;node &quot;).append(&quot;{\\tiny \\color&quot;).append(color).append(&quot; &quot;).append(text).append(&quot;};\n&quot;);</span>
+<span class="nc" id="L72">		return sb;</span>
+	}
+
+	public static StringBuilder label(String color, double x, double y, String text) {
+<span class="nc" id="L76">		return label(color, Double.toString(x), Double.toString(y), text);</span>
+	}
+
+	/**
+	 * Create line between point 1 and point 2
+	 *
+	 * @param color color of line
+	 * @param x1    x of point 1
+	 * @param y1    y of point 1
+	 * @param x2    x of point 2
+	 * @param y2    y of point 2
+	 * @return line used for tikzpicture (contains newline character)
+	 */
+	public static StringBuilder line(String color, String x1, String y1, String x2, String y2) {
+<span class="nc" id="L90">		StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L91">		sb.append(&quot;\\draw [color=&quot;).append(color).append(&quot;] (&quot;)</span>
+<span class="nc" id="L92">				.append(x1).append(&quot;,&quot;).append(y1).append(&quot;) -- (&quot;).append(x2).append(&quot;,&quot;).append(y2).append(&quot;);\n&quot;);</span>
+<span class="nc" id="L93">		return sb;</span>
+	}
+
+	public static StringBuilder line(Color c, VPoint a, VPoint b) {
+<span class="nc" id="L97">		return line(color(c), Double.toString(a.x), Double.toString(a.y), Double.toString(b.x), Double.toString(b.y));</span>
+	}
+
+	/**
+	 * Point within tikzpicture
+	 *
+	 * @param color fill color of point
+	 * @param x     x coordinate of point
+	 * @param y     y coordinate of point
+	 * @param r     radius of point in cm
+	 * @return line used for tikzpicture (contains newline character)
+	 */
+	public static StringBuilder point(String color, String x, String y, String r) {
+<span class="nc" id="L110">		StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L111">		sb.append(&quot;\\fill[fill=&quot;)</span>
+<span class="nc" id="L112">				.append(color)</span>
+<span class="nc" id="L113">				.append(&quot;] (&quot;)</span>
+<span class="nc" id="L114">				.append(x)</span>
+<span class="nc" id="L115">				.append(&quot;,&quot;)</span>
+<span class="nc" id="L116">				.append(y)</span>
+<span class="nc" id="L117">				.append(&quot;) circle [radius=&quot;).append(r).append(&quot;cm];\n&quot;);</span>
+<span class="nc" id="L118">		return sb;</span>
+	}
+
+	public static StringBuilder point(String color, double x, double y, double r) {
+<span class="nc" id="L122">		return point(color, Double.toString(x), Double.toString(y), Double.toString(r));</span>
+	}
+
+	public static StringBuilder point(Color c, double x, double y, double r) {
+<span class="nc" id="L126">		return point(color(c), Double.toString(x), Double.toString(y), Double.toString(r));</span>
+	}
+
+	/**
+	 * Generate graph. This method should only be called once.
+	 */
+	public void generateGraph() {
+<span class="nc bnc" id="L133" title="All 2 branches missed.">		if (!generated) {</span>
+//			drawFaces();
+<span class="nc" id="L135">			drawFacesWithId();</span>
+<span class="nc" id="L136">			drawElements();</span>
+<span class="nc" id="L137">			drawVertex();</span>
+<span class="nc" id="L138">			sb.append(&quot;\\end{tikzpicture}&quot;);</span>
+<span class="nc" id="L139">			generated = true;</span>
+		}
+<span class="nc" id="L141">	}</span>
+
+	//instance
+
+	/**
+	 * @return String representation of the Tikz drawing
+	 */
+	public String returnString() {
+<span class="nc" id="L149">		return sb.toString();</span>
+	}
+
+	/**
+	 * Draw all faces contained within the {@link IMesh}. Color of boarders and filling is defined
+	 * by the {@link ColorFunctions} field
+	 */
+	private void drawFaces() {
+<span class="nc bnc" id="L157" title="All 2 branches missed.">		for (F face : mesh.getFaces()) {</span>
+<span class="nc" id="L158">			sb.append(drawFace.apply(mesh, face));</span>
+<span class="nc" id="L159">		}</span>
+<span class="nc" id="L160">	}</span>
+
+	/**
+	 * Draw all faces contained within the {@link IMesh}. Color of boarders and filling is defined
+	 * by the {@link ColorFunctions} field. Add an ID at the center of a face and a comment line
+	 * to the tikz drawing.
+	 */
+	private void drawFacesWithId() {
+<span class="nc" id="L168">		int id = 0;</span>
+<span class="nc bnc" id="L169" title="All 2 branches missed.">		for (F face : mesh.getFaces()) {</span>
+<span class="nc" id="L170">			sb.append(&quot;%id: &quot;).append(Integer.toString(id)).append(&quot;\n&quot;);</span>
+<span class="nc" id="L171">			VPolygon p = mesh.toPolygon(face);</span>
+<span class="nc" id="L172">			VPoint x = p.getCentroid();</span>
+<span class="nc" id="L173">			sb.append(drawFace.apply(mesh, face));</span>
+<span class="nc" id="L174">			Color c = ColorHelper.getContrasColor(colorFunctions.faceFillColor(mesh, face));</span>
+<span class="nc" id="L175">			sb.append(label(color(c), x.getX(), x.getY(), Integer.toString(id)));</span>
+<span class="nc" id="L176">			id++;</span>
+<span class="nc" id="L177">		}</span>
+<span class="nc" id="L178">	}</span>
+
+	/**
+	 * Draw all additional elements defined besides the standards set in a
+	 * {@link TriCanvas} implementation.
+	 */
+	private void drawElements() {
+<span class="nc" id="L185">		decorator.forEach(c -&gt; c.accept(sb));</span>
+<span class="nc" id="L186">	}</span>
+
+	public void addElement(Consumer&lt;StringBuilder&gt; c) {
+<span class="nc" id="L189">		decorator.add(c);</span>
+<span class="nc" id="L190">	}</span>
+
+	/**
+	 * Draw circles as {@link IMesh} vertices.
+	 */
+	private void drawVertex() {
+<span class="nc bnc" id="L196" title="All 2 branches missed.">		for (F face : mesh.getFaces()) {</span>
+<span class="nc" id="L197">			VPolygon polygon = mesh.toPolygon(face);</span>
+<span class="nc" id="L198">			polygon.getPoints().forEach(p -&gt; {</span>
+<span class="nc" id="L199">				sb.append(point(&quot;red&quot;, p.getX(), p.getY(), 0.1));</span>
+<span class="nc" id="L200">			});</span>
+<span class="nc" id="L201">		}</span>
+<span class="nc" id="L202">	}</span>
+
+	/**
+	 * Define if the {@link IMesh} should be drawn as a filled, contour plot or both.
+	 */
+	public void initDrawFace() {
+<span class="nc bnc" id="L208" title="All 2 branches missed.">		if (drawFace == null) {</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">			if (this.drawType == DrawType.faceDraw) {</span>
+<span class="nc" id="L210">				drawFace = this::faceDraw;</span>
+<span class="nc bnc" id="L211" title="All 2 branches missed.">			} else if (this.drawType == DrawType.faceFill) {</span>
+<span class="nc" id="L212">				drawFace = this::faceFill;</span>
+			} else {
+<span class="nc" id="L214">				drawFace = this::faceFillDraw;</span>
+			}
+		}
+<span class="nc" id="L217">	}</span>
+
+	public void setDrawType(DrawType drawType) {
+<span class="nc" id="L220">		this.drawType = drawType;</span>
+<span class="nc" id="L221">	}</span>
+
+	public void setDrawFace(BiFunction&lt;IMesh&lt;V, E, F&gt;, F, StringBuilder&gt; drawFace) {
+<span class="nc" id="L224">		this.drawFace = drawFace;</span>
+<span class="nc" id="L225">	}</span>
+
+	/**
+	 * Creates contour plott with no filling
+	 */
+	private StringBuilder faceDraw(IMesh&lt;V, E, F&gt; mesh, F face) {
+<span class="nc" id="L231">		StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L232">		sb.append(&quot;\\draw &quot;).append(&quot;[&quot;)</span>
+<span class="nc" id="L233">				.append(&quot;color=&quot;).append(color(colorFunctions.faceDrawColor(mesh, face)))</span>
+<span class="nc" id="L234">				.append(&quot;]&quot;);</span>
+
+<span class="nc" id="L236">		sb.append(shape(mesh, face)).append(&quot;;\n&quot;);</span>
+<span class="nc" id="L237">		return sb;</span>
+	}
+
+	/**
+	 * Creates plot with filling only (no boarders around faces)
+	 */
+	private StringBuilder faceFill(IMesh&lt;V, E, F&gt; mesh, F face) {
+<span class="nc" id="L244">		StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L245">		sb.append(&quot;\\fill &quot;).append(&quot;[&quot;)</span>
+<span class="nc" id="L246">				.append(&quot;fill=&quot;).append(color(colorFunctions.faceDrawColor(mesh, face)))</span>
+<span class="nc" id="L247">				.append(&quot;]&quot;);</span>
+
+<span class="nc" id="L249">		sb.append(shape(mesh, face)).append(&quot;;\n&quot;);</span>
+<span class="nc" id="L250">		return sb;</span>
+	}
+
+	/**
+	 * Creates plot with contour and filling (default)
+	 */
+
+	private StringBuilder faceFillDraw(IMesh&lt;V, E, F&gt; mesh, F face) {
+<span class="nc" id="L258">		StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L259">		sb.append(&quot;\\filldraw &quot;).append(&quot;[&quot;)</span>
+<span class="nc" id="L260">				.append(&quot;color=&quot;).append(color(colorFunctions.faceDrawColor(mesh, face)))</span>
+<span class="nc" id="L261">				.append(&quot;,fill=&quot;).append(color(colorFunctions.faceFillColor(mesh, face)))</span>
+<span class="nc" id="L262">				.append(&quot;]&quot;);</span>
+
+<span class="nc" id="L264">		sb.append(shape(mesh, face)).append(&quot;;\n&quot;);</span>
+<span class="nc" id="L265">		return sb;</span>
+	}
+
+	public StringBuilder shape(IMesh&lt;V, E, F&gt; mesh, F face) {
+<span class="nc" id="L269">		StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L270">		V first = mesh.streamVertices(face).findFirst().get();</span>
+<span class="nc" id="L271">		String poly = mesh.streamVertices(face).map(v -&gt; &quot;(&quot; + v.getX() + &quot;,&quot; + v.getY() + &quot;)&quot;).reduce((s1, s2) -&gt; s1 + &quot;--&quot; + s2).get() + &quot;-- (&quot; + first.getX() + &quot;,&quot; + first.getY() + &quot;)&quot;;</span>
+<span class="nc" id="L272">		sb.append(poly);</span>
+<span class="nc" id="L273">		return sb;</span>
+	}
+
+<span class="nc" id="L276">	enum DrawType {</span>
+<span class="nc" id="L277">		faceFill,</span>
+<span class="nc" id="L278">		faceDraw,</span>
+<span class="nc" id="L279">		faceFillDraw</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

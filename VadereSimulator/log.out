@@ -1,0 +1,145 @@
+17:48:18,395   INFO IOVadere:57 - read project: /Users/kilian/IdeaProjects/vadere/VadereSimulator/target/test-classes/data/VTestMultiRun/vadere.project
+17:48:18,828   INFO IOVadere:67 - analyzed scenario files.
+17:48:19,837   INFO IOVadere:88 - analyzed: 4, migrated: 0, upToDate: 4, notMigratable: 0
+17:48:19,880   INFO IOVadere:93 - project loaded: DDD
+17:48:19,937   INFO VadereConfig:66 - Use config file from path /Users/kilian/.config/vadere.conf
+17:48:20,320   INFO IOVadere:57 - read project: /Users/kilian/IdeaProjects/vadere/VadereSimulator/target/test-classes/data/simpleProject/vadere.project
+17:48:20,335   INFO IOVadere:67 - analyzed scenario files.
+17:48:20,849   INFO IOVadere:88 - analyzed: 16, migrated: 0, upToDate: 16, notMigratable: 0
+17:48:21,268   INFO IOVadere:93 - project loaded: Test_Stefan
+17:48:21,588   INFO IOVadere:57 - read project: /Users/kilian/IdeaProjects/vadere/VadereSimulator/target/test-classes/data/simpleProject/vadere.project
+17:48:21,608   INFO IOVadere:67 - analyzed scenario files.
+17:48:21,924   INFO IOVadere:88 - analyzed: 16, migrated: 0, upToDate: 16, notMigratable: 0
+17:48:22,173   INFO IOVadere:93 - project loaded: Test_Stefan
+17:48:22,463   INFO IOVadere:57 - read project: /Users/kilian/IdeaProjects/vadere/VadereSimulator/target/test-classes/data/simpleProject/vadere.project
+17:48:22,472   INFO IOVadere:67 - analyzed scenario files.
+17:48:22,662   INFO IOVadere:88 - analyzed: 16, migrated: 0, upToDate: 16, notMigratable: 0
+17:48:22,856   INFO IOVadere:93 - project loaded: Test_Stefan
+17:48:23,193   INFO IOVadere:57 - read project: /Users/kilian/IdeaProjects/vadere/VadereSimulator/target/test-classes/data/simpleProject/vadere.project
+17:48:23,207   INFO IOVadere:67 - analyzed scenario files.
+17:48:23,405   INFO IOVadere:88 - analyzed: 16, migrated: 0, upToDate: 16, notMigratable: 0
+17:48:23,590   INFO IOVadere:93 - project loaded: Test_Stefan
+17:48:23,842   INFO IOVadere:57 - read project: /Users/kilian/IdeaProjects/vadere/VadereSimulator/target/test-classes/data/simpleProject/vadere.project
+17:48:23,854   INFO IOVadere:67 - analyzed scenario files.
+17:48:24,076   INFO IOVadere:88 - analyzed: 16, migrated: 0, upToDate: 16, notMigratable: 0
+17:48:24,274   INFO IOVadere:93 - project loaded: Test_Stefan
+17:48:24,508   INFO IOVadere:57 - read project: /Users/kilian/IdeaProjects/vadere/VadereSimulator/target/test-classes/data/simpleProject/vadere.project
+17:48:24,514   INFO IOVadere:67 - analyzed scenario files.
+17:48:24,675   INFO IOVadere:88 - analyzed: 16, migrated: 0, upToDate: 16, notMigratable: 0
+17:48:24,862   INFO IOVadere:93 - project loaded: Test_Stefan
+17:48:25,089   INFO IOVadere:57 - read project: /Users/kilian/IdeaProjects/vadere/VadereSimulator/target/test-classes/data/simpleProject/vadere.project
+17:48:25,101   INFO IOVadere:67 - analyzed scenario files.
+17:48:25,282   INFO IOVadere:88 - analyzed: 16, migrated: 0, upToDate: 16, notMigratable: 0
+17:48:25,458   INFO IOVadere:93 - project loaded: Test_Stefan
+17:48:25,611  ERROR IOOutput:262 - Error in output file testOutput2
+17:48:25,615   INFO IOOutput:205 - The directory 'testOutput2' is corrupted and was moved to the 'corrupt' folder.
+17:48:27,668   WARN TargetFloorFieldGridProcessor:71 - could not process, main model is missing or is not the instance of org.vadere.simulator.models.potential.PotentialFieldModel
+17:48:28,708   INFO IOVadere:57 - read project: /Users/kilian/IdeaProjects/vadere/VadereSimulator/target/test-classes/data/simpleProject/vadere.project
+17:48:28,717   INFO IOVadere:67 - analyzed scenario files.
+17:48:28,994   INFO IOVadere:88 - analyzed: 16, migrated: 0, upToDate: 16, notMigratable: 0
+17:48:29,227   INFO IOVadere:93 - project loaded: Test_Stefan
+17:48:29,237   INFO IOVadere:57 - read project: /Users/kilian/IdeaProjects/vadere/VadereSimulator/target/test-classes/data/simpleProject/vadere.project
+17:48:29,249   INFO IOVadere:67 - analyzed scenario files.
+17:48:29,458   INFO IOVadere:88 - analyzed: 16, migrated: 0, upToDate: 16, notMigratable: 0
+17:48:29,644   INFO IOVadere:93 - project loaded: Test_Stefan
+17:48:29,909  ERROR IOOutput:87 - Error in output file test_postvis_2018-01-19_13-38-11.666
+17:48:29,910   INFO IOOutput:205 - The directory 'test_postvis_2018-01-19_13-38-11.666' is corrupted and was moved to the 'corrupt' folder.
+17:48:30,630   INFO JsonTransformationBaseFactory:49 - No specific transformation fount for key: 0.9. Using default transformation (version increment only)
+17:48:30,634   INFO JsonTransformationBaseFactory:49 - No specific transformation fount for key: 1.0. Using default transformation (version increment only)
+17:48:30,637   INFO JsonTransformationBaseFactory:49 - No specific transformation fount for key: 1.3. Using default transformation (version increment only)
+17:48:30,815   WARN JsonMigrationAssistant:275 - Version is unknown of scenario <scenarios/XXXX>! Try to use not a release as Version for transformation.
+17:48:30,833  ERROR JsonMigrationAssistant:214 - !> Can't migrate the scenario to latest version, removed it from the directory (could not automatically determine the mainModel based on the present models OSM, GNM, SFM, BHM) If you can fix this problem manually, do so and then remove .nonmigratable from the file in the legacy-directory and move it back into the scenarios-directory, it will be checked again when the GUI restarts.
+17:48:31,257   INFO JsonMigrationAssistant:85 - >> analyzing JSON tree of scenario <basic_1_chicken_osm1>
+17:48:31,257   INFO JsonMigrationAssistant:114 - <basic_1_chicken_osm1> Start Transform to Version: 0.4
+17:48:31,368   INFO JoltTransformation:109 - 	- AttributesOSM: since AttributesPotentialCompact is present, set [pedestrianPotentialModel] to PotentialFieldPedestrianCompact and [obstaclePotentialModel] to PotentialFieldObstacleCompact
+
+17:48:31,381   INFO JoltTransformation:109 - 	- AttributesOSM: since AttributesPotentialCompact is present, set [pedestrianPotentialModel] to PotentialFieldPedestrianCompact and [obstaclePotentialModel] to PotentialFieldObstacleCompact
+
+17:48:31,543   INFO ScenarioCache:85 - Cache search location: /Users/kilian/IdeaProjects/vadere/VadereSimulator/target/test-classes/data/cache/__cache__/s002
+17:48:31,554   INFO ScenarioCache:168 - binary cache loaded for identifier: target2
+17:48:31,555   INFO ScenarioCache:168 - binary cache loaded for identifier: target1
+17:48:31,561   INFO ScenarioCache:85 - Cache search location: /Users/kilian/IdeaProjects/vadere/VadereSimulator/target/test-classes/data/cache/__cache__/s001
+17:48:31,568   INFO ScenarioCache:85 - Cache search location: /Users/kilian/IdeaProjects/vadere/VadereSimulator/target/test-classes/data/cache/__cache__/s003
+17:48:31,572   INFO ScenarioCache:85 - Cache search location: /Users/kilian/IdeaProjects/vadere/VadereSimulator/target/test-classes/data/cache/__cache__/s002
+17:48:31,682   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:67[ms]
+17:48:31,743   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:58[ms]
+17:48:31,796   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:44[ms]
+17:48:31,854   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:54[ms]
+17:48:31,885   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:27[ms]
+17:48:31,916   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:28[ms]
+17:48:31,936   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:17[ms]
+17:48:31,959   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:21[ms]
+17:48:31,977   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:15[ms]
+17:48:31,997   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:19[ms]
+17:48:32,023   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:22[ms]
+17:48:32,044   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:19[ms]
+17:48:32,067   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:19[ms]
+17:48:32,088   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:19[ms]
+17:48:32,115   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:24[ms]
+17:48:32,135   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:18[ms]
+17:48:32,172   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:28[ms]
+17:48:32,193   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:19[ms]
+17:48:32,225   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:21[ms]
+17:48:32,260   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:32[ms]
+17:48:32,292   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:29[ms]
+17:48:32,314   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:20[ms]
+17:48:32,333   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:17[ms]
+17:48:32,361   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:25[ms]
+17:48:32,374   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:10[ms]
+17:48:32,399   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:22[ms]
+17:48:32,419   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:12[ms]
+17:48:32,430   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:9[ms]
+17:48:32,450   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:16[ms]
+17:48:32,464   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:12[ms]
+17:48:32,479   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:12[ms]
+17:48:32,508   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:26[ms]
+17:48:32,521   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:8[ms]
+17:48:32,533   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:11[ms]
+17:48:32,550   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:15[ms]
+17:48:32,564   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:12[ms]
+17:48:32,579   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:11[ms]
+17:48:32,590   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:10[ms]
+17:48:32,608   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:15[ms]
+17:48:32,620   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:10[ms]
+17:48:32,634   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:11[ms]
+17:48:32,650   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:15[ms]
+17:48:32,660   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:7[ms]
+17:48:32,670   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:9[ms]
+17:48:32,679   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:6[ms]
+17:48:32,690   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:10[ms]
+17:48:32,705   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:11[ms]
+17:48:32,715   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:8[ms]
+17:48:32,735   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:8[ms]
+17:48:32,751   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:13[ms]
+17:48:32,760   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:7[ms]
+17:48:32,768   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:7[ms]
+17:48:32,777   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:7[ms]
+17:48:32,785   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:7[ms]
+17:48:32,802   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:14[ms]
+17:48:32,812   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:8[ms]
+17:48:32,821   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:7[ms]
+17:48:32,829   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:8[ms]
+17:48:32,841   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:10[ms]
+17:48:32,855   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:13[ms]
+17:48:32,863   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:7[ms]
+17:48:32,873   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:9[ms]
+17:48:32,884   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:8[ms]
+17:48:32,900   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:15[ms]
+17:48:32,910   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:7[ms]
+17:48:32,920   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:9[ms]
+17:48:32,932   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:10[ms]
+17:48:32,946   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:13[ms]
+17:48:32,957   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:8[ms]
+17:48:32,965   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:7[ms]
+17:48:33,060   INFO TestFFMNonUniformTriangulation:351 - start FFM
+17:48:33,181   INFO TestFFMNonUniformTriangulation:353 - FFM finished
+17:48:33,355   INFO TestFFMNonUniformTriangulation:387 - max error: 0.037574234033262766
+17:48:33,378   INFO TestFFMNonUniformTriangulation:392 - max error-2: Optional[7.999858901880941]
+17:48:33,379   INFO TestFFMNonUniformTriangulation:395 - L2-error: 0.011609366732733377
+17:48:33,402   INFO TestFFMNonUniformTriangulation:398 - max error-2: 3.943795200516116
+17:48:33,772   INFO TestIFIMGrid:97 - IFIM (not high accuracy) required 363.0[ms]
+17:48:33,997   INFO TestIFIMGrid:102 - IFIM (not high accuracy) required 223.0[ms]
+17:48:34,133   INFO TestIFIMGrid:107 - IFIM (not high accuracy) required 136.0[ms]
+17:48:34,283   INFO TestIFIMGrid:112 - IFIM (not high accuracy) required 148.0[ms]
+17:48:36,049   INFO TestIFIMGrid:87 - FIM (not high accuracy) required 315.0[ms]
+17:48:36,184   INFO TestIFIMGrid:62 - FMM (not high accuracy) required 133.0[ms]

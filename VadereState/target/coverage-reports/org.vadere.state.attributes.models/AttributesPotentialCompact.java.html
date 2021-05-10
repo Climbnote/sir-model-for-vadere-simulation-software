@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesPotentialCompact.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.models</a> &gt; <span class="el_source">AttributesPotentialCompact.java</span></div><h1>AttributesPotentialCompact.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.models;
+
+import org.vadere.annotation.factories.attributes.ModelAttributeClass;
+import org.vadere.state.attributes.Attributes;
+
+@ModelAttributeClass
+public class AttributesPotentialCompact extends Attributes {
+
+	// queueing
+<span class="nc" id="L10">	private double pedPotentialWidth = 0.5;</span>
+
+	// queueing
+<span class="nc" id="L13">	private double pedPotentialHeight = 12.6;</span>
+
+	// queueing
+<span class="nc" id="L16">	private double obstPotentialWidth = 0.25;</span>
+
+	// queueing
+<span class="nc" id="L19">	private double obstPotentialHeight = 20.1;</span>
+
+	// queueing
+<span class="nc" id="L22">	private boolean useHardBodyShell = false;</span>
+
+	// queueing
+<span class="nc" id="L25">	private double obstDistanceDeviation = 0;</span>
+
+	// queueing
+<span class="nc" id="L28">	private double visionFieldRadius = 5;</span>
+
+
+<span class="nc" id="L31">	public AttributesPotentialCompact() {}</span>
+
+	public double getPedPotentialWidth() {
+<span class="nc" id="L34">		return pedPotentialWidth;</span>
+	}
+
+	public double getPedPotentialHeight() {
+<span class="nc" id="L38">		return pedPotentialHeight;</span>
+	}
+
+	public double getObstPotentialWidth() {
+<span class="nc" id="L42">		return obstPotentialWidth;</span>
+	}
+
+	public double getObstPotentialHeight() {
+<span class="nc" id="L46">		return obstPotentialHeight;</span>
+	}
+
+	public double getVisionFieldRadius() {
+<span class="nc" id="L50">		return visionFieldRadius;</span>
+	}
+
+	public double getObstDistanceDeviation() {
+<span class="nc" id="L54">		return obstDistanceDeviation;</span>
+	}
+
+	public boolean isUseHardBodyShell() {
+<span class="nc" id="L58">		return useHardBodyShell;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

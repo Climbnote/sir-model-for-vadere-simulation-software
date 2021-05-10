@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesSourceBuilder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes.scenario.builder</a> &gt; <span class="el_source">AttributesSourceBuilder.java</span></div><h1>AttributesSourceBuilder.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes.scenario.builder;
+
+import org.vadere.state.attributes.Attributes;
+import org.vadere.state.attributes.scenario.AttributesSource;
+import org.vadere.state.types.DynamicElementType;
+import org.vadere.util.geometry.shapes.VShape;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+
+public final class AttributesSourceBuilder {
+<span class="nc" id="L14">	private VShape shape = null;</span>
+<span class="nc" id="L15">	private String interSpawnTimeDistribution = AttributesSource.CONSTANT_DISTRIBUTION;</span>
+<span class="nc" id="L16">	private List&lt;Double&gt; distributionParameters = Collections.singletonList(1.0);</span>
+<span class="nc" id="L17">	private int spawnNumber = 1;</span>
+<span class="nc" id="L18">	private int maxSpawnNumberTotal = AttributesSource.NO_MAX_SPAWN_NUMBER_TOTAL;</span>
+<span class="nc" id="L19">	private double startTime = 0;</span>
+<span class="nc" id="L20">	private double endTime = 0;</span>
+	private boolean spawnAtRandomPositions;
+<span class="nc" id="L22">	private boolean useFreeSpaceOnly = true;</span>
+<span class="nc" id="L23">	private List&lt;Integer&gt; targetIds = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L24">	private List&lt;Double&gt; groupSizeDistribution = Arrays.asList(1.0);</span>
+<span class="nc" id="L25">	private DynamicElementType dynamicElementType = DynamicElementType.PEDESTRIAN;</span>
+<span class="nc" id="L26">	private int id = Attributes.ID_NOT_SET;</span>
+
+<span class="nc" id="L28">	private AttributesSourceBuilder() {</span>
+<span class="nc" id="L29">	}</span>
+
+	public static AttributesSourceBuilder anAttributesSource() {
+<span class="nc" id="L32">		return new AttributesSourceBuilder();</span>
+	}
+
+	public AttributesSourceBuilder shape(VShape shape) {
+<span class="nc" id="L36">		this.shape = shape;</span>
+<span class="nc" id="L37">		return this;</span>
+	}
+
+	public AttributesSourceBuilder interSpawnTimeDistribution(String interSpawnTimeDistribution) {
+<span class="nc" id="L41">		this.interSpawnTimeDistribution = interSpawnTimeDistribution;</span>
+<span class="nc" id="L42">		return this;</span>
+	}
+
+	public AttributesSourceBuilder distributionParameters(List&lt;Double&gt; distributionParameters) {
+<span class="nc" id="L46">		this.distributionParameters = distributionParameters;</span>
+<span class="nc" id="L47">		return this;</span>
+	}
+
+	public AttributesSourceBuilder spawnNumber(int spawnNumber) {
+<span class="nc" id="L51">		this.spawnNumber = spawnNumber;</span>
+<span class="nc" id="L52">		return this;</span>
+	}
+
+	public AttributesSourceBuilder maxSpawnNumberTotal(int maxSpawnNumberTotal) {
+<span class="nc" id="L56">		this.maxSpawnNumberTotal = maxSpawnNumberTotal;</span>
+<span class="nc" id="L57">		return this;</span>
+	}
+
+	public AttributesSourceBuilder startTime(double startTime) {
+<span class="nc" id="L61">		this.startTime = startTime;</span>
+<span class="nc" id="L62">		return this;</span>
+	}
+
+	public AttributesSourceBuilder endTime(double endTime) {
+<span class="nc" id="L66">		this.endTime = endTime;</span>
+<span class="nc" id="L67">		return this;</span>
+	}
+
+	public AttributesSourceBuilder spawnAtRandomPositions(boolean spawnAtRandomPositions) {
+<span class="nc" id="L71">		this.spawnAtRandomPositions = spawnAtRandomPositions;</span>
+<span class="nc" id="L72">		return this;</span>
+	}
+
+	public AttributesSourceBuilder useFreeSpaceOnly(boolean useFreeSpaceOnly) {
+<span class="nc" id="L76">		this.useFreeSpaceOnly = useFreeSpaceOnly;</span>
+<span class="nc" id="L77">		return this;</span>
+	}
+
+	public AttributesSourceBuilder targetIds(List&lt;Integer&gt; targetIds) {
+<span class="nc" id="L81">		this.targetIds = targetIds;</span>
+<span class="nc" id="L82">		return this;</span>
+	}
+
+	public AttributesSourceBuilder targetIds(Integer... targetIds) {
+<span class="nc" id="L86">		this.targetIds = Arrays.asList(targetIds);</span>
+<span class="nc" id="L87">		return this;</span>
+	}
+
+	public AttributesSourceBuilder groupSizeDistribution(List&lt;Double&gt; groupSizeDistribution) {
+<span class="nc" id="L91">		this.groupSizeDistribution = groupSizeDistribution;</span>
+<span class="nc" id="L92">		return this;</span>
+	}
+
+	public AttributesSourceBuilder dynamicElementType(DynamicElementType dynamicElementType) {
+<span class="nc" id="L96">		this.dynamicElementType = dynamicElementType;</span>
+<span class="nc" id="L97">		return this;</span>
+	}
+
+	public AttributesSourceBuilder id(int id) {
+<span class="nc" id="L101">		this.id = id;</span>
+<span class="nc" id="L102">		return this;</span>
+	}
+
+	public AttributesSource build() {
+<span class="nc" id="L106">		AttributesSource attributesSource = new AttributesSource(id);</span>
+<span class="nc" id="L107">		attributesSource.setShape(shape);</span>
+<span class="nc" id="L108">		attributesSource.setInterSpawnTimeDistribution(interSpawnTimeDistribution);</span>
+<span class="nc" id="L109">		attributesSource.setDistributionParameters(distributionParameters);</span>
+<span class="nc" id="L110">		attributesSource.setSpawnNumber(spawnNumber);</span>
+<span class="nc" id="L111">		attributesSource.setMaxSpawnNumberTotal(maxSpawnNumberTotal);</span>
+<span class="nc" id="L112">		attributesSource.setStartTime(startTime);</span>
+<span class="nc" id="L113">		attributesSource.setEndTime(endTime);</span>
+<span class="nc" id="L114">		attributesSource.setSpawnAtRandomPositions(spawnAtRandomPositions);</span>
+<span class="nc" id="L115">		attributesSource.setUseFreeSpaceOnly(useFreeSpaceOnly);</span>
+<span class="nc" id="L116">		attributesSource.setTargetIds(targetIds);</span>
+<span class="nc" id="L117">		attributesSource.setGroupSizeDistribution(groupSizeDistribution);</span>
+<span class="nc" id="L118">		attributesSource.setDynamicElementType(dynamicElementType);</span>
+<span class="nc" id="L119">		return attributesSource;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

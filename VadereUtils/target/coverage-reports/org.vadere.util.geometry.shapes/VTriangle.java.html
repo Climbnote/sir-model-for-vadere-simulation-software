@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VTriangle.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry.shapes</a> &gt; <span class="el_source">VTriangle.java</span></div><h1>VTriangle.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry.shapes;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.geometry.GeometryUtils;
+
+import java.util.Arrays;
+import java.util.stream.Stream;
+
+/**
+ * A triangle. Points must be given in counter clockwise manner to get correct
+ * inward facing normals.
+ *
+ */
+public class VTriangle extends VPolygon {
+
+    /**
+     * generated serial version uid
+     */
+    private static final long serialVersionUID = 5864412321949258915L;
+
+    public final VPoint p1;
+    public final VPoint p2;
+    public final VPoint p3;
+
+    public final VLine[] lines;
+
+    private double area;
+
+    /**
+     * The centroid will be saved for performance boost, since this object is immutable.
+     */
+    private VPoint centroid;
+
+    private VPoint center;
+
+    private VPoint incenter;
+
+    private VPoint orthocenter;
+
+<span class="fc" id="L40">    private double radius = -1;</span>
+
+    /**
+     * Creates a triangle. Points must be given in ccwRobust order.
+     *
+     * @param p1 first point of the triangle
+     * @param p2 second point of the triangle
+     * @param p3 third point of the triangle
+     */
+    public VTriangle(@NotNull final VPoint p1, @NotNull final VPoint p2, @NotNull final VPoint p3) {
+<span class="fc" id="L50">        super(GeometryUtils.polygonFromPoints2D(p1, p2, p3));</span>
+
+<span class="pc bpc" id="L52" title="3 of 6 branches missed.">        if(p1.equals(p2) || p1.equals(p3) || p2.equals(p3)) {</span>
+<span class="nc" id="L53">            throw new IllegalArgumentException(&quot;&quot; + p1 + p2 + p3 + &quot; is not a feasible set of points.&quot;);</span>
+        }
+<span class="fc" id="L55">        this.p1 = p1;</span>
+<span class="fc" id="L56">        this.p2 = p2;</span>
+<span class="fc" id="L57">        this.p3 = p3;</span>
+<span class="fc" id="L58">		this.area = 0;</span>
+<span class="fc" id="L59">        lines = new VLine[]{ new VLine(p1, p2), new VLine(p2, p3), new VLine(p3,p1) };</span>
+<span class="fc" id="L60">    }</span>
+
+    @Override
+    public boolean contains(final IPoint point) {
+<span class="fc" id="L64">        return GeometryUtils.triangleContains(p1, p2, p3, point);</span>
+    }
+
+	@Override
+	public double getArea() {
+<span class="nc" id="L69">    	return Math.abs(getSignedArea());</span>
+	}
+
+	public double getSignedArea() {
+<span class="nc bnc" id="L73" title="All 2 branches missed.">    	if(area == 0) {</span>
+<span class="nc" id="L74">    		area = GeometryUtils.signedAreaOfPolygon(p1, p2, p3);</span>
+	    }
+<span class="nc" id="L76">    	return area;</span>
+	}
+
+	// TODO: find better name
+    public boolean isPartOf(final IPoint point, final double eps) {
+<span class="fc" id="L81">        double d1 = GeometryUtils.ccw(point, p1, p2);</span>
+<span class="fc" id="L82">        double d2 = GeometryUtils.ccw(point, p2, p3);</span>
+<span class="fc" id="L83">        double d3 = GeometryUtils.ccw(point, p3, p1);</span>
+<span class="pc bpc" id="L84" title="3 of 12 branches missed.">        return (d1 &lt;= eps &amp;&amp; d2 &lt;= eps &amp;&amp; d3 &lt;= eps) || (d1 &gt;= -eps &amp;&amp; d2 &gt;= -eps &amp;&amp; d3 &gt;= -eps);</span>
+    }
+
+    public VPoint midPoint() {
+<span class="fc" id="L88">    	return GeometryUtils.getTriangleMidpoint(p1.getX(), p1.getY(), p2.getX(), p2.getY(), p3.getX(), p3.getY());</span>
+    }
+
+    public boolean isLine() {
+<span class="fc" id="L92">        VLine l1 = new VLine(p1, p2);</span>
+<span class="fc" id="L93">        VLine l2 = new VLine(p1, p3);</span>
+<span class="fc" id="L94">        VLine l3 = new VLine(p2, p3);</span>
+
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">        return l1.ptSegDist(p3) &lt; GeometryUtils.DOUBLE_EPS</span>
+<span class="pc bpc" id="L97" title="1 of 2 branches missed.">                || l2.ptSegDist(p2) &lt; GeometryUtils.DOUBLE_EPS</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">                || l3.ptSegDist(p1) &lt; GeometryUtils.DOUBLE_EPS;</span>
+    }
+
+    public boolean isNonAcute() {
+<span class="fc" id="L102">        double angle1 = GeometryUtils.angle(p1, p2, p3);</span>
+<span class="fc" id="L103">        double angle2 = GeometryUtils.angle(p2, p3, p1);</span>
+<span class="fc" id="L104">        double angle3 = GeometryUtils.angle(p3, p1, p2);</span>
+
+        // non-acute triangle
+<span class="fc" id="L107">        double maxAngle = Math.max(Math.max(angle1, angle2), angle3);</span>
+<span class="fc" id="L108">        double rightAngle = Math.PI/2;</span>
+<span class="fc bfc" id="L109" title="All 2 branches covered.">        return maxAngle &gt; rightAngle;</span>
+    }
+
+    @Override
+    public VPoint getCentroid() {
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">        if(centroid == null) {</span>
+<span class="fc" id="L115">            centroid = super.getCentroid();</span>
+        }
+<span class="fc" id="L117">        return centroid;</span>
+    }
+
+    public VPoint getIncenter(){
+<span class="pc bpc" id="L121" title="1 of 2 branches missed.">        if(incenter == null) {</span>
+<span class="fc" id="L122">            incenter = GeometryUtils.getIncenter(p1, p2, p3);</span>
+        }
+
+<span class="fc" id="L125">        return incenter;</span>
+    }
+
+	public double getIncircleRadius(){
+<span class="nc" id="L129">		return GeometryUtils.getIncircleRaduis(p1, p2, p3);</span>
+	}
+
+    public VPoint getOrthocenter() {
+
+<span class="pc bpc" id="L134" title="1 of 2 branches missed.">        if(orthocenter == null) {</span>
+
+            VPoint p12, p13, p23, L1, L2;
+
+            // create edge vectors
+<span class="fc" id="L139">            p12 = p2.subtract(p1); // Vector2D better??</span>
+<span class="fc" id="L140">            p13 = p3.subtract(p1);</span>
+<span class="fc" id="L141">            p23 = p3.subtract(p2);</span>
+
+            // create system of equations
+<span class="fc" id="L144">            double cross = p13.crossProduct(p12);</span>
+
+<span class="fc" id="L146">            L1 = new VPoint(-cross* p23.getY() , cross * p23.getX() );</span>
+<span class="fc" id="L147">            L2 = new VPoint(-cross* p13.getY() , cross * p13.getX() );</span>
+
+            // solve system of equation (determine first element of resulting vector lamda with cramers rule; second element not necessary)
+<span class="fc" id="L150">            double lamda1 = ( p12.getX() * L2.getY() - p12.getY() * L2.getX() ) / ( L1.getX()*L2.getY() - L2.getX()*L1.getY() ) ;</span>
+
+<span class="fc" id="L152">            orthocenter = new VPoint ( p1.add( L1.scalarMultiply(lamda1) ) );</span>
+        }
+
+        //VPoint orthocenter2 = getOrthocenterSlowImplementation() ;
+        //assert Math.abs( orthocenter.distance(orthocenter2)) &lt; GeometryUtils.DOUBLE_EPS ;
+<span class="fc" id="L157">        return orthocenter;</span>
+    }
+
+    public VPoint getOrthocenterSlowImplementation() {
+
+        // create edge vectors
+<span class="fc" id="L163">        VPoint p12 = p2.subtract(p1); // Vector2D better??</span>
+<span class="fc" id="L164">        VPoint p13 = p3.subtract(p1);</span>
+<span class="fc" id="L165">        VPoint p23 = p3.subtract(p2);</span>
+
+        // edge vectors reverse
+<span class="fc" id="L168">        VPoint p21 = new VPoint(p12.scalarMultiply(-1.0));</span>
+<span class="fc" id="L169">        VPoint p31 = new VPoint(p13.scalarMultiply(-1.0));</span>
+<span class="fc" id="L170">        VPoint p32 = new VPoint(p23.scalarMultiply(-1.0));</span>
+
+        // calculate angles a1, a2, a3
+<span class="fc" id="L173">        double a1 = Math.atan2(Math.abs( p13.crossProduct(p12)), p13.scalarProduct(p12)) ;</span>
+<span class="fc" id="L174">        double a2 = Math.atan2(Math.abs( p23.crossProduct(p21)), p23.scalarProduct(p21)) ;</span>
+<span class="fc" id="L175">        double a3 = Math.atan2(Math.abs( p31.crossProduct(p32)), p31.scalarProduct(p32)) ;</span>
+
+<span class="fc" id="L177">        double div = Math.tan(a1)+ Math.tan(a2)+ Math.tan(a3) ;</span>
+<span class="fc" id="L178">        double  x = ( Math.tan(a1)*p1.getX() + Math.tan(a2)*p2.getX() + Math.tan(a3)*p3.getX() ) / div;</span>
+<span class="fc" id="L179">        double  y = ( Math.tan(a1)*p1.getY() + Math.tan(a2)*p2.getY() + Math.tan(a3)*p3.getY() ) / div;</span>
+
+<span class="fc" id="L181">        return new VPoint(x,y);</span>
+
+    }
+
+    public VPoint closestPoint(final IPoint point) {
+
+<span class="fc" id="L187">        VPoint currentClosest = null;</span>
+<span class="fc" id="L188">        double currentMinDistance = java.lang.Double.MAX_VALUE;</span>
+
+<span class="fc bfc" id="L190" title="All 2 branches covered.">        for(VLine line : lines) {</span>
+<span class="fc" id="L191">            VPoint p = GeometryUtils.closestToSegment(line, point);</span>
+<span class="fc bfc" id="L192" title="All 2 branches covered.">            if(p.distance(point) &lt; currentMinDistance) {</span>
+<span class="fc" id="L193">                currentMinDistance = p.distance(point);</span>
+<span class="fc" id="L194">                currentClosest = p;</span>
+            }
+        }
+
+<span class="fc" id="L198">        return currentClosest;</span>
+    }
+
+    public VPoint getCircumcenter(){
+<span class="pc bpc" id="L202" title="1 of 2 branches missed.">        if(center == null) {</span>
+<span class="fc" id="L203">            center = GeometryUtils.getCircumcenter(p1, p2, p3);</span>
+        }
+<span class="fc" id="L205">        return center;</span>
+    }
+
+    public double getCircumscribedRadius() {
+<span class="pc bpc" id="L209" title="1 of 2 branches missed.">    	if(radius == -1) {</span>
+<span class="fc" id="L210">    		radius = getCircumcenter().distance(p1);</span>
+	    }
+<span class="fc" id="L212">        return radius;</span>
+    }
+
+    public boolean isInCircumscribedCycle(final IPoint point) {
+<span class="nc bnc" id="L216" title="All 2 branches missed.">        return getCircumcenter().distance(point) &lt; getCircumscribedRadius();</span>
+    }
+
+    public Stream&lt;VLine&gt; streamLines() {
+<span class="nc" id="L220">        return Arrays.stream(getLines());</span>
+    }
+
+    public Stream&lt;VPoint&gt; streamPoints() {
+<span class="nc" id="L224">	    return Arrays.stream(new VPoint[]{p1, p2, p3});</span>
+    }
+
+    public double getRadiusEdgeRatio() {
+		// (1) find shortest line
+    	VLine shortestLine;
+<span class="nc bnc" id="L230" title="All 2 branches missed.">    	if(lines[0].length() &lt;= lines[1].length()) {</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">			if(lines[0].length() &lt;= lines[2].length()) {</span>
+<span class="nc" id="L232">				shortestLine = lines[0];</span>
+			} else {
+<span class="nc" id="L234">				shortestLine = lines[2];</span>
+			}
+		} else {
+<span class="nc bnc" id="L237" title="All 2 branches missed.">		    if(lines[1].length() &lt;= lines[2].length()) {</span>
+<span class="nc" id="L238">			    shortestLine = lines[1];</span>
+		    } else {
+<span class="nc" id="L240">			    shortestLine = lines[2];</span>
+		    }
+	    }
+
+<span class="nc" id="L244">    	return getCircumscribedRadius() / shortestLine.length();</span>
+    }
+
+    public VLine[] getLines() {
+<span class="nc" id="L248">        return lines;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L253">        return &quot;[&quot;+p1 + &quot;,&quot; + p2 + &quot;,&quot; + p3 + &quot;]&quot;;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PlanarGraphGenerator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry</a> &gt; <span class="el_source">PlanarGraphGenerator.java</span></div><h1>PlanarGraphGenerator.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry;
+
+import com.github.davidmoten.rtree.RTree;
+import com.github.davidmoten.rtree.geometry.Rectangle;
+import com.github.davidmoten.rtree.geometry.internal.RectangleDouble;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+/**
+ * This class generates a planar graph based on a list of possibly intersecting
+ * and co-linear lines. By line we mean line-segment. There are multiple cases for line intersection:
+ *
+ * 1. two lines intersect at one point which is not an endpoint of the line (general case)
+ * 2. two lines are identical (the have the same end point)
+ * 3. two lines share infinitely many points but are not identical
+ * 4. two lines share exactly one endpoint
+ *
+ * @author Benedikt Zoennchen
+ */
+<span class="nc bnc" id="L26" title="All 2 branches missed.">public class PlanarGraphGenerator {</span>
+
+	private RTree&lt;String, VLine&gt; lineRTree;
+	private RTree&lt;String, VLine&gt; unresolvedLines;
+	private ArrayList&lt;VLine&gt; allLines;
+	private double tol;
+	private double ccwTol;
+
+	/**
+	 * Default constructor.
+	 *
+	 * @param lines collection of intersecting lines
+	 * @param tol   a distance tolerance at which two points are seen as identical
+	 */
+<span class="nc" id="L40">	public PlanarGraphGenerator(@NotNull final Collection&lt;VLine&gt; lines, final double tol) {</span>
+<span class="nc" id="L41">		this.allLines = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L42">		this.tol = tol;</span>
+<span class="nc" id="L43">		this.ccwTol = tol;</span>
+<span class="nc" id="L44">		this.allLines.addAll(lines);</span>
+<span class="nc" id="L45">	}</span>
+
+	private void reset() {
+<span class="nc" id="L48">		this.lineRTree = RTree.create();</span>
+<span class="nc" id="L49">		this.unresolvedLines = RTree.create();</span>
+
+<span class="nc bnc" id="L51" title="All 2 branches missed.">		for(VLine line : allLines) {</span>
+<span class="nc" id="L52">			lineRTree = lineRTree.add(line.toString(), line);</span>
+<span class="nc" id="L53">			unresolvedLines = unresolvedLines.add(line.toString(), line);</span>
+<span class="nc" id="L54">		}</span>
+<span class="nc" id="L55">	}</span>
+
+	/**
+	 * Computes and returns non-intersecting lines.
+	 * The computation is supported by a R-Tree data structure such that
+	 * we avoid to test all pairs of lines.
+	 *
+	 * @return non-intersecting lines.
+	 */
+	public Collection&lt;VLine&gt; generate() {
+<span class="nc" id="L65">		reset();</span>
+		boolean hasChanged;
+
+		do {
+<span class="nc" id="L69">			hasChanged = false;</span>
+<span class="nc" id="L70">			ArrayList&lt;VLine&gt; allLines = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L71">			unresolvedLines.entries().map(e -&gt; e.geometry()).forEach(line -&gt; allLines.add(line));</span>
+			//int size = unresolvedLines.size();
+			//System.out.println(size);
+<span class="nc bnc" id="L74" title="All 2 branches missed.">			for(VLine line1 : allLines) {</span>
+<span class="nc" id="L75">				Rectangle mbr = line1.mbr();</span>
+<span class="nc" id="L76">				RectangleDouble bufferedMbr = RectangleDouble.create(mbr.x1() - tol, mbr.y1() - tol, mbr.x2() + tol, mbr.y2() + tol);</span>
+<span class="nc" id="L77">				ArrayList&lt;VLine&gt; otherLines = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L79">				unresolvedLines.search(bufferedMbr).map(e -&gt; e.geometry()).forEach(l -&gt; otherLines.add(l));</span>
+				//lineRTree.entries().map(e -&gt; e.geometry()).forEach(line -&gt; otherLines.add(line));
+
+<span class="nc bnc" id="L82" title="All 2 branches missed.">				for(VLine line2 : otherLines) {</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">					if(line1 != line2) {</span>
+<span class="nc" id="L84">						deleteLine(line1);</span>
+<span class="nc" id="L85">						deleteLine(line2);</span>
+<span class="nc" id="L86">						List&lt;VLine&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L87">						hasChanged = adjustLines(line1, line2, result);</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">						for(VLine line : result) {</span>
+<span class="nc" id="L89">							addLine(line);</span>
+<span class="nc" id="L90">						}</span>
+
+<span class="nc bnc" id="L92" title="All 2 branches missed.">						if(hasChanged) {</span>
+<span class="nc" id="L93">							break;</span>
+						}
+					}
+<span class="nc" id="L96">				}</span>
+
+<span class="nc bnc" id="L98" title="All 2 branches missed.">				if(hasChanged) {</span>
+<span class="nc" id="L99">					break;</span>
+				} else {
+<span class="nc" id="L101">					unresolvedLines = unresolvedLines.delete(line1.toString(), line1);</span>
+				}
+<span class="nc" id="L103">			}</span>
+
+<span class="nc bnc" id="L105" title="All 2 branches missed.">		} while (hasChanged);</span>
+
+
+<span class="nc" id="L108">		ArrayList&lt;VLine&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L109">		lineRTree.entries().map(e -&gt; e.geometry()).forEach(line -&gt; result.add(line));</span>
+<span class="nc" id="L110">		return result;</span>
+	}
+
+	private void addLine(@NotNull final VLine line) {
+<span class="nc" id="L114">		unresolvedLines = unresolvedLines.add(line.toString(), line);</span>
+<span class="nc" id="L115">		lineRTree = lineRTree.add(line.toString(), line);</span>
+<span class="nc" id="L116">	}</span>
+
+	private void deleteLine(@NotNull final VLine line) {
+<span class="nc" id="L119">		int ssize = unresolvedLines.size();</span>
+<span class="nc" id="L120">		unresolvedLines = unresolvedLines.delete(line.toString(), line);</span>
+<span class="nc" id="L121">		lineRTree = lineRTree.delete(line.toString(), line);</span>
+<span class="nc bnc" id="L122" title="All 4 branches missed.">		assert unresolvedLines.size() == ssize - 1 : line.toString();</span>
+<span class="nc" id="L123">	}</span>
+
+	/**
+	 * Computes and returns non-intersecting lines.
+	 * The computation is done via a bruteforce method by testing each pair of lines which can be computational expensive.
+	 *
+	 * @return non-intersecting lines.
+	 */
+	public Collection&lt;VLine&gt; generateBruteForce() {
+<span class="nc" id="L132">		reset();</span>
+		boolean hasChanged;
+
+		do {
+<span class="nc" id="L136">			hasChanged = false;</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">			for(int i = 0; i &lt; allLines.size(); i++) {</span>
+
+<span class="nc bnc" id="L139" title="All 2 branches missed.">				for(int j = 0; j &lt; allLines.size(); j++) {</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">					if(j != i) {</span>
+<span class="nc" id="L141">						List&lt;VLine&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L142">						boolean adjust = adjustLines(allLines.get(i), allLines.get(j), result);</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">						if(adjust) {</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">							if(i &lt; j) {</span>
+<span class="nc" id="L145">								allLines.remove(j);</span>
+<span class="nc" id="L146">								allLines.remove(i);</span>
+							}
+							else {
+<span class="nc" id="L149">								allLines.remove(i);</span>
+<span class="nc" id="L150">								allLines.remove(j);</span>
+							}
+<span class="nc" id="L152">							allLines.addAll(result);</span>
+<span class="nc" id="L153">							hasChanged = true;</span>
+<span class="nc" id="L154">							break;</span>
+						}
+					}
+				}
+<span class="nc bnc" id="L158" title="All 2 branches missed.">				if(hasChanged) {</span>
+<span class="nc" id="L159">					break;</span>
+				}
+			}
+<span class="nc bnc" id="L162" title="All 2 branches missed.">		} while (hasChanged);</span>
+
+<span class="nc" id="L164">		return allLines;</span>
+	}
+
+	/**
+	 * Resolves the possible intersection of two lines and writes the resulting lines (at most 4)
+	 * back into the result list.
+	 *
+	 * @param line1     the first line
+	 * @param line2     the second line
+	 * @param result    an empty list of lines
+	 * @return true if some lines changed (a line got deleted, split, moved), otherwise (no treatment required) false
+	 */
+	private boolean adjustLines(@NotNull final VLine line1, @NotNull final VLine line2, @NotNull final List&lt;VLine&gt; result) {
+
+<span class="nc bnc" id="L178" title="All 4 branches missed.">		assert result.isEmpty();</span>
+
+		// two lines can only intersect if their bounding box intersect
+		//if(line1.mbr().intersects(line2.mbr())) {
+
+			// case 1: both lines are identical
+<span class="nc bnc" id="L184" title="All 2 branches missed.">			if(equals(line1, line2)) {</span>
+<span class="nc" id="L185">				result.add(line1);</span>
+<span class="nc" id="L186">				return true;</span>
+			} // case 2: some end point of a line is very close to the other line
+<span class="nc bnc" id="L188" title="All 2 branches missed.">			else if (closeEndPoints(line1, line2)) {</span>
+<span class="nc" id="L189">				double ccw11 = GeometryUtils.ccw(line1.x1, line1.y1, line1.x2, line1.y2, line2.x1, line2.y1);</span>
+<span class="nc" id="L190">				double ccw12 = GeometryUtils.ccw(line1.x1, line1.y1, line1.x2, line1.y2, line2.x2, line2.y2);</span>
+<span class="nc" id="L191">				double ccw21 = GeometryUtils.ccw(line2.x1, line2.y1, line2.x2, line2.y2, line1.x1, line1.y1);</span>
+<span class="nc" id="L192">				double ccw22 = GeometryUtils.ccw(line2.x1, line2.y1, line2.x2, line2.y2, line1.x2, line1.y2);</span>
+
+<span class="nc bnc" id="L194" title="All 4 branches missed.">				if(Math.abs(ccw11) &lt; ccwTol &amp;&amp; Math.abs(ccw12) &lt; ccwTol) {</span>
+<span class="nc" id="L195">					return handleCoLinearLines(line1, line2, result);</span>
+				}   // case 3 only 1 point of some segment is co-linear to the other segment
+<span class="nc bnc" id="L197" title="All 2 branches missed.">				else if(Math.abs(ccw11) &lt; ccwTol) {</span>
+<span class="nc" id="L198">					return handleCoLinearPoint(line1, line2.getVPoint1(), line2, result);</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">				} else if(Math.abs(ccw12) &lt; ccwTol) {</span>
+<span class="nc" id="L200">					return handleCoLinearPoint(line1, line2.getVPoint2(), line2, result);</span>
+<span class="nc bnc" id="L201" title="All 2 branches missed.">				} else if(Math.abs(ccw21) &lt; ccwTol) {</span>
+<span class="nc" id="L202">					return handleCoLinearPoint(line2, line1.getVPoint1(), line1, result);</span>
+<span class="nc bnc" id="L203" title="All 2 branches missed.">				} else if(Math.abs(ccw22) &lt; ccwTol) {</span>
+<span class="nc" id="L204">					return handleCoLinearPoint(line2, line1.getVPoint2(), line1, result);</span>
+				} else {
+					// something is wrong!
+<span class="nc" id="L207">					result.add(line1);</span>
+<span class="nc" id="L208">					result.add(line2);</span>
+<span class="nc" id="L209">					return false;</span>
+				}
+
+			}// case 3: lines are co-linear
+<span class="nc bnc" id="L213" title="All 2 branches missed.">			 else if(GeometryUtils.intersectLineSegment(line1, line2.getVPoint1(), line2.getVPoint2())) {</span>
+<span class="nc" id="L214">				return handleIntersection(line1, line2, result);</span>
+			} else {
+<span class="nc" id="L216">				result.add(line1);</span>
+<span class="nc" id="L217">				result.add(line2);</span>
+<span class="nc" id="L218">				return false;</span>
+			}
+		//}
+	}
+
+
+	/**
+	 * Lines intersect (general case)
+	 *
+	 * @param line1 line1 which intersects line2
+	 * @param line2 line2 which intersects line1
+	 * @param lines an empty list of lines
+	 *
+	 * @return true since both lines changes
+	 */
+	private boolean handleIntersection(@NotNull final VLine line1, @NotNull final VLine line2, @NotNull final List&lt;VLine&gt; lines) {
+<span class="nc bnc" id="L234" title="All 4 branches missed.">		assert lines.isEmpty();</span>
+<span class="nc" id="L235">		VPoint iPoint = GeometryUtils.intersectionPoint(line1, line2);</span>
+<span class="nc" id="L236">		lines.add(new VLine(line1.getVPoint1(), iPoint));</span>
+<span class="nc" id="L237">		lines.add(new VLine(line1.getVPoint2(), iPoint));</span>
+<span class="nc" id="L238">		lines.add(new VLine(line2.getVPoint1(), iPoint));</span>
+<span class="nc" id="L239">		lines.add(new VLine(line2.getVPoint2(), iPoint));</span>
+<span class="nc" id="L240">		return true;</span>
+	}
+
+	/**
+	 * the point of line2 is co-linear to line1, the other point of line2 is not co-linear
+	 *
+	 * @param line1 line1
+	 * @param point the point which is co-linear to line1 and part of line2
+	 * @param line2 line2
+	 * @param lines an empty list of lines
+	 *
+	 * @return true if the point is not an endpoint of line1, otherwise false because no treatment is required
+	 */
+	private boolean handleCoLinearPoint(@NotNull final VLine line1, @NotNull final VPoint point, @NotNull final VLine line2, @NotNull final List&lt;VLine&gt; lines) {
+<span class="nc bnc" id="L254" title="All 4 branches missed.">		assert lines.isEmpty();</span>
+<span class="nc bnc" id="L255" title="All 4 branches missed.">		if(equals(line1.getVPoint1(), point) || equals(line1.getVPoint2(), point)) {</span>
+<span class="nc" id="L256">			lines.add(line1);</span>
+<span class="nc" id="L257">			lines.add(line2);</span>
+<span class="nc" id="L258">			return false;</span>
+		} else {
+			//VPoint pPoint = GeometryUtils.projectOntoLine(point.getX(), point.getY(), line1.x1, line1.y1, line1.x2, line1.y2);
+<span class="nc" id="L261">			VPoint pPoint = point;</span>
+<span class="nc" id="L262">			lines.add(new VLine(line1.getVPoint1(), pPoint));</span>
+<span class="nc" id="L263">			lines.add(new VLine(line1.getVPoint2(), pPoint));</span>
+<span class="nc" id="L264">			lines.add(line2);</span>
+<span class="nc" id="L265">			return true;</span>
+		}
+	}
+
+	/**
+	 * the two lines are co-linear
+	 *
+	 * @param line1 first line
+	 * @param line2 second line
+	 * @param lines an empty list of lines
+	 *
+	 * @return false if the two lines share exactly one endpoint (no treatment required), true otherwise
+	 */
+	private boolean handleCoLinearLines(@NotNull final VLine line1, @NotNull final VLine line2, @NotNull final List&lt;VLine&gt; lines)  {
+<span class="nc bnc" id="L279" title="All 4 branches missed.">		assert lines.isEmpty();</span>
+
+<span class="nc" id="L281">		boolean hasChanged = false;</span>
+<span class="nc" id="L282">		ArrayList&lt;VPoint&gt; list = new ArrayList&lt;&gt;(4);</span>
+<span class="nc" id="L283">		list.add(new VPoint(line1.x1, line1.y1));</span>
+<span class="nc" id="L284">		list.add(new VPoint(line1.x2, line1.y2));</span>
+<span class="nc" id="L285">		list.add(new VPoint(line2.x1, line2.y1));</span>
+<span class="nc" id="L286">		list.add(new VPoint(line2.x2, line2.y2));</span>
+<span class="nc" id="L287">		PointComparator&lt;VPoint&gt; comparator = new PointComparator&lt;&gt;();</span>
+<span class="nc" id="L288">		list.sort(comparator);</span>
+
+<span class="nc" id="L290">		VPoint point = list.get(0);</span>
+<span class="nc bnc" id="L291" title="All 2 branches missed.">		for(int i = 1; i &lt; list.size(); i++) {</span>
+<span class="nc bnc" id="L292" title="All 2 branches missed.">			if(!equals(point, list.get(i))) {</span>
+<span class="nc" id="L293">				VLine newLine = new VLine(point, list.get(i));</span>
+<span class="nc" id="L294">				point = list.get(i);</span>
+<span class="nc" id="L295">				lines.add(newLine);</span>
+<span class="nc" id="L296">			} else {</span>
+<span class="nc bnc" id="L297" title="All 2 branches missed.">				if(!point.equals(list.get(i))) {</span>
+<span class="nc" id="L298">					hasChanged = true;</span>
+				}
+			}
+		}
+
+<span class="nc bnc" id="L303" title="All 4 branches missed.">		if(!hasChanged &amp;&amp; lines.size() == 2) {</span>
+<span class="nc" id="L304">			lines.clear();</span>
+<span class="nc" id="L305">			lines.add(line1);</span>
+<span class="nc" id="L306">			lines.add(line2);</span>
+<span class="nc" id="L307">			return false;</span>
+		}
+
+<span class="nc" id="L310">		return true;</span>
+	}
+
+	/**
+	 * Returns true if there the two lines have close end points, false otherwise.
+	 *
+	 * @param line1 first line
+	 * @param line2 second line
+	 *
+	 * @return true if there the two lines have close end points, false otherwise.
+	 */
+	private boolean closeEndPoints(@NotNull final VLine line1, @NotNull final VLine line2) {
+<span class="nc bnc" id="L322" title="All 2 branches missed.">		return GeometryUtils.distanceToLineSegment(line1.getVPoint1(), line1.getVPoint2(), line2.getVPoint1()) &lt; tol ||</span>
+<span class="nc bnc" id="L323" title="All 2 branches missed.">				GeometryUtils.distanceToLineSegment(line1.getVPoint1(), line1.getVPoint2(), line2.getVPoint2()) &lt; tol ||</span>
+<span class="nc bnc" id="L324" title="All 2 branches missed.">				GeometryUtils.distanceToLineSegment(line2.getVPoint1(), line2.getVPoint2(), line1.getVPoint1()) &lt; tol ||</span>
+<span class="nc bnc" id="L325" title="All 2 branches missed.">				GeometryUtils.distanceToLineSegment(line2.getVPoint1(), line2.getVPoint2(), line1.getVPoint2()) &lt; tol;</span>
+	}
+
+	/**
+	 * Returns true if both lines are approximately equal, false otherwise.
+	 *
+	 * @param line1 first line
+	 * @param line2 second line
+	 *
+	 * @return true if both lines are approximately equal, false otherwise.
+	 */
+	private boolean equals(@NotNull final VLine line1, @NotNull final VLine line2) {
+<span class="nc bnc" id="L337" title="All 4 branches missed.">		return equals(line1.getVPoint1(), line2.getVPoint1()) &amp;&amp; equals(line1.getVPoint2(), line2.getVPoint2()) ||</span>
+<span class="nc bnc" id="L338" title="All 4 branches missed.">				equals(line1.getVPoint1(), line2.getVPoint2()) &amp;&amp; equals(line1.getVPoint2(), line2.getVPoint1());</span>
+	}
+
+	/**
+	 * Returns true if two points are approximately equals, false otherwise.
+	 *
+	 * @param point1 first point
+	 * @param point2 second point
+	 *
+	 * @return true if two points are approximately equals, false otherwise
+	 */
+	private boolean equals(@NotNull final VPoint point1, @NotNull final VPoint point2) {
+<span class="nc bnc" id="L350" title="All 2 branches missed.">		return point1.distanceSq(point2) &lt; tol * tol;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

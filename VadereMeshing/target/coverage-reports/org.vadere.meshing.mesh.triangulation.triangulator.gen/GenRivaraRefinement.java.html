@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GenRivaraRefinement.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.triangulator.gen</a> &gt; <span class="el_source">GenRivaraRefinement.java</span></div><h1>GenRivaraRefinement.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.triangulator.gen;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.meshing.mesh.triangulation.triangulator.inter.IRefiner;
+
+import java.util.LinkedList;
+import java.util.function.Predicate;
+
+/**
+ * Implementation of Rivara's bisection of longest edge algorithm for triangular mesh refinement.
+ *
+ *
+ * &lt;b&gt;References:&lt;/b&gt;
+ * &lt;ol&gt;
+ *     &lt;li&gt;
+ *           &lt;a href=&quot;https://onlinelibrary.wiley.com/doi/abs/10.1002/nme.1620200412&quot;&gt;Algorithm of Rivara&lt;/a&gt;
+ *     &lt;/li&gt;
+ * &lt;/ol&gt;
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ *
+ * @author Benedikt Zoennchen
+ */
+<span class="nc bnc" id="L30" title="All 2 branches missed.">public class GenRivaraRefinement&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; implements IRefiner&lt;V, E, F&gt; {</span>
+
+	private final IIncrementalTriangulation&lt;V, E, F&gt; triangulation;
+	private final Predicate&lt;E&gt; edgeRefinePredicates;
+	private boolean finished;
+	private boolean refined;
+
+	public GenRivaraRefinement(
+			@NotNull final IIncrementalTriangulation&lt;V, E, F&gt; triangulation,
+			@NotNull final Predicate&lt;E&gt; edgeRefinePredicates
+<span class="nc" id="L40">			) {</span>
+<span class="nc" id="L41">		this.triangulation = triangulation;</span>
+<span class="nc" id="L42">		this.edgeRefinePredicates = edgeRefinePredicates;</span>
+<span class="nc" id="L43">		this.finished = false;</span>
+<span class="nc" id="L44">	}</span>
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate() {
+<span class="nc" id="L48">		return generate(true);</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; generate(boolean finalize) {
+<span class="nc bnc" id="L53" title="All 2 branches missed.">		if(!finished) {</span>
+			do {
+<span class="nc" id="L55">				refine();</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">			} while(isRefined());</span>
+		}
+<span class="nc bnc" id="L58" title="All 2 branches missed.">		if(finalize) {</span>
+<span class="nc" id="L59">			triangulation.finish();</span>
+<span class="nc" id="L60">			finished = true;</span>
+		}
+<span class="nc" id="L62">		return triangulation;</span>
+	}
+
+	@Override
+	public IIncrementalTriangulation&lt;V, E, F&gt; getTriangulation() {
+<span class="nc" id="L67">		return triangulation;</span>
+	}
+
+	@Override
+	public void refine() {
+<span class="nc" id="L72">		refined = false;</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">		if(!finished) {</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">			for(E edge : getMesh().getEdges()) {</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">				if(!getMesh().isBoundary(edge)) {</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">					if(edgeRefinePredicates.test(edge)) {</span>
+<span class="nc" id="L77">						refined = true;</span>
+<span class="nc" id="L78">						refine(getMesh().getFace(edge));</span>
+					}
+				}
+<span class="nc" id="L81">			}</span>
+		}
+
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		if(!refined) {</span>
+<span class="nc" id="L85">			finished = true;</span>
+		}
+<span class="nc" id="L87">	}</span>
+
+	public boolean isRefined() {
+<span class="nc" id="L90">		return refined;</span>
+	}
+
+	public boolean isFinished() {
+<span class="nc" id="L94">		return finished;</span>
+	}
+
+	@Override
+	public IMesh&lt;V, E, F&gt; getMesh() {
+<span class="nc" id="L99">		return triangulation.getMesh();</span>
+	}
+
+	private void refine(@NotNull final F face) {
+<span class="nc bnc" id="L103" title="All 4 branches missed.">		assert !getMesh().isBoundary(face);</span>
+<span class="nc" id="L104">		refine(triangulation.getLongestHalfEdge(face));</span>
+<span class="nc" id="L105">	}</span>
+
+	private void refine(@NotNull final E edge) {
+<span class="nc bnc" id="L108" title="All 4 branches missed.">		assert triangulation.isLongestHalfEdge(edge);</span>
+<span class="nc" id="L109">		LinkedList&lt;E&gt; longestEdges = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L110">		longestEdges.addFirst(edge);</span>
+
+<span class="nc" id="L112">		int count = 0;</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">		while (!longestEdges.isEmpty()) {</span>
+			//System.out.println(count++);
+<span class="nc" id="L115">			E longestHe = longestEdges.peekFirst();</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">			if(getMesh().isBoundary(longestHe)) {</span>
+<span class="nc" id="L117">				longestEdges.removeFirst();</span>
+<span class="nc" id="L118">				triangulation.splitEdge(longestHe, false);</span>
+			} else {
+<span class="nc" id="L120">				E twin = getMesh().getTwin(longestHe);</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">				if(triangulation.isLongestHalfEdge(twin)) {</span>
+<span class="nc" id="L122">					longestEdges.removeFirst();</span>
+<span class="nc" id="L123">					triangulation.splitEdge(longestHe, false);</span>
+				}
+				else {
+<span class="nc" id="L126">					F twinFace = getMesh().getTwinFace(longestHe);</span>
+<span class="nc" id="L127">					E e = triangulation.getLongestHalfEdge(twinFace);</span>
+<span class="nc" id="L128">					longestEdges.addFirst(e);</span>
+				}
+			}
+<span class="nc" id="L131">		}</span>
+<span class="nc" id="L132">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

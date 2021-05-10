@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PSLGGenerator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.utils.io.poly</a> &gt; <span class="el_source">PSLGGenerator.java</span></div><h1>PSLGGenerator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.utils.io.poly;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.impl.PSLG;
+import org.vadere.meshing.mesh.inter.IFace;
+import org.vadere.meshing.mesh.inter.IHalfEdge;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+<span class="pc bpc" id="L31" title="1 of 2 branches missed.">public class PSLGGenerator {</span>
+
+	private final static String SEPARATOR = &quot; &quot;;
+	private final static String SPLITTER = &quot;\\s+&quot;;
+
+	/**
+	 * Transforms a mesh into a String which can be displayed by the gmesh vis-tool.
+	 * @param mesh the mesh
+	 * @param &lt;V&gt; the type of the vertices
+	 * @param &lt;E&gt; the type of the half-edges
+	 * @param &lt;F&gt; the type of the faces
+	 *
+	 * @return a string which can be saved into a .poly file to display the mesh via the gmesh vis-tool
+	 */
+	public static &lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; String to3DPoly(
+			@NotNull final IMesh&lt;V, E, F&gt; mesh) {
+<span class="nc" id="L47">		int dimension = 3;</span>
+<span class="nc" id="L48">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc" id="L49">		builder.append(&quot;#node\n&quot;);</span>
+<span class="nc" id="L50">		builder.append(mesh.getNumberOfVertices() + SEPARATOR + dimension + &quot;\n&quot;);</span>
+<span class="nc" id="L51">		Map&lt;V, Integer&gt; map = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L52">		int id = 1;</span>
+<span class="nc bnc" id="L53" title="All 2 branches missed.">		for(V v : mesh.getVertices()) {</span>
+<span class="nc" id="L54">			map.put(v, id);</span>
+<span class="nc" id="L55">			builder.append(id + SEPARATOR + v.getX() + SEPARATOR + v.getY() + SEPARATOR + 0.0 + &quot;\n&quot;);</span>
+<span class="nc" id="L56">			id++;</span>
+<span class="nc" id="L57">		}</span>
+
+<span class="nc" id="L59">		builder.append(&quot;#FACET 2D\n&quot;);</span>
+<span class="nc" id="L60">		builder.append(mesh.getNumberOfFaces()+&quot;\n&quot;);</span>
+
+<span class="nc bnc" id="L62" title="All 2 branches missed.">		for(F face : mesh.getFaces()) {</span>
+<span class="nc" id="L63">			builder.append(&quot;1 0\n&quot;);</span>
+<span class="nc" id="L64">			builder.append(mesh.getPoints(face).size() + SEPARATOR);</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">			for(V v : mesh.getVertices(face)) {</span>
+<span class="nc" id="L66">				builder.append(map.get(v) + SEPARATOR);</span>
+<span class="nc" id="L67">			}</span>
+<span class="nc" id="L68">			builder.delete(builder.length()-SEPARATOR.length(), builder.length());</span>
+<span class="nc" id="L69">			builder.append(&quot;\n&quot;);</span>
+<span class="nc" id="L70">		}</span>
+<span class="nc" id="L71">		builder.append(&quot;0 #holes&quot;);</span>
+<span class="nc" id="L72">		return builder.toString();</span>
+	}
+
+	private static String readLine(@NotNull final BufferedReader reader) throws IOException {
+		String st;
+<span class="pc bpc" id="L77" title="1 of 2 branches missed.">		while ((st = reader.readLine()) != null) {</span>
+<span class="fc" id="L78">			st = st.strip();</span>
+<span class="pc bpc" id="L79" title="1 of 4 branches missed.">			if(!st.startsWith(&quot;#&quot;) || st.strip().equals(&quot;&quot;)) {</span>
+<span class="nc" id="L80">				break;</span>
+			}
+		}
+<span class="fc" id="L83">		return st.strip();</span>
+	}
+
+	/**
+	 * Transforms a boundary and a list of holes (together these two elements may define a topography) into a string representing a PSLG.
+	 *
+	 * Assumption: There is no hole intersecting or containing any other hole and the segment-bounding polygon containes all holes
+	 *
+	 * @param boundary  the segment-bounding polygon
+	 * @param holes     holes i.e. polygon contained in the segment-bounded polygon.
+	 * @return a {@link String} representation of the PSLG
+	 */
+	public static String toPSLG(@NotNull final VPolygon boundary, @NotNull final Collection&lt;VPolygon&gt; holes) {
+<span class="nc" id="L96">		return PSLGGenerator.toPSLG(boundary, holes,true);</span>
+	}
+
+	public static String toPSLG(@NotNull final VPolygon boundary, @NotNull final Collection&lt;VPolygon&gt; cHoles, final boolean addComments) {
+<span class="nc" id="L100">		StringBuilder builder = new StringBuilder();</span>
+<span class="nc" id="L101">		Set&lt;VPoint&gt; vertices = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L102">		List&lt;VPolygon&gt; holes = cHoles.stream().collect(Collectors.toList());</span>
+<span class="nc" id="L103">		List&lt;VLine&gt; lines = Stream.concat(boundary.getLinePath().stream(), holes.stream().flatMap(hole -&gt; hole.getLinePath().stream()))</span>
+<span class="nc" id="L104">				.distinct()</span>
+<span class="nc" id="L105">				.collect(Collectors.toList());</span>
+
+<span class="nc" id="L107">		int dimension = 2;</span>
+<span class="nc" id="L108">		int nAttributes = 0;</span>
+<span class="nc" id="L109">		int boundaryMarker = 0; // no boundary marker</span>
+
+		// filter duplicated points
+<span class="nc bnc" id="L112" title="All 2 branches missed.">		for(VLine line : lines) {</span>
+<span class="nc" id="L113">			vertices.add(new VPoint(line.x1, line.y1));</span>
+<span class="nc" id="L114">			vertices.add(new VPoint(line.x2, line.y2));</span>
+<span class="nc" id="L115">		}</span>
+
+<span class="nc" id="L117">		List&lt;VPoint&gt; iVertices = vertices.stream().collect(Collectors.toList());</span>
+<span class="nc" id="L118">		Map&lt;VPoint, Integer&gt; indexMap = new HashMap&lt;&gt;();</span>
+
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		if(addComments) {</span>
+<span class="nc" id="L121">			builder.append(&quot;# nVertices dimension nAttributes boundaryMarker\n&quot;);</span>
+		}
+<span class="nc" id="L123">		builder.append(iVertices.size() + SEPARATOR + dimension + SEPARATOR + nAttributes + SEPARATOR + boundaryMarker);</span>
+
+<span class="nc bnc" id="L125" title="All 2 branches missed.">		if(addComments) {</span>
+<span class="nc" id="L126">			builder.append(&quot;\n# vertexId x y&quot;);</span>
+		}
+<span class="nc bnc" id="L128" title="All 2 branches missed.">		for(int index = 1; index &lt;= iVertices.size(); index++) {</span>
+<span class="nc" id="L129">			VPoint vertex = iVertices.get(index-1);</span>
+<span class="nc" id="L130">			builder.append(&quot;\n&quot; + String.format(Locale.US, &quot;%d&quot; + SEPARATOR +&quot;%f&quot; + SEPARATOR + &quot;%f&quot;, index, vertex.x, vertex.y));</span>
+<span class="nc" id="L131">			indexMap.put(vertex, index);</span>
+		}
+
+<span class="nc bnc" id="L134" title="All 2 branches missed.">		if(addComments) {</span>
+<span class="nc" id="L135">			builder.append(&quot;\n#\n# nSegments boundaryMarker&quot;);</span>
+		}
+<span class="nc" id="L137">		builder.append(&quot;\n&quot; + lines.size() + SEPARATOR + boundaryMarker);</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">		if(addComments) {</span>
+<span class="nc" id="L139">			builder.append(&quot;\n# lineId vertexId1 vertexId2&quot;);</span>
+		}
+<span class="nc bnc" id="L141" title="All 2 branches missed.">		for(int index = 1; index &lt;= lines.size(); index++) {</span>
+<span class="nc" id="L142">			VLine line = lines.get(index-1);</span>
+
+<span class="nc" id="L144">			Integer from = indexMap.get(line.getVPoint1());</span>
+<span class="nc bnc" id="L145" title="All 4 branches missed.">			assert from != null;</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">			if(from == null) {</span>
+<span class="nc" id="L147">				throw new IllegalArgumentException(&quot;could not find index for point &quot; + line.getVPoint1());</span>
+			}
+
+<span class="nc" id="L150">			Integer to = indexMap.get(line.getVPoint2());</span>
+<span class="nc bnc" id="L151" title="All 4 branches missed.">			assert to != null;</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">			if(to == null) {</span>
+<span class="nc" id="L153">				throw new IllegalArgumentException(&quot;could not find index for point &quot; + line.getVPoint2());</span>
+			}
+<span class="nc" id="L155">			builder.append(&quot;\n&quot; + index + SEPARATOR + from + SEPARATOR + to);</span>
+		}
+
+<span class="nc bnc" id="L158" title="All 2 branches missed.">		if(addComments) {</span>
+<span class="nc" id="L159">			builder.append(&quot;\n#\n# nHoles&quot;);</span>
+		}
+<span class="nc" id="L161">		builder.append(&quot;\n&quot;+holes.size());</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">		if(addComments) {</span>
+<span class="nc" id="L163">			builder.append(&quot;\n# vertexId x y (of a vertex which lies inside the hole)&quot;);</span>
+		}
+<span class="nc bnc" id="L165" title="All 2 branches missed.">		for(int index = 1; index &lt;= holes.size(); index++) {</span>
+<span class="nc" id="L166">			VPoint interiorPoint = GeometryUtils.getInteriorPoint(holes.get(index-1));</span>
+<span class="nc" id="L167">			builder.append(&quot;\n&quot; + String.format(Locale.US, &quot;%d&quot; + SEPARATOR +&quot;%f&quot; + SEPARATOR + &quot;%f&quot;, index, interiorPoint.x, interiorPoint.y));</span>
+		}
+
+<span class="nc" id="L170">		return builder.toString();</span>
+	}
+
+	/**
+	 * Reads a PSLG from an {@link InputStream} and transforms the PSLG into a list of {@link VPolygon} polygons and {@link VLine} lines.
+	 * The first element of the returning list of polygons is the segment-bounding polygon.
+	 *
+	 * @param inputStream       the input stream
+	 *
+	 * @return a list of {@link VPolygon} polygons and {@link VLine} lines representing the PSLG
+	 *
+	 * @throws IOException
+	 */
+	public static PSLG toPSLG(@NotNull final InputStream inputStream) throws IOException {
+		// (1) read input file
+<span class="fc" id="L185">		Map&lt;Integer, VPoint&gt; vertices = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L186">		Map&lt;Integer, VPoint&gt; holes = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L187">		Map&lt;Integer, LinkedList&lt;Integer&gt;&gt; segments = new HashMap&lt;&gt;();</span>
+		try {
+<span class="fc" id="L189">			BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));</span>
+<span class="fc" id="L190">			String st = PSLGGenerator.readLine(br);</span>
+
+<span class="fc" id="L192">			String[] split = st.split(SPLITTER);</span>
+<span class="pc bpc" id="L193" title="1 of 2 branches missed.">			if(split.length &lt; 1) {</span>
+<span class="nc" id="L194">				throw new IOException(&quot;wrong file format.&quot;);</span>
+			}
+
+<span class="fc" id="L197">			int numberOfVertices = 0;</span>
+<span class="fc" id="L198">			int dimension = 2;</span>
+<span class="fc" id="L199">			int numberOfAttributes = 0;</span>
+<span class="fc" id="L200">			int boundaryMarker = 0;</span>
+
+<span class="pc bpc" id="L202" title="1 of 2 branches missed.">			if(split.length &gt; 1) {</span>
+<span class="fc" id="L203">				numberOfVertices = Integer.parseInt(split[0].strip());</span>
+			}
+<span class="pc bpc" id="L205" title="1 of 2 branches missed.">			if(split.length &gt; 2) {</span>
+<span class="fc" id="L206">				dimension = Integer.parseInt(split[1].strip());</span>
+			}
+<span class="pc bpc" id="L208" title="1 of 2 branches missed.">			if(split.length &gt; 3) {</span>
+<span class="fc" id="L209">				numberOfAttributes = Integer.parseInt(split[2].strip());</span>
+			}
+<span class="pc bpc" id="L211" title="1 of 2 branches missed.">			if(split.length &gt; 4) {</span>
+<span class="nc" id="L212">				boundaryMarker = Integer.parseInt(split[3].strip());</span>
+			}
+
+<span class="fc bfc" id="L215" title="All 2 branches covered.">			for(int i = 1; i &lt;= numberOfVertices; i++) {</span>
+<span class="fc" id="L216">				st = PSLGGenerator.readLine(br);</span>
+<span class="pc bpc" id="L217" title="1 of 2 branches missed.">				if(st == null) {</span>
+<span class="nc" id="L218">					throw new IOException(&quot;wrong file format: missing vertices&quot;);</span>
+				}
+<span class="fc" id="L220">				split = st.strip().split(SPLITTER);</span>
+<span class="pc bpc" id="L221" title="1 of 2 branches missed.">				if(split.length &lt; 2) {</span>
+<span class="nc" id="L222">					throw new IOException(&quot;wrong file format: missing vertex coordinate&quot;);</span>
+				}
+
+<span class="fc" id="L225">				int id = i;</span>
+<span class="pc bpc" id="L226" title="1 of 2 branches missed.">				if(split.length &gt; 2) {</span>
+<span class="fc" id="L227">					id = Integer.parseInt(split[0].strip());</span>
+				}
+
+<span class="fc" id="L230">				double x = Double.parseDouble(split[1].strip());</span>
+<span class="fc" id="L231">				double y = Double.parseDouble(split[2].strip());</span>
+<span class="fc" id="L232">				vertices.put(id, new VPoint(x, y));</span>
+			}
+
+<span class="fc" id="L235">			st = PSLGGenerator.readLine(br);</span>
+<span class="fc" id="L236">			split = st.strip().split(SPLITTER);</span>
+<span class="fc" id="L237">			int numberOfSegments = 0;</span>
+<span class="fc" id="L238">			boundaryMarker = 0;</span>
+
+<span class="pc bpc" id="L240" title="1 of 2 branches missed.">			if(split.length &gt; 1) {</span>
+<span class="fc" id="L241">				numberOfSegments = Integer.parseInt(split[0].strip());</span>
+			}
+<span class="pc bpc" id="L243" title="1 of 2 branches missed.">			if(split.length &gt; 2) {</span>
+<span class="nc" id="L244">				boundaryMarker = Integer.parseInt(split[1].strip());</span>
+			}
+
+<span class="fc bfc" id="L247" title="All 2 branches covered.">			for(int i = 1; i &lt;= numberOfSegments; i++) {</span>
+<span class="fc" id="L248">				st = PSLGGenerator.readLine(br);</span>
+<span class="pc bpc" id="L249" title="1 of 2 branches missed.">				if(st == null) {</span>
+<span class="nc" id="L250">					throw new IOException(&quot;wrong file format: missing vertices&quot;);</span>
+				}
+<span class="fc" id="L252">				split = st.strip().split(SPLITTER);</span>
+<span class="pc bpc" id="L253" title="1 of 2 branches missed.">				if(split.length &lt; 2) {</span>
+<span class="nc" id="L254">					throw new IOException(&quot;wrong file format: missing vertex coordinate&quot;);</span>
+				}
+
+<span class="fc" id="L257">				int id = i;</span>
+<span class="pc bpc" id="L258" title="1 of 2 branches missed.">				if(split.length &gt; 2) {</span>
+<span class="fc" id="L259">					id = Integer.parseInt(split[0].strip());</span>
+				}
+
+<span class="fc" id="L262">				int from = Integer.parseInt(split[1].strip());</span>
+<span class="fc" id="L263">				int to = Integer.parseInt(split[2].strip());</span>
+<span class="pc bpc" id="L264" title="1 of 2 branches missed.">				if(!segments.containsKey(from)) {</span>
+<span class="fc" id="L265">					segments.put(from, new LinkedList&lt;&gt;());</span>
+				}
+
+<span class="fc" id="L268">				segments.get(from).add(to);</span>
+			}
+
+<span class="fc" id="L271">			st = PSLGGenerator.readLine(br);</span>
+<span class="fc" id="L272">			int numberOfHoles = 0;</span>
+<span class="pc bpc" id="L273" title="1 of 2 branches missed.">			if(st != null) {</span>
+<span class="fc" id="L274">				st = st.strip();</span>
+<span class="fc" id="L275">				numberOfHoles = Integer.parseInt(st);</span>
+
+<span class="fc bfc" id="L277" title="All 2 branches covered.">				for(int i = 1; i &lt;= numberOfHoles; i++) {</span>
+<span class="fc" id="L278">					st = PSLGGenerator.readLine(br);</span>
+<span class="fc" id="L279">					split = st.split(SPLITTER);</span>
+<span class="pc bpc" id="L280" title="1 of 2 branches missed.">					if(split.length &lt; 2) {</span>
+<span class="nc" id="L281">						throw new IOException(&quot;wrong file format: missing vertex coordinate&quot;);</span>
+					}
+
+<span class="fc" id="L284">					int id = i;</span>
+<span class="pc bpc" id="L285" title="1 of 2 branches missed.">					if(split.length &gt; 2) {</span>
+<span class="fc" id="L286">						id = Integer.parseInt(split[0].strip());</span>
+					}
+
+<span class="fc" id="L289">					double x = Double.parseDouble(split[1].strip());</span>
+<span class="fc" id="L290">					double y = Double.parseDouble(split[2].strip());</span>
+<span class="fc" id="L291">					holes.put(id, new VPoint(x,y));</span>
+				}
+			}
+
+<span class="nc" id="L295">		} catch (NumberFormatException e) {</span>
+<span class="nc" id="L296">			throw new IOException(&quot;wrong file format: &quot; + e.getMessage());</span>
+<span class="fc" id="L297">		}</span>
+
+		// (2) transform to VShapes and VLines
+<span class="fc" id="L300">		List&lt;VPolygon&gt; polygons = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L301">		List&lt;VLine&gt; lines = new ArrayList&lt;&gt;();</span>
+
+<span class="fc bfc" id="L303" title="All 2 branches covered.">		while (!segments.isEmpty()) {</span>
+<span class="fc" id="L304">			List&lt;Integer&gt; polyIndices = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L305">			var entry = segments.entrySet().iterator().next();</span>
+<span class="fc" id="L306">			int start = entry.getKey();</span>
+<span class="fc" id="L307">			int from = start;</span>
+
+<span class="fc" id="L309">			polyIndices.add(from);</span>
+			do {
+<span class="fc" id="L311">				int to = segments.get(from).poll();</span>
+<span class="pc bpc" id="L312" title="1 of 2 branches missed.">				if(segments.get(from).isEmpty()) {</span>
+<span class="fc" id="L313">					segments.remove(from);</span>
+				}
+<span class="fc" id="L315">				polyIndices.add(to);</span>
+<span class="fc" id="L316">				from = to;</span>
+
+<span class="pc bpc" id="L318" title="1 of 4 branches missed.">			} while (from != start &amp;&amp; segments.containsKey(from));</span>
+
+			// defines a polygon
+<span class="pc bpc" id="L321" title="2 of 4 branches missed.">			if(polyIndices.size() &gt; 3 &amp;&amp; polyIndices.get(0).equals(polyIndices.get(polyIndices.size()-1))) {</span>
+<span class="fc" id="L322">				polyIndices.remove(polyIndices.size()-1);</span>
+<span class="fc" id="L323">				List&lt;VPoint&gt; pointList = polyIndices.stream().map(index -&gt; vertices.get(index)).collect(Collectors.toList());</span>
+<span class="fc" id="L324">				VPolygon polygon = GeometryUtils.toPolygon(pointList);</span>
+
+				// is the segment-bound
+<span class="fc bfc" id="L327" title="All 2 branches covered.">				if(holes.values().stream().allMatch(p -&gt; polygon.contains(p))) {</span>
+<span class="fc" id="L328">					polygons.add(0, polygon);</span>
+				}
+				else {
+<span class="fc" id="L331">					polygons.add(polygon);</span>
+				}
+<span class="fc" id="L333">			}</span>
+			else {
+				// TODO: duplicated code
+<span class="nc bnc" id="L336" title="All 2 branches missed.">				for(int i = 0; i &lt; polyIndices.size(); i++) {</span>
+<span class="nc" id="L337">					int vertexId1 = polyIndices.get(i);</span>
+<span class="nc" id="L338">					int vertexId2 = polyIndices.get((i+1) % polyIndices.size());</span>
+<span class="nc" id="L339">					VPoint vertex1 = vertices.get(vertexId1);</span>
+<span class="nc" id="L340">					VPoint vertex2 = vertices.get(vertexId2);</span>
+<span class="nc" id="L341">					VLine line = new VLine(vertex1, vertex2);</span>
+<span class="nc" id="L342">					lines.add(line);</span>
+				}
+			}
+<span class="fc" id="L345">		}</span>
+
+<span class="fc bfc" id="L347" title="All 2 branches covered.">		if(polygons.size() == 2) {</span>
+<span class="pc bpc" id="L348" title="1 of 2 branches missed.">			if(polygons.get(1).contains(polygons.get(0).getPath().get(0))) {</span>
+<span class="fc" id="L349">				VPolygon tmp = polygons.get(0);</span>
+<span class="fc" id="L350">				polygons.set(0, polygons.get(1));</span>
+<span class="fc" id="L351">				polygons.set(1, tmp);</span>
+			}
+		}
+
+<span class="pc bpc" id="L355" title="1 of 2 branches missed.">		if(!polygons.isEmpty()) {</span>
+<span class="fc" id="L356">			return new PSLG(polygons.get(0), polygons.subList(1, polygons.size()), lines, Collections.EMPTY_SET);</span>
+		}
+		else {
+<span class="nc" id="L359">			throw new IOException(&quot;invalid .poly format.&quot;);</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

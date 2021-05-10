@@ -1,0 +1,420 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CellGrid.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.data.cellgrid</a> &gt; <span class="el_source">CellGrid.java</span></div><h1>CellGrid.java</h1><pre class="source lang-java linenums">package org.vadere.util.data.cellgrid;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.math.InterpolationUtil;
+import org.vadere.util.math.MathUtil;
+
+import java.awt.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+import tech.tablesaw.api.DoubleColumn;
+import tech.tablesaw.api.IntColumn;
+import tech.tablesaw.api.Row;
+import tech.tablesaw.api.StringColumn;
+import tech.tablesaw.api.Table;
+
+/**
+ * Grid consisting of regular arranged sampling points an a plane, each storing
+ * a value of type 'T'. A Grid has a certain width and height. The resolution
+ * represents the distance of two grid points along the x- or y-axis. The values
+ * of the grid points can be regarded as elements of a matrix. Each element in
+ * the matrix refers to a certain point in the grid. Internally the values are
+ * stored as array of values in column major order.
+ */
+public class CellGrid {
+
+	/** Width of the grid. */
+	protected final double width;
+	/** Height of the grid. */
+	protected final double height;
+	/** Distance of point along x- and y-axis */
+	protected final double resolution;
+	/** Number of points along x axis. */
+	protected final int numPointsX;
+	/** Number of points along y axis. */
+	protected final int numPointsY;
+
+	protected final double xMin;
+
+	protected final double yMin;
+
+	protected CellState[][] values;
+
+	/**
+	 * Creates an grid with the given width, height and resolution. All grid
+	 * point values are initialized with 'value'.
+	 */
+	public CellGrid(double width, double height, double resolution,
+<span class="fc" id="L56">	                CellState value, double xMin, double yMin) {</span>
+<span class="fc" id="L57">		this.width = width;</span>
+<span class="fc" id="L58">		this.height = height;</span>
+<span class="fc" id="L59">		this.resolution = resolution;</span>
+<span class="fc" id="L60">		this.xMin = xMin;</span>
+<span class="fc" id="L61">		this.yMin = yMin;</span>
+
+		/* 0.001 avoids that numPointsX/Y are too small due to numerical errors. */
+<span class="fc" id="L64">		numPointsX = (int) Math.floor(width / resolution + 0.001) + 1;</span>
+<span class="fc" id="L65">		numPointsY = (int) Math.floor(height / resolution + 0.001) + 1;</span>
+
+<span class="fc" id="L67">		values = new CellState[numPointsX][numPointsY];</span>
+
+<span class="fc" id="L69">		reset(value);</span>
+<span class="fc" id="L70">	}</span>
+
+	/**
+	 * Creates an grid with the given width, height and resolution. All grid
+	 * point values are initialized with 'value'.
+	 */
+	public CellGrid(double width, double height, double resolution, CellState value) {
+<span class="nc" id="L77">		this(width, height, resolution, value, 0, 0);</span>
+<span class="nc" id="L78">	}</span>
+
+	/**
+	 * Creates a deep copy of the given grid.
+	 */
+<span class="nc" id="L83">	public CellGrid(CellGrid grid) {</span>
+<span class="nc" id="L84">		width = grid.width;</span>
+<span class="nc" id="L85">		height = grid.height;</span>
+<span class="nc" id="L86">		resolution = grid.resolution;</span>
+<span class="nc" id="L87">		numPointsX = grid.numPointsX;</span>
+<span class="nc" id="L88">		numPointsY = grid.numPointsY;</span>
+<span class="nc" id="L89">		values = new CellState[numPointsX][numPointsY];</span>
+<span class="nc" id="L90">		xMin = grid.xMin;</span>
+<span class="nc" id="L91">		yMin = grid.yMin;</span>
+
+<span class="nc bnc" id="L93" title="All 2 branches missed.">		for (int row = 0; row &lt; numPointsY; row++) {</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">			for (int col = 0; col &lt; numPointsX; col++) {</span>
+<span class="nc" id="L95">				values[col][row] = grid.values[col][row].clone();</span>
+			}
+		}
+<span class="nc" id="L98">	}</span>
+
+	/** Returns the values of all data points. */
+	public Iterable&lt;CellState&gt; getRawBuffer() {
+<span class="nc" id="L102">		return new Iterable&lt;CellState&gt;() {</span>
+			@Override
+			public Iterator&lt;CellState&gt; iterator() {
+<span class="nc" id="L105">				return new Iterator&lt;CellState&gt;() {</span>
+<span class="nc" id="L106">					private int row = 0;</span>
+<span class="nc" id="L107">					private int col = 0;</span>
+
+					@Override
+					public void remove() {
+<span class="nc" id="L111">						throw new UnsupportedOperationException();</span>
+					}
+
+					@Override
+					public CellState next() {
+<span class="nc" id="L116">						CellState result = values[col][row];</span>
+<span class="nc" id="L117">						col++;</span>
+<span class="nc bnc" id="L118" title="All 2 branches missed.">						if (col &gt;= numPointsX) {</span>
+<span class="nc" id="L119">							col = 0;</span>
+<span class="nc" id="L120">							row++;</span>
+						}
+<span class="nc" id="L122">						return result;</span>
+					}
+
+					@Override
+					public boolean hasNext() {
+<span class="nc bnc" id="L127" title="All 4 branches missed.">						return col &lt; numPointsX &amp;&amp; row &lt; numPointsY;</span>
+					}
+				};
+			}
+		};
+	}
+
+	/**
+	 * Load data for CellState[][] structure from the given table. Method asumes the dimension
+	 * of the table matches the dimension of {@link #values}
+	 *
+	 * @param table contains data in the form [x, y, (potential)value, tag]
+	 */
+	public void loadFromTable(Table table){
+<span class="fc bfc" id="L141" title="All 2 branches covered.">		for (Row r : table){</span>
+<span class="fc" id="L142">			values[r.getInt(&quot;x&quot;)][r.getInt(&quot;y&quot;)].potential = r.getDouble(&quot;value&quot;);</span>
+<span class="fc" id="L143">			values[r.getInt(&quot;x&quot;)][r.getInt(&quot;y&quot;)].tag =</span>
+<span class="fc" id="L144">					PathFindingTag.valueOf(r.getString(&quot;tag&quot;));</span>
+<span class="fc" id="L145">		}</span>
+<span class="fc" id="L146">	}</span>
+
+	/**
+	 * Generate table view of {@link #values} to save as cache
+	 * *
+	 * @return table representation of {@link #values} data in the from [x, y, (potential)value, tag]
+	 */
+	public Table asTable(){
+<span class="fc" id="L154">		int len = numPointsX * numPointsY;</span>
+<span class="fc" id="L155">		IntColumn colX = IntColumn.create(&quot;x&quot;, new int[len]);</span>
+<span class="fc" id="L156">		IntColumn colY = IntColumn.create(&quot;y&quot;, new int[len]);</span>
+<span class="fc" id="L157">		DoubleColumn colVal = DoubleColumn.create(&quot;value&quot;, new double[len]);</span>
+<span class="fc" id="L158">		StringColumn colTag = StringColumn.create(&quot;tag&quot;, new String[len]);</span>
+<span class="fc" id="L159">		int tblRow = 0;</span>
+<span class="fc bfc" id="L160" title="All 2 branches covered.">		for (int row = 0; row &lt; numPointsY; row++) {</span>
+<span class="fc bfc" id="L161" title="All 2 branches covered.">			for (int col = 0; col &lt; numPointsX; col++) {</span>
+<span class="fc" id="L162">				colX.set(tblRow, col);</span>
+<span class="fc" id="L163">				colY.set(tblRow, row);</span>
+<span class="fc" id="L164">				colVal.set(tblRow, values[col][row].potential);</span>
+<span class="fc" id="L165">				colTag.set(tblRow, values[col][row].tag.name());</span>
+<span class="fc" id="L166">				tblRow++;</span>
+			}
+		}
+<span class="fc" id="L169">		return Table.create(&quot;floorfield&quot;).addColumns(colX, colY, colVal, colTag);</span>
+	}
+
+	/** Returns the width of the grid. */
+	public double getWidth() {
+<span class="nc" id="L174">		return width;</span>
+	}
+
+	/**
+	 * Returns the resolution of the grid, which is the distance of two grid
+	 * points along x- or y-axis.
+	 */
+	public double getResolution() {
+<span class="nc" id="L182">		return resolution;</span>
+	}
+
+	/** Returns the height of the grid. */
+	public double getHeight() {
+<span class="nc" id="L187">		return height;</span>
+	}
+
+	/** Returns the number of grid points along the x-axis. */
+	public int getNumPointsX() {
+<span class="fc" id="L192">		return numPointsX;</span>
+	}
+
+	/** Returns the number of grid points along the y-axis. */
+	public int getNumPointsY() {
+<span class="fc" id="L197">		return numPointsY;</span>
+	}
+
+	/**
+	 * Converts the matrix indices to coordinates.
+	 */
+	public VPoint pointToCoord(int pointX, int pointY) {
+<span class="nc" id="L204">		return new VPoint(xMin + pointX * resolution, yMin + pointY * resolution);</span>
+	}
+
+	/**
+	 * Converts the matrix indices to coordinates.
+	 */
+	public VPoint pointToCoord(Point p) {
+<span class="nc" id="L211">		return pointToCoord(p.x, p.y);</span>
+	}
+
+	/**
+	 * Returns the value of the grid point specified by matrix element indices.
+	 */
+	public CellState getValue(int pointX, int pointY) {
+<span class="nc" id="L218">		return values[pointX][pointY];</span>
+	}
+
+	/**
+	 * Returns the value of the grid point specified by the given matrix element
+	 * index 'p'.
+	 */
+	public CellState getValue(Point p) {
+<span class="nc" id="L226">		return getValue(p.x, p.y);</span>
+	}
+
+	/**
+	 * Sets the value of the grid point specified by matrix element indices.
+	 */
+	public void setValue(int pointX, int pointY, CellState value) {
+		// points.set(pointToIdx(pointX, pointY), value);
+<span class="nc" id="L234">		values[pointX][pointY] = value;</span>
+<span class="nc" id="L235">	}</span>
+
+	/**
+	 * Sets the value of the grid point specified by the matrix element index
+	 * 'p'.
+	 */
+	public void setValue(Point p, CellState value) {
+<span class="nc" id="L242">		setValue(p.x, p.y, value);</span>
+<span class="nc" id="L243">	}</span>
+
+	/**
+	 * Returns the closest grid point (matrix index) to the given coordinates.
+	 */
+	public Point getNearestPoint(double x, double y) {
+<span class="nc bnc" id="L249" title="All 2 branches missed.">		if (x &lt; xMin) {</span>
+<span class="nc" id="L250">			x = xMin;</span>
+		}
+<span class="nc bnc" id="L252" title="All 2 branches missed.">		if (y &lt; yMin) {</span>
+<span class="nc" id="L253">			y = yMin;</span>
+		}
+<span class="nc bnc" id="L255" title="All 2 branches missed.">		if (y &gt; getHeight() + yMin) {</span>
+<span class="nc" id="L256">			y = getHeight() + yMin;</span>
+		}
+<span class="nc bnc" id="L258" title="All 2 branches missed.">		if (x &gt; getWidth() + xMin) {</span>
+<span class="nc" id="L259">			x = getWidth() + xMin;</span>
+		}
+<span class="nc" id="L261">		return new Point((int) ((x - xMin) / resolution + 0.5),</span>
+				(int) ((y - yMin) / resolution + 0.5));
+	}
+
+	/**
+	 * Returns the distance of grid points specified by its matrix indices.
+	 */
+	public double pointDistance(int pointX1, int pointY1, int pointX2,
+	                            int pointY2) {
+<span class="nc" id="L270">		return Math.sqrt(Math.pow(pointY2 - pointY1, 2)</span>
+<span class="nc" id="L271">				+ Math.pow(pointX2 - pointX1, 2))</span>
+				* resolution;
+	}
+
+	/**
+	 * Returns the distance of grid points specified by its matrix indices.
+	 */
+	public double pointDistance(Point p1, Point p2) {
+<span class="nc" id="L279">		return pointDistance(p1.x, p1.y, p2.x, p2.y);</span>
+	}
+
+	/** Sets the values of all grid points to 'value'. */
+	public void reset(CellState value) {
+<span class="fc bfc" id="L284" title="All 2 branches covered.">		for (int row = 0; row &lt; numPointsY; row++) {</span>
+<span class="fc bfc" id="L285" title="All 2 branches covered.">			for (int col = 0; col &lt; numPointsX; col++) {</span>
+<span class="fc" id="L286">				values[col][row] = value.clone();</span>
+			}
+		}
+<span class="fc" id="L289">	}</span>
+
+	/** Dumps the grid values. */
+	public void dump() {
+<span class="nc bnc" id="L293" title="All 2 branches missed.">		for (int y = 0; y &lt; numPointsY; ++y) {</span>
+<span class="nc bnc" id="L294" title="All 2 branches missed.">			for (int x = 0; x &lt; numPointsX; ++x) {</span>
+<span class="nc" id="L295">				System.out.print(getValue(x, y).toString() + &quot; &quot;);</span>
+			}
+<span class="nc" id="L297">			System.out.print(&quot;\n&quot;);</span>
+		}
+<span class="nc" id="L299">	}</span>
+
+	/** Returns a copy of the grid. See copy constructor for more information. */
+	@Override
+	public CellGrid clone() {
+<span class="nc" id="L304">		return new CellGrid(this);</span>
+	}
+
+	public List&lt;Point&gt; getLegitNeumannNeighborhood(Point point) {
+<span class="nc" id="L308">		return MathUtil.getNeumannNeighborhood(point).stream().filter(p -&gt; isValidPoint(p))</span>
+<span class="nc" id="L309">				.collect(Collectors.toList());</span>
+	}
+
+	public List&lt;Point&gt; getLegitMooreNeighborhood(Point point) {
+<span class="nc" id="L313">		return MathUtil.getMooreNeighborhood(point).stream().filter(p -&gt; isValidPoint(p)).collect(Collectors.toList());</span>
+	}
+
+	public Stream&lt;Point&gt; pointStream() {
+<span class="nc" id="L317">		return IntStream.range(0, getNumPointsX())</span>
+<span class="nc" id="L318">				.mapToObj(x -&gt; IntStream.range(0, getNumPointsY()).mapToObj(y -&gt; new Point(x, y)))</span>
+<span class="nc" id="L319">				.flatMap(stream -&gt; stream);</span>
+	}
+
+<span class="nc" id="L322">	public double getMinX() { return xMin; }</span>
+
+<span class="nc" id="L324">	public double getMinY() { return yMin; }</span>
+
+	public double getMaxX () {
+<span class="nc" id="L327">		return  xMin + width;</span>
+	}
+
+	public double getMaxY() {
+<span class="nc" id="L331">		return yMin + height;</span>
+	}
+
+	public boolean isValidPoint(Point point) {
+<span class="nc" id="L335">		return isValidPoint(point.x, point.y);</span>
+	}
+
+	public boolean isValidPoint(final int x, final int y) {
+
+<span class="nc bnc" id="L340" title="All 4 branches missed.">		if ((x &lt; 0) || (x &gt;= numPointsX)) {</span>
+<span class="nc" id="L341">			return false;</span>
+		}
+
+<span class="nc bnc" id="L344" title="All 4 branches missed.">		if ((y &lt; 0) || (y &gt;= numPointsY)) {</span>
+<span class="nc" id="L345">			return false;</span>
+		}
+<span class="nc" id="L347">		return true;</span>
+	}
+
+	/**
+	 * Returns a function VPoint (x,y-coordinate) -&gt; Double (potential) which
+	 * computes the bilinearInterpolated potential for a given coordinate.
+	 *
+	 * @return  a function VPoint (x,y-coordinate) -&gt; Double (potential)
+	 */
+	public Function&lt;IPoint, Double&gt; getInterpolationFunction() {
+<span class="nc" id="L357">		return pos -&gt; {</span>
+<span class="nc" id="L358">			int incX = 1;</span>
+<span class="nc" id="L359">			int incY = 1;</span>
+
+<span class="nc" id="L361">			Point gridPoint = getNearestPoint(pos.getX(), pos.getY());</span>
+
+<span class="nc bnc" id="L363" title="All 2 branches missed.">			if (gridPoint.x + 1 &gt;= getNumPointsX()) {</span>
+<span class="nc" id="L364">				incX = 0;</span>
+			}
+
+<span class="nc bnc" id="L367" title="All 2 branches missed.">			if (gridPoint.y + 1 &gt;= getNumPointsY()) {</span>
+<span class="nc" id="L368">				incY = 0;</span>
+			}
+
+
+<span class="nc" id="L372">			VPoint gridPointCoord = pointToCoord(gridPoint);</span>
+
+<span class="nc" id="L374">			double z1 = getValue(gridPoint).potential;</span>
+<span class="nc" id="L375">			double z2 = getValue(gridPoint.x + incX, gridPoint.y).potential;</span>
+<span class="nc" id="L376">			double z3 = getValue(gridPoint.x + incX, gridPoint.y + incY).potential;</span>
+<span class="nc" id="L377">			double z4 = getValue(gridPoint.x, gridPoint.y + incY).potential;</span>
+
+<span class="nc" id="L379">			double t = (pos.getX() - gridPointCoord.x) / getResolution();</span>
+<span class="nc" id="L380">			double u = (pos.getY() - gridPointCoord.y) / getResolution();</span>
+
+<span class="nc" id="L382">			return InterpolationUtil.bilinearInterpolation(z1, z2, z3, z4, t, u);</span>
+		};
+	}
+
+	public Pair&lt;Double, Double&gt; getInterpolatedValueAt(final double x, final double y) {
+<span class="nc" id="L387">		Point gridPoint = getNearestPoint(x, y);</span>
+<span class="nc" id="L388">		VPoint gridPointCoord = pointToCoord(gridPoint);</span>
+<span class="nc" id="L389">		int incX = 1, incY = 1;</span>
+<span class="nc" id="L390">		double gridPotentials[] = new double[4];</span>
+
+<span class="nc bnc" id="L392" title="All 2 branches missed.">		if (gridPoint.x + 1 &gt;= getNumPointsX()) {</span>
+<span class="nc" id="L393">			incX = 0;</span>
+		}
+
+<span class="nc bnc" id="L396" title="All 2 branches missed.">		if (gridPoint.y + 1 &gt;= getNumPointsY()) {</span>
+<span class="nc" id="L397">			incY = 0;</span>
+		}
+
+
+<span class="nc" id="L401">		gridPotentials[0] = getValue(gridPoint).potential;</span>
+<span class="nc" id="L402">		gridPotentials[1] = getValue(gridPoint.x + incX, gridPoint.y).potential;</span>
+<span class="nc" id="L403">		gridPotentials[2] = getValue(gridPoint.x + incX, gridPoint.y + incY).potential;</span>
+<span class="nc" id="L404">		gridPotentials[3] = getValue(gridPoint.x, gridPoint.y + incY).potential;</span>
+
+
+		/* Interpolate the known (potential &lt; Double.MAX_VALUE) values. */
+<span class="nc" id="L408">		Pair&lt;Double, Double&gt; result = InterpolationUtil.bilinearInterpolationWithUnkown(</span>
+				gridPotentials,
+<span class="nc" id="L410">				(x - gridPointCoord.x) / getResolution(),</span>
+<span class="nc" id="L411">				(y - gridPointCoord.y) / getResolution());</span>
+
+<span class="nc" id="L413">		return result;</span>
+	}
+
+	public Pair&lt;Double, Double&gt; getInterpolatedValueAt(@NotNull final IPoint pos) {
+<span class="nc" id="L417">		return getInterpolatedValueAt(pos.getX(), pos.getY());</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EdgeLengthFunctionApprox.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.triangulation.edgeLengthFunctions</a> &gt; <span class="el_source">EdgeLengthFunctionApprox.java</span></div><h1>EdgeLengthFunctionApprox.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.triangulation.edgeLengthFunctions;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.gen.PFace;
+import org.vadere.meshing.mesh.gen.PHalfEdge;
+import org.vadere.meshing.mesh.gen.PVertex;
+import org.vadere.meshing.mesh.impl.PSLG;
+import org.vadere.meshing.mesh.inter.IIncrementalTriangulation;
+import org.vadere.meshing.mesh.inter.IMesh;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.PRuppertsTriangulator;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.IPoint;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VRectangle;
+import org.vadere.util.math.InterpolationUtil;
+
+import java.util.Comparator;
+import java.util.PriorityQueue;
+import java.util.function.Function;
+
+<span class="nc bnc" id="L21" title="All 2 branches missed.">public class EdgeLengthFunctionApprox implements IEdgeLengthFunction {</span>
+
+	private IIncrementalTriangulation&lt;PVertex, PHalfEdge, PFace&gt; triangulation;
+
+	public EdgeLengthFunctionApprox(
+			@NotNull final PSLG pslg,
+			@NotNull final Function&lt;IPoint, Double&gt; circumRadiusFunc) {
+<span class="nc" id="L28">		this(pslg, circumRadiusFunc, p -&gt; Double.POSITIVE_INFINITY);</span>
+<span class="nc" id="L29">	}</span>
+
+	public EdgeLengthFunctionApprox(
+			@NotNull final PSLG pslg,
+			@NotNull final Function&lt;IPoint, Double&gt; circumRadiusFunc,
+<span class="nc" id="L34">			final IEdgeLengthFunction edgeLengthFunction) {</span>
+
+		//IPointConstructor&lt;DataPoint&lt;Double&gt;&gt; pointConstructor = (x, y) -&gt; new DataPoint&lt;&gt;(x, y);
+		/**
+		 * Add a bound around so the edge function is also defined outside.
+		 */
+<span class="nc" id="L40">		VRectangle bound = GeometryUtils.boundRelativeSquared(pslg.getSegmentBound().getPoints(), 0.3);</span>
+<span class="nc" id="L41">		PSLG boundedPSLG = pslg.conclose(bound);</span>
+
+<span class="nc" id="L43">		var ruppertsTriangulator = new PRuppertsTriangulator(boundedPSLG, pslg, circumRadiusFunc, 10, false, false);</span>
+<span class="nc" id="L44">		triangulation = ruppertsTriangulator.generate();</span>
+<span class="nc" id="L45">		triangulation.enableCache();</span>
+
+		//TODO: maybe transform into an immutable triangulation / mesh!
+<span class="nc" id="L48">		triangulation.setCanIllegalPredicate(e -&gt; true);</span>
+
+		// compute and set the local feature size
+<span class="nc" id="L51">		var vertices = triangulation.getMesh().getVertices();</span>
+<span class="nc" id="L52">		var mesh = triangulation.getMesh();</span>
+<span class="nc bnc" id="L53" title="All 2 branches missed.">		for(var v : vertices) {</span>
+<span class="nc" id="L54">			double minEdgeLen = Double.MAX_VALUE;</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">			for(var e : triangulation.getMesh().getEdges(v)) {</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">				if(!mesh.getBooleanData(mesh.getFace(e), &quot;boundary&quot;)</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">						|| !mesh.getBooleanData(mesh.getTwinFace(e), &quot;boundary&quot;)) {</span>
+<span class="nc" id="L58">					var u = triangulation.getMesh().getTwinVertex(e);</span>
+<span class="nc" id="L59">					double len = v.distance(u) * (1.0 / (Math.sqrt(2) * 1.2/*4.0*/));</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">					if(len &lt; minEdgeLen) {</span>
+<span class="nc" id="L61">						minEdgeLen = len;</span>
+					}
+				}
+<span class="nc" id="L64">			}</span>
+
+<span class="nc" id="L66">			triangulation.getMesh().setDoubleData(v, propName, Math.min(edgeLengthFunction.apply(v), minEdgeLen));</span>
+<span class="nc" id="L67">		}</span>
+<span class="nc" id="L68">	}</span>
+
+	public EdgeLengthFunctionApprox(@NotNull final PSLG pslg) {
+<span class="nc" id="L71">		this(pslg, p -&gt; Double.POSITIVE_INFINITY, p -&gt; Double.POSITIVE_INFINITY);</span>
+		//IPointConstructor&lt;DataPoint&lt;Double&gt;&gt; pointConstructor = (x, y) -&gt; new DataPoint&lt;&gt;(x, y);
+<span class="nc" id="L73">	}</span>
+
+	public IMesh&lt;PVertex, PHalfEdge, PFace&gt; getMesh() {
+<span class="nc" id="L76">		return triangulation.getMesh();</span>
+	}
+
+	public void smooth(double g) {
+<span class="nc bnc" id="L80" title="All 4 branches missed.">		assert g &gt; 0;</span>
+<span class="nc" id="L81">		smooth(g, triangulation);</span>
+<span class="nc" id="L82">	}</span>
+
+	@Override
+	public Double apply(@NotNull final IPoint p) {
+<span class="nc" id="L86">		var face = triangulation.locateFace(new VPoint(p.getX(), p.getY())).get();</span>
+<span class="nc" id="L87">		var mesh = triangulation.getMesh();</span>
+
+<span class="nc bnc" id="L89" title="All 2 branches missed.">		if(mesh.isBoundary(face)) {</span>
+<span class="nc" id="L90">			return Double.POSITIVE_INFINITY;</span>
+		}
+		else {
+<span class="nc" id="L93">			double x[] = new double[3];</span>
+<span class="nc" id="L94">			double y[] = new double[3];</span>
+<span class="nc" id="L95">			double z[] = new double[3];</span>
+
+<span class="nc" id="L97">			triangulation.getTriPoints(face, x, y, z, propName);</span>
+
+<span class="nc" id="L99">			double totalArea = GeometryUtils.areaOfPolygon(x, y);</span>
+
+<span class="nc" id="L101">			return InterpolationUtil.barycentricInterpolation(x, y, z, totalArea, p.getX(), p.getY());</span>
+		}
+	}
+
+	public void printPython() {
+<span class="nc" id="L106">		String str = triangulation.getMesh().toPythonTriangulation(v -&gt; triangulation.getMesh().getDoubleData(v, propName));</span>
+<span class="nc" id="L107">		System.out.println(str);</span>
+		/*var points = triangulation.getMesh().getPoints();
+		System.out.print(&quot;[&quot;);
+		for(var dataPoint : points) {
+			System.out.print(&quot;[&quot;+dataPoint.getX()+&quot;,&quot;+dataPoint.getY()+&quot;],&quot;);
+		}
+		System.out.println(&quot;]\n\n&quot;);
+
+		System.out.print(&quot;[&quot;);
+		for(var dataPoint : points) {
+			System.out.print(dataPoint.getData()+&quot;,&quot;);
+		}
+		System.out.println(&quot;]&quot;);*/
+<span class="nc" id="L120">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

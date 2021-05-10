@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CompoundObject.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.traci</a> &gt; <span class="el_source">CompoundObject.java</span></div><h1>CompoundObject.java</h1><pre class="source lang-java linenums">package org.vadere.state.traci;
+
+import org.apache.commons.lang3.tuple.Pair;
+
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.function.Predicate;
+
+/**
+ * CompoundObject implementation based on TraCI as described in https://sumo.dlr.de/docs/TraCI/Protocol.html#atomar_types
+ *
+ * This implementation consist of two equally long arrays {@link #type} and {@link #data}. The
+ * {@link #type} array saves Type of the objects at the same index in {@link #data}.
+ *
+ * At time of creation it must be stated how many objects will be tide together. See @{@link
+ * CompoundObjectBuilder} for usage of Constructor and the {@link #add(int, Object)} method.
+ */
+public class CompoundObject {
+
+	private TraCIDataType[] type;
+	private Object[] data;
+	private int cur;
+
+<span class="nc" id="L24">	public CompoundObject(int noElements) {</span>
+<span class="nc" id="L25">		this.type = new TraCIDataType[noElements];</span>
+<span class="nc" id="L26">		this.data = new Object[noElements];</span>
+<span class="nc" id="L27">		this.cur = 0;</span>
+<span class="nc" id="L28">	}</span>
+
+	public String types() {
+<span class="nc" id="L31">		StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L32">		sb.append(&quot;[&quot;);</span>
+<span class="nc bnc" id="L33" title="All 2 branches missed.">		for (TraCIDataType i : this.type) {</span>
+<span class="nc" id="L34">			sb.append(i.name()).append(&quot;, &quot;);</span>
+		}
+<span class="nc" id="L36">		sb.delete(sb.length() - 2, sb.length());</span>
+<span class="nc" id="L37">		sb.append(&quot;]&quot;);</span>
+<span class="nc" id="L38">		return sb.toString();</span>
+	}
+
+	public int size() {
+<span class="nc" id="L42">		return data.length;</span>
+	}
+
+	public CompoundObject add(int type, Object data) {
+<span class="nc" id="L46">		return add(TraCIDataType.fromId(type), data);</span>
+	}
+
+	public CompoundObject add(TraCIDataType type, Object data) {
+<span class="nc bnc" id="L50" title="All 2 branches missed.">		if (cur &gt; this.data.length)</span>
+<span class="nc" id="L51">			throw new TraCIException(&quot;CompoundObject already full. Received &quot; + types());</span>
+
+<span class="nc" id="L53">		this.type[cur] = type;</span>
+<span class="nc" id="L54">		this.data[cur] = data;</span>
+
+<span class="nc" id="L56">		cur++;</span>
+<span class="nc" id="L57">		return this;</span>
+	}
+
+	public boolean hasIndex(int index) {
+<span class="nc" id="L61">		return hasIndex(index, null);</span>
+	}
+
+	public boolean hasIndex(int index, TraCIDataType type) {
+<span class="nc bnc" id="L65" title="All 4 branches missed.">		if (index &gt;= 0 &amp;&amp; index &lt; this.data.length) {</span>
+<span class="nc bnc" id="L66" title="All 2 branches missed.">			if (type != null) {</span>
+<span class="nc" id="L67">				return this.type[index].equals(type);</span>
+			}
+<span class="nc" id="L69">			return true;</span>
+		}
+<span class="nc" id="L71">		return false;</span>
+	}
+
+	public Object getData(int index, TraCIDataType type) {
+<span class="nc bnc" id="L75" title="All 2 branches missed.">		if (index &gt; this.data.length)</span>
+<span class="nc" id="L76">			throw new TraCIException(&quot;Cannot access data with index %d&quot;, index);</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">		if (!this.type[index].equals(type))</span>
+<span class="nc" id="L78">			throw new TraCIException(&quot;Type mismatch of CompoundObject element %s != %s  at index %d&quot;,</span>
+<span class="nc" id="L79">					this.type[index].name(), type.name(), index);</span>
+<span class="nc" id="L80">		return this.data[index];</span>
+	}
+
+	public Object getData(int index) {
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		if (index &gt; this.data.length)</span>
+<span class="nc" id="L85">			throw new TraCIException(&quot;Cannot access data with index %d&quot;, index);</span>
+<span class="nc" id="L86">		return this.data[index];</span>
+	}
+
+	public Iterator&lt;Pair&lt;TraCIDataType, Object&gt;&gt; itemIterator() {
+<span class="nc" id="L90">		return new Iter(this, null);</span>
+	}
+
+	public Iterator&lt;Pair&lt;TraCIDataType, Object&gt;&gt; itemIterator(TraCIDataType typeAssertion) {
+<span class="nc" id="L94">		return new Iter(this, typeAssertion);</span>
+	}
+
+	@Override
+	public boolean equals(Object o) {
+<span class="nc bnc" id="L99" title="All 2 branches missed.">		if (this == o) return true;</span>
+<span class="nc bnc" id="L100" title="All 4 branches missed.">		if (o == null || getClass() != o.getClass()) return false;</span>
+<span class="nc" id="L101">		CompoundObject that = (CompoundObject) o;</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">		return Arrays.equals(type, that.type) &amp;&amp;</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">				Arrays.equals(data, that.data);</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L108">		int result = Arrays.hashCode(type);</span>
+<span class="nc" id="L109">		result = 31 * result + Arrays.hashCode(data);</span>
+<span class="nc" id="L110">		return result;</span>
+	}
+
+	private class Iter implements Iterator&lt;Pair&lt;TraCIDataType, Object&gt;&gt; {
+
+		private final CompoundObject compoundObject;
+		private final Predicate&lt;TraCIDataType&gt; typeAssertionTest;
+		private final TraCIDataType typeAssertion;
+		private int curr;
+
+<span class="nc" id="L120">		Iter(CompoundObject compoundObject, TraCIDataType typeAssertion) {</span>
+<span class="nc" id="L121">			this.compoundObject = compoundObject;</span>
+<span class="nc" id="L122">			this.typeAssertion = typeAssertion;</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">			if (typeAssertion != null) {</span>
+<span class="nc" id="L124">				this.typeAssertionTest = traCIDataType -&gt; traCIDataType.equals(typeAssertion);</span>
+			} else {
+<span class="nc" id="L126">				this.typeAssertionTest = traCIDataType -&gt; true;</span>
+			}
+<span class="nc" id="L128">			this.curr = 0;</span>
+<span class="nc" id="L129">		}</span>
+
+		@Override
+		public boolean hasNext() {
+<span class="nc bnc" id="L133" title="All 2 branches missed.">			return curr &lt; compoundObject.size();</span>
+		}
+
+
+
+		@Override
+		public Pair&lt;TraCIDataType, Object&gt; next() {
+<span class="nc" id="L140">			Pair&lt;TraCIDataType, Object&gt; p = Pair.of(compoundObject.type[curr], compoundObject.data[curr]);</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">			if (! this.typeAssertionTest.test(p.getLeft())) {</span>
+<span class="nc" id="L142">				throw new TraCIException(&quot;Type mismatch in CompoundObject. Expected '%s' but found '%s'&quot;,</span>
+<span class="nc" id="L143">						this.typeAssertion.name(), p.getLeft().name());</span>
+			}
+<span class="nc" id="L145">			curr++;</span>
+<span class="nc" id="L146">			return p;</span>
+		}
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

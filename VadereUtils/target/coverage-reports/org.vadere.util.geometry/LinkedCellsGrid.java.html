@@ -1,0 +1,416 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LinkedCellsGrid.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry</a> &gt; <span class="el_source">LinkedCellsGrid.java</span></div><h1>LinkedCellsGrid.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry;
+
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VRectangle;
+
+/**
+ * A grid augmenting the position of generic objects, for faster access. O(1)
+ * instead of O(n) for one fixed radius check. See
+ * {@link LinkedCellsGrid#getObjects(VPoint, double)}.
+ * 
+ * 
+ */
+public class LinkedCellsGrid&lt;T extends PointPositioned&gt; implements Iterable&lt;T&gt; {
+	final private double left;
+	final private double top;
+	final private double width;
+	final private double height;
+	private GridCell&lt;T&gt;[][] grid;
+<span class="fc" id="L27">	private int[] gridSize = new int[2];</span>
+<span class="fc" id="L28">	private double[] cellSize = new double[2];</span>
+	private int size;
+
+	/**
+	 * One cell in the grid. It triangleContains a mapping from points to lists of
+	 * objects. This means that one can store multiple objects in one cell.
+	 * 
+	 * 
+	 * @param &lt;E&gt;
+	 *        type of objects stored in this cell.
+	 */
+<span class="fc" id="L39">	private class GridCell&lt;E extends PointPositioned&gt; {</span>
+<span class="fc" id="L40">		public List&lt;E&gt; objects = new ArrayList&lt;&gt;();</span>
+
+		@Override
+		public int hashCode() {
+<span class="nc" id="L44">			final int prime = 31;</span>
+<span class="nc" id="L45">			int result = 1;</span>
+<span class="nc" id="L46">			result = prime * result + getOuterType().hashCode();</span>
+<span class="nc" id="L47">			result = prime * result</span>
+<span class="nc bnc" id="L48" title="All 2 branches missed.">					+ ((objects == null) ? 0 : objects.hashCode());</span>
+<span class="nc" id="L49">			return result;</span>
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+<span class="nc bnc" id="L54" title="All 2 branches missed.">			if (this == obj) {</span>
+<span class="nc" id="L55">				return true;</span>
+			}
+<span class="nc bnc" id="L57" title="All 2 branches missed.">			if (obj == null) {</span>
+<span class="nc" id="L58">				return false;</span>
+			}
+<span class="nc bnc" id="L60" title="All 2 branches missed.">			if (!(obj instanceof GridCell)) {</span>
+<span class="nc" id="L61">				return false;</span>
+			}
+<span class="nc" id="L63">			GridCell other = (GridCell) obj;</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">			if (objects == null) {</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">				if (other.objects != null) {</span>
+<span class="nc" id="L66">					return false;</span>
+				}
+<span class="nc bnc" id="L68" title="All 2 branches missed.">			} else if (!objects.equals(other.objects)) {</span>
+<span class="nc" id="L69">				return false;</span>
+			}
+<span class="nc" id="L71">			return true;</span>
+		}
+
+		private LinkedCellsGrid getOuterType() {
+<span class="nc" id="L75">			return LinkedCellsGrid.this;</span>
+		}
+	}
+
+	private class ContainerisedElement {
+		final private int[] cell;
+		final private T object;
+
+<span class="nc" id="L83">		ContainerisedElement(int[] cell, T object){</span>
+<span class="nc" id="L84">			this.cell = cell;</span>
+<span class="nc" id="L85">			this.object = object;</span>
+<span class="nc" id="L86">		}</span>
+
+		public int[] getCell() {
+<span class="nc" id="L89">			return cell;</span>
+		}
+
+		public T getObject() {
+<span class="nc" id="L93">			return object;</span>
+		}
+
+		@Override
+		public String toString() {
+<span class="nc" id="L98">			return &quot;ContainerisedElement{&quot; +</span>
+<span class="nc" id="L99">					&quot;cell=&quot; + Arrays.toString(cell) +</span>
+					&quot;, object=&quot; + object +
+<span class="nc" id="L101">					&quot;, pos= &quot; + ((PointPositioned)object).getPosition() +</span>
+					'}';
+		}
+	}
+
+	/**
+	 * Generates an empty grid of GridCell&amp;lt;T&amp;gt; objects.
+	 * 
+	 * @param s
+	 *        grid side length
+	 * @return A two-dimensional grid of size &quot;s^2&quot; containing GridCell&amp;lt;T&amp;gt;
+	 *         objects.
+	 */
+	@SuppressWarnings(&quot;unchecked&quot;)
+	private GridCell&lt;T&gt;[][] generateGrid(int... s) {
+		// Use Array native method to create array of a type only known at run
+		// time
+<span class="fc" id="L118">		this.grid = (GridCell&lt;T&gt;[][]) Array.newInstance(GridCell.class, s);</span>
+<span class="fc bfc" id="L119" title="All 2 branches covered.">		for (int r = 0; r &lt; grid.length; r++) {</span>
+			// TODO [priority=medium] [task=test] changed this [20.08.2014] here 1 to r - pls check this
+<span class="fc bfc" id="L121" title="All 2 branches covered.">			for (int c = 0; c &lt; grid[r].length; c++) {</span>
+<span class="fc" id="L122">				grid[r][c] = new GridCell&lt;&gt;();</span>
+			}
+		}
+
+<span class="fc" id="L126">		return this.grid;</span>
+	}
+
+	public int getGridWidth() {
+<span class="nc" id="L130">		return gridSize[0];</span>
+	}
+
+	public int getGridHeight() {
+<span class="nc" id="L134">		return gridSize[1];</span>
+	}
+
+	public LinkedCellsGrid(@NotNull final VRectangle bound, double sideLength) {
+<span class="nc" id="L138">		this(bound.x, bound.y, bound.width, bound.height, sideLength);</span>
+<span class="nc" id="L139">	}</span>
+
+	/**
+	 * Generates a LinkedCellsGrid with given dimension, position and number of
+	 * items on one side.
+	 * 
+	 * @param left
+	 *        x-position of top left corner
+	 * @param top
+	 *        y-position of top left corner
+	 * @param width
+	 *        width of the grid, in world units (e.g. [m])
+	 * @param height
+	 *        height of the grid, in world units (e.g. [m])
+	 * @param sideLength
+	 *        number of items on one side. the total number of grid cells
+	 *        equals sideLength^2
+	 */
+	public LinkedCellsGrid(double left, double top, double width,
+<span class="fc" id="L158">			double height, double sideLength) {</span>
+<span class="fc" id="L159">		this.left = left;</span>
+<span class="fc" id="L160">		this.top = top;</span>
+<span class="fc" id="L161">		this.width = width;</span>
+<span class="fc" id="L162">		this.height = height;</span>
+<span class="fc" id="L163">		this.size = 0;</span>
+
+
+		// create grid
+		/*
+		 * this.gridSize = (int) Math.bound(1,
+		 * Math.ceil(Math.bound(width, height) / sideLength));
+		 * this.cellSize = Math.bound(width, height) / gridSize;
+		 * this.grid = generateGrid(gridSize, gridSize);
+		 */
+
+<span class="fc" id="L174">		this.gridSize[0] = (int) Math.max(1, this.width / sideLength);</span>
+<span class="fc" id="L175">		this.gridSize[1] = (int) Math.max(1, this.height / sideLength);</span>
+<span class="fc" id="L176">		this.cellSize[0] = this.width / gridSize[0];</span>
+<span class="fc" id="L177">		this.cellSize[1] = this.height / gridSize[1];</span>
+
+<span class="fc" id="L179">		this.grid = generateGrid(this.gridSize[0], this.gridSize[1]);</span>
+<span class="fc" id="L180">	}</span>
+
+	/**
+	 * Determines the discrete grid position (x,y) given a point with double
+	 * coordinates.
+	 * 
+	 * @param pos
+	 *        a given position with coordinate values of type double
+	 * @return the position in the grid, from 0 to this.gridSize-1 in both
+	 *         coordinates.
+	 */
+	public int[] gridPos(VPoint pos) {
+		// compute position in the grid
+<span class="fc" id="L193">		int iX = (int) Math.max(</span>
+				0,
+<span class="fc" id="L195">				Math.min(this.gridSize[0] - 1,</span>
+<span class="fc" id="L196">						Math.floor((pos.x - left) / width * this.gridSize[0])));</span>
+<span class="fc" id="L197">		int iY = (int) Math.max(</span>
+				0,
+<span class="fc" id="L199">				Math.min(this.gridSize[1] - 1,</span>
+<span class="fc" id="L200">						Math.floor((pos.y - top) / height * this.gridSize[1])));</span>
+
+<span class="fc" id="L202">		return new int[] {iX, iY};</span>
+	}
+
+	public int[][] getCellObjectCount(){
+<span class="nc" id="L206">		int[][] count = new int[this.gridSize[0]][this.gridSize[1]];</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">		for (int r = 0; r &lt; grid.length; r++) {</span>
+<span class="nc bnc" id="L208" title="All 2 branches missed.">			for (int c = 0; c &lt; grid[r].length; c++) {</span>
+<span class="nc" id="L209">				count[r][c] = grid[r][c].objects.size();</span>
+			}
+		}
+<span class="nc" id="L212">		return count;</span>
+	}
+
+	/**
+	 * Adds a given object to the grid at position of the object. The position is
+	 * discretized automatically to fit in the cells.
+	 * 
+	 * @param object object to add
+	 */
+	public synchronized void addObject(final T object) {
+<span class="fc" id="L222">		int[] gridPos = gridPos(object.getPosition());</span>
+<span class="fc" id="L223">		grid[gridPos[0]][gridPos[1]].objects.add(object);</span>
+<span class="fc" id="L224">		size++;</span>
+<span class="fc" id="L225">	}</span>
+
+	public void moveObject(final T object, final VPoint oldPosition) {
+<span class="nc" id="L228">		removeObject(object, oldPosition);</span>
+<span class="nc" id="L229">		addObject(object);</span>
+<span class="nc" id="L230">	}</span>
+
+	/**
+	 * Returns a set of objects in the ball around pos with given radius.
+	 * 
+	 * @param pos
+	 *        position of the center of the ball
+	 * @param radius
+	 *        radius of the ball
+	 * @return set of objects, or an empty set if no objects are present.
+	 */
+	public synchronized List&lt;T&gt; getObjects(final VPoint pos, final double radius) {
+<span class="fc" id="L242">		final List&lt;T&gt; result = new LinkedList&lt;T&gt;();</span>
+
+<span class="fc" id="L244">		int[] gridPos = gridPos(pos);</span>
+<span class="fc" id="L245">		int[] discreteRad = new int[2];</span>
+<span class="fc" id="L246">		discreteRad[0] = (int) Math.ceil(radius / cellSize[0]);</span>
+<span class="fc" id="L247">		discreteRad[1] = (int) Math.ceil(radius / cellSize[1]);</span>
+
+<span class="fc" id="L249">		final int maxRow = Math.min(gridSize[0] - 1, gridPos[0] + discreteRad[0]);</span>
+<span class="fc" id="L250">		final int maxCol = Math.min(gridSize[1] - 1, gridPos[1] + discreteRad[1]);</span>
+
+<span class="fc bfc" id="L252" title="All 2 branches covered.">		for (int row = Math.max(0, gridPos[0] - discreteRad[0]); row &lt;= maxRow; row++) {</span>
+<span class="fc bfc" id="L253" title="All 2 branches covered.">			for (int col = Math.max(0, gridPos[1] - discreteRad[1]); col &lt;= maxCol; col++) {</span>
+
+<span class="fc bfc" id="L255" title="All 2 branches covered.">				for (T object : grid[row][col].objects) {</span>
+					// if the given position is closer than the radius, add all objects stored there
+<span class="fc bfc" id="L257" title="All 2 branches covered.">					if (object.getPosition().distance(pos) &lt; radius) {</span>
+<span class="fc" id="L258">						result.add(object);</span>
+					}
+<span class="fc" id="L260">				}</span>
+			}
+		}
+<span class="fc" id="L263">		return result;</span>
+	}
+
+	/**
+	 * Removes the objects equal to the given object from the grid regardless of
+	 * their position. Note that this function has complexity O(N), with N =
+	 * number of objects in the grid.
+	 * 
+	 * @param object
+	 */
+	public synchronized void removeObject(T object) {
+<span class="fc" id="L274">		int[] gridPos = gridPos(object.getPosition());</span>
+<span class="pc bpc" id="L275" title="1 of 2 branches missed.">		if(grid[gridPos[0]][gridPos[1]].objects.removeIf(element -&gt; element.equals(object))){</span>
+<span class="fc" id="L276">			size--;</span>
+		}
+<span class="fc" id="L278">	}</span>
+
+	public synchronized void removeObject(T object, final VPoint oldPosition) {
+<span class="nc" id="L281">		int[] gridPos = gridPos(oldPosition);</span>
+<span class="nc bnc" id="L282" title="All 2 branches missed.">		if(grid[gridPos[0]][gridPos[1]].objects.removeIf(element -&gt; element.equals(object))){</span>
+<span class="nc" id="L283">			size--;</span>
+		}
+<span class="nc" id="L285">	}</span>
+
+	/**
+	 * Removes all objects.
+	 */
+	public void clear() {
+<span class="fc" id="L291">		grid = generateGrid(gridSize[0], gridSize[1]);</span>
+<span class="fc" id="L292">		size = 0;</span>
+<span class="fc" id="L293">	}</span>
+
+	public List&lt;T&gt; getElements() {
+<span class="fc" id="L296">		List&lt;T&gt; elements = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L297" title="All 2 branches covered.">		for (int r = 0; r &lt; grid.length; r++) {</span>
+			// TODO [priority=medium] [task=test] changed this [20.08.2014] here 1 to r - pls check this
+<span class="fc bfc" id="L299" title="All 2 branches covered.">			for (int c = 0; c &lt; grid[r].length; c++) {</span>
+<span class="fc" id="L300">				elements.addAll(grid[r][c].objects);</span>
+			}
+		}
+
+<span class="fc" id="L304">		return elements;</span>
+	}
+
+	/**
+	 * Provides an iterator over the objects stored in the grid.
+	 */
+	@Override
+	public Iterator&lt;T&gt; iterator() {
+<span class="fc" id="L312">		return getElements().iterator();</span>
+	}
+
+	/**
+	 * Returns the size (number of different keys &amp;lt;T&amp;gt;) of List.
+	 * 
+	 * @return the size (number of different keys &amp;lt;T&amp;gt;) of List
+	 */
+	public int size() {
+<span class="fc" id="L321">		return size;</span>
+	}
+
+	/**
+	 * Tests whether the linked cells grid triangleContains an object that equals(the
+	 * given object). The complexity of this operation is O(N), N = number of
+	 * objects in the grid.
+	 * 
+	 * @param element
+	 * @return
+	 */
+	public boolean contains(final T element) {
+<span class="fc bfc" id="L333" title="All 2 branches covered.">		for (Iterator&lt;T&gt; iter = this.iterator(); iter.hasNext();) {</span>
+<span class="fc bfc" id="L334" title="All 2 branches covered.">			if (iter.next().equals(element)) {</span>
+<span class="fc" id="L335">				return true;</span>
+			}
+		}
+<span class="fc" id="L338">		return false;</span>
+	}
+
+	public List&lt;ContainerisedElement&gt; getElementContainer(final T element){
+<span class="nc" id="L342">		List&lt;ContainerisedElement&gt; elements  = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L343" title="All 2 branches missed.">		for (int r = 0; r &lt; grid.length; r++) {</span>
+			// TODO [priority=medium] [task=test] changed this [20.08.2014] here 1 to r - pls check this
+<span class="nc bnc" id="L345" title="All 2 branches missed.">			for (int c = 0; c &lt; grid[r].length; c++) {</span>
+<span class="nc bnc" id="L346" title="All 2 branches missed.">				if (grid[r][c].objects.contains(element)){</span>
+<span class="nc" id="L347">					elements.add(new ContainerisedElement(new int[]{r, c}, element));</span>
+				}
+			}
+		}
+<span class="nc" id="L351">		return elements;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L356">		final int prime = 31;</span>
+<span class="nc" id="L357">		int result = 1;</span>
+		long temp;
+<span class="nc" id="L359">		temp = java.lang.Double.doubleToLongBits(cellSize[0]);</span>
+<span class="nc" id="L360">		result = prime * result + (int) (temp ^ (temp &gt;&gt;&gt; 32));</span>
+<span class="nc" id="L361">		result = prime * result + Arrays.hashCode(grid);</span>
+<span class="nc" id="L362">		result = prime * result + gridSize[1];</span>
+<span class="nc" id="L363">		temp = java.lang.Double.doubleToLongBits(height);</span>
+<span class="nc" id="L364">		result = prime * result + (int) (temp ^ (temp &gt;&gt;&gt; 32));</span>
+<span class="nc" id="L365">		temp = java.lang.Double.doubleToLongBits(left);</span>
+<span class="nc" id="L366">		result = prime * result + (int) (temp ^ (temp &gt;&gt;&gt; 32));</span>
+<span class="nc" id="L367">		temp = java.lang.Double.doubleToLongBits(top);</span>
+<span class="nc" id="L368">		result = prime * result + (int) (temp ^ (temp &gt;&gt;&gt; 32));</span>
+<span class="nc" id="L369">		temp = java.lang.Double.doubleToLongBits(width);</span>
+<span class="nc" id="L370">		result = prime * result + (int) (temp ^ (temp &gt;&gt;&gt; 32));</span>
+<span class="nc" id="L371">		return result;</span>
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+<span class="nc bnc" id="L376" title="All 2 branches missed.">		if (this == obj) {</span>
+<span class="nc" id="L377">			return true;</span>
+		}
+<span class="nc bnc" id="L379" title="All 2 branches missed.">		if (obj == null) {</span>
+<span class="nc" id="L380">			return false;</span>
+		}
+<span class="nc bnc" id="L382" title="All 2 branches missed.">		if (!(obj instanceof LinkedCellsGrid)) {</span>
+<span class="nc" id="L383">			return false;</span>
+		}
+<span class="nc" id="L385">		LinkedCellsGrid other = (LinkedCellsGrid) obj;</span>
+<span class="nc" id="L386">		if (java.lang.Double.doubleToLongBits(cellSize[0]) != java.lang.Double</span>
+<span class="nc bnc" id="L387" title="All 2 branches missed.">				.doubleToLongBits(other.cellSize[0])) {</span>
+<span class="nc" id="L388">			return false;</span>
+		}
+<span class="nc bnc" id="L390" title="All 2 branches missed.">		if (!Arrays.deepEquals(grid, other.grid)) {</span>
+<span class="nc" id="L391">			return false;</span>
+		}
+<span class="nc bnc" id="L393" title="All 2 branches missed.">		if (!Arrays.equals(gridSize, other.gridSize)) {</span>
+<span class="nc" id="L394">			return false;</span>
+		}
+<span class="nc" id="L396">		if (java.lang.Double.doubleToLongBits(height) != java.lang.Double</span>
+<span class="nc bnc" id="L397" title="All 2 branches missed.">				.doubleToLongBits(other.height)) {</span>
+<span class="nc" id="L398">			return false;</span>
+		}
+<span class="nc" id="L400">		if (java.lang.Double.doubleToLongBits(left) != java.lang.Double</span>
+<span class="nc bnc" id="L401" title="All 2 branches missed.">				.doubleToLongBits(other.left)) {</span>
+<span class="nc" id="L402">			return false;</span>
+		}
+<span class="nc" id="L404">		if (java.lang.Double.doubleToLongBits(top) != java.lang.Double</span>
+<span class="nc bnc" id="L405" title="All 2 branches missed.">				.doubleToLongBits(other.top)) {</span>
+<span class="nc" id="L406">			return false;</span>
+		}
+<span class="nc" id="L408">		if (java.lang.Double.doubleToLongBits(width) != java.lang.Double</span>
+<span class="nc bnc" id="L409" title="All 2 branches missed.">				.doubleToLongBits(other.width)) {</span>
+<span class="nc" id="L410">			return false;</span>
+		}
+<span class="nc" id="L412">		return true;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

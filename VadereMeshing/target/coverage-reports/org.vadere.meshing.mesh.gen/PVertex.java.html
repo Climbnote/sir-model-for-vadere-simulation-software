@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PVertex.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.gen</a> &gt; <span class="el_source">PVertex.java</span></div><h1>PVertex.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.gen;
+
+import org.vadere.meshing.mesh.inter.IVertex;
+import org.vadere.util.geometry.shapes.IPoint;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+ * The A pointer based version of {@link IVertex}.
+ *
+ * @author Benedikt Zoennchen
+ */
+public class PVertex implements IVertex {
+
+	private Map&lt;String, Object&gt; propertyElements;
+	private Lock lock;
+	private IPoint point;
+	private PVertex down;
+	private PHalfEdge halfEdge;
+	private boolean destroyed;
+
+<span class="fc" id="L25">	public PVertex(final IPoint point) {</span>
+<span class="fc" id="L26">		this.point = point;</span>
+<span class="fc" id="L27">		this.destroyed = false;</span>
+<span class="fc" id="L28">		this.down = null;</span>
+<span class="fc" id="L29">		this.lock = new ReentrantLock();</span>
+<span class="fc" id="L30">		this.propertyElements = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L31">	}</span>
+
+	public void setPoint(final IPoint point) {
+<span class="nc" id="L34">		this.point = point;</span>
+<span class="nc" id="L35">	}</span>
+
+	@Override
+	public IPoint getPoint() {
+<span class="fc" id="L39">		return point;</span>
+	}
+
+	public PHalfEdge getEdge() {
+<span class="fc" id="L43">		return halfEdge;</span>
+	}
+
+	public void setEdge(final PHalfEdge halfEdge) {
+<span class="fc" id="L47">		this.halfEdge = halfEdge;</span>
+<span class="fc" id="L48">	}</span>
+
+	public PVertex getDown() {
+<span class="fc" id="L51">		return down;</span>
+	}
+
+	public void setDown(final PVertex down) {
+<span class="fc" id="L55">		this.down = down;</span>
+<span class="fc" id="L56">	}</span>
+
+	public boolean isDestroyed() {
+<span class="fc" id="L59">		return destroyed;</span>
+	}
+
+	public void destroy() {
+<span class="fc" id="L63">		destroyed = true;</span>
+<span class="fc" id="L64">	}</span>
+
+	public Lock getLock() {
+<span class="nc" id="L67">		return lock;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="pc bpc" id="L72" title="1 of 2 branches missed.">		if(destroyed) {</span>
+<span class="nc" id="L73">			return &quot;destroyed vertex&quot;;</span>
+		}
+<span class="fc" id="L75">		return point.toString();</span>
+	}
+
+	// TODO: make it protected since it is a non-deep copy. Therefore the IVertex should maybe not be a IPoint!?
+
+	@Override
+	public IPoint add(double x, double y) {
+<span class="nc" id="L82">		return point.add(x, y);</span>
+	}
+
+	@Override
+	public IPoint norm(double len) {
+<span class="nc" id="L87">		return point.norm(len);</span>
+	}
+
+	@Override
+	public double distanceSq(IPoint other) {
+<span class="nc" id="L92">		return point.distanceSq(other);</span>
+	}
+
+	@Override
+	public double distanceSq(double x, double y) {
+<span class="nc" id="L97">		return point.distanceSq(x, y);</span>
+	}
+
+	/**
+	 * Returns a deep clone of the vertex.
+	 *
+	 * @return a deep clone of the vertex.
+	 */
+    @Override
+    public PVertex clone() {
+	    try {
+<span class="nc" id="L108">		    PVertex clone = (PVertex)super.clone();</span>
+<span class="nc" id="L109">		    clone.point = point.clone();</span>
+<span class="nc" id="L110">		    clone.lock = new ReentrantLock();</span>
+<span class="nc" id="L111">		    return clone;</span>
+<span class="nc" id="L112">	    } catch (CloneNotSupportedException e) {</span>
+<span class="nc" id="L113">		    throw new InternalError(e.getMessage());</span>
+	    }
+    }
+
+	&lt;T&gt; void setData(final String name, T data) {
+<span class="fc" id="L118">		propertyElements.put(name, data);</span>
+<span class="fc" id="L119">	}</span>
+
+	&lt;T&gt; T getData(final String name, Class&lt;T&gt; clazz) {
+<span class="pc bpc" id="L122" title="1 of 2 branches missed.">		if (propertyElements.containsKey(name)) {</span>
+<span class="fc" id="L123">			return clazz.cast(propertyElements.get(name));</span>
+		} else {
+<span class="nc" id="L125">			return null;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

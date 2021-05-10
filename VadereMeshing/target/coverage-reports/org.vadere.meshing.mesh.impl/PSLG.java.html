@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PSLG.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.impl</a> &gt; <span class="el_source">PSLG.java</span></div><h1>PSLG.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.impl;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.WeilerAtherton;
+import org.vadere.util.geometry.GeometryUtils;
+import org.vadere.util.geometry.shapes.VCircle;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPoint;
+import org.vadere.util.geometry.shapes.VPolygon;
+import org.vadere.util.geometry.shapes.VRectangle;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * This class represents a (segment-bounded) planar straight line graph (PLSG).
+ * The PLSG is counter clockwise oriented which means that
+ * its segment bound polygon is counter clockwise oriented and its
+ * holes are clockwise oriented..
+ */
+<span class="pc bpc" id="L30" title="1 of 2 branches missed.">public class PSLG {</span>
+
+	/**
+	 * points not part of any segment
+	 */
+	private final ImmutableSet&lt;VPoint&gt; points;
+
+	/**
+	 * all points including points of the segments.
+	 */
+	private final ImmutableSet&lt;VPoint&gt; allPoints;
+
+	/**
+	 * all points including points of the segments.
+	 */
+	private final ImmutableSet&lt;VLine&gt; allSegments;
+
+	/**
+	 * segments not part of a polygon.
+	 */
+	private final ImmutableList&lt;VLine&gt; segments;
+
+	/**
+	 * holes
+	 */
+	private final ImmutableSet&lt;VPolygon&gt; holes;
+
+	/**
+	 * the segment-bound.
+	 */
+	private final VPolygon segmentBound;
+	private final Set&lt;VCircle&gt; protectionDiscs;
+<span class="fc" id="L62">	private final double factor = 1.0 / 3.0;</span>
+<span class="fc" id="L63">	private final double minAngle = Math.toRadians(95);</span>
+
+	private PSLG(@NotNull final VPolygon segmentBound,
+	             @NotNull final Collection&lt;VPolygon&gt; holes,
+	             @NotNull final Collection&lt;VLine&gt; segments,
+	             @NotNull final Collection&lt;VPoint&gt; points,
+	             @NotNull final Set&lt;VCircle&gt; protectionDiscs
+<span class="fc" id="L70">	   ){</span>
+<span class="fc" id="L71">		Stream&lt;VLine&gt; holeLineStream1 = holes.stream().flatMap(hole -&gt; hole.getLinePath().stream());</span>
+<span class="fc" id="L72">		Stream&lt;VLine&gt; holeLineStream2 = holes.stream().flatMap(hole -&gt; hole.getLinePath().stream());</span>
+<span class="fc" id="L73">		Stream&lt;VLine&gt; segmentBoundLineStream1 = segmentBound.getLinePath().stream();</span>
+<span class="fc" id="L74">		Stream&lt;VLine&gt; segmentBoundLineStream2 = segmentBound.getLinePath().stream();</span>
+<span class="fc" id="L75">		Stream&lt;VLine&gt; lineStream1 = Stream.concat(Stream.concat(holeLineStream1, segmentBoundLineStream1), segments.stream());</span>
+<span class="fc" id="L76">		Stream&lt;VLine&gt; lineStream2 = Stream.concat(Stream.concat(holeLineStream2, segmentBoundLineStream2), segments.stream());</span>
+
+<span class="fc" id="L78">		Stream&lt;VPoint&gt; linePointStream = lineStream1.flatMap(line -&gt; Stream.of(line.getVPoint1(), line.getVPoint2()));</span>
+<span class="fc" id="L79">		Stream&lt;VPoint&gt; pointStream = Stream.concat(points.stream(), linePointStream);</span>
+
+
+<span class="fc bfc" id="L82" title="All 2 branches covered.">		Stream&lt;VPolygon&gt; ccwPolygons = holes.stream().map(hole -&gt; hole.isCCW() ? hole.revertOrder() : hole);</span>
+
+<span class="fc bfc" id="L84" title="All 2 branches covered.">		this.segmentBound = segmentBound.isCCW() ? segmentBound : segmentBound.revertOrder();</span>
+<span class="fc" id="L85">		this.holes = new ImmutableSet.Builder&lt;VPolygon&gt;().addAll(ccwPolygons.collect(Collectors.toList())).build();</span>
+<span class="fc" id="L86">		this.segments = new ImmutableList.Builder&lt;VLine&gt;().addAll(segments).build();</span>
+<span class="fc" id="L87">		this.allSegments = new ImmutableSet.Builder&lt;VLine&gt;().addAll(lineStream2.collect(Collectors.toList())).build();</span>
+<span class="fc" id="L88">		this.points = new ImmutableSet.Builder&lt;VPoint&gt;().addAll(points).build();</span>
+<span class="fc" id="L89">		this.allPoints = new ImmutableSet.Builder&lt;VPoint&gt;().addAll(pointStream.collect(Collectors.toList())).build();</span>
+<span class="fc" id="L90">		this.protectionDiscs = protectionDiscs;</span>
+<span class="fc" id="L91">	}</span>
+
+	public PSLG(@NotNull final VPolygon segmentBound,
+	            @NotNull final Collection&lt;VPolygon&gt; holes) {
+<span class="nc" id="L95">		this(segmentBound, holes, Collections.EMPTY_LIST, Collections.EMPTY_LIST);</span>
+<span class="nc" id="L96">	}</span>
+
+	public PSLG(@NotNull final VPolygon segmentBound,
+	            @NotNull final Collection&lt;VPolygon&gt; holes,
+	            @NotNull final Collection&lt;VLine&gt; segments,
+	            @NotNull final Collection&lt;VPoint&gt; points) {
+<span class="fc" id="L102">		this(segmentBound, holes, segments, points, new HashSet&lt;&gt;());</span>
+<span class="fc" id="L103">	}</span>
+
+	public PSLG conclose(@NotNull final VRectangle rectangle) {
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		if(!rectangle.contains(segmentBound.getBounds2D())) {</span>
+<span class="nc" id="L107">			throw new IllegalArgumentException();</span>
+		}
+<span class="nc" id="L109">		ArrayList&lt;VLine&gt; newLines = new ArrayList&lt;&gt;(segments.size() + segmentBound.getLinePath().size());</span>
+<span class="nc" id="L110">		newLines.addAll(segments);</span>
+<span class="nc" id="L111">		newLines.addAll(segmentBound.getLinePath());</span>
+<span class="nc" id="L112">		PSLG pslg = new PSLG(new VPolygon(rectangle), holes, newLines, points);</span>
+<span class="nc" id="L113">		pslg.protectionDiscs.addAll(this.protectionDiscs);</span>
+<span class="nc" id="L114">		return pslg;</span>
+	}
+
+	public PSLG addLines(@NotNull final Collection&lt;VLine&gt; lines) {
+<span class="nc" id="L118">		ArrayList&lt;VLine&gt; newLines = new ArrayList&lt;&gt;(segments.size() + lines.size());</span>
+<span class="nc" id="L119">		newLines.addAll(segments);</span>
+<span class="nc" id="L120">		newLines.addAll(lines);</span>
+<span class="nc" id="L121">		PSLG pslg = new PSLG(segmentBound, holes, newLines, points);</span>
+<span class="nc" id="L122">		pslg.protectionDiscs.addAll(this.protectionDiscs);</span>
+<span class="nc" id="L123">		return pslg;</span>
+	}
+
+	public PSLG toProtectedPSLG(final double lfs) {
+<span class="fc" id="L127">		Set&lt;VCircle&gt; protectionDiscs = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L128">		List&lt;VPolygon&gt; nHoles = holes.stream().map(poly -&gt; protect(Double.POSITIVE_INFINITY, poly, protectionDiscs, true)).collect(Collectors.toList());</span>
+<span class="fc" id="L129">		VPolygon segmentBound = protect(Double.POSITIVE_INFINITY, this.segmentBound, protectionDiscs, false);</span>
+<span class="fc" id="L130">		return new PSLG(segmentBound, nHoles, segments, points, protectionDiscs);</span>
+	}
+
+	public ImmutableSet&lt;VLine&gt; getAllSegments() {
+<span class="fc" id="L134">		return allSegments;</span>
+	}
+
+	public Collection&lt;VLine&gt; getSegments() {
+<span class="nc" id="L138">		return segments;</span>
+	}
+
+	public Set&lt;VPoint&gt; getPoints() {
+<span class="nc" id="L142">		return points;</span>
+	}
+
+	public VPolygon getSegmentBound() {
+<span class="fc" id="L146">		return segmentBound;</span>
+	}
+
+	public Collection&lt;VPolygon&gt; getHoles() {
+<span class="nc" id="L150">		return holes;</span>
+	}
+
+	public Collection&lt;VPolygon&gt; getAllPolygons() {
+<span class="fc" id="L154">		List&lt;VPolygon&gt; polygons = new ArrayList&lt;&gt;(holes.size()+1);</span>
+<span class="fc" id="L155">		polygons.add(segmentBound);</span>
+<span class="fc" id="L156">		polygons.addAll(holes);</span>
+<span class="fc" id="L157">		return polygons;</span>
+	}
+
+	public VRectangle getBoundingBox() {
+<span class="nc" id="L161">		return GeometryUtils.boundRelative(allPoints);</span>
+	}
+
+	public ImmutableSet&lt;VPoint&gt; getAllPoints() {
+<span class="nc" id="L165">		return allPoints;</span>
+	}
+
+	private VPolygon protect(final double lfs, @NotNull final VPolygon polygon, @NotNull final Set&lt;VCircle&gt; protectionDiscs, boolean isHole) {
+<span class="fc" id="L169">		List&lt;VPoint&gt; points = polygon.getPath();</span>
+<span class="fc" id="L170">		List&lt;VPoint&gt; newpoints = new ArrayList&lt;&gt;(points.size() + 5);</span>
+
+<span class="pc bpc" id="L172" title="2 of 4 branches missed.">		assert points.size() &gt;= 3;</span>
+
+<span class="fc" id="L174">		VPoint p1 = points.get(points.size()-1);</span>
+<span class="fc" id="L175">		VPoint p3 = points.get(1);</span>
+<span class="fc" id="L176">		VPoint lastP3 = points.get(0);</span>
+
+<span class="fc bfc" id="L178" title="All 2 branches covered.">		for(int i = 0; i &lt; points.size(); i++) {</span>
+<span class="fc" id="L179">			VPoint p2 = points.get(i);</span>
+<span class="fc bfc" id="L180" title="All 2 branches covered.">			if(isTooAccute(p1, p2, p3, isHole)) {</span>
+<span class="fc" id="L181">				VPoint anchor = p2;</span>
+<span class="fc" id="L182">				double radius = factor * Math.min(lfs, Math.min(anchor.distance(p1), anchor.distance(p3)));</span>
+<span class="fc" id="L183">				VCircle protectionDisk = new VCircle(anchor, radius);</span>
+<span class="fc" id="L184">				VPoint dir1 = p1.subtract(anchor).setMagnitude(radius);</span>
+<span class="fc" id="L185">				VPoint dir2 = p3.subtract(anchor).setMagnitude(radius);</span>
+<span class="fc" id="L186">				VPoint q1 = anchor.add(dir1);</span>
+<span class="fc" id="L187">				VPoint q2 = anchor.add(dir2);</span>
+<span class="fc" id="L188">				protectionDiscs.add(protectionDisk);</span>
+
+<span class="fc" id="L190">				newpoints.add(q1);</span>
+<span class="fc" id="L191">				newpoints.add(p2);</span>
+<span class="fc" id="L192">				newpoints.add(q2);</span>
+<span class="fc" id="L193">				p1 = q2;</span>
+
+<span class="fc bfc" id="L195" title="All 2 branches covered.">				if(i == 0) {</span>
+<span class="fc" id="L196">					lastP3 = q1;</span>
+				}
+
+<span class="fc bfc" id="L199" title="All 2 branches covered.">				if(i == points.size()-2) {</span>
+<span class="fc" id="L200">					p3 = lastP3;</span>
+				} else {
+<span class="fc" id="L202">					p3 = points.get((i+2) % points.size());</span>
+				}
+
+<span class="fc" id="L205">			} else {</span>
+<span class="fc" id="L206">				newpoints.add(p2);</span>
+<span class="fc" id="L207">				p1 = p2;</span>
+<span class="fc" id="L208">				p3 = points.get((i+2) % points.size());</span>
+			}
+		}
+
+<span class="fc" id="L212">		return GeometryUtils.toPolygon(newpoints);</span>
+
+	}
+
+	private boolean isTooAccute(@NotNull final VPoint p1, @NotNull final VPoint p2, @NotNull final VPoint p3, boolean isHole) {
+<span class="fc bfc" id="L217" title="All 10 branches covered.">		return (!isHole &amp;&amp; GeometryUtils.isCCW(p1, p2, p3)) || (isHole &amp;&amp; GeometryUtils.isCW(p1,p2,p3)) &amp;&amp; GeometryUtils.angle(p1, p2, p3) &lt; minAngle;</span>
+	}
+
+	public static List&lt;VPolygon&gt; constructHoles(@NotNull final List&lt;VPolygon&gt; polygons) {
+<span class="nc" id="L221">		WeilerAtherton weilerAtherton = new WeilerAtherton(polygons);</span>
+<span class="nc" id="L222">		return weilerAtherton.cup();</span>
+	}
+
+	public static List&lt;VPolygon&gt; constructBound(@NotNull final VPolygon bound, @NotNull final Collection&lt;VPolygon&gt; polygons) {
+<span class="nc" id="L226">		List&lt;VPolygon&gt; originalList = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L227">		List&lt;VPolygon&gt; leftPolygons = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L228">		originalList.add(bound);</span>
+<span class="nc" id="L229">		leftPolygons.add(bound);</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">		for(VPolygon polygon : polygons) {</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">			if(!bound.containsShape(polygon)) {</span>
+<span class="nc" id="L232">				originalList.add(polygon);</span>
+			} else {
+<span class="nc" id="L234">				leftPolygons.add(polygon);</span>
+			}
+<span class="nc" id="L236">		}</span>
+<span class="nc" id="L237">		WeilerAtherton weilerAtherton = new WeilerAtherton(originalList);</span>
+<span class="nc" id="L238">		VPolygon newBound = weilerAtherton.subtraction().get();</span>
+<span class="nc" id="L239">		leftPolygons.set(0, newBound);</span>
+<span class="nc" id="L240">		return leftPolygons;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

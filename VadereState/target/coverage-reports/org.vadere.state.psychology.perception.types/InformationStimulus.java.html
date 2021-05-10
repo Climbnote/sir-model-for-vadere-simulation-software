@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InformationStimulus.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.psychology.perception.types</a> &gt; <span class="el_source">InformationStimulus.java</span></div><h1>InformationStimulus.java</h1><pre class="source lang-java linenums">package org.vadere.state.psychology.perception.types;
+
+/**
+ * Class encodes some kind of information a pedestrian knows about.
+ * The information is active from the time gien in {@link #time} and will be
+ * forgotten at {@link #obsolete_at} (or never if {@link #obsolete_at} == -1
+ */
+public class InformationStimulus extends Stimulus {
+
+	private String information;
+	private double obsolete_at;
+
+	public InformationStimulus(String information) {
+<span class="nc" id="L14">		super(0.0);</span>
+<span class="nc" id="L15">		this.information = information;</span>
+<span class="nc" id="L16">		this.obsolete_at = -1; // never</span>
+<span class="nc" id="L17">	}</span>
+
+	public InformationStimulus(double time, double obsolete_at, String information) {
+<span class="nc" id="L20">		super(time);</span>
+<span class="nc" id="L21">		this.information = information;</span>
+<span class="nc" id="L22">		this.obsolete_at = obsolete_at;</span>
+<span class="nc" id="L23">	}</span>
+
+	public InformationStimulus(InformationStimulus other) {
+<span class="nc" id="L26">		super(other.time);</span>
+<span class="nc" id="L27">		this.information = other.information;</span>
+<span class="nc" id="L28">		this.obsolete_at  = other.obsolete_at;</span>
+<span class="nc" id="L29">	}</span>
+
+	public String getInformation() {
+<span class="nc" id="L32">		return information;</span>
+	}
+
+
+	public double getObsolete_at() {
+<span class="nc" id="L37">		return obsolete_at;</span>
+	}
+
+
+	@Override
+	public Stimulus clone() {
+<span class="nc" id="L43">		return new InformationStimulus(this);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

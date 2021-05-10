@@ -1,0 +1,23 @@
+<h1> OSMBehaviorController</h1>
+
+<p>
+A class to encapsulate the behavior of a single <a href='/helpText/org.vadere.simulator.models.osm.PedestrianOSM.html' class='class_link'>PedestrianOSM</a>.
+
+This class can be used by <a href='/helpText/org.vadere.simulator.models.osm.OptimalStepsModel.html' class='class_link'>OptimalStepsModel</a> to react to
+environmental stimuli (see <a href='/helpText/org.vadere.state.psychology.perception.types.Stimulus.html' class='class_link'>Stimulus</a>) and how an agent
+has categorized itself in regard to other agents (see <a href='/helpText/org.vadere.state.psychology.cognition.SelfCategory.html' class='class_link'>SelfCategory</a>).
+
+For instance:
+<pre>
+...
+if (mostImportantStimulus instanceof Wait) {
+osmBehaviorController.wait()
+}
+...
+</pre>
+</p>
+
+<hr>
+<h2> Field: logger</h2>
+<p>---</p>
+

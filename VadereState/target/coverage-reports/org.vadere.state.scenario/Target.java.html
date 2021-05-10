@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Target.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.scenario</a> &gt; <span class="el_source">Target.java</span></div><h1>Target.java</h1><pre class="source lang-java linenums">package org.vadere.state.scenario;
+
+import org.vadere.state.attributes.Attributes;
+import org.vadere.state.attributes.scenario.AttributesTarget;
+import org.vadere.state.types.ScenarioElementType;
+import org.vadere.util.geometry.shapes.VShape;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+
+public class Target extends ScenarioElement implements Comparable&lt;Target&gt; {
+
+	private AttributesTarget attributes;
+	private final Map&lt;Integer, Double&gt; enteringTimes;
+	
+	/**
+	 * Collection of listeners - unordered because it's order is not predictable
+	 * (at least not for clients).
+	 */
+<span class="fc" id="L23">	private final Collection&lt;TargetListener&gt; targetListeners = new LinkedList&lt;&gt;();</span>
+
+	public Target(AttributesTarget attributes) {
+<span class="fc" id="L26">		this(attributes, new HashMap&lt;&gt;());</span>
+<span class="fc" id="L27">	}</span>
+
+<span class="fc" id="L29">	public Target(AttributesTarget attributes, Map&lt;Integer, Double&gt; enteringTimes) {</span>
+<span class="fc" id="L30">		this.attributes = attributes;</span>
+<span class="fc" id="L31">		this.enteringTimes = enteringTimes;</span>
+<span class="fc" id="L32">	}</span>
+
+	public boolean isAbsorbing() {
+<span class="nc" id="L35">		return attributes.isAbsorbing();</span>
+	}
+
+	public double getWaitingTime() {
+<span class="nc" id="L39">		return attributes.getWaitingTime();</span>
+	}
+
+	public double getWaitingTimeYellowPhase() {
+<span class="nc" id="L43">		return attributes.getWaitingTimeYellowPhase();</span>
+	}
+
+	public int getParallelWaiters() {
+<span class="nc" id="L47">		return attributes.getParallelWaiters();</span>
+	}
+
+	public boolean isStartingWithRedLight() {
+<span class="nc" id="L51">		return attributes.isStartingWithRedLight();</span>
+	}
+
+	public double getNextSpeed() {
+<span class="nc" id="L55">		return attributes.getNextSpeed();</span>
+	}
+
+	public Map&lt;Integer, Double&gt; getEnteringTimes() {
+<span class="nc" id="L59">		return enteringTimes;</span>
+	}
+
+	@Override
+	public int getId() {
+<span class="nc" id="L64">		return attributes.getId();</span>
+	}
+
+	@Override
+	public void setId(int id) {
+<span class="nc" id="L69">		attributes.setId(id);</span>
+<span class="nc" id="L70">	}</span>
+
+	@Override
+	public void setShape(VShape newShape) {
+<span class="nc" id="L74">		attributes.setShape(newShape);</span>
+<span class="nc" id="L75">	}</span>
+
+	@Override
+	public VShape getShape() {
+<span class="nc" id="L79">		return attributes.getShape();</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L84">		final int prime = 31;</span>
+<span class="nc" id="L85">		int result = 1;</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">		result = prime * result + ((attributes == null) ? 0 : attributes.hashCode());</span>
+<span class="nc" id="L87">		return result;</span>
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+<span class="nc bnc" id="L92" title="All 2 branches missed.">		if (this == obj) {</span>
+<span class="nc" id="L93">			return true;</span>
+		}
+<span class="nc bnc" id="L95" title="All 2 branches missed.">		if (obj == null) {</span>
+<span class="nc" id="L96">			return false;</span>
+		}
+<span class="nc bnc" id="L98" title="All 2 branches missed.">		if (!(obj instanceof Target)) {</span>
+<span class="nc" id="L99">			return false;</span>
+		}
+<span class="nc" id="L101">		Target other = (Target) obj;</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">		if (attributes == null) {</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">			if (other.attributes != null) {</span>
+<span class="nc" id="L104">				return false;</span>
+			}
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		} else if (!attributes.equals(other.attributes)) {</span>
+<span class="nc" id="L107">			return false;</span>
+		}
+<span class="nc" id="L109">		return true;</span>
+	}
+
+	@Override
+	public ScenarioElementType getType() {
+<span class="nc" id="L114">		return ScenarioElementType.TARGET;</span>
+	}
+
+	@Override
+	public AttributesTarget getAttributes() {
+<span class="nc" id="L119">		return attributes;</span>
+	}
+
+	@Override
+	public void setAttributes(Attributes attributes) {
+<span class="nc" id="L124">		this.attributes = (AttributesTarget) attributes;</span>
+<span class="nc" id="L125">	}</span>
+
+
+
+	/** Is this target actually a pedestrian? @see scenario.TargetPedestrian */
+	public boolean isTargetPedestrian() {
+<span class="nc" id="L131">		return false;</span>
+	}
+
+	public boolean isMovingTarget() {
+<span class="nc" id="L135">		return false;</span>
+	}
+
+	@Override
+	public int compareTo(Target otherTarget) {
+<span class="nc" id="L140">		return this.getId() - otherTarget.getId();</span>
+	}
+
+	/** Models can register a target listener. */
+	public void addListener(TargetListener listener) {
+<span class="nc" id="L145">		targetListeners.add(listener);</span>
+<span class="nc" id="L146">	}</span>
+
+	public boolean removeListener(TargetListener listener) {
+<span class="nc" id="L149">		return targetListeners.remove(listener);</span>
+	}
+
+	/** Returns an unmodifiable collection. */
+	public Collection&lt;TargetListener&gt; getTargetListeners() {
+<span class="nc" id="L154">		return Collections.unmodifiableCollection(targetListeners);</span>
+	}
+
+	@Override
+	public Target clone() {
+<span class="nc" id="L159">		return new Target((AttributesTarget) attributes.clone());</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

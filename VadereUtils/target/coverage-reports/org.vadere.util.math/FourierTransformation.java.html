@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FourierTransformation.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.math</a> &gt; <span class="el_source">FourierTransformation.java</span></div><h1>FourierTransformation.java</h1><pre class="source lang-java linenums">package org.vadere.util.math;
+
+import org.apache.commons.math3.complex.Complex;
+import org.apache.commons.math3.transform.DftNormalization;
+import org.apache.commons.math3.transform.FastFourierTransformer;
+import org.apache.commons.math3.transform.TransformType;
+
+<span class="nc" id="L8">public class FourierTransformation {</span>
+
+	public Complex[] transform(double[] sample) {
+<span class="nc" id="L11">		FastFourierTransformer fft = new FastFourierTransformer(DftNormalization.STANDARD);</span>
+<span class="nc" id="L12">		Complex[] Xc = fft.transform(sample, TransformType.FORWARD);</span>
+<span class="nc" id="L13">		return Xc;</span>
+	}
+
+	public Complex[] transform(Complex[] sample) {
+<span class="nc" id="L17">		FastFourierTransformer fft = new FastFourierTransformer(DftNormalization.STANDARD);</span>
+<span class="nc" id="L18">		Complex[] Xc = fft.transform(sample, TransformType.FORWARD);</span>
+<span class="nc" id="L19">		return Xc;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

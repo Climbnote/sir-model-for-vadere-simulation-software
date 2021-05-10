@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RuppertExamples.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.examples</a> &gt; <span class="el_source">RuppertExamples.java</span></div><h1>RuppertExamples.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.examples;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.meshing.mesh.impl.PMeshPanel;
+import org.vadere.meshing.mesh.impl.PSLG;
+import org.vadere.meshing.mesh.triangulation.triangulator.impl.PRuppertsTriangulator;
+import org.vadere.meshing.utils.io.poly.PSLGGenerator;
+import org.vadere.meshing.utils.io.tex.TexGraphGenerator;
+import org.vadere.util.geometry.shapes.VLine;
+import org.vadere.util.geometry.shapes.VPolygon;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Collection;
+
+<span class="nc" id="L16">public class RuppertExamples {</span>
+
+	public static void main(String... args) throws InterruptedException, IOException {
+<span class="nc" id="L19">		rupperts(&quot;/poly/mf_small_very_simple.poly&quot;);</span>
+<span class="nc" id="L20">	}</span>
+
+	public static void rupperts(@NotNull final String fileName) throws IOException {
+<span class="nc" id="L23">		final InputStream inputStream = MeshExamples.class.getResourceAsStream(fileName);</span>
+<span class="nc" id="L24">		PSLG pslg = PSLGGenerator.toPSLG(inputStream);</span>
+<span class="nc" id="L25">		Collection&lt;VLine&gt; lines = pslg.getAllSegments();</span>
+<span class="nc" id="L26">		Collection&lt;VPolygon&gt; holes = pslg.getHoles();</span>
+<span class="nc" id="L27">		VPolygon segmentBound = pslg.getSegmentBound();</span>
+
+		//IEdgeLengthFunction h = p -&gt; 0.01 /*+ 0.2*Math.abs(distanceFunction.apply(p))*/;
+<span class="nc" id="L30">		var ruppert = new PRuppertsTriangulator(</span>
+				pslg,
+<span class="nc" id="L32">				p -&gt; Double.POSITIVE_INFINITY,</span>
+				0,
+				false
+		);
+		//(mesh, f -&gt; false, width, height, colorFunction
+<span class="nc" id="L37">		PMeshPanel panel = new PMeshPanel(ruppert.getMesh(), f -&gt; ruppert.getMesh().getBooleanData(f, &quot;boundary&quot;),1000, 1000);</span>
+<span class="nc" id="L38">		panel.display(&quot;Ruppert's Algorithm&quot;);</span>
+<span class="nc bnc" id="L39" title="All 2 branches missed.">		while (!ruppert.isFinished()) {</span>
+			try {
+<span class="nc" id="L41">				Thread.sleep(200);</span>
+<span class="nc" id="L42">			} catch (InterruptedException e) {</span>
+<span class="nc" id="L43">				e.printStackTrace();</span>
+<span class="nc" id="L44">			}</span>
+
+<span class="nc" id="L46">			synchronized (ruppert.getMesh()) {</span>
+<span class="nc" id="L47">				ruppert.step();</span>
+<span class="nc" id="L48">			}</span>
+<span class="nc" id="L49">			panel.repaint();</span>
+		}
+
+<span class="nc" id="L52">		System.out.println(TexGraphGenerator.toTikz(ruppert.getMesh()));</span>
+<span class="nc" id="L53">		System.out.println(&quot;finished&quot;);</span>
+<span class="nc" id="L54">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

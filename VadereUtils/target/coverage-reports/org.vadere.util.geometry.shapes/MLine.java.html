@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MLine.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereUtils</a> &gt; <a href="index.source.html" class="el_package">org.vadere.util.geometry.shapes</a> &gt; <span class="el_source">MLine.java</span></div><h1>MLine.java</h1><pre class="source lang-java linenums">package org.vadere.util.geometry.shapes;
+
+import java.util.stream.Stream;
+
+public class MLine&lt;P extends IPoint&gt; {
+
+    public final P p1;
+    public final P p2;
+    private VPoint velocity;
+
+<span class="nc" id="L11">    public MLine(final P p1, final P p2) {</span>
+<span class="nc" id="L12">        this.p1 = p1;</span>
+<span class="nc" id="L13">        this.p2 = p2;</span>
+<span class="nc" id="L14">        this.velocity = new VPoint(0,0);</span>
+<span class="nc" id="L15">    }</span>
+
+    public double length() {
+<span class="nc" id="L18">        return toVLine().length();</span>
+    }
+
+    public VLine toVLine() {
+<span class="nc" id="L22">        return new VLine(p1.getX(), p1.getY(), p2.getX(), p2.getY());</span>
+    }
+
+    public double getX1() {
+<span class="nc" id="L26">        return p1.getX();</span>
+    }
+
+    public double getY1() {
+<span class="nc" id="L30">        return p1.getY();</span>
+    }
+
+    public double getX2() {
+<span class="nc" id="L34">        return p2.getX();</span>
+    }
+
+    public double getY2() {
+<span class="nc" id="L38">        return p2.getY();</span>
+    }
+
+    public P getP1() {
+<span class="nc" id="L42">        return p1;</span>
+    }
+
+    public P getP2() {
+<span class="nc" id="L46">        return p2;</span>
+    }
+
+    public void setVelocity(final VPoint velocity) {
+<span class="nc" id="L50">        this.velocity = velocity;</span>
+<span class="nc" id="L51">    }</span>
+
+    public VPoint getVelocity() {
+<span class="nc" id="L54">        return velocity;</span>
+    }
+
+    public VPoint midPoint() {
+<span class="nc" id="L58">        return new VPoint((p1.getX() + p2.getX()) / 2, (p1.getY() + p2.getY()) / 2);</span>
+    }
+
+    public Stream&lt;P&gt; streamPoints() {
+<span class="nc" id="L62">        return Stream.of(p1, p2);</span>
+    }
+
+    @Override
+    public boolean equals(Object o) {
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        if (this == o) return true;</span>
+<span class="nc bnc" id="L68" title="All 4 branches missed.">        if (o == null || getClass() != o.getClass()) return false;</span>
+
+<span class="nc" id="L70">        MLine that = (MLine) o;</span>
+
+<span class="nc bnc" id="L72" title="All 8 branches missed.">        return (p1.equals(that.p1) &amp;&amp; p2.equals(that.p2)) || (p2.equals(that.p1) &amp;&amp; p1.equals(that.p2));</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L77">        int result = p1.hashCode();</span>
+<span class="nc" id="L78">        result = 31 * result * p2.hashCode();</span>
+<span class="nc" id="L79">        return result;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

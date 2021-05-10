@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StimulusInfo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.psychology.perception.json</a> &gt; <span class="el_source">StimulusInfo.java</span></div><h1>StimulusInfo.java</h1><pre class="source lang-java linenums">package org.vadere.state.psychology.perception.json;
+
+import org.vadere.state.psychology.perception.types.Stimulus;
+import org.vadere.state.psychology.perception.types.Timeframe;
+
+import java.util.List;
+
+/**
+ * This class bundles one {@link Timeframe} and a list of {@link Stimulus} objects.
+ * I.e., multiple stimuli can occur in a specified timeframe.
+ *
+ * This class is just a wrapper to get a convenient JSON de-/serialization.
+ * The JSON serialization should look like this:
+ *
+ *      {
+ *           &quot;timeframe&quot;: {
+ *               &quot;startTime&quot;:...,
+ *               &quot;endTime&quot;:...,
+ *               &quot;repeat&quot;:...,
+ *               &quot;waitTimeBetweenRepetition&quot;:...
+ *           },
+ *           &quot;stimuli&quot;: [
+ *               { &quot;type&quot;:&quot;ElapsedTime&quot; },
+ *               {&quot;type&quot;:&quot;WaitInArea&quot;, &quot;area&quot;: ... },
+ *               ...
+ *           ]
+ *      }
+ */
+<span class="fc" id="L29">public class StimulusInfo {</span>
+
+    // Member Variables
+    private Timeframe timeframe;
+    private List&lt;Stimulus&gt; stimuli;
+
+    // Getter
+    public Timeframe getTimeframe() {
+<span class="fc" id="L37">        return timeframe;</span>
+    }
+    public List&lt;Stimulus&gt; getStimuli() {
+<span class="nc" id="L40">        return stimuli;</span>
+    }
+
+    // Setter
+    public void setTimeframe(Timeframe timeframe) {
+<span class="fc" id="L45">        this.timeframe = timeframe;</span>
+<span class="fc" id="L46">    }</span>
+    public void setStimuli(List&lt;Stimulus&gt; stimuli) {
+<span class="fc" id="L48">        this.stimuli = stimuli;</span>
+<span class="fc" id="L49">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

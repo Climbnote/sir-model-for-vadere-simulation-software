@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IPointLocator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereMeshing</a> &gt; <a href="index.source.html" class="el_package">org.vadere.meshing.mesh.inter</a> &gt; <span class="el_source">IPointLocator.java</span></div><h1>IPointLocator.java</h1><pre class="source lang-java linenums">package org.vadere.meshing.mesh.inter;
+
+import org.jetbrains.annotations.NotNull;
+import org.vadere.util.geometry.shapes.IPoint;
+import java.util.Optional;
+
+/**
+ * A point-locator {@link IPointLocator} implements one of the strategies to find a specific triangle
+ * represented by a face {@link F} inside a mesh {@link IIncrementalTriangulation}. i.e. a set of connected non-overlapping
+ * triangles including holes. The most famous strategies are so called triangle walks described in:
+ * &lt;ul&gt;
+ *     &lt;li&gt;Walking in a Triangulation (devillers-2001)&lt;/li&gt;
+ *     &lt;li&gt;The Delaunay Hierarchy (devillers-2002)&lt;/li&gt;
+ *     &lt;li&gt;Fast randomized point location without preprocessing in two- and three-dimensional Delaunay triangulations (mucke-1999)&lt;/li&gt;
+ *     &lt;li&gt;The Delaunay Tree see Computational Geometry: Algorithms and Applications (berg-2008) page 191&lt;/li&gt;
+ * &lt;/ul&gt;
+ *
+ * @author Benedikt Zoennchen
+ *
+ * @param &lt;V&gt; the type of the vertices
+ * @param &lt;E&gt; the type of the half-edges
+ * @param &lt;F&gt; the type of the faces
+ */
+public interface IPointLocator&lt;V extends IVertex, E extends IHalfEdge, F extends IFace&gt; extends ITriEventListener&lt;V, E, F&gt; {
+
+	/**
+	 * Starts the point location of the point and returns the face which is found.
+	 *
+	 * Assumption: the point is inside the {@link IIncrementalTriangulation}.
+	 *
+	 * @param point     the point
+	 * @return the face containing the point
+	 */
+	F locatePoint(@NotNull final IPoint point);
+
+	default F locatePoint(@NotNull final IPoint point, final Object caller) {
+<span class="nc" id="L37">		return locatePoint(point);</span>
+	}
+
+	/**
+	 * Starts the point location of the point and returns the face which is found.
+	 *
+	 * @param point     the point
+	 * @return the face containing the point
+	 */
+	Optional&lt;F&gt; locate(@NotNull final IPoint point);
+
+	default Optional&lt;F&gt; locate(@NotNull final IPoint point, final Object caller) {
+<span class="nc" id="L49">		return locate(point);</span>
+	}
+
+	/**
+	 * Starts the point (x,y) location of the point and returns the face which is found.
+	 *
+	 * @param x x-coordinate of the point
+	 * @param y y-coordinate of the point
+	 * @return the face containing the point
+	 */
+	Optional&lt;F&gt; locate(final double x, final double y);
+
+	default Optional&lt;F&gt; locate(final double x, final double y, final Object caller) {
+<span class="nc" id="L62">		return locate(x, y);</span>
+	}
+
+	/**
+	 * Returns its type.
+	 *
+	 * @return its type
+	 */
+	Type getType();
+
+	/**
+	 * Types of implemented point location algorithms {@link IPointLocator}.
+	 */
+<span class="fc" id="L75">	enum Type {</span>
+<span class="fc" id="L76">		DELAUNAY_TREE,</span>
+<span class="fc" id="L77">		DELAUNAY_HIERARCHY,</span>
+<span class="fc" id="L78">		JUMP_AND_WALK,      // preferable!</span>
+<span class="fc" id="L79">		BASE</span>
+	}
+
+	//TODO: this seems a little dirty
+	default IPointLocator&lt;V, E, F&gt; getUncachedLocator() {
+<span class="nc" id="L84">		return this;</span>
+	}
+
+	default boolean isCached() {
+<span class="nc" id="L88">		return false;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

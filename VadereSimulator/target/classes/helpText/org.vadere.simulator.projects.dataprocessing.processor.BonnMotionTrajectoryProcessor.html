@@ -1,0 +1,26 @@
+<h1> BonnMotionTrajectoryProcessor</h1>
+
+<p>
+This processor creates trace files based on the output of BonnMotion. BonnMotion is a mobility
+scenario generation and analysis tool developed by the Communication Systems group at University
+of Bonn et. al. (https://sys.cs.uos.de/bonnmotion/index.shtml)
+
+This format is used by the omnet++ to add pre-recorded mobility data to a network simulation.
+https://doc.omnetpp.org/inet/api-current/neddoc/inet.mobility.single.BonnMotionMobility.html
+
+The trace is based on a node-by-line waypoints. Thus each line represents  one pedestrian and
+each waypoint consist of 3-Tupel (2D) or 4-Tupel (3D) encoding (time X-Coord Y-Coord Z-Coord)
+
+This Processor only supports 2D waypoints.
+
+@author Stefan Schuhbäck
+</p>
+
+<hr>
+<h2> Field: pedestrianPositionProcessor</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: attr</h2>
+<p>---</p>
+

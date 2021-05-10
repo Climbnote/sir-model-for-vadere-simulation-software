@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributesPsychologyLayer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">VadereState</a> &gt; <a href="index.source.html" class="el_package">org.vadere.state.attributes</a> &gt; <span class="el_source">AttributesPsychologyLayer.java</span></div><h1>AttributesPsychologyLayer.java</h1><pre class="source lang-java linenums">package org.vadere.state.attributes;
+
+import java.util.Objects;
+
+/**
+ * This class beautifies the JSON content by mapping
+ * the words &quot;perception&quot; and &quot;cognition&quot; to existing class names.
+ */
+public class AttributesPsychologyLayer {
+
+    // Constants
+    // Watch out: Make sure these classes exist!
+    public static final String DEFAULT_PERCEPTION_MODEL = &quot;SimplePerceptionModel&quot;;
+    public static final String DEFAULT_COGNITION_MODEL = &quot;SimpleCognitionModel&quot;;
+
+    // Variables
+    // Both should reference to concrete &quot;IPerception&quot; and &quot;ICognition&quot;
+    // implementations! We do not reference them here to avoid cyclic
+    // dependencies between state and controller packages
+    private String perception;
+    private String cognition;
+
+    // Constructors
+    public AttributesPsychologyLayer() {
+<span class="nc" id="L25">        this(DEFAULT_PERCEPTION_MODEL, DEFAULT_COGNITION_MODEL);</span>
+<span class="nc" id="L26">    }</span>
+
+<span class="nc" id="L28">    public AttributesPsychologyLayer(String perception, String cognition) {</span>
+<span class="nc" id="L29">        this.perception = perception;</span>
+<span class="nc" id="L30">        this.cognition = cognition;</span>
+<span class="nc" id="L31">    }</span>
+
+    // Getter
+    public String getPerception() {
+<span class="nc" id="L35">        return perception;</span>
+    }
+
+    public String getCognition() {
+<span class="nc" id="L39">        return cognition;</span>
+    }
+
+    // Setter
+    public void setPerception(String perception) {
+<span class="nc" id="L44">        this.perception = perception;</span>
+<span class="nc" id="L45">    }</span>
+
+    public void setCognition(String cognition) {
+<span class="nc" id="L48">        this.cognition = cognition;</span>
+<span class="nc" id="L49">    }</span>
+
+    // Overridden Methods
+    @Override
+    public boolean equals(Object o) {
+<span class="nc bnc" id="L54" title="All 2 branches missed.">        if (this == o) return true;</span>
+<span class="nc bnc" id="L55" title="All 4 branches missed.">        if (o == null || getClass() != o.getClass()) return false;</span>
+<span class="nc" id="L56">        AttributesPsychologyLayer that = (AttributesPsychologyLayer) o;</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">        return Objects.equals(perception, that.perception) &amp;&amp;</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">                Objects.equals(cognition, that.cognition);</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L63">        return Objects.hash(perception, cognition);</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>
