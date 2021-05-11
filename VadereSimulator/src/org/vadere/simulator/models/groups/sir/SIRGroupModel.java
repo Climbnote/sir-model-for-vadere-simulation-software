@@ -16,6 +16,7 @@ import org.vadere.state.attributes.scenario.AttributesAgent;
 import org.vadere.state.scenario.DynamicElementContainer;
 import org.vadere.state.scenario.Pedestrian;
 import org.vadere.state.scenario.Topography;
+import org.vadere.util.geometry.LinkedCellsGrid;
 
 import java.util.*;
 
@@ -132,9 +133,9 @@ public class SIRGroupModel extends AbstractGroupModel<SIRGroup> {
 		DynamicElementContainer<Pedestrian> c = topography.getPedestrianDynamicElements();
 
 		if (c.getElements().size() > 0) {
-			// TODO: fill in code to assign pedestrians in the scenario at the beginning (i.e., not created by a source)
-            //  to INFECTED or SUSCEPTIBLE groups.
-
+			for (Pedestrian pedestrian : c.getElements()) {
+				this.assignToGroup(pedestrian);
+			}
 		}
 	}
 
@@ -185,32 +186,30 @@ public class SIRGroupModel extends AbstractGroupModel<SIRGroup> {
 	public void update(final double simTimeInSec) {
 		// check the positions of all pedestrians and switch groups to INFECTED (or REMOVED).
 		DynamicElementContainer<Pedestrian> c = topography.getPedestrianDynamicElements();
+		LinkedCellsGrid<Pedestrian> grid = topography.getSpatialMap(Pedestrian.class);
 
 		if (c.getElements().size() > 0) {
+			//loop over all pedestrians
 			for(Pedestrian p : c.getElements()) {
+
 				if (getGroup(p).getID() == SIRType.ID_INFECTED.ordinal()) {
 					if (this.random.nextDouble() < attributesSIRG.getRemoveProbability()) {
+						//set to removed state
 						elementRemoved(p);
 						assignToGroup(p, SIRType.ID_REMOVED.ordinal());
-					}
-				}
-				//} else {
-					// loop over neighbors and set infected if we are close
-				for (Pedestrian p_neighbor : c.getElements()) {
-					if (p == p_neighbor || getGroup(p_neighbor).getID() != SIRType.ID_INFECTED.ordinal())
-						continue;
-					double dist = p.getPosition().distance(p_neighbor.getPosition());
-					// if distance small -> infect pedestrians
-					if (dist < attributesSIRG.getInfectionMaxDistance() &&
-							this.random.nextDouble() < attributesSIRG.getInfectionRate()) {
-						SIRGroup g = getGroup(p);
-						if (g.getID() == SIRType.ID_SUSCEPTIBLE.ordinal()) {
-							elementRemoved(p);
-							assignToGroup(p, SIRType.ID_INFECTED.ordinal());
+					} else {
+						//get neighbors for infected pedestrian efficiently
+						List<Pedestrian> p_neighbors = grid.getObjects(p.getPosition(), attributesSIRG.getInfectionMaxDistance());
+						// loop over neighbors and set infected if we are close
+						for (Pedestrian p_neighbor : p_neighbors) {
+							//infect neighboring pedestrians with probability of infection rate
+							if (p == p_neighbor && getGroup(p_neighbor).getID() == SIRType.ID_SUSCEPTIBLE.ordinal() && this.random.nextDouble() < attributesSIRG.getInfectionRate()) {
+								elementRemoved(p_neighbor);
+								assignToGroup(p_neighbor, SIRType.ID_INFECTED.ordinal());
+							}
 						}
 					}
 				}
-				//}
 			}
 		}
 	}
