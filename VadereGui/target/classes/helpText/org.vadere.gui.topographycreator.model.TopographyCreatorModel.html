@@ -6,16 +6,6 @@ The data of the DrawPanel. Its holds the whole data of one scenario.
 </p>
 
 <hr>
-<h2> Field: scenario</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: prototypeVisble</h2>
-<p>
-indicate that the prototype is availible != null and visible.
-</p>
-
-<hr>
 <h2> Field: topographyBuilder</h2>
 <p>
 container of all ScenarioElements, separates the real panelModel (Topography)
@@ -23,7 +13,17 @@ from the PanelModel (that holds information about selection, color, scaling and 
 </p>
 
 <hr>
-<h2> Field: scenarioObserver</h2>
+<h2> Field: scenario</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: prototypeShape</h2>
+<p>
+a copy of the topography element that will be moved, can be null.
+</p>
+
+<hr>
+<h2> Field: boundId</h2>
 <p>---</p>
 
 <hr>
@@ -35,21 +35,9 @@ Not only a view-attribute.
 </p>
 
 <hr>
-<h2> Field: boundId</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: currentType</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: cursor</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: font</h2>
+<h2> Field: copiedElement</h2>
 <p>
-Font to be used to display statistical informations.
+the last copied element, can be null.
 </p>
 
 <hr>
@@ -63,14 +51,26 @@ the stack of accessed categories
 <p>---</p>
 
 <hr>
-<h2> Field: copiedElement</h2>
+<h2> Field: scenarioObserver</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: prototypeVisble</h2>
 <p>
-the last copied element, can be null.
+indicate that the prototype is availible != null and visible.
 </p>
 
 <hr>
-<h2> Field: prototypeShape</h2>
+<h2> Field: cursor</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: font</h2>
 <p>
-a copy of the topography element that will be moved, can be null.
+Font to be used to display statistical informations.
 </p>
+
+<hr>
+<h2> Field: currentType</h2>
+<p>---</p>
 

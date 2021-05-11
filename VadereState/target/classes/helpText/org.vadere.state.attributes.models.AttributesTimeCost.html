@@ -7,6 +7,12 @@ TODO: split AttributesTimeCost timeCostAttributes into multiple classes see comm
 </p>
 
 <hr>
+<h2> Field: type</h2>
+<p>
+the method of density measurement.
+</p>
+
+<hr>
 <h2> Field: obstacleDensityWeight</h2>
 <p>
 the weight of the density.
@@ -19,9 +25,9 @@ the weight for the constant loading c in hartmann-2012.
 </p>
 
 <hr>
-<h2> Field: height</h2>
+<h2> Field: pedestrianDynamicWeight</h2>
 <p>
-only used in TimeCostFunctionObstacleDistance
+the loading that will be multiplied to the dynamic loading.
 </p>
 
 <hr>
@@ -29,6 +35,19 @@ only used in TimeCostFunctionObstacleDistance
 <p>
 (queueing only) the factor that influences the queue width. = 1 > means
 lower width. The value should be in the interval [1;infty[.
+</p>
+
+<hr>
+<h2> Field: standardDeviation</h2>
+<p>
+the standard derivation required for the gaussian method.
+</p>
+
+<hr>
+<h2> Field: pedestrianOtherTargetDensityWeight</h2>
+<p>
+(hartmann-2012, c_D') = the weight of the pedestrian that has on other
+target than the potential field that will be generated.
 </p>
 
 <hr>
@@ -44,25 +63,6 @@ set.
 </p>
 
 <hr>
-<h2> Field: type</h2>
-<p>
-the method of density measurement.
-</p>
-
-<hr>
-<h2> Field: pedestrianOtherTargetDensityWeight</h2>
-<p>
-(hartmann-2012, c_D') = the weight of the pedestrian that has on other
-target than the potential field that will be generated.
-</p>
-
-<hr>
-<h2> Field: standardDeviation</h2>
-<p>
-the standard derivation required for the gaussian method.
-</p>
-
-<hr>
 <h2> Field: pedestrianSameTargetDensityWeight</h2>
 <p>
 (hartmann-2012, c_D) = the weight of the pedestrian that has the some
@@ -70,9 +70,9 @@ target as the potential field that will be generated.
 </p>
 
 <hr>
-<h2> Field: pedestrianDynamicWeight</h2>
+<h2> Field: height</h2>
 <p>
-the loading that will be multiplied to the dynamic loading.
+only used in TimeCostFunctionObstacleDistance
 </p>
 
 <hr>

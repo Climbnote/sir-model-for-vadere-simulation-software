@@ -33,6 +33,7 @@ public class SIRGroupModel extends AbstractGroupModel<SIRGroup> {
 	private Topography topography;
 	private IPotentialFieldTarget potentialFieldTarget;
 	private int totalInfected = 0;
+	private double startingTime = 0.5;
 
 	public SIRGroupModel() {
 		this.groupsById = new LinkedHashMap<>();
@@ -63,7 +64,7 @@ public class SIRGroupModel extends AbstractGroupModel<SIRGroup> {
 	}
 
 	private int getFreeGroupId() {
-		if(this.random.nextDouble() < this.attributesSIRG.getInfectionRate()
+		if (this.random.nextDouble() < this.attributesSIRG.getInfectionRate()
         || this.totalInfected < this.attributesSIRG.getInfectionsAtStart()) {
 			if(!getGroupsById().containsKey(SIRType.ID_INFECTED.ordinal()))
 			{
@@ -184,28 +185,39 @@ public class SIRGroupModel extends AbstractGroupModel<SIRGroup> {
 
 	@Override
 	public void update(final double simTimeInSec) {
-		// check the positions of all pedestrians and switch groups to INFECTED (or REMOVED).
-		DynamicElementContainer<Pedestrian> c = topography.getPedestrianDynamicElements();
-		LinkedCellsGrid<Pedestrian> grid = topography.getSpatialMap(Pedestrian.class);
+		if (simTimeInSec > startingTime) {
+			// check the positions of all pedestrians and switch groups to INFECTED (or REMOVED).
+			DynamicElementContainer<Pedestrian> c = topography.getPedestrianDynamicElements();
+			LinkedCellsGrid<Pedestrian> grid = topography.getSpatialMap(Pedestrian.class);
 
-		if (c.getElements().size() > 0) {
-			//loop over all pedestrians
-			for(Pedestrian p : c.getElements()) {
+			if (c.getElements().size() > 0) {
+				//loop over all pedestrians
+				for (Pedestrian p : c.getElements()) {
 
-				if (getGroup(p).getID() == SIRType.ID_INFECTED.ordinal()) {
-					if (this.random.nextDouble() < attributesSIRG.getRemoveProbability()) {
-						//set to removed state
-						elementRemoved(p);
-						assignToGroup(p, SIRType.ID_REMOVED.ordinal());
+					if (getGroup(p).getID() == SIRType.ID_REMOVED.ordinal()) {
+						continue;
+					} else if (getGroup(p).getID() == SIRType.ID_INFECTED.ordinal()) {
+						if (this.random.nextDouble() < attributesSIRG.getRemoveProbability()) {
+							//set to removed state
+							elementRemoved(p);
+							assignToGroup(p, SIRType.ID_REMOVED.ordinal());
+							this.totalInfected -= 1;
+						}
 					} else {
-						//get neighbors for infected pedestrian efficiently
 						List<Pedestrian> p_neighbors = grid.getObjects(p.getPosition(), attributesSIRG.getInfectionMaxDistance());
 						// loop over neighbors and set infected if we are close
-						for (Pedestrian p_neighbor : p_neighbors) {
-							//infect neighboring pedestrians with probability of infection rate
-							if (p == p_neighbor && getGroup(p_neighbor).getID() == SIRType.ID_SUSCEPTIBLE.ordinal() && this.random.nextDouble() < attributesSIRG.getInfectionRate()) {
-								elementRemoved(p_neighbor);
-								assignToGroup(p_neighbor, SIRType.ID_INFECTED.ordinal());
+						if (p_neighbors.size() > 0) {
+							for (Pedestrian p_neighbor : p_neighbors) {
+								if (p == p_neighbor || getGroup(p_neighbor).getID() != SIRType.ID_INFECTED.ordinal())
+									continue;
+								//infect pedestrian with probability of infection rate
+								if (this.random.nextDouble() < attributesSIRG.getInfectionRate()) {
+									if (getGroup(p).getID() == SIRType.ID_SUSCEPTIBLE.ordinal()) {
+										elementRemoved(p);
+										assignToGroup(p, SIRType.ID_INFECTED.ordinal());
+										this.totalInfected += 1;
+									}
+								}
 							}
 						}
 					}

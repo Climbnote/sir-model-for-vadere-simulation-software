@@ -114,25 +114,6 @@ public abstract class SimulationModel<T extends DefaultSimulationConfig> extends
 		return c;
 	}
 
-	//new implementation to support different colors
-//	public Color getGroupColor(@NotNull final  Pedestrian ped) {
-//
-//		int groupId = ped.getGroupIds().getFirst();
-//
-//		if (groupId == SIRType.ID_INFECTED.ordinal()) {
-//			Color c = new Color(Color.red.getRGB());
-//			colorMap.put(groupId, c);
-//			return c;
-//		} else if (groupId == SIRType.ID_SUSCEPTIBLE.ordinal()) {
-//			return config.getPedestrianDefaultColor();
-//		} else if (groupId == SIRType.ID_REMOVED.ordinal()) {
-//			Color c = new Color(Color.green.getRGB());
-//			colorMap.put(groupId, c);
-//			return c;
-//		} else {
-//			return new Color(Color.black.getRGB());
-//		}
-//	}
 
 	@Override
 	public synchronized void notifyObservers() {

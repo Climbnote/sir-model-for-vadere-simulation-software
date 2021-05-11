@@ -10,33 +10,10 @@ Attributes of a target area, used by TargetController in VadereSimulation.
 <p>---</p>
 
 <hr>
-<h2> Field: absorbing</h2>
+<h2> Field: startingWithRedLight</h2>
 <p>
-True: elements are removed from the simulation after entering.
-False: the target id is removed from the target id list, but the element remains.
-</p>
-
-<hr>
-<h2> Field: parallelWaiters</h2>
-<p>
-Number of elements that can wait or be absorbed at one time in parallel on this area.
-If zero, an infinite amount can wait or be absorbed.
-</p>
-
-<hr>
-<h2> Field: shape</h2>
-<p>
-Shape and position.
-</p>
-
-<hr>
-<h2> Field: waitingTime</h2>
-<p>
-Waiting time in seconds on this area.
-If "individualWaiting" is true, then each element waits the given time on this area before
-"absorbing" takes place.
-If it is false, then the element waits this exact time before switching in "no waiting" mode
-and back. This way, a traffic light can be simulated.
+If set to false, starts with green phase (nonblocking), otherwise blocks the path (red
+phase).
 </p>
 
 <hr>
@@ -56,13 +33,6 @@ False: the target waits for "waitingTime" and then enters "no waiting mode" for 
 </p>
 
 <hr>
-<h2> Field: startingWithRedLight</h2>
-<p>
-If set to false, starts with green phase (nonblocking), otherwise blocks the path (red
-phase).
-</p>
-
-<hr>
 <h2> Field: waitingTimeYellowPhase</h2>
 <p>
 Waiting time on the target in the yellow phase (before red and green).
@@ -74,4 +44,34 @@ Needed on crossings, otherwise cars bump into each other.
 <hr>
 <h2> Field: deletionDistance</h2>
 <p>---</p>
+
+<hr>
+<h2> Field: waitingTime</h2>
+<p>
+Waiting time in seconds on this area.
+If "individualWaiting" is true, then each element waits the given time on this area before
+"absorbing" takes place.
+If it is false, then the element waits this exact time before switching in "no waiting" mode
+and back. This way, a traffic light can be simulated.
+</p>
+
+<hr>
+<h2> Field: absorbing</h2>
+<p>
+True: elements are removed from the simulation after entering.
+False: the target id is removed from the target id list, but the element remains.
+</p>
+
+<hr>
+<h2> Field: shape</h2>
+<p>
+Shape and position.
+</p>
+
+<hr>
+<h2> Field: parallelWaiters</h2>
+<p>
+Number of elements that can wait or be absorbed at one time in parallel on this area.
+If zero, an infinite amount can wait or be absorbed.
+</p>
 

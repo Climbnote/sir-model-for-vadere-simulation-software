@@ -5,10 +5,9 @@ Attributes of "TargetChanger" object, used by "TargetChangerController" during s
 </p>
 
 <hr>
-<h2> Field: probabilityToChangeTarget</h2>
+<h2> Field: shape</h2>
 <p>
-Change target of a given pedestrian only with a certain probability between
-0 and 1.
+Shape and position.
 </p>
 
 <hr>
@@ -19,12 +18,6 @@ Change target of a given pedestrian only with a certain probability between
 <h2> Field: reachDistance</h2>
 <p>
 Within this distance, pedestrians have reached this area.
-</p>
-
-<hr>
-<h2> Field: shape</h2>
-<p>
-Shape and position.
 </p>
 
 <hr>
@@ -59,5 +52,12 @@ add the element to the new target list and repeat for all elements in <span clas
 If "nextTargetIsPedestrian == true", then randomly select a pedestrian which
 is heading to the given target as new target. Otherwise, use the given target
 id as "normal" target id.
+</p>
+
+<hr>
+<h2> Field: probabilityToChangeTarget</h2>
+<p>
+Change target of a given pedestrian only with a certain probability between
+0 and 1.
 </p>
 

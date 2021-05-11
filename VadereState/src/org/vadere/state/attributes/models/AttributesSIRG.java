@@ -13,7 +13,7 @@ public class AttributesSIRG extends Attributes {
 	private double infectionRate = 0.01;
 	private double infectionMaxDistance = 1;
 	//probability for an “infective” person to become “recovered” at every time step
-	private double removeProbability = 0.5; //TODO adapt value
+	private double removeProbability = 0.5;
 
 
 	public int getInfectionsAtStart() { return infectionsAtStart; }

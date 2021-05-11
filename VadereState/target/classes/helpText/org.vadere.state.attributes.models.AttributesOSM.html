@@ -54,44 +54,7 @@ discussed in [1].<br><br>
 </p>
 
 <hr>
-<h2> Field: varyStepDirection</h2>
-<p>
-If <tt>true</tt>, introduced for every optimization process a noise term by which points will be shifted (on their circle). See Eq. 4 in [1].
-If <tt>false</tt>, there will be no noise term which might lead to artifacts, especially in case of <tt>OptimizationType.DISCRETE</tt>.
-In that case and with <a href='/helpText/rel_/AttributesOSM#movementType.html' class='class_link'>AttributesOSM#movementType</a> not <tt>DIRECTIONAL</tt>, the first point of each circle will at (r * cos(0), r * sin(0)).
-</p>
-
-<hr>
-<h2> Field: movementThreshold</h2>
-<p>
-Only used if <a href='/helpText/org.vadere.state.types.OptimizationType.html' class='class_link'>OptimizationType</a> is equal <tt>DISCRETE</tt> or <tt>PSO</tt>. If the potential does not improve by this
-threshold, the agent will not move. This is in some sense similar to the effect of <a href='/helpText/rel_/AttributesOSM#minStepLength.html' class='class_link'>AttributesOSM#minStepLength</a>.
-</p>
-
-<hr>
-<h2> Field: minStepLength</h2>
-<p>
-Only used if <a href='/helpText/rel_/AttributesOSM#minimumStepLength.html' class='class_link'>AttributesOSM#minimumStepLength</a> is <tt>true</tt>. The agent will not move if the
-next improvement is less than <a href='/helpText/rel_/AttributesOSM#minStepLength.html' class='class_link'>AttributesOSM#minStepLength</a> away from its current position.
-Furthermore, this will be ignored if an agent is on stairs.
-</p>
-
-<hr>
-<h2> Field: maxStepDuration</h2>
-<p>
-The maximum amount of time a foot step of an agent can take. If the foot step takes more time
-its duration is reduced to <a href='/helpText/rel_/AttributesOSM#maxStepDuration.html' class='class_link'>AttributesOSM#maxStepDuration</a>.
-</p>
-
-<hr>
-<h2> Field: stepLengthSlopeSpeed</h2>
-<p>
-Used to compute the desired step length which is <a href='/helpText/rel_/AttributesOSM#stepLengthIntercept.html' class='class_link'>AttributesOSM#stepLengthIntercept</a> + <a href='/helpText/rel_/AttributesOSM#stepLengthSlopeSpeed.html' class='class_link'>AttributesOSM#stepLengthSlopeSpeed</a> * speed + error, i.e.
-Eq. 6 in [1].
-</p>
-
-<hr>
-<h2> Field: targetPotentialModel</h2>
+<h2> Field: submodels</h2>
 <p>---</p>
 
 <hr>
@@ -103,34 +66,11 @@ test is very expensive the default should be false!
 </p>
 
 <hr>
-<h2> Field: optimizationType</h2>
+<h2> Field: varyStepDirection</h2>
 <p>
-Parameter of the optimization method: Specifies the concrete optimization solver.
-</p>
-
-<hr>
-<h2> Field: pedestrianPotentialModel</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: numberOfCircles</h2>
-<p>
-Parameter of the optimization solver method: the number of circles. Together with the <a href='/helpText/rel_/AttributesOSM#stepCircleResolution.html' class='class_link'>AttributesOSM#stepCircleResolution</a>
-this gives the number of points used by the optimization solver. If r is the radius of the most outer circle and k is the number
-of circles the radii of the circles are r/k, 2 * r/k, ... (k-1) * r/k, r.
-</p>
-
-<hr>
-<h2> Field: dynamicStepLength</h2>
-<p>
-<tt>SpeedAdjusters</tt> will only be active if this is <tt>true</tt>. For example this has to be true if the group model is
-active.
-</p>
-
-<hr>
-<h2> Field: updateType</h2>
-<p>
-Specifies which update schema is used. The OSM should use the event driven update schema, see [3].
+If <tt>true</tt>, introduced for every optimization process a noise term by which points will be shifted (on their circle). See Eq. 4 in [1].
+If <tt>false</tt>, there will be no noise term which might lead to artifacts, especially in case of <tt>OptimizationType.DISCRETE</tt>.
+In that case and with <a href='/helpText/rel_/AttributesOSM#movementType.html' class='class_link'>AttributesOSM#movementType</a> not <tt>DIRECTIONAL</tt>, the first point of each circle will at (r * cos(0), r * sin(0)).
 </p>
 
 <hr>
@@ -141,19 +81,60 @@ distribution which is the distribution of the error variable (see Eq. 6 in [1]).
 </p>
 
 <hr>
-<h2> Field: stepLengthIntercept</h2>
+<h2> Field: dynamicStepLength</h2>
 <p>
-Used to compute the desired step length which is <a href='/helpText/rel_/AttributesOSM#stepLengthIntercept.html' class='class_link'>AttributesOSM#stepLengthIntercept</a> + <a href='/helpText/rel_/AttributesOSM#stepLengthSlopeSpeed.html' class='class_link'>AttributesOSM#stepLengthSlopeSpeed</a> * speed, i.e.
+<tt>SpeedAdjusters</tt> will only be active if this is <tt>true</tt>. For example this has to be true if the group model is
+active.
+</p>
+
+<hr>
+<h2> Field: maxStepDuration</h2>
+<p>
+The maximum amount of time a foot step of an agent can take. If the foot step takes more time
+its duration is reduced to <a href='/helpText/rel_/AttributesOSM#maxStepDuration.html' class='class_link'>AttributesOSM#maxStepDuration</a>.
+</p>
+
+<hr>
+<h2> Field: obstaclePotentialModel</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: targetPotentialModel</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: stepLengthSlopeSpeed</h2>
+<p>
+Used to compute the desired step length which is <a href='/helpText/rel_/AttributesOSM#stepLengthIntercept.html' class='class_link'>AttributesOSM#stepLengthIntercept</a> + <a href='/helpText/rel_/AttributesOSM#stepLengthSlopeSpeed.html' class='class_link'>AttributesOSM#stepLengthSlopeSpeed</a> * speed + error, i.e.
 Eq. 6 in [1].
 </p>
 
 <hr>
-<h2> Field: movementType</h2>
+<h2> Field: numberOfCircles</h2>
 <p>
-This has only an effect if <a href='/helpText/org.vadere.state.types.OptimizationType.html' class='class_link'>OptimizationType</a> is equal <tt>DISCRETE</tt> or <tt>PSO</tt>, since all other optimization (on the disc) do not
-use this parameter. Reduces the circles of the optimization to a segments lying inside a cone (see [2], page 76).
-This does not effect the number of used points. The shape of the cone is computed by Eq. 4.6, 4.7 which
-depends on the current velocity of the agent.
+Parameter of the optimization solver method: the number of circles. Together with the <a href='/helpText/rel_/AttributesOSM#stepCircleResolution.html' class='class_link'>AttributesOSM#stepCircleResolution</a>
+this gives the number of points used by the optimization solver. If r is the radius of the most outer circle and k is the number
+of circles the radii of the circles are r/k, 2 * r/k, ... (k-1) * r/k, r.
+</p>
+
+<hr>
+<h2> Field: minimumStepLength</h2>
+<p>
+If <tt>true</tt> enables the use of <a href='/helpText/rel_/AttributesOSM#minStepLength.html' class='class_link'>AttributesOSM#minStepLength</a>. This attribute could be removed.
+</p>
+
+<hr>
+<h2> Field: minStepLength</h2>
+<p>
+Only used if <a href='/helpText/rel_/AttributesOSM#minimumStepLength.html' class='class_link'>AttributesOSM#minimumStepLength</a> is <tt>true</tt>. The agent will not move if the
+next improvement is less than <a href='/helpText/rel_/AttributesOSM#minStepLength.html' class='class_link'>AttributesOSM#minStepLength</a> away from its current position.
+Furthermore, this will be ignored if an agent is on stairs.
+</p>
+
+<hr>
+<h2> Field: optimizationType</h2>
+<p>
+Parameter of the optimization method: Specifies the concrete optimization solver.
 </p>
 
 <hr>
@@ -171,16 +152,35 @@ The positioned points will be used in different ways which depends on the <a hre
 </p>
 
 <hr>
-<h2> Field: obstaclePotentialModel</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: minimumStepLength</h2>
+<h2> Field: stepLengthIntercept</h2>
 <p>
-If <tt>true</tt> enables the use of <a href='/helpText/rel_/AttributesOSM#minStepLength.html' class='class_link'>AttributesOSM#minStepLength</a>. This attribute could be removed.
+Used to compute the desired step length which is <a href='/helpText/rel_/AttributesOSM#stepLengthIntercept.html' class='class_link'>AttributesOSM#stepLengthIntercept</a> + <a href='/helpText/rel_/AttributesOSM#stepLengthSlopeSpeed.html' class='class_link'>AttributesOSM#stepLengthSlopeSpeed</a> * speed, i.e.
+Eq. 6 in [1].
 </p>
 
 <hr>
-<h2> Field: submodels</h2>
+<h2> Field: movementThreshold</h2>
+<p>
+Only used if <a href='/helpText/org.vadere.state.types.OptimizationType.html' class='class_link'>OptimizationType</a> is equal <tt>DISCRETE</tt> or <tt>PSO</tt>. If the potential does not improve by this
+threshold, the agent will not move. This is in some sense similar to the effect of <a href='/helpText/rel_/AttributesOSM#minStepLength.html' class='class_link'>AttributesOSM#minStepLength</a>.
+</p>
+
+<hr>
+<h2> Field: pedestrianPotentialModel</h2>
 <p>---</p>
+
+<hr>
+<h2> Field: movementType</h2>
+<p>
+This has only an effect if <a href='/helpText/org.vadere.state.types.OptimizationType.html' class='class_link'>OptimizationType</a> is equal <tt>DISCRETE</tt> or <tt>PSO</tt>, since all other optimization (on the disc) do not
+use this parameter. Reduces the circles of the optimization to a segments lying inside a cone (see [2], page 76).
+This does not effect the number of used points. The shape of the cone is computed by Eq. 4.6, 4.7 which
+depends on the current velocity of the agent.
+</p>
+
+<hr>
+<h2> Field: updateType</h2>
+<p>
+Specifies which update schema is used. The OSM should use the event driven update schema, see [3].
+</p>
 

@@ -3,7 +3,41 @@
 <p>---</p>
 
 <hr>
+<h2> Field: potentialFieldResolution</h2>
+<p>
+These attribute values should only be used if createMethod.isUsingCellGrid() == true.
+
+TODO [refactoring]: However potentialFieldResolution is also used for the @link org.vadere.simulator.models.potential.solver.timecost.ITimeCostFunction
+for the density computation, i.e. it is the resolution of the matrix used in the discrete convolution. This should be changed!
+Furthermore, theare are many unused parameters in <a href='/helpText/org.vadere.state.attributes.models.AttributesTimeCost.html' class='class_link'>AttributesTimeCost</a>.
+Solution:
+(1) change AttributesTimeCost timeCostAttributes to ITimeCostFunction like the potential classes in AttributesOSM
+(2) split AttributesTimeCost timeCostAttributes into multiple classes
+(3) add a new AttributesTimeCost into the top level (i.e. attributesModel) json.
+</p>
+
+<hr>
+<h2> Field: timeCostAttributes</h2>
+<p>---</p>
+
+<hr>
 <h2> Field: obstacleGridPenalty</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: targetAttractionStrength</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: cacheDir</h2>
+<p>
+specifies path in which a cache of the target floor field is saved. This path is relative to
+the executable. @JsonView(...) allows the cache hashing to move the cache directory without
+invalidating existing caches.
+</p>
+
+<hr>
+<h2> Field: createMethod</h2>
 <p>---</p>
 
 <hr>
@@ -19,39 +53,5 @@ differ an a new floor field is created and saved at initialization time.
 
 Thus the created hash file can be moved to a different location without invalidating the
 saved floor field.
-</p>
-
-<hr>
-<h2> Field: createMethod</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: cacheDir</h2>
-<p>
-specifies path in which a cache of the target floor field is saved. This path is relative to
-the executable. @JsonView(...) allows the cache hashing to move the cache directory without
-invalidating existing caches.
-</p>
-
-<hr>
-<h2> Field: timeCostAttributes</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: targetAttractionStrength</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: potentialFieldResolution</h2>
-<p>
-These attribute values should only be used if createMethod.isUsingCellGrid() == true.
-
-TODO [refactoring]: However potentialFieldResolution is also used for the @link org.vadere.simulator.models.potential.solver.timecost.ITimeCostFunction
-for the density computation, i.e. it is the resolution of the matrix used in the discrete convolution. This should be changed!
-Furthermore, theare are many unused parameters in <a href='/helpText/org.vadere.state.attributes.models.AttributesTimeCost.html' class='class_link'>AttributesTimeCost</a>.
-Solution:
-(1) change AttributesTimeCost timeCostAttributes to ITimeCostFunction like the potential classes in AttributesOSM
-(2) split AttributesTimeCost timeCostAttributes into multiple classes
-(3) add a new AttributesTimeCost into the top level (i.e. attributesModel) json.
 </p>
 
