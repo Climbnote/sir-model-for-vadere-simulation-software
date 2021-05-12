@@ -12,7 +12,7 @@ import org.vadere.util.logging.Logger;
 import org.vadere.util.logging.StdOutErrLog;
 
 /**
- * Entry point for the Vadere GUI. This is the modified Vadere Version for Task 4 and 5
+ * Entry point for the Vadere GUI. This is the modified Vadere Version for Task 4 and 5 by Group M
  * 
  * 
  */

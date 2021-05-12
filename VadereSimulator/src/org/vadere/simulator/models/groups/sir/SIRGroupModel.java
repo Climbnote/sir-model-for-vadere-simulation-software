@@ -33,7 +33,11 @@ public class SIRGroupModel extends AbstractGroupModel<SIRGroup> {
 	private Topography topography;
 	private IPotentialFieldTarget potentialFieldTarget;
 	private int totalInfected = 0;
-	private double startingTime = 0.5;
+	//counter which hold the current number of calls of update method
+	private int callUpdate = 0;
+	//initial value of the allowed number of updates to a specific simulation time
+	private double permittedUpdate = 0;
+
 
 	public SIRGroupModel() {
 		this.groupsById = new LinkedHashMap<>();
@@ -132,7 +136,7 @@ public class SIRGroupModel extends AbstractGroupModel<SIRGroup> {
 	private void initializeGroupsOfInitialPedestrians() {
 		// get all pedestrians already in topography
 		DynamicElementContainer<Pedestrian> c = topography.getPedestrianDynamicElements();
-
+		// initially add single pedestrians to groups which are not created by a source
 		if (c.getElements().size() > 0) {
 			for (Pedestrian pedestrian : c.getElements()) {
 				this.assignToGroup(pedestrian);
@@ -183,8 +187,10 @@ public class SIRGroupModel extends AbstractGroupModel<SIRGroup> {
 	public void postLoop(final double simTimeInSec) {
 	}
 
-	@Override
-	public void update(final double simTimeInSec) {
+	/**
+	 * new helper method which represents the actual update of the SIR pedestrians
+	 */
+	public void updateSIRpedestrians() {
 		// check the positions of all pedestrians and switch groups to INFECTED (or REMOVED).
 		DynamicElementContainer<Pedestrian> c = topography.getPedestrianDynamicElements();
 		LinkedCellsGrid<Pedestrian> grid = topography.getSpatialMap(Pedestrian.class);
@@ -221,6 +227,25 @@ public class SIRGroupModel extends AbstractGroupModel<SIRGroup> {
 					}
 				}
 			}
+		}
+	}
+
+	@Override
+	public void update(final double simTimeInSec) {
+		//if infection rate is independent of step length
+		if (attributesSIRG.isControlUpdateFrequencyIndependentOfStepLength()) {
+			//calculate the number of allowed updates
+			permittedUpdate = simTimeInSec * attributesSIRG.getGoalFrequency();
+			//call updateSIRpedestrians as often as allowed to be independent of step length
+			while (callUpdate + 1 <= permittedUpdate) {
+				//increase counter
+				callUpdate += 1;
+				//update SIR pedestrians
+				updateSIRpedestrians();
+			}
+		} else {
+			//if update dependent on step length call updateSIRpedestrians only once
+			updateSIRpedestrians();
 		}
 	}
 }

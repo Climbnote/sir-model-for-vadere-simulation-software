@@ -109,6 +109,7 @@ public abstract class SimulationModel<T extends DefaultSimulationConfig> extends
 		int groupId = ped.getGroupIds().getFirst();
 		Color c = colorMap.get(groupId);
 
+		//new coloring for the three SIR groups
 		if (c == null) {
 			if (groupId == SIRType.ID_INFECTED.ordinal()) {
 				c = new Color(Color.red.getRGB());

@@ -3,6 +3,18 @@
 <p>---</p>
 
 <hr>
+<h2> Field: simTimeInSec</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: potentialFieldTarget</h2>
+<p>
+Latest snapshot of the potential field to be displayed. This is a certain
+pontetial field of a certain pedestrian. See 'Simulation' for more
+information. For debug purposes. Updated by popDrawData().
+</p>
+
+<hr>
 <h2> Field: domain</h2>
 <p>
 The observation area to display. Updated by popDrawData() with the latest
@@ -10,8 +22,10 @@ observation area snapshot.
 </p>
 
 <hr>
-<h2> Field: agent</h2>
-<p>---</p>
+<h2> Field: voronoiSnapshots</h2>
+<p>
+Lists for thread safe data exchange between main and draw thread.
+</p>
 
 <hr>
 <h2> Field: drawArrows</h2>
@@ -29,9 +43,10 @@ exchange structures to avoid threading issues.
 <p>---</p>
 
 <hr>
-<h2> Field: voronoiSnapshots</h2>
+<h2> Field: voronoiDiagram</h2>
 <p>
-Lists for thread safe data exchange between main and draw thread.
+Latest snapshot of the jts diagram to be displayed. Updated by
+popDrawData().
 </p>
 
 <hr>
@@ -39,21 +54,6 @@ Lists for thread safe data exchange between main and draw thread.
 <p>---</p>
 
 <hr>
-<h2> Field: simTimeInSec</h2>
+<h2> Field: agent</h2>
 <p>---</p>
-
-<hr>
-<h2> Field: potentialFieldTarget</h2>
-<p>
-Latest snapshot of the potential field to be displayed. This is a certain
-pontetial field of a certain pedestrian. See 'Simulation' for more
-information. For debug purposes. Updated by popDrawData().
-</p>
-
-<hr>
-<h2> Field: voronoiDiagram</h2>
-<p>
-Latest snapshot of the jts diagram to be displayed. Updated by
-popDrawData().
-</p>
 

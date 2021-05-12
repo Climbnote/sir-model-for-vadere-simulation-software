@@ -3,23 +3,66 @@
 <p>---</p>
 
 <hr>
-<h2> Field: CELL_SIZE</h2>
+<h2> Field: allOtherAttributes</h2>
 <p>
-Cell size of the internal storage of DynamicElements. Is used in the LinkedCellsGrid.
+Used to store links to all attributes that are not part of scenario elements.
 </p>
 
 <hr>
-<h2> Field: measurementAreas</h2>
+<h2> Field: contextId</h2>
 <p>
-MeasurementAreas.
+A possible empty string identifying a context object.
 </p>
+
+<hr>
+<h2> Field: recomputeCells</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: obstacleDistanceFunction</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: pedestrians</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: boundaryObstacles</h2>
+<p>
+List of obstacles used as a boundary for the whole topography.
+</p>
+
+<hr>
+<h2> Field: dynamicElementIdCounter</h2>
+<p>
+set dynamicElementIds to values bigger than the biggest initial element to ensure unique ids.
+</p>
+
+<hr>
+<h2> Field: stairs</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: teleporter</h2>
+<p>---</p>
 
 <hr>
 <h2> Field: attributes</h2>
 <p>---</p>
 
 <hr>
-<h2> Field: attributesPedestrian</h2>
+<h2> Field: obstacles</h2>
+<p>
+Obstacles of scenario by id. Tree maps ensures same update order during
+iteration between frames.
+</p>
+
+<hr>
+<h2> Field: reachablePointProvider</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: cars</h2>
 <p>---</p>
 
 <hr>
@@ -30,20 +73,9 @@ iteration between frames.
 </p>
 
 <hr>
-<h2> Field: obstacles</h2>
+<h2> Field: CELL_SIZE</h2>
 <p>
-Obstacles of scenario by id. Tree maps ensures same update order during
-iteration between frames.
-</p>
-
-<hr>
-<h2> Field: attributesCar</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: allOtherAttributes</h2>
-<p>
-Used to store links to all attributes that are not part of scenario elements.
+Cell size of the internal storage of DynamicElements. Is used in the LinkedCellsGrid.
 </p>
 
 <hr>
@@ -53,38 +85,7 @@ Transient to prevent JSON serialization.
 </p>
 
 <hr>
-<h2> Field: boundaryObstacles</h2>
-<p>
-List of obstacles used as a boundary for the whole topography.
-</p>
-
-<hr>
-<h2> Field: reachablePointProvider</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: targets</h2>
-<p>
-Targets of scenario by id. Tree maps ensures same update order during
-iteration between frames.
-</p>
-
-<hr>
-<h2> Field: teleporter</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: obstacleDistanceFunction</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: targetChangers</h2>
-<p>
-TargetChangers of scenario
-</p>
-
-<hr>
-<h2> Field: stairs</h2>
+<h2> Field: attributesCar</h2>
 <p>---</p>
 
 <hr>
@@ -95,8 +96,17 @@ iteration between frames.
 </p>
 
 <hr>
-<h2> Field: cars</h2>
-<p>---</p>
+<h2> Field: targets</h2>
+<p>
+Targets of scenario by id. Tree maps ensures same update order during
+iteration between frames.
+</p>
+
+<hr>
+<h2> Field: targetChangers</h2>
+<p>
+TargetChangers of scenario
+</p>
 
 <hr>
 <h2> Field: allScenarioElements</h2>
@@ -105,22 +115,12 @@ Used to get attributes of all scenario elements.
 </p>
 
 <hr>
-<h2> Field: recomputeCells</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: dynamicElementIdCounter</h2>
+<h2> Field: measurementAreas</h2>
 <p>
-set dynamicElementIds to values bigger than the biggest initial element to ensure unique ids.
+MeasurementAreas.
 </p>
 
 <hr>
-<h2> Field: contextId</h2>
-<p>
-A possible empty string identifying a context object.
-</p>
-
-<hr>
-<h2> Field: pedestrians</h2>
+<h2> Field: attributesPedestrian</h2>
 <p>---</p>
 

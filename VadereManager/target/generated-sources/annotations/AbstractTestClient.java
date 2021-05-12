@@ -5,29 +5,23 @@ import org.vadere.manager.client.ConsoleReader;
 import java.io.IOException;
 
 public abstract class AbstractTestClient {
-	protected org.vadere.manager.client.traci.SimulationAPI simulationapi;
-	protected org.vadere.manager.client.traci.PersonAPI personapi;
 	protected org.vadere.manager.client.traci.MiscAPI miscapi;
+	protected org.vadere.manager.client.traci.PersonAPI personapi;
+	protected org.vadere.manager.client.traci.SimulationAPI simulationapi;
 	protected org.vadere.manager.client.traci.PolygonAPI polygonapi;
 
 	public AbstractTestClient() { }
 
 	public void init(TraCISocket socket, ConsoleReader consoleReader){
-		simulationapi = new org.vadere.manager.client.traci.SimulationAPI(socket);
-		personapi = new org.vadere.manager.client.traci.PersonAPI(socket);
 		miscapi = new org.vadere.manager.client.traci.MiscAPI(socket);
+		personapi = new org.vadere.manager.client.traci.PersonAPI(socket);
+		simulationapi = new org.vadere.manager.client.traci.SimulationAPI(socket);
 		polygonapi = new org.vadere.manager.client.traci.PolygonAPI(socket);
 
-		consoleReader.addCommand("sim.getDataProcessorValue", "", this::simulationapi_getDataProcessorValue);
-		consoleReader.addCommand("sim.getNetworkBound", "", this::simulationapi_getNetworkBound);
-		consoleReader.addCommand("sim.getTime", "", this::simulationapi_getTime);
-		consoleReader.addCommand("sim.getSimSte", "", this::simulationapi_getSimSte);
-		consoleReader.addCommand("sim.setSimConfig", "", this::simulationapi_setSimConfig);
-		consoleReader.addCommand("sim.getHash", "", this::simulationapi_getHash);
-		consoleReader.addCommand("sim.getDepartedPedestrianId", "", this::simulationapi_getDepartedPedestrianId);
-		consoleReader.addCommand("sim.getArrivedPedestrianIds", "", this::simulationapi_getArrivedPedestrianIds);
-		consoleReader.addCommand("sim.getPositionConversion", "", this::simulationapi_getPositionConversion);
-		consoleReader.addCommand("sim.getCoordinateReference", "", this::simulationapi_getCoordinateReference);
+		consoleReader.addCommand("va.createTargetChanger", "", this::miscapi_createTargetChanger);
+		consoleReader.addCommand("va.addStimulusInfos", "", this::miscapi_addStimulusInfos);
+		consoleReader.addCommand("va.getAllStimulusInfos", "", this::miscapi_getAllStimulusInfos);
+		consoleReader.addCommand("va.removeTargetChanger", "", this::miscapi_removeTargetChanger);
 		consoleReader.addCommand("pers.getHasNextTarget", "", this::personapi_getHasNextTarget);
 		consoleReader.addCommand("pers.getNextTargetListIndex", "", this::personapi_getNextTargetListIndex);
 		consoleReader.addCommand("pers.setNextTargetListIndex", "", this::personapi_setNextTargetListIndex);
@@ -51,10 +45,16 @@ public abstract class AbstractTestClient {
 		consoleReader.addCommand("pers.setInformation", "", this::personapi_setInformation);
 		consoleReader.addCommand("pers.setTargetList", "", this::personapi_setTargetList);
 		consoleReader.addCommand("pers.createNew", "", this::personapi_createNew);
-		consoleReader.addCommand("va.createTargetChanger", "", this::miscapi_createTargetChanger);
-		consoleReader.addCommand("va.addStimulusInfos", "", this::miscapi_addStimulusInfos);
-		consoleReader.addCommand("va.getAllStimulusInfos", "", this::miscapi_getAllStimulusInfos);
-		consoleReader.addCommand("va.removeTargetChanger", "", this::miscapi_removeTargetChanger);
+		consoleReader.addCommand("sim.getDataProcessorValue", "", this::simulationapi_getDataProcessorValue);
+		consoleReader.addCommand("sim.getNetworkBound", "", this::simulationapi_getNetworkBound);
+		consoleReader.addCommand("sim.getTime", "", this::simulationapi_getTime);
+		consoleReader.addCommand("sim.getSimSte", "", this::simulationapi_getSimSte);
+		consoleReader.addCommand("sim.setSimConfig", "", this::simulationapi_setSimConfig);
+		consoleReader.addCommand("sim.getHash", "", this::simulationapi_getHash);
+		consoleReader.addCommand("sim.getDepartedPedestrianId", "", this::simulationapi_getDepartedPedestrianId);
+		consoleReader.addCommand("sim.getArrivedPedestrianIds", "", this::simulationapi_getArrivedPedestrianIds);
+		consoleReader.addCommand("sim.getPositionConversion", "", this::simulationapi_getPositionConversion);
+		consoleReader.addCommand("sim.getCoordinateReference", "", this::simulationapi_getCoordinateReference);
 		consoleReader.addCommand("poly.getTopographyBounds", "", this::polygonapi_getTopographyBounds);
 		consoleReader.addCommand("poly.getIDList", "", this::polygonapi_getIDList);
 		consoleReader.addCommand("poly.getIDCount", "", this::polygonapi_getIDCount);
@@ -70,16 +70,10 @@ public abstract class AbstractTestClient {
 		consoleReader.addCommand("poly.getImageAngle", "", this::polygonapi_getImageAngle);
 	}
 
-		abstract public void simulationapi_getDataProcessorValue (String args[]) throws IOException;
-		abstract public void simulationapi_getNetworkBound (String args[]) throws IOException;
-		abstract public void simulationapi_getTime (String args[]) throws IOException;
-		abstract public void simulationapi_getSimSte (String args[]) throws IOException;
-		abstract public void simulationapi_setSimConfig (String args[]) throws IOException;
-		abstract public void simulationapi_getHash (String args[]) throws IOException;
-		abstract public void simulationapi_getDepartedPedestrianId (String args[]) throws IOException;
-		abstract public void simulationapi_getArrivedPedestrianIds (String args[]) throws IOException;
-		abstract public void simulationapi_getPositionConversion (String args[]) throws IOException;
-		abstract public void simulationapi_getCoordinateReference (String args[]) throws IOException;
+		abstract public void miscapi_createTargetChanger (String args[]) throws IOException;
+		abstract public void miscapi_addStimulusInfos (String args[]) throws IOException;
+		abstract public void miscapi_getAllStimulusInfos (String args[]) throws IOException;
+		abstract public void miscapi_removeTargetChanger (String args[]) throws IOException;
 		abstract public void personapi_getHasNextTarget (String args[]) throws IOException;
 		abstract public void personapi_getNextTargetListIndex (String args[]) throws IOException;
 		abstract public void personapi_setNextTargetListIndex (String args[]) throws IOException;
@@ -103,10 +97,16 @@ public abstract class AbstractTestClient {
 		abstract public void personapi_setInformation (String args[]) throws IOException;
 		abstract public void personapi_setTargetList (String args[]) throws IOException;
 		abstract public void personapi_createNew (String args[]) throws IOException;
-		abstract public void miscapi_createTargetChanger (String args[]) throws IOException;
-		abstract public void miscapi_addStimulusInfos (String args[]) throws IOException;
-		abstract public void miscapi_getAllStimulusInfos (String args[]) throws IOException;
-		abstract public void miscapi_removeTargetChanger (String args[]) throws IOException;
+		abstract public void simulationapi_getDataProcessorValue (String args[]) throws IOException;
+		abstract public void simulationapi_getNetworkBound (String args[]) throws IOException;
+		abstract public void simulationapi_getTime (String args[]) throws IOException;
+		abstract public void simulationapi_getSimSte (String args[]) throws IOException;
+		abstract public void simulationapi_setSimConfig (String args[]) throws IOException;
+		abstract public void simulationapi_getHash (String args[]) throws IOException;
+		abstract public void simulationapi_getDepartedPedestrianId (String args[]) throws IOException;
+		abstract public void simulationapi_getArrivedPedestrianIds (String args[]) throws IOException;
+		abstract public void simulationapi_getPositionConversion (String args[]) throws IOException;
+		abstract public void simulationapi_getCoordinateReference (String args[]) throws IOException;
 		abstract public void polygonapi_getTopographyBounds (String args[]) throws IOException;
 		abstract public void polygonapi_getIDList (String args[]) throws IOException;
 		abstract public void polygonapi_getIDCount (String args[]) throws IOException;
