@@ -3,14 +3,43 @@
 <p>---</p>
 
 <hr>
-<h2> Field: endTime</h2>
+<h2> Field: spawnAtRandomPositions</h2>
 <p>
-endTime == startTime means one single spawn event.
+The pedestrians are spawned at random positions rather than from the top
+left corner downwards.
 </p>
+
+<hr>
+<h2> Field: distributionParameters</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: dynamicElementType</h2>
+<p>
+The type of dynamic elements this source creates.
+</p>
+
+<hr>
+<h2> Field: attributesPedestrian</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: CONSTANT_DISTRIBUTION</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: id</h2>
+<p>---</p>
 
 <hr>
 <h2> Field: targetIds</h2>
 <p>---</p>
+
+<hr>
+<h2> Field: endTime</h2>
+<p>
+endTime == startTime means one single spawn event.
+</p>
 
 <hr>
 <h2> Field: useFreeSpaceOnly</h2>
@@ -23,6 +52,37 @@ created yet, there will be less pedestrians than spawnNumber *
 useFreeSpaceOnly = false can cause errors if tow pedestrians arw spawned at
 exactly the same place. Maybe Deprecate this switch.
 </p>
+
+<hr>
+<h2> Field: shape</h2>
+<p>
+Shape and position.
+</p>
+
+<hr>
+<h2> Field: NO_MAX_SPAWN_NUMBER_TOTAL</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: maxSpawnNumberTotal</h2>
+<p>
+Maximum number of spawned elements. <span class='local_link'>NO_MAX_SPAWN_NUMBER_TOTAL</span> -> no maximum number.
+</p>
+
+<hr>
+<h2> Field: spawnAtGridPositionsCA</h2>
+<p>
+If set to true, the pedestrians are spawned on a rectangular grid for the cellular automaton. Different to the
+regular spawnArray, they will touch if the cells are 0.4m and the radius is set to 0.2m.
+</p>
+
+<hr>
+<h2> Field: startTime</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: spawnNumber</h2>
+<p>---</p>
 
 <hr>
 <h2> Field: groupSizeDistribution</h2>
@@ -42,66 +102,6 @@ uniform distribution of groups of the size from 3 to 5 -------------------------
 </p>
 
 <hr>
-<h2> Field: spawnAtRandomPositions</h2>
-<p>
-The pedestrians are spawned at random positions rather than from the top
-left corner downwards.
-</p>
-
-<hr>
-<h2> Field: distributionParameters</h2>
-<p>---</p>
-
-<hr>
 <h2> Field: interSpawnTimeDistribution</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: dynamicElementType</h2>
-<p>
-The type of dynamic elements this source creates.
-</p>
-
-<hr>
-<h2> Field: CONSTANT_DISTRIBUTION</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: id</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: attributesPedestrian</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: startTime</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: shape</h2>
-<p>
-Shape and position.
-</p>
-
-<hr>
-<h2> Field: spawnAtGridPositionsCA</h2>
-<p>
-If set to true, the pedestrians are spawned on a rectangular grid for the cellular automaton. Different to the
-regular spawnArray, they will touch if the cells are 0.4m and the radius is set to 0.2m.
-</p>
-
-<hr>
-<h2> Field: spawnNumber</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: maxSpawnNumberTotal</h2>
-<p>
-Maximum number of spawned elements. <span class='local_link'>NO_MAX_SPAWN_NUMBER_TOTAL</span> -> no maximum number.
-</p>
-
-<hr>
-<h2> Field: NO_MAX_SPAWN_NUMBER_TOTAL</h2>
 <p>---</p>
 

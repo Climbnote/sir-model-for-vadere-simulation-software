@@ -185,38 +185,36 @@ public class SIRGroupModel extends AbstractGroupModel<SIRGroup> {
 
 	@Override
 	public void update(final double simTimeInSec) {
-		if (simTimeInSec > startingTime) {
-			// check the positions of all pedestrians and switch groups to INFECTED (or REMOVED).
-			DynamicElementContainer<Pedestrian> c = topography.getPedestrianDynamicElements();
-			LinkedCellsGrid<Pedestrian> grid = topography.getSpatialMap(Pedestrian.class);
+		// check the positions of all pedestrians and switch groups to INFECTED (or REMOVED).
+		DynamicElementContainer<Pedestrian> c = topography.getPedestrianDynamicElements();
+		LinkedCellsGrid<Pedestrian> grid = topography.getSpatialMap(Pedestrian.class);
 
-			if (c.getElements().size() > 0) {
-				//loop over all pedestrians
-				for (Pedestrian p : c.getElements()) {
+		if (c.getElements().size() > 0) {
+			//loop over all pedestrians
+			for (Pedestrian p : c.getElements()) {
 
-					if (getGroup(p).getID() == SIRType.ID_REMOVED.ordinal()) {
-						continue;
-					} else if (getGroup(p).getID() == SIRType.ID_INFECTED.ordinal()) {
-						if (this.random.nextDouble() < attributesSIRG.getRemoveProbability()) {
-							//set to removed state
-							elementRemoved(p);
-							assignToGroup(p, SIRType.ID_REMOVED.ordinal());
-							this.totalInfected -= 1;
-						}
-					} else {
-						List<Pedestrian> p_neighbors = grid.getObjects(p.getPosition(), attributesSIRG.getInfectionMaxDistance());
-						// loop over neighbors and set infected if we are close
-						if (p_neighbors.size() > 0) {
-							for (Pedestrian p_neighbor : p_neighbors) {
-								if (p == p_neighbor || getGroup(p_neighbor).getID() != SIRType.ID_INFECTED.ordinal())
-									continue;
-								//infect pedestrian with probability of infection rate
-								if (this.random.nextDouble() < attributesSIRG.getInfectionRate()) {
-									if (getGroup(p).getID() == SIRType.ID_SUSCEPTIBLE.ordinal()) {
-										elementRemoved(p);
-										assignToGroup(p, SIRType.ID_INFECTED.ordinal());
-										this.totalInfected += 1;
-									}
+				if (getGroup(p).getID() == SIRType.ID_REMOVED.ordinal()) {
+					continue;
+				} else if (getGroup(p).getID() == SIRType.ID_INFECTED.ordinal()) {
+					if (this.random.nextDouble() < attributesSIRG.getRemoveProbability()) {
+						//set to removed state
+						elementRemoved(p);
+						assignToGroup(p, SIRType.ID_REMOVED.ordinal());
+						this.totalInfected -= 1;
+					}
+				} else {
+					List<Pedestrian> p_neighbors = grid.getObjects(p.getPosition(), attributesSIRG.getInfectionMaxDistance());
+					// loop over neighbors and set infected if we are close
+					if (p_neighbors.size() > 0) {
+						for (Pedestrian p_neighbor : p_neighbors) {
+							if (p == p_neighbor || getGroup(p_neighbor).getID() != SIRType.ID_INFECTED.ordinal())
+								continue;
+							//infect pedestrian with probability of infection rate
+							if (this.random.nextDouble() < attributesSIRG.getInfectionRate()) {
+								if (getGroup(p).getID() == SIRType.ID_SUSCEPTIBLE.ordinal()) {
+									elementRemoved(p);
+									assignToGroup(p, SIRType.ID_INFECTED.ordinal());
+									this.totalInfected += 1;
 								}
 							}
 						}

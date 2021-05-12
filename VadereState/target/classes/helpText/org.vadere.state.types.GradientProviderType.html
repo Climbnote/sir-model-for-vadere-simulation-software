@@ -6,15 +6,20 @@ Holds all viable gradient provider types.
 </p>
 
 <hr>
+<h2> Field: PEDESTRIAN_CYCLE_CONTINUOUS</h2>
+<p>
+obstacle "forces", continuous
+</p>
+
+<hr>
 <h2> Field: FLOOR_EIKONAL_DISCRETE</h2>
 <p>---</p>
 
 <hr>
-<h2> Field: PEDESTRIAN_CONTINUOUS</h2>
+<h2> Field: FLOOR_EUCLIDEAN_CONTINUOUS</h2>
 <p>
-uses PEDESTRIAN_CONTINUOUS, but enables the
-user to define two teleporter lines where the pedestrians are set back to
-the respective other line.
+using discrete solution of the Eikonal equation,
+like with Fast Marching
 </p>
 
 <hr>
@@ -33,15 +38,10 @@ continuous
 </p>
 
 <hr>
-<h2> Field: FLOOR_EUCLIDEAN_CONTINUOUS</h2>
+<h2> Field: PEDESTRIAN_CONTINUOUS</h2>
 <p>
-using discrete solution of the Eikonal equation,
-like with Fast Marching
-</p>
-
-<hr>
-<h2> Field: PEDESTRIAN_CYCLE_CONTINUOUS</h2>
-<p>
-obstacle "forces", continuous
+uses PEDESTRIAN_CONTINUOUS, but enables the
+user to define two teleporter lines where the pedestrians are set back to
+the respective other line.
 </p>
 

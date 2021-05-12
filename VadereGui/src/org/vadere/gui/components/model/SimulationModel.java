@@ -105,10 +105,21 @@ public abstract class SimulationModel<T extends DefaultSimulationConfig> extends
 			return config.getPedestrianDefaultColor();
 		}
 
+		//when groups available
 		int groupId = ped.getGroupIds().getFirst();
 		Color c = colorMap.get(groupId);
+
 		if (c == null) {
-			c = new Color(Color.HSBtoRGB(random.nextFloat(), 1f, 0.75f));
+			if (groupId == SIRType.ID_INFECTED.ordinal()) {
+				c = new Color(Color.red.getRGB());
+			} else if (groupId == SIRType.ID_SUSCEPTIBLE.ordinal()) {
+				c = config.getPedestrianDefaultColor();
+			} else if (groupId == SIRType.ID_REMOVED.ordinal()) {
+				c = new Color(Color.green.getRGB());
+				return c;
+			} else {
+				c = new Color(Color.black.getRGB());
+			}
 			colorMap.put(groupId, c);
 		}
 		return c;

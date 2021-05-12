@@ -4,20 +4,20 @@ import org.vadere.simulator.projects.dataprocessing.outputfile.OutputFile;
 import org.vadere.simulator.projects.dataprocessing.datakey.DataKey;
 import org.vadere.util.factory.outputfiles.OutputFileBaseFactory;
 
+import org.vadere.simulator.projects.dataprocessing.outputfile.BonnMotionTrajectoryFile;
 import org.vadere.simulator.projects.dataprocessing.outputfile.GroupPairOutputFile;
 import org.vadere.simulator.projects.dataprocessing.outputfile.NoDataKeyOutputFile;
-import org.vadere.simulator.projects.dataprocessing.outputfile.IdOutputFile;
-import org.vadere.simulator.projects.dataprocessing.outputfile.TimestepRowOutputFile;
-import org.vadere.simulator.projects.dataprocessing.outputfile.TimestepPositionOutputFile;
-import org.vadere.simulator.projects.dataprocessing.outputfile.TimestepKeyIdOutputFile;
-import org.vadere.simulator.projects.dataprocessing.outputfile.TimestepPedestriansNearbyIdOutputFile;
-import org.vadere.simulator.projects.dataprocessing.outputfile.TimeGridOutputFile;
-import org.vadere.simulator.projects.dataprocessing.outputfile.TimestepOutputFile;
-import org.vadere.simulator.projects.dataprocessing.outputfile.TimestepPedestrianIdOutputFile;
-import org.vadere.simulator.projects.dataprocessing.outputfile.BonnMotionTrajectoryFile;
 import org.vadere.simulator.projects.dataprocessing.outputfile.TimestepPedestrianIdOverlapOutputFile;
+import org.vadere.simulator.projects.dataprocessing.outputfile.TimestepOutputFile;
+import org.vadere.simulator.projects.dataprocessing.outputfile.TimestepPedestriansNearbyIdOutputFile;
+import org.vadere.simulator.projects.dataprocessing.outputfile.TimestepRowOutputFile;
+import org.vadere.simulator.projects.dataprocessing.outputfile.TimestepKeyIdOutputFile;
+import org.vadere.simulator.projects.dataprocessing.outputfile.TimestepPedestrianIdOutputFile;
+import org.vadere.simulator.projects.dataprocessing.outputfile.IdOutputFile;
+import org.vadere.simulator.projects.dataprocessing.outputfile.TimestepPositionOutputFile;
 import org.vadere.simulator.projects.dataprocessing.outputfile.EventtimePedestrianIdOutputFile;
 import org.vadere.simulator.projects.dataprocessing.outputfile.PedestrianIdOutputFile;
+import org.vadere.simulator.projects.dataprocessing.outputfile.TimeGridOutputFile;
 
 import org.vadere.simulator.projects.dataprocessing.datakey.DataKey;
 import org.vadere.simulator.projects.dataprocessing.datakey.OutputFileMap;
@@ -46,24 +46,28 @@ public class OutputFileFactory extends OutputFileBaseFactory<OutputFile<? extend
 
 	private OutputFileFactory(){
 
+		addMember(BonnMotionTrajectoryFile.class, this::getBonnMotionTrajectoryFile, "BonnMotionTrajectoryFile", "", "BonnMotionKey");
 		addMember(GroupPairOutputFile.class, this::getGroupPairOutputFile, "GroupPairOutputFile", "", "TimestepGroupPairKey");
 		addMember(NoDataKeyOutputFile.class, this::getNoDataKeyOutputFile, "NoDataKeyOutputFile", "", "NoDataKey");
-		addMember(IdOutputFile.class, this::getIdOutputFile, "IdOutputFile", "", "IdDataKey");
-		addMember(TimestepRowOutputFile.class, this::getTimestepRowOutputFile, "TimestepRowOutputFile", "", "TimestepRowKey");
-		addMember(TimestepPositionOutputFile.class, this::getTimestepPositionOutputFile, "TimestepPositionOutputFile", "", "TimestepPositionKey");
-		addMember(TimestepKeyIdOutputFile.class, this::getTimestepKeyIdOutputFile, "TimestepKeyIdOutputFile", "", "TimestepFaceIdKey");
-		addMember(TimestepPedestriansNearbyIdOutputFile.class, this::getTimestepPedestriansNearbyIdOutputFile, "TimestepPedestriansNearbyIdOutputFile", "", "TimestepPedestriansNearbyIdKey");
-		addMember(TimeGridOutputFile.class, this::getTimeGridOutputFile, "TimeGridOutputFile", "", "TimeGridKey");
-		addMember(TimestepOutputFile.class, this::getTimestepOutputFile, "TimestepOutputFile", "", "TimestepKey");
-		addMember(TimestepPedestrianIdOutputFile.class, this::getTimestepPedestrianIdOutputFile, "TimestepPedestrianIdOutputFile", "", "TimestepPedestrianIdKey");
-		addMember(BonnMotionTrajectoryFile.class, this::getBonnMotionTrajectoryFile, "BonnMotionTrajectoryFile", "", "BonnMotionKey");
 		addMember(TimestepPedestrianIdOverlapOutputFile.class, this::getTimestepPedestrianIdOverlapOutputFile, "TimestepPedestrianIdOverlapOutputFile", "", "TimestepPedestrianIdOverlapKey");
+		addMember(TimestepOutputFile.class, this::getTimestepOutputFile, "TimestepOutputFile", "", "TimestepKey");
+		addMember(TimestepPedestriansNearbyIdOutputFile.class, this::getTimestepPedestriansNearbyIdOutputFile, "TimestepPedestriansNearbyIdOutputFile", "", "TimestepPedestriansNearbyIdKey");
+		addMember(TimestepRowOutputFile.class, this::getTimestepRowOutputFile, "TimestepRowOutputFile", "", "TimestepRowKey");
+		addMember(TimestepKeyIdOutputFile.class, this::getTimestepKeyIdOutputFile, "TimestepKeyIdOutputFile", "", "TimestepFaceIdKey");
+		addMember(TimestepPedestrianIdOutputFile.class, this::getTimestepPedestrianIdOutputFile, "TimestepPedestrianIdOutputFile", "", "TimestepPedestrianIdKey");
+		addMember(IdOutputFile.class, this::getIdOutputFile, "IdOutputFile", "", "IdDataKey");
+		addMember(TimestepPositionOutputFile.class, this::getTimestepPositionOutputFile, "TimestepPositionOutputFile", "", "TimestepPositionKey");
 		addMember(EventtimePedestrianIdOutputFile.class, this::getEventtimePedestrianIdOutputFile, "EventtimePedestrianIdOutputFile", "", "EventtimePedestrianIdKey");
 		addMember(PedestrianIdOutputFile.class, this::getPedestrianIdOutputFile, "PedestrianIdOutputFile", "", "PedestrianIdKey");
+		addMember(TimeGridOutputFile.class, this::getTimeGridOutputFile, "TimeGridOutputFile", "", "TimeGridKey");
 	}
 
 
 	// Getters
+	public BonnMotionTrajectoryFile getBonnMotionTrajectoryFile(){
+		return new BonnMotionTrajectoryFile();
+	}
+
 	public GroupPairOutputFile getGroupPairOutputFile(){
 		return new GroupPairOutputFile();
 	}
@@ -72,44 +76,36 @@ public class OutputFileFactory extends OutputFileBaseFactory<OutputFile<? extend
 		return new NoDataKeyOutputFile();
 	}
 
-	public IdOutputFile getIdOutputFile(){
-		return new IdOutputFile();
-	}
-
-	public TimestepRowOutputFile getTimestepRowOutputFile(){
-		return new TimestepRowOutputFile();
-	}
-
-	public TimestepPositionOutputFile getTimestepPositionOutputFile(){
-		return new TimestepPositionOutputFile();
-	}
-
-	public TimestepKeyIdOutputFile getTimestepKeyIdOutputFile(){
-		return new TimestepKeyIdOutputFile();
-	}
-
-	public TimestepPedestriansNearbyIdOutputFile getTimestepPedestriansNearbyIdOutputFile(){
-		return new TimestepPedestriansNearbyIdOutputFile();
-	}
-
-	public TimeGridOutputFile getTimeGridOutputFile(){
-		return new TimeGridOutputFile();
+	public TimestepPedestrianIdOverlapOutputFile getTimestepPedestrianIdOverlapOutputFile(){
+		return new TimestepPedestrianIdOverlapOutputFile();
 	}
 
 	public TimestepOutputFile getTimestepOutputFile(){
 		return new TimestepOutputFile();
 	}
 
+	public TimestepPedestriansNearbyIdOutputFile getTimestepPedestriansNearbyIdOutputFile(){
+		return new TimestepPedestriansNearbyIdOutputFile();
+	}
+
+	public TimestepRowOutputFile getTimestepRowOutputFile(){
+		return new TimestepRowOutputFile();
+	}
+
+	public TimestepKeyIdOutputFile getTimestepKeyIdOutputFile(){
+		return new TimestepKeyIdOutputFile();
+	}
+
 	public TimestepPedestrianIdOutputFile getTimestepPedestrianIdOutputFile(){
 		return new TimestepPedestrianIdOutputFile();
 	}
 
-	public BonnMotionTrajectoryFile getBonnMotionTrajectoryFile(){
-		return new BonnMotionTrajectoryFile();
+	public IdOutputFile getIdOutputFile(){
+		return new IdOutputFile();
 	}
 
-	public TimestepPedestrianIdOverlapOutputFile getTimestepPedestrianIdOverlapOutputFile(){
-		return new TimestepPedestrianIdOverlapOutputFile();
+	public TimestepPositionOutputFile getTimestepPositionOutputFile(){
+		return new TimestepPositionOutputFile();
 	}
 
 	public EventtimePedestrianIdOutputFile getEventtimePedestrianIdOutputFile(){
@@ -118,6 +114,10 @@ public class OutputFileFactory extends OutputFileBaseFactory<OutputFile<? extend
 
 	public PedestrianIdOutputFile getPedestrianIdOutputFile(){
 		return new PedestrianIdOutputFile();
+	}
+
+	public TimeGridOutputFile getTimeGridOutputFile(){
+		return new TimeGridOutputFile();
 	}
 
 	public OutputFile<?> createOutputfile(OutputFileStore fileStore) throws ClassNotFoundException {

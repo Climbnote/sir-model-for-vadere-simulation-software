@@ -10,14 +10,28 @@ observation area snapshot.
 </p>
 
 <hr>
+<h2> Field: agent</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: drawArrows</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: drawDataSynchronizer</h2>
+<p>
+Synchronizer object used to control access to the simulation data
+exchange structures to avoid threading issues.
+</p>
+
+<hr>
 <h2> Field: potentialField</h2>
 <p>---</p>
 
 <hr>
-<h2> Field: voronoiDiagram</h2>
+<h2> Field: voronoiSnapshots</h2>
 <p>
-Latest snapshot of the jts diagram to be displayed. Updated by
-popDrawData().
+Lists for thread safe data exchange between main and draw thread.
 </p>
 
 <hr>
@@ -25,7 +39,7 @@ popDrawData().
 <p>---</p>
 
 <hr>
-<h2> Field: agent</h2>
+<h2> Field: simTimeInSec</h2>
 <p>---</p>
 
 <hr>
@@ -37,23 +51,9 @@ information. For debug purposes. Updated by popDrawData().
 </p>
 
 <hr>
-<h2> Field: drawDataSynchronizer</h2>
+<h2> Field: voronoiDiagram</h2>
 <p>
-Synchronizer object used to control access to the simulation data
-exchange structures to avoid threading issues.
-</p>
-
-<hr>
-<h2> Field: simTimeInSec</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: drawArrows</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: voronoiSnapshots</h2>
-<p>
-Lists for thread safe data exchange between main and draw thread.
+Latest snapshot of the jts diagram to be displayed. Updated by
+popDrawData().
 </p>
 

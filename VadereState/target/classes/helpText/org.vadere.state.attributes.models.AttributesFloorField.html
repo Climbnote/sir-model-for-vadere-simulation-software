@@ -3,6 +3,25 @@
 <p>---</p>
 
 <hr>
+<h2> Field: cacheType</h2>
+<p>
+If true, the floor field will be initialized based on a previously cached version. The
+cached floor field will be search at <span class='local_link'>cacheDir</span>. The file name of the cached floor
+field has two parts: "[cacheDir]/[hash-of-AttributesFloorField-Topography]_[targetId].ffcache"
+
+The hash ensures that only valid version of the cache will be used. If something changed in
+the topography or in this attributes settings (except of <span class='local_link'>cacheDir</span>) the hash will
+differ an a new floor field is created and saved at initialization time.
+
+Thus the created hash file can be moved to a different location without invalidating the
+saved floor field.
+</p>
+
+<hr>
+<h2> Field: obstacleGridPenalty</h2>
+<p>---</p>
+
+<hr>
 <h2> Field: potentialFieldResolution</h2>
 <p>
 These attribute values should only be used if createMethod.isUsingCellGrid() == true.
@@ -17,15 +36,11 @@ Solution:
 </p>
 
 <hr>
-<h2> Field: timeCostAttributes</h2>
-<p>---</p>
-
-<hr>
-<h2> Field: obstacleGridPenalty</h2>
-<p>---</p>
-
-<hr>
 <h2> Field: targetAttractionStrength</h2>
+<p>---</p>
+
+<hr>
+<h2> Field: createMethod</h2>
 <p>---</p>
 
 <hr>
@@ -37,21 +52,6 @@ invalidating existing caches.
 </p>
 
 <hr>
-<h2> Field: createMethod</h2>
+<h2> Field: timeCostAttributes</h2>
 <p>---</p>
-
-<hr>
-<h2> Field: cacheType</h2>
-<p>
-If true, the floor field will be initialized based on a previously cached version. The
-cached floor field will be search at <span class='local_link'>cacheDir</span>. The file name of the cached floor
-field has two parts: "[cacheDir]/[hash-of-AttributesFloorField-Topography]_[targetId].ffcache"
-
-The hash ensures that only valid version of the cache will be used. If something changed in
-the topography or in this attributes settings (except of <span class='local_link'>cacheDir</span>) the hash will
-differ an a new floor field is created and saved at initialization time.
-
-Thus the created hash file can be moved to a different location without invalidating the
-saved floor field.
-</p>
 

@@ -36316,3 +36316,629 @@ java.lang.NullPointerException: Cannot invoke "org.vadere.simulator.models.group
 00:17:36,131   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
 00:17:36,132   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
 00:17:36,262   INFO ProjectView:594 - repainted output table
+11:48:01,572   INFO STDOUTERR:15 - Redirect StdOut and StdErr
+11:48:01,579   INFO VadereApplication:25 - starting Vadere GUI...
+11:48:01,687   INFO VadereConfig:66 - Use config file from path /Users/kilian/.config/vadere.conf
+11:48:05,262   INFO IOVadere:57 - read project: /Users/Shared/Vadere/TestSIR/vadere.project
+11:48:05,325   INFO IOVadere:67 - analyzed scenario files.
+11:48:07,685   INFO IOVadere:88 - analyzed: 17, migrated: 0, upToDate: 17, notMigratable: 0
+11:48:09,370   INFO IOVadere:93 - project loaded: testSIR
+11:48:09,375   INFO ActionLoadProject:113 - refreshed output table - 2
+11:48:09,378   INFO ProjectView:588 - selected scenario 'chicken_self_osm_sir'
+11:48:09,527   INFO DataProcessingView:97 - switch to gui view
+11:48:09,739   INFO ProjectView:594 - repainted output table
+11:48:09,740   INFO ActionLoadProject:117 - selected the first scenario
+11:48:09,748   INFO ActionLoadProject:124 - project 'testSIR' loaded.
+11:48:16,832   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+11:48:16,940   INFO ProjectView:594 - repainted output table
+11:48:20,794   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+11:48:20,799   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+11:48:20,818   INFO ScenarioRun:126 - scenario context initialized.
+11:48:20,823   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+11:48:20,823   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+11:48:20,950   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+11:48:20,958   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+11:48:20,997   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+11:48:21,023   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+11:48:21,040   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+11:48:21,055   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+11:48:21,071   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+11:48:21,087   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+11:48:21,095   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+11:48:21,101   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+11:48:21,108   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+11:48:21,118   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:165[ms]
+11:48:21,120   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+11:48:21,210   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:52[ms]
+11:48:21,221   INFO Simulation:259 - preLoop finished.
+11:48:31,161   INFO Simulation:362 - Finished writing all output files
+11:48:31,163   INFO ProjectView:142 - scenario task_5_sir_static finished
+11:48:31,367   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+11:48:31,368   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+11:48:31,369   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+11:48:31,449   INFO ProjectView:594 - repainted output table
+11:48:42,112   INFO ProjectView:611 - selected output file 'task_5_sir_static_2021-05-12_11-48-20.798'
+11:49:40,138   INFO Player:73 - Player killed!
+11:49:40,138   INFO Player:105 - Player interrupted while waiting (paused)
+11:49:40,139   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+11:49:40,186   INFO ProjectView:594 - repainted output table
+11:49:48,547   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+11:49:48,548   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+11:49:48,549   INFO ScenarioRun:126 - scenario context initialized.
+11:49:48,549   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+11:49:48,550   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+11:49:48,565   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+11:49:48,570   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+11:49:48,583   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+11:49:48,592   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+11:49:48,602   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+11:49:48,609   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+11:49:48,616   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+11:49:48,622   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+11:49:48,629   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+11:49:48,636   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+11:49:48,642   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+11:49:48,648   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:82[ms]
+11:49:48,649   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+11:49:48,693   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:27[ms]
+11:49:48,699   INFO Simulation:259 - preLoop finished.
+11:49:57,419   INFO Simulation:362 - Finished writing all output files
+11:49:57,420   INFO ProjectView:142 - scenario task_5_sir_static finished
+11:49:57,594   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+11:49:57,595   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+11:49:57,595   INFO Player:73 - Player killed!
+11:49:57,596   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+11:49:57,671   INFO ProjectView:594 - repainted output table
+11:50:11,830   INFO Player:73 - Player killed!
+11:50:13,756   INFO ProjectView:611 - selected output file 'task_5_sir_static_2021-05-12_11-49-48.548'
+11:51:57,509   INFO Player:73 - Player killed!
+11:51:57,509   INFO Player:105 - Player interrupted while waiting (paused)
+11:51:57,510   INFO ProjectView:588 - selected scenario 'fresse'
+11:51:57,545   INFO ProjectView:594 - repainted output table
+11:51:58,203   INFO Player:73 - Player killed!
+11:51:58,204   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+11:51:58,280   INFO ProjectView:594 - repainted output table
+11:54:56,128   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+11:54:56,130   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+11:54:56,131   INFO ScenarioRun:126 - scenario context initialized.
+11:54:56,132   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+11:54:56,132   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+11:54:56,145   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+11:54:56,148   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+11:54:56,165   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+11:54:56,173   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+11:54:56,181   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+11:54:56,190   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+11:54:56,198   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+11:54:56,214   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+11:54:56,220   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+11:54:56,227   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+11:54:56,233   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+11:54:56,240   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:94[ms]
+11:54:56,240   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+11:54:56,286   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:26[ms]
+11:54:56,291   INFO Simulation:259 - preLoop finished.
+11:55:05,823   INFO Simulation:362 - Finished writing all output files
+11:55:05,824   INFO ProjectView:142 - scenario task_5_sir_static finished
+11:55:06,000   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+11:55:06,001   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+11:55:06,001   INFO Player:73 - Player killed!
+11:55:06,002   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+11:55:06,083   INFO ProjectView:594 - repainted output table
+12:14:37,888   INFO STDOUTERR:15 - Redirect StdOut and StdErr
+12:14:37,894   INFO VadereApplication:25 - starting Vadere GUI...
+12:14:37,929   INFO VadereConfig:66 - Use config file from path /Users/kilian/.config/vadere.conf
+12:14:41,395   INFO IOVadere:57 - read project: /Users/Shared/Vadere/TestSIR/vadere.project
+12:14:41,476   INFO IOVadere:67 - analyzed scenario files.
+12:14:44,378   INFO IOVadere:88 - analyzed: 20, migrated: 0, upToDate: 20, notMigratable: 0
+12:14:46,525   INFO IOVadere:93 - project loaded: testSIR
+12:14:46,529   INFO ActionLoadProject:113 - refreshed output table - 2
+12:14:46,531   INFO ProjectView:588 - selected scenario 'chicken_self_osm_sir'
+12:14:46,676   INFO DataProcessingView:97 - switch to gui view
+12:14:46,868   INFO ProjectView:594 - repainted output table
+12:14:46,868   INFO ActionLoadProject:117 - selected the first scenario
+12:14:46,876   INFO ActionLoadProject:124 - project 'testSIR' loaded.
+12:14:48,688   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:14:48,774   INFO ProjectView:594 - repainted output table
+12:14:50,817   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+12:14:50,820   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+12:14:50,830   INFO ScenarioRun:126 - scenario context initialized.
+12:14:50,832   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+12:14:50,833   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+12:14:50,937   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+12:14:50,948   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+12:14:50,995   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+12:14:51,040   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+12:14:51,077   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+12:14:51,092   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+12:14:51,108   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+12:14:51,120   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+12:14:51,129   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+12:14:51,137   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+12:14:51,143   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+12:14:51,151   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:212[ms]
+12:14:51,154   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+12:14:51,275   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:78[ms]
+12:14:51,285   INFO Simulation:259 - preLoop finished.
+12:15:01,403   INFO Simulation:362 - Finished writing all output files
+12:15:01,405   INFO ProjectView:142 - scenario task_5_sir_static finished
+12:15:01,618   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+12:15:01,620   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+12:15:01,620   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:15:01,691   INFO ProjectView:594 - repainted output table
+12:15:10,684   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+12:15:10,686   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+12:15:10,686   INFO ScenarioRun:126 - scenario context initialized.
+12:15:10,687   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+12:15:10,687   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+12:15:10,710   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+12:15:10,715   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+12:15:10,727   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+12:15:10,735   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+12:15:10,743   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+12:15:10,750   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+12:15:10,756   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+12:15:10,763   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+12:15:10,769   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+12:15:10,776   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+12:15:10,782   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+12:15:10,788   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:77[ms]
+12:15:10,789   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+12:15:10,824   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:19[ms]
+12:15:10,829   INFO Simulation:259 - preLoop finished.
+12:15:19,387   INFO Simulation:362 - Finished writing all output files
+12:15:19,388   INFO ProjectView:142 - scenario task_5_sir_static finished
+12:15:19,562   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+12:15:19,563   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+12:15:19,564   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:15:19,646   INFO ProjectView:594 - repainted output table
+12:15:40,773   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+12:15:40,775   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+12:15:40,775   INFO ScenarioRun:126 - scenario context initialized.
+12:15:40,776   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+12:15:40,776   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+12:15:40,787   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+12:15:40,791   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+12:15:40,816   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+12:15:40,825   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+12:15:40,831   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+12:15:40,838   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+12:15:40,845   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+12:15:40,851   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+12:15:40,857   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+12:15:40,864   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+12:15:40,870   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+12:15:40,876   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:88[ms]
+12:15:40,876   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+12:15:40,914   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:20[ms]
+12:15:40,918   INFO Simulation:259 - preLoop finished.
+12:15:49,554   INFO Simulation:362 - Finished writing all output files
+12:15:49,556   INFO ProjectView:142 - scenario task_5_sir_static finished
+12:15:49,743   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+12:15:49,744   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+12:15:49,744   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:15:49,835   INFO ProjectView:594 - repainted output table
+12:16:05,301   INFO ProjectView:611 - selected output file 'task_5_sir_static_2021-05-12_12-15-10.685'
+12:16:12,375   INFO Player:73 - Player killed!
+12:16:14,980   INFO ProjectView:611 - selected output file 'task_5_sir_static_2021-05-12_12-15-40.774'
+12:20:06,396   INFO STDOUTERR:15 - Redirect StdOut and StdErr
+12:20:06,399   INFO VadereApplication:25 - starting Vadere GUI...
+12:20:06,422   INFO VadereConfig:66 - Use config file from path /Users/kilian/.config/vadere.conf
+12:20:09,847   INFO IOVadere:57 - read project: /Users/Shared/Vadere/TestSIR/vadere.project
+12:20:09,939   INFO IOVadere:67 - analyzed scenario files.
+12:20:13,387   INFO IOVadere:88 - analyzed: 23, migrated: 0, upToDate: 23, notMigratable: 0
+12:20:16,019   INFO IOVadere:93 - project loaded: testSIR
+12:20:16,024   INFO ActionLoadProject:113 - refreshed output table - 2
+12:20:16,026   INFO ProjectView:588 - selected scenario 'chicken_self_osm_sir'
+12:20:16,171   INFO DataProcessingView:97 - switch to gui view
+12:20:16,386   INFO ProjectView:594 - repainted output table
+12:20:16,386   INFO ActionLoadProject:117 - selected the first scenario
+12:20:16,394   INFO ActionLoadProject:124 - project 'testSIR' loaded.
+12:20:21,493   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:20:21,572   INFO ProjectView:594 - repainted output table
+12:20:23,476   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+12:20:23,479   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+12:20:23,487   INFO ScenarioRun:126 - scenario context initialized.
+12:20:23,489   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+12:20:23,489   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+12:20:23,603   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+12:20:23,613   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+12:20:23,666   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+12:20:23,721   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+12:20:23,741   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+12:20:23,757   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+12:20:23,773   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+12:20:23,794   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+12:20:23,803   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+12:20:23,810   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+12:20:23,817   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+12:20:23,825   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:219[ms]
+12:20:23,826   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+12:20:23,905   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:49[ms]
+12:20:23,912   INFO Simulation:259 - preLoop finished.
+12:20:34,521   INFO Simulation:362 - Finished writing all output files
+12:20:34,523   INFO ProjectView:142 - scenario task_5_sir_static finished
+12:20:34,774   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+12:20:34,776   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+12:20:34,777   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:20:34,883   INFO ProjectView:594 - repainted output table
+12:20:46,250   INFO ProjectView:611 - selected output file 'task_5_sir_static_2021-05-12_12-20-23.478'
+12:26:04,048   INFO STDOUTERR:15 - Redirect StdOut and StdErr
+12:26:04,051   INFO VadereApplication:25 - starting Vadere GUI...
+12:26:04,071   INFO VadereConfig:66 - Use config file from path /Users/kilian/.config/vadere.conf
+12:26:07,171   INFO IOVadere:57 - read project: /Users/Shared/Vadere/TestSIR/vadere.project
+12:26:07,258   INFO IOVadere:67 - analyzed scenario files.
+12:26:11,002   INFO IOVadere:88 - analyzed: 24, migrated: 0, upToDate: 24, notMigratable: 0
+12:26:13,837   INFO IOVadere:93 - project loaded: testSIR
+12:26:13,842   INFO ActionLoadProject:113 - refreshed output table - 2
+12:26:13,844   INFO ProjectView:588 - selected scenario 'chicken_self_osm_sir'
+12:26:13,988   INFO DataProcessingView:97 - switch to gui view
+12:26:14,194   INFO ProjectView:594 - repainted output table
+12:26:14,194   INFO ActionLoadProject:117 - selected the first scenario
+12:26:14,202   INFO ActionLoadProject:124 - project 'testSIR' loaded.
+12:26:23,840   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:26:23,922   INFO ProjectView:594 - repainted output table
+12:26:25,702   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+12:26:25,706   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+12:26:25,715   INFO ScenarioRun:126 - scenario context initialized.
+12:26:25,718   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+12:26:25,718   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+12:26:25,821   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+12:26:25,830   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+12:26:25,866   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+12:26:25,895   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+12:26:25,913   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+12:26:25,929   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+12:26:25,941   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+12:26:25,950   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+12:26:25,959   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+12:26:25,966   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+12:26:25,973   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+12:26:25,983   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:159[ms]
+12:26:25,986   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+12:26:26,080   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:57[ms]
+12:26:26,087   INFO Simulation:259 - preLoop finished.
+12:26:36,624   INFO Simulation:362 - Finished writing all output files
+12:26:36,626   INFO ProjectView:142 - scenario task_5_sir_static finished
+12:26:36,835   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+12:26:36,838   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+12:26:36,838   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:26:36,911   INFO ProjectView:594 - repainted output table
+12:26:56,332   INFO ProjectView:611 - selected output file 'task_5_sir_static_2021-05-12_12-26-25.705'
+12:29:11,973   INFO STDOUTERR:15 - Redirect StdOut and StdErr
+12:29:11,977   INFO VadereApplication:25 - starting Vadere GUI...
+12:29:12,005   INFO VadereConfig:66 - Use config file from path /Users/kilian/.config/vadere.conf
+12:29:16,277   INFO IOVadere:57 - read project: /Users/Shared/Vadere/TestSIR/vadere.project
+12:29:16,336   INFO IOVadere:67 - analyzed scenario files.
+12:29:16,831   INFO IOVadere:88 - analyzed: 8, migrated: 0, upToDate: 8, notMigratable: 0
+12:29:16,895   INFO IOVadere:93 - project loaded: testSIR
+12:29:16,902   INFO ActionLoadProject:113 - refreshed output table - 2
+12:29:16,907   INFO ProjectView:588 - selected scenario 'chicken_self_osm_sir'
+12:29:17,116   INFO DataProcessingView:97 - switch to gui view
+12:29:17,333   INFO ProjectView:594 - repainted output table
+12:29:17,334   INFO ActionLoadProject:117 - selected the first scenario
+12:29:17,345   INFO ActionLoadProject:124 - project 'testSIR' loaded.
+12:29:32,341   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:29:32,450   INFO ProjectView:594 - repainted output table
+12:29:33,506   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+12:29:33,509   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+12:29:33,518   INFO ScenarioRun:126 - scenario context initialized.
+12:29:33,520   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+12:29:33,521   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+12:29:33,645   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+12:29:33,655   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+12:29:33,751   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+12:29:33,808   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+12:29:33,839   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+12:29:33,850   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+12:29:33,858   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+12:29:33,865   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+12:29:33,873   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+12:29:33,887   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+12:29:33,894   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+12:29:33,903   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:256[ms]
+12:29:33,905   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+12:29:33,991   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:55[ms]
+12:29:34,000   INFO Simulation:259 - preLoop finished.
+12:29:43,836 STDOUT STDOUTERR:22 - called postLoop
+12:29:43,837 STDOUT STDOUTERR:22 - Updated 1000pedestrian groupd IDs
+12:29:44,369   INFO Simulation:362 - Finished writing all output files
+12:29:44,372   INFO ProjectView:142 - scenario task_5_sir_static finished
+12:29:44,639   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+12:29:44,640   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+12:29:44,641   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:29:44,722   INFO ProjectView:594 - repainted output table
+12:29:52,898   INFO ProjectView:611 - selected output file 'task_5_sir_static_2021-05-12_12-29-33.508'
+12:35:34,713   INFO STDOUTERR:15 - Redirect StdOut and StdErr
+12:35:34,716   INFO VadereApplication:25 - starting Vadere GUI...
+12:35:34,740   INFO VadereConfig:66 - Use config file from path /Users/kilian/.config/vadere.conf
+12:35:37,784   INFO IOVadere:57 - read project: /Users/Shared/Vadere/TestSIR/vadere.project
+12:35:37,838   INFO IOVadere:67 - analyzed scenario files.
+12:35:38,579   INFO IOVadere:88 - analyzed: 9, migrated: 0, upToDate: 9, notMigratable: 0
+12:35:38,857   INFO IOVadere:93 - project loaded: testSIR
+12:35:38,863   INFO ActionLoadProject:113 - refreshed output table - 2
+12:35:38,869   INFO ProjectView:588 - selected scenario 'chicken_self_osm_sir'
+12:35:39,029   INFO DataProcessingView:97 - switch to gui view
+12:35:39,243   INFO ProjectView:594 - repainted output table
+12:35:39,244   INFO ActionLoadProject:117 - selected the first scenario
+12:35:39,251   INFO ActionLoadProject:124 - project 'testSIR' loaded.
+12:35:51,955   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:35:52,052   INFO ProjectView:594 - repainted output table
+12:35:52,902   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+12:35:52,907   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+12:35:52,919   INFO ScenarioRun:126 - scenario context initialized.
+12:35:52,921   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+12:35:52,921   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+12:35:53,045   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+12:35:53,055   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+12:35:53,107   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+12:35:53,163   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+12:35:53,191   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+12:35:53,218   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+12:35:53,230   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+12:35:53,237   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+12:35:53,245   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+12:35:53,252   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+12:35:53,259   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+12:35:53,273   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:225[ms]
+12:35:53,275   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+12:35:53,376   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:67[ms]
+12:35:53,384   INFO Simulation:259 - preLoop finished.
+12:36:02,368 STDOUT STDOUTERR:22 - called postLoop
+12:36:02,369 STDOUT STDOUTERR:22 - Updated 1000 pedestrian groupd IDs
+12:36:02,895   INFO Simulation:362 - Finished writing all output files
+12:36:02,897   INFO ProjectView:142 - scenario task_5_sir_static finished
+12:36:03,110   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+12:36:03,112   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+12:36:03,113   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:36:03,197   INFO ProjectView:594 - repainted output table
+12:36:11,097   INFO ProjectView:611 - selected output file 'task_5_sir_static_2021-05-12_12-35-52.905'
+12:43:34,848   INFO STDOUTERR:15 - Redirect StdOut and StdErr
+12:43:34,852   INFO VadereApplication:25 - starting Vadere GUI...
+12:43:34,873   INFO VadereConfig:66 - Use config file from path /Users/kilian/.config/vadere.conf
+12:43:38,145   INFO IOVadere:57 - read project: /Users/Shared/Vadere/TestSIR/vadere.project
+12:43:38,205   INFO IOVadere:67 - analyzed scenario files.
+12:43:39,216   INFO IOVadere:88 - analyzed: 10, migrated: 0, upToDate: 10, notMigratable: 0
+12:43:39,690   INFO IOVadere:93 - project loaded: testSIR
+12:43:39,694   INFO ActionLoadProject:113 - refreshed output table - 2
+12:43:39,697   INFO ProjectView:588 - selected scenario 'chicken_self_osm_sir'
+12:43:39,865   INFO DataProcessingView:97 - switch to gui view
+12:43:40,085   INFO ProjectView:594 - repainted output table
+12:43:40,086   INFO ActionLoadProject:117 - selected the first scenario
+12:43:40,094   INFO ActionLoadProject:124 - project 'testSIR' loaded.
+12:43:43,876   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:43:43,971   INFO ProjectView:594 - repainted output table
+12:43:44,584   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+12:43:44,587   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+12:43:44,597   INFO ScenarioRun:126 - scenario context initialized.
+12:43:44,599   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+12:43:44,600   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+12:43:44,718   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+12:43:44,732   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+12:43:44,848   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+12:43:44,890   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+12:43:44,909   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+12:43:44,920   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+12:43:44,929   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+12:43:44,943   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+12:43:44,954   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+12:43:44,961   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+12:43:44,968   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+12:43:44,977   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:256[ms]
+12:43:44,979   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+12:43:45,063   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:51[ms]
+12:43:45,072   INFO Simulation:259 - preLoop finished.
+12:43:53,985 STDOUT STDOUTERR:22 - called postLoop
+12:43:53,986 STDOUT STDOUTERR:22 - Updated 1000 pedestrian groupd IDs
+12:43:54,518   INFO Simulation:362 - Finished writing all output files
+12:43:54,521   INFO ProjectView:142 - scenario task_5_sir_static finished
+12:43:54,733   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+12:43:54,735   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+12:43:54,735   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:43:54,808   INFO ProjectView:594 - repainted output table
+12:44:01,026   INFO ProjectView:611 - selected output file 'task_5_sir_static_2021-05-12_12-43-44.586'
+12:58:05,875   INFO Player:73 - Player killed!
+12:58:05,888   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:58:05,963   INFO ProjectView:594 - repainted output table
+12:58:38,002   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+12:58:38,005   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+12:58:38,006   INFO ScenarioRun:126 - scenario context initialized.
+12:58:38,006   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+12:58:38,007   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+12:58:38,044   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+12:58:38,053   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+12:58:38,086   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+12:58:38,134   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+12:58:38,159   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+12:58:38,182   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+12:58:38,211   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+12:58:38,251   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+12:58:38,276   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+12:58:38,284   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+12:58:38,300   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+12:58:38,333   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:288[ms]
+12:58:38,333   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+12:58:38,395   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:29[ms]
+12:58:38,403   INFO Simulation:259 - preLoop finished.
+12:58:47,488 STDOUT STDOUTERR:22 - called postLoop
+12:58:47,489 STDOUT STDOUTERR:22 - Updated 1000 pedestrian groupd IDs
+12:58:47,953   INFO Simulation:362 - Finished writing all output files
+12:58:47,954   INFO ProjectView:142 - scenario task_5_sir_static finished
+12:58:48,183   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+12:58:48,184   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+12:58:48,184   INFO Player:73 - Player killed!
+12:58:48,185   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+12:58:48,258   INFO ProjectView:594 - repainted output table
+12:58:53,215   INFO Player:73 - Player killed!
+12:58:54,066   INFO ProjectView:611 - selected output file 'task_5_sir_static_2021-05-12_12-58-38.4'
+13:00:09,191   INFO ApplicationWriter:21 - saved project 'testSIR' at '/Users/Shared/Vadere/TestSIR'.
+13:00:09,201   INFO ActionAbstractSaveProject:109 - save project
+13:02:26,314   INFO STDOUTERR:15 - Redirect StdOut and StdErr
+13:02:26,319   INFO VadereApplication:25 - starting Vadere GUI...
+13:02:26,349   INFO VadereConfig:66 - Use config file from path /Users/kilian/.config/vadere.conf
+13:02:30,500   INFO IOVadere:57 - read project: /Users/Shared/Vadere/TestSIR/vadere.project
+13:02:30,587   INFO IOVadere:67 - analyzed scenario files.
+13:02:32,471   INFO IOVadere:88 - analyzed: 12, migrated: 0, upToDate: 12, notMigratable: 0
+13:02:33,522   INFO IOVadere:93 - project loaded: testSIR
+13:02:33,528   INFO ActionLoadProject:113 - refreshed output table - 2
+13:02:33,531   INFO ProjectView:588 - selected scenario 'chicken_self_osm_sir'
+13:02:33,713   INFO DataProcessingView:97 - switch to gui view
+13:02:33,950   INFO ProjectView:594 - repainted output table
+13:02:33,950   INFO ActionLoadProject:117 - selected the first scenario
+13:02:33,959   INFO ActionLoadProject:124 - project 'testSIR' loaded.
+13:02:37,808   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+13:02:37,919   INFO ProjectView:594 - repainted output table
+13:02:38,986   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+13:02:38,990   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+13:02:38,999   INFO ScenarioRun:126 - scenario context initialized.
+13:02:39,002   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+13:02:39,003   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+13:02:39,127   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+13:02:39,135   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+13:02:39,185   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+13:02:39,238   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+13:02:39,289   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+13:02:39,323   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+13:02:39,343   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+13:02:39,360   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+13:02:39,377   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+13:02:39,389   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+13:02:39,399   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+13:02:39,412   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:282[ms]
+13:02:39,416   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+13:02:39,543   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:98[ms]
+13:02:39,552   INFO Simulation:259 - preLoop finished.
+13:02:53,775   INFO Simulation:362 - Finished writing all output files
+13:02:53,778   INFO ProjectView:142 - scenario task_5_sir_static finished
+13:02:54,048   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+13:02:54,049   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+13:02:54,050   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+13:02:54,131   INFO ProjectView:594 - repainted output table
+13:03:22,540   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+13:03:22,542   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+13:03:22,542   INFO ScenarioRun:126 - scenario context initialized.
+13:03:22,543   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+13:03:22,544   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+13:03:22,563   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+13:03:22,568   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+13:03:22,581   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+13:03:22,593   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+13:03:22,603   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+13:03:22,613   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+13:03:22,633   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+13:03:22,641   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+13:03:22,648   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+13:03:22,656   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+13:03:22,665   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+13:03:22,673   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:109[ms]
+13:03:22,673   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+13:03:22,706   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:23[ms]
+13:03:22,717   INFO Simulation:259 - preLoop finished.
+13:03:33,424   INFO Simulation:362 - Finished writing all output files
+13:03:33,426   INFO ProjectView:142 - scenario task_5_sir_static finished
+13:03:33,636   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+13:03:33,637   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+13:03:33,639   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+13:03:33,752   INFO ProjectView:594 - repainted output table
+13:03:57,692   INFO ProjectView:611 - selected output file 'task_5_sir_static_2021-05-12_13-03-22.541'
+13:05:30,253   INFO Player:73 - Player killed!
+13:05:30,253   INFO Player:105 - Player interrupted while waiting (paused)
+13:05:30,255   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+13:05:30,320   INFO ProjectView:594 - repainted output table
+13:05:33,391   INFO ApplicationWriter:21 - saved project 'testSIR' at '/Users/Shared/Vadere/TestSIR'.
+13:05:33,396   INFO ActionAbstractSaveProject:109 - save project
+13:06:16,812   INFO Player:73 - Player killed!
+13:06:16,813   INFO ProjectView:588 - selected scenario 'fresse'
+13:06:16,893   INFO ProjectView:594 - repainted output table
+13:06:23,039   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+13:06:23,040   INFO ScenarioRun:145 - Initializing scenario: fresse...
+13:06:23,040   INFO ScenarioRun:126 - scenario context initialized.
+13:06:23,041   INFO ScenarioRun:225 - no mesh fresse.poly was found.
+13:06:23,041   INFO ScenarioRun:225 - no mesh fresse_background.poly was found.
+13:06:23,046   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+13:06:23,047   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/10201 [points]
+13:06:23,050   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 1021/10201 [points]
+13:06:23,053   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 2041/10201 [points]
+13:06:23,055   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 3061/10201 [points]
+13:06:23,056   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 4081/10201 [points]
+13:06:23,058   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 5101/10201 [points]
+13:06:23,060   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 6121/10201 [points]
+13:06:23,061   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 7141/10201 [points]
+13:06:23,062   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 8161/10201 [points]
+13:06:23,064   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 9181/10201 [points]
+13:06:23,065   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:19[ms]
+13:06:23,066   INFO Topography:414 - Set PedestrianIdCount to start value: 6
+13:06:23,103   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:36[ms]
+13:06:23,107   INFO Simulation:259 - preLoop finished.
+13:06:23,153   INFO Simulation:362 - Finished writing all output files
+13:06:23,154  ERROR ScenarioRun:201 - Simulation failed
+java.util.NoSuchElementException: null
+	at java.util.LinkedList.getFirst(LinkedList.java:248) ~[?:?]
+	at org.vadere.simulator.models.groups.sir.SIRGroupModel.getGroup(SIRGroupModel.java:100) ~[classes/:?]
+	at org.vadere.simulator.models.groups.sir.SIRGroupModel.update(SIRGroupModel.java:207) ~[classes/:?]
+	at org.vadere.simulator.control.simulation.Simulation.updateLocomotionLayer(Simulation.java:443) ~[classes/:?]
+	at org.vadere.simulator.control.simulation.Simulation.updateCallbacks(Simulation.java:384) ~[classes/:?]
+	at org.vadere.simulator.control.simulation.Simulation.run(Simulation.java:283) ~[classes/:?]
+	at org.vadere.simulator.control.simulation.ScenarioRun.run(ScenarioRun.java:197) [classes/:?]
+	at java.lang.Thread.run(Thread.java:831) [?:?]
+13:06:23,159   INFO ProjectView:142 - scenario fresse finished
+13:06:23,166   INFO VadereProject:302 - SimulationResult{scenarioName='"fresse", nr_overlaps (PID4)=0, state='"null"}
+13:06:23,167   INFO ScenarioRun:261 - Simulation of scenario fresse finished.
+13:06:23,167   INFO Player:73 - Player killed!
+13:06:23,168 STDERR STDOUTERR:32 - java.lang.RuntimeException: Simulation failed.
+13:06:23,168 STDERR STDOUTERR:32 - 	at org.vadere.simulator.control.simulation.ScenarioRun.run(ScenarioRun.java:202)
+13:06:23,168   INFO ProjectView:588 - selected scenario 'fresse'
+13:06:23,168 STDERR STDOUTERR:32 - 	at java.base/java.lang.Thread.run(Thread.java:831)
+13:06:23,169 STDERR STDOUTERR:32 - Caused by: java.util.NoSuchElementException
+13:06:23,169 STDERR STDOUTERR:32 - 	at java.base/java.util.LinkedList.getFirst(LinkedList.java:248)
+13:06:23,169 STDERR STDOUTERR:32 - 	at org.vadere.simulator.models.groups.sir.SIRGroupModel.getGroup(SIRGroupModel.java:100)
+13:06:23,169 STDERR STDOUTERR:32 - 	at org.vadere.simulator.models.groups.sir.SIRGroupModel.update(SIRGroupModel.java:207)
+13:06:23,170 STDERR STDOUTERR:32 - 	at org.vadere.simulator.control.simulation.Simulation.updateLocomotionLayer(Simulation.java:443)
+13:06:23,170 STDERR STDOUTERR:32 - 	at org.vadere.simulator.control.simulation.Simulation.updateCallbacks(Simulation.java:384)
+13:06:23,170 STDERR STDOUTERR:32 - 	at org.vadere.simulator.control.simulation.Simulation.run(Simulation.java:283)
+13:06:23,171 STDERR STDOUTERR:32 - 	at org.vadere.simulator.control.simulation.ScenarioRun.run(ScenarioRun.java:197)
+13:06:23,171 STDERR STDOUTERR:32 - 	... 1 more
+13:06:23,172  ERROR ScenarioRun:253 - java.lang.RuntimeException: Simulation failed.
+13:06:23,277   INFO ProjectView:594 - repainted output table
+13:14:16,268   INFO STDOUTERR:15 - Redirect StdOut and StdErr
+13:14:16,272   INFO VadereApplication:25 - starting Vadere GUI...
+13:14:16,306   INFO VadereConfig:66 - Use config file from path /Users/kilian/.config/vadere.conf
+13:14:21,124   INFO IOVadere:57 - read project: /Users/Shared/Vadere/TestSIR/vadere.project
+13:14:21,220   INFO IOVadere:67 - analyzed scenario files.
+13:14:23,935   INFO IOVadere:88 - analyzed: 15, migrated: 0, upToDate: 15, notMigratable: 0
+13:14:25,543   INFO IOVadere:93 - project loaded: testSIR
+13:14:25,550   INFO ActionLoadProject:113 - refreshed output table - 2
+13:14:25,552   INFO ProjectView:588 - selected scenario 'chicken_self_osm_sir'
+13:14:25,749   INFO DataProcessingView:97 - switch to gui view
+13:14:26,021   INFO ProjectView:594 - repainted output table
+13:14:26,021   INFO ActionLoadProject:117 - selected the first scenario
+13:14:26,031   INFO ActionLoadProject:124 - project 'testSIR' loaded.
+13:15:34,204   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+13:15:34,291   INFO ProjectView:594 - repainted output table
+13:15:42,939   INFO ScenarioCache:85 - Cache search location: /Users/Shared/Vadere/TestSIR/scenarios/__cache__
+13:15:42,942   INFO ScenarioRun:145 - Initializing scenario: task_5_sir_static...
+13:15:42,952   INFO ScenarioRun:126 - scenario context initialized.
+13:15:42,955   INFO ScenarioRun:225 - no mesh task_5_sir_static.poly was found.
+13:15:42,955   INFO ScenarioRun:225 - no mesh task_5_sir_static_background.poly was found.
+13:15:43,075   INFO PotentialFieldDistancesBruteForce:49 - solve floor field (PotentialFieldDistancesBruteForce)
+13:15:43,084   INFO PotentialFieldDistancesBruteForce:106 - Progress:  0% -> 0/90601 [points]
+13:15:43,127   INFO PotentialFieldDistancesBruteForce:106 - Progress: 10% -> 9061/90601 [points]
+13:15:43,181   INFO PotentialFieldDistancesBruteForce:106 - Progress: 20% -> 18121/90601 [points]
+13:15:43,205   INFO PotentialFieldDistancesBruteForce:106 - Progress: 30% -> 27181/90601 [points]
+13:15:43,226   INFO PotentialFieldDistancesBruteForce:106 - Progress: 40% -> 36241/90601 [points]
+13:15:43,246   INFO PotentialFieldDistancesBruteForce:106 - Progress: 50% -> 45301/90601 [points]
+13:15:43,265   INFO PotentialFieldDistancesBruteForce:106 - Progress: 60% -> 54361/90601 [points]
+13:15:43,278   INFO PotentialFieldDistancesBruteForce:106 - Progress: 70% -> 63421/90601 [points]
+13:15:43,289   INFO PotentialFieldDistancesBruteForce:106 - Progress: 80% -> 72481/90601 [points]
+13:15:43,296   INFO PotentialFieldDistancesBruteForce:106 - Progress: 90% -> 81541/90601 [points]
+13:15:43,312   INFO PotentialFieldDistancesBruteForce:96 - floor field initialization time:235[ms]
+13:15:43,315   INFO Topography:414 - Set PedestrianIdCount to start value: 1
+13:15:43,423   INFO EikonalSolverDefaultProvider:23 - floor field initialization time:72[ms]
+13:15:43,433   INFO Simulation:259 - preLoop finished.
+13:15:53,776   INFO Simulation:362 - Finished writing all output files
+13:15:53,778   INFO ProjectView:142 - scenario task_5_sir_static finished
+13:15:53,994   INFO VadereProject:302 - SimulationResult{scenarioName='"task_5_sir_static", nr_overlaps (PID4)=56257, state='"SimulationRun completed"}
+13:15:53,996   INFO ScenarioRun:261 - Simulation of scenario task_5_sir_static finished.
+13:15:53,996   INFO ProjectView:588 - selected scenario 'task_5_sir_static'
+13:15:54,067   INFO ProjectView:594 - repainted output table
+13:16:00,358   INFO ProjectView:611 - selected output file 'task_5_sir_static_2021-05-12_13-15-42.941'

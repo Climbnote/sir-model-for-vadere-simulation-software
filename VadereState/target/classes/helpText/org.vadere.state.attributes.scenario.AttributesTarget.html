@@ -6,10 +6,6 @@ Attributes of a target area, used by TargetController in VadereSimulation.
 </p>
 
 <hr>
-<h2> Field: id</h2>
-<p>---</p>
-
-<hr>
 <h2> Field: startingWithRedLight</h2>
 <p>
 If set to false, starts with green phase (nonblocking), otherwise blocks the path (red
@@ -17,11 +13,16 @@ phase).
 </p>
 
 <hr>
-<h2> Field: nextSpeed</h2>
+<h2> Field: shape</h2>
 <p>
-If non-negative, determines the desired speed the particle (pedestrian, car) is assigned
-after passing this target.
-Can be used to model street networks with differing maximal speeds on roads.
+Shape and position.
+</p>
+
+<hr>
+<h2> Field: parallelWaiters</h2>
+<p>
+Number of elements that can wait or be absorbed at one time in parallel on this area.
+If zero, an infinite amount can wait or be absorbed.
 </p>
 
 <hr>
@@ -42,8 +43,19 @@ Needed on crossings, otherwise cars bump into each other.
 </p>
 
 <hr>
+<h2> Field: id</h2>
+<p>---</p>
+
+<hr>
 <h2> Field: deletionDistance</h2>
 <p>---</p>
+
+<hr>
+<h2> Field: absorbing</h2>
+<p>
+True: elements are removed from the simulation after entering.
+False: the target id is removed from the target id list, but the element remains.
+</p>
 
 <hr>
 <h2> Field: waitingTime</h2>
@@ -56,22 +68,10 @@ and back. This way, a traffic light can be simulated.
 </p>
 
 <hr>
-<h2> Field: absorbing</h2>
+<h2> Field: nextSpeed</h2>
 <p>
-True: elements are removed from the simulation after entering.
-False: the target id is removed from the target id list, but the element remains.
-</p>
-
-<hr>
-<h2> Field: shape</h2>
-<p>
-Shape and position.
-</p>
-
-<hr>
-<h2> Field: parallelWaiters</h2>
-<p>
-Number of elements that can wait or be absorbed at one time in parallel on this area.
-If zero, an infinite amount can wait or be absorbed.
+If non-negative, determines the desired speed the particle (pedestrian, car) is assigned
+after passing this target.
+Can be used to model street networks with differing maximal speeds on roads.
 </p>
 
